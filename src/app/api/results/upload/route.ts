@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Trigger notification
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.avovita.ca";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
     await fetch(`${appUrl}/api/notify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

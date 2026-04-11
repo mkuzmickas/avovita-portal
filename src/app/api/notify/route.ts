@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Profile or account not found" }, { status: 404 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.avovita.ca";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
     const resultsUrl = `${appUrl}/portal/results`;
 
     // Generate signed URL (for email reference — not embedded, patient logs in to view)

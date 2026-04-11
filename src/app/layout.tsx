@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "AvoVita Patient Portal",
   description: "Secure access to your private lab results — AvoVita Wellness, Calgary",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://app.avovita.ca"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca"),
 };
 
 export default function RootLayout({

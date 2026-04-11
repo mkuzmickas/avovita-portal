@@ -2,32 +2,29 @@
 -- AvoVita Patient Portal — Initial Database Schema
 -- 2490409 Alberta Ltd. | Alberta PIPA Compliant
 -- Run this entire file in the Supabase SQL editor.
+--
+-- Execution order:
+--   1. Extensions
+--   2. Tables  (labs → tests → accounts → patient_profiles → consents →
+--               orders → order_lines → visit_groups → results → notifications)
+--   3. is_admin() helper function
+--   4. Row Level Security policies
+--   5. Indexes
+--   6. updated_at trigger (function + triggers)
+--   7. Storage bucket reference note
+--   8. Seed data (labs)
 -- =============================================================================
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- EXTENSIONS
+-- 1. EXTENSIONS
 -- ─────────────────────────────────────────────────────────────────────────────
 create extension if not exists "pgcrypto";
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- HELPER: is_admin()
--- Returns true when the currently authenticated user has role = 'admin'
+-- 2. TABLES
 -- ─────────────────────────────────────────────────────────────────────────────
-create or replace function public.is_admin()
-returns boolean
-language sql
-security definer
-stable
-as $$
-  select coalesce(
-    (select role = 'admin' from public.accounts where id = auth.uid()),
-    false
-  );
-$$;
 
--- ─────────────────────────────────────────────────────────────────────────────
--- TABLE: labs
--- ─────────────────────────────────────────────────────────────────────────────
+-- ─── labs ────────────────────────────────────────────────────────────────────
 create table if not exists public.labs (
   id                   uuid primary key default gen_random_uuid(),
   name                 text not null,
@@ -42,9 +39,7 @@ create table if not exists public.labs (
   created_at           timestamptz not null default now()
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- TABLE: tests
--- ─────────────────────────────────────────────────────────────────────────────
+-- ─── tests ───────────────────────────────────────────────────────────────────
 create table if not exists public.tests (
   id                  uuid primary key default gen_random_uuid(),
   lab_id              uuid not null references public.labs(id) on delete restrict,
@@ -66,9 +61,7 @@ create table if not exists public.tests (
   updated_at          timestamptz not null default now()
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- TABLE: accounts (extends Supabase Auth)
--- ─────────────────────────────────────────────────────────────────────────────
+-- ─── accounts (extends Supabase Auth) ────────────────────────────────────────
 create table if not exists public.accounts (
   id         uuid primary key references auth.users(id) on delete cascade,
   email      text,
@@ -77,7 +70,7 @@ create table if not exists public.accounts (
   updated_at timestamptz not null default now()
 );
 
--- Trigger: auto-create account row when a new Supabase Auth user signs up
+-- Trigger: auto-create an accounts row when a new Supabase Auth user signs up.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -97,9 +90,7 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- ─────────────────────────────────────────────────────────────────────────────
--- TABLE: patient_profiles
--- ─────────────────────────────────────────────────────────────────────────────
+-- ─── patient_profiles ────────────────────────────────────────────────────────
 create table if not exists public.patient_profiles (
   id             uuid primary key default gen_random_uuid(),
   account_id     uuid not null references public.accounts(id) on delete cascade,
@@ -119,9 +110,7 @@ create table if not exists public.patient_profiles (
   updated_at     timestamptz not null default now()
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- TABLE: consents (append-only — PIPA compliance record)
--- ─────────────────────────────────────────────────────────────────────────────
+-- ─── consents (append-only — PIPA compliance record) ────────────────────────
 create table if not exists public.consents (
   id                   uuid primary key default gen_random_uuid(),
   profile_id           uuid references public.patient_profiles(id) on delete restrict,
@@ -135,9 +124,7 @@ create table if not exists public.consents (
   consented_at         timestamptz not null default now()
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- TABLE: orders
--- ─────────────────────────────────────────────────────────────────────────────
+-- ─── orders ──────────────────────────────────────────────────────────────────
 create table if not exists public.orders (
   id                       uuid primary key default gen_random_uuid(),
   account_id               uuid not null references public.accounts(id) on delete restrict,
@@ -155,9 +142,7 @@ create table if not exists public.orders (
   updated_at               timestamptz not null default now()
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- TABLE: order_lines
--- ─────────────────────────────────────────────────────────────────────────────
+-- ─── order_lines ─────────────────────────────────────────────────────────────
 create table if not exists public.order_lines (
   id             uuid primary key default gen_random_uuid(),
   order_id       uuid not null references public.orders(id) on delete cascade,
@@ -168,27 +153,23 @@ create table if not exists public.order_lines (
   created_at     timestamptz not null default now()
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- TABLE: visit_groups
--- ─────────────────────────────────────────────────────────────────────────────
+-- ─── visit_groups ────────────────────────────────────────────────────────────
 create table if not exists public.visit_groups (
-  id                     uuid primary key default gen_random_uuid(),
-  order_id               uuid not null references public.orders(id) on delete cascade,
-  address_line1          text,
-  address_line2          text,
-  city                   text,
-  province               text,
-  postal_code            text,
-  base_fee_cad           numeric(10,2) not null default 85.00,
+  id                      uuid primary key default gen_random_uuid(),
+  order_id                uuid not null references public.orders(id) on delete cascade,
+  address_line1           text,
+  address_line2           text,
+  city                    text,
+  province                text,
+  postal_code             text,
+  base_fee_cad            numeric(10,2) not null default 85.00,
   additional_person_count integer not null default 0,
-  additional_fee_cad     numeric(10,2) not null default 0.00,
-  total_fee_cad          numeric(10,2) not null,
-  created_at             timestamptz not null default now()
+  additional_fee_cad      numeric(10,2) not null default 0.00,
+  total_fee_cad           numeric(10,2) not null,
+  created_at              timestamptz not null default now()
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- TABLE: results
--- ─────────────────────────────────────────────────────────────────────────────
+-- ─── results ─────────────────────────────────────────────────────────────────
 create table if not exists public.results (
   id                   uuid primary key default gen_random_uuid(),
   order_line_id        uuid not null references public.order_lines(id) on delete restrict,
@@ -203,9 +184,7 @@ create table if not exists public.results (
   created_at           timestamptz not null default now()
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- TABLE: notifications
--- ─────────────────────────────────────────────────────────────────────────────
+-- ─── notifications ───────────────────────────────────────────────────────────
 create table if not exists public.notifications (
   id            uuid primary key default gen_random_uuid(),
   profile_id    uuid not null references public.patient_profiles(id) on delete restrict,
@@ -220,32 +199,24 @@ create table if not exists public.notifications (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- INDEXES
+-- 3. is_admin() HELPER FUNCTION
+-- Must be declared AFTER public.accounts exists, BEFORE RLS policies that
+-- depend on it.
 -- ─────────────────────────────────────────────────────────────────────────────
-create index if not exists idx_tests_lab_id        on public.tests(lab_id);
-create index if not exists idx_tests_category      on public.tests(category);
-create index if not exists idx_tests_active        on public.tests(active);
-create index if not exists idx_tests_slug          on public.tests(slug);
-
-create index if not exists idx_orders_account_id  on public.orders(account_id);
-create index if not exists idx_orders_status       on public.orders(status);
-create index if not exists idx_orders_payment_id   on public.orders(stripe_payment_intent_id);
-
-create index if not exists idx_order_lines_order_id   on public.order_lines(order_id);
-create index if not exists idx_order_lines_profile_id on public.order_lines(profile_id);
-create index if not exists idx_order_lines_test_id    on public.order_lines(test_id);
-
-create index if not exists idx_results_profile_id     on public.results(profile_id);
-create index if not exists idx_results_order_line_id  on public.results(order_line_id);
-create index if not exists idx_results_uploaded_at    on public.results(uploaded_at);
-
-create index if not exists idx_patient_profiles_account_id on public.patient_profiles(account_id);
-
-create index if not exists idx_consents_profile_id  on public.consents(profile_id);
-create index if not exists idx_consents_account_id  on public.consents(account_id);
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select coalesce(
+    (select role = 'admin' from public.accounts where id = auth.uid()),
+    false
+  );
+$$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- ROW LEVEL SECURITY
+-- 4. ROW LEVEL SECURITY
 -- ─────────────────────────────────────────────────────────────────────────────
 alter table public.labs              enable row level security;
 alter table public.tests             enable row level security;
@@ -258,7 +229,7 @@ alter table public.visit_groups      enable row level security;
 alter table public.results           enable row level security;
 alter table public.notifications     enable row level security;
 
--- ─── labs: public read, no public write ──────────────────────────────────────
+-- ─── labs: public read, admin write ──────────────────────────────────────────
 create policy "labs_public_read"
   on public.labs for select
   using (true);
@@ -268,7 +239,7 @@ create policy "labs_admin_all"
   using (public.is_admin())
   with check (public.is_admin());
 
--- ─── tests: public read, no public write ─────────────────────────────────────
+-- ─── tests: public read, admin write ─────────────────────────────────────────
 create policy "tests_public_read"
   on public.tests for select
   using (true);
@@ -278,7 +249,7 @@ create policy "tests_admin_all"
   using (public.is_admin())
   with check (public.is_admin());
 
--- ─── accounts: own row only ───────────────────────────────────────────────────
+-- ─── accounts: own row only ──────────────────────────────────────────────────
 create policy "accounts_own_select"
   on public.accounts for select
   using (auth.uid() = id);
@@ -330,7 +301,7 @@ create policy "consents_admin_select"
 
 -- No UPDATE or DELETE policies on consents — intentional PIPA requirement.
 
--- ─── orders: own rows ────────────────────────────────────────────────────────
+-- ─── orders ──────────────────────────────────────────────────────────────────
 create policy "orders_own_select"
   on public.orders for select
   using (account_id = auth.uid());
@@ -381,7 +352,7 @@ create policy "results_own_select"
     )
   );
 
--- Patients may update only viewed_at on their own results
+-- Patients may update only viewed_at on their own results.
 create policy "results_own_update_viewed_at"
   on public.results for update
   using (
@@ -415,7 +386,32 @@ create policy "notifications_admin_all"
   with check (public.is_admin());
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- UPDATED_AT TRIGGER (reusable)
+-- 5. INDEXES
+-- ─────────────────────────────────────────────────────────────────────────────
+create index if not exists idx_tests_lab_id         on public.tests(lab_id);
+create index if not exists idx_tests_category       on public.tests(category);
+create index if not exists idx_tests_active         on public.tests(active);
+create index if not exists idx_tests_slug           on public.tests(slug);
+
+create index if not exists idx_orders_account_id    on public.orders(account_id);
+create index if not exists idx_orders_status        on public.orders(status);
+create index if not exists idx_orders_payment_id    on public.orders(stripe_payment_intent_id);
+
+create index if not exists idx_order_lines_order_id    on public.order_lines(order_id);
+create index if not exists idx_order_lines_profile_id  on public.order_lines(profile_id);
+create index if not exists idx_order_lines_test_id     on public.order_lines(test_id);
+
+create index if not exists idx_results_profile_id      on public.results(profile_id);
+create index if not exists idx_results_order_line_id   on public.results(order_line_id);
+create index if not exists idx_results_uploaded_at     on public.results(uploaded_at);
+
+create index if not exists idx_patient_profiles_account_id on public.patient_profiles(account_id);
+
+create index if not exists idx_consents_profile_id   on public.consents(profile_id);
+create index if not exists idx_consents_account_id   on public.consents(account_id);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 6. UPDATED_AT TRIGGER (reusable)
 -- ─────────────────────────────────────────────────────────────────────────────
 create or replace function public.handle_updated_at()
 returns trigger
@@ -427,24 +423,36 @@ begin
 end;
 $$;
 
+drop trigger if exists tests_updated_at            on public.tests;
 create trigger tests_updated_at
   before update on public.tests
   for each row execute procedure public.handle_updated_at();
 
+drop trigger if exists accounts_updated_at         on public.accounts;
 create trigger accounts_updated_at
   before update on public.accounts
   for each row execute procedure public.handle_updated_at();
 
+drop trigger if exists patient_profiles_updated_at on public.patient_profiles;
 create trigger patient_profiles_updated_at
   before update on public.patient_profiles
   for each row execute procedure public.handle_updated_at();
 
+drop trigger if exists orders_updated_at           on public.orders;
 create trigger orders_updated_at
   before update on public.orders
   for each row execute procedure public.handle_updated_at();
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- SEED DATA: Labs
+-- 7. STORAGE: results-pdfs bucket (private)
+-- Note: Storage bucket creation must be done via Supabase dashboard or CLI.
+--   Dashboard: Storage > New bucket > Name: results-pdfs > uncheck "Public"
+--   CLI:       supabase storage create results-pdfs --no-public
+-- All result PDFs are served only via signed URLs with 1-hour expiry.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 8. SEED DATA: Labs
 -- ─────────────────────────────────────────────────────────────────────────────
 insert into public.labs (id, name, country, shipping_schedule, shipping_notes, results_visibility, turnaround_min_days, turnaround_max_days, turnaround_notes, cross_border_country)
 values
@@ -466,8 +474,8 @@ values
     'same_day',
     'Specimens shipped same day as collection.',
     'full',
-    10, 14,
-    'Minimum 10 business days from lab receipt.',
+    14, 21,
+    'Results delivered directly to patient with AvoVita copied on all results.',
     'DE'
   ),
   (
@@ -475,10 +483,10 @@ values
     'Dynacare',
     'Canada',
     'kit_only',
-    'Kit-based collection. Patient ships directly.',
+    'Kit-based collection, ships same day',
     'none',
     null, null,
-    'Results go directly to patient from Dynacare. AvoVita does not receive or relay results.',
+    'Results go directly to referring care provider on requisition. AvoVita does not receive or relay results. All result follow up direct with Dynacare Genetics.',
     null
   ),
   (
@@ -487,31 +495,11 @@ values
     'United States',
     'same_day',
     'Specimens shipped same day as collection.',
-    'full',
+    'none',
     7, 10,
-    'Turnaround calculated from lab receipt.',
+    'Results go directly to referring care provider on requisition. AvoVita does not receive or relay results. All result follow up direct with ReligenDx.',
     'US'
-  ),
-  (
-    gen_random_uuid(),
-    'DynaLife',
-    'Canada',
-    'same_day',
-    'Specimens shipped same day as collection.',
-    'full',
-    3, 5,
-    'Turnaround calculated from lab receipt.',
-    null
   )
 on conflict do nothing;
-
--- ─────────────────────────────────────────────────────────────────────────────
--- STORAGE: results-pdfs bucket (private)
--- Note: Storage bucket creation must be done via Supabase dashboard or CLI.
--- The following is a reference command for the CLI:
---   supabase storage create results-pdfs --no-public
--- Alternatively in the Supabase dashboard:
---   Storage > New bucket > Name: results-pdfs > Private (uncheck Public)
--- ─────────────────────────────────────────────────────────────────────────────
 
 -- End of migration

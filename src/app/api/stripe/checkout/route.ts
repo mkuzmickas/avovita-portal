@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.avovita.ca";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",

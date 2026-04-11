@@ -180,7 +180,7 @@ async function handleCheckoutComplete(
       .maybeSingle();
 
     const firstName = primaryProfile?.first_name ?? "there";
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.avovita.ca";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
 
     await resend.emails.send({
       from: process.env.RESEND_FROM_ORDERS!,

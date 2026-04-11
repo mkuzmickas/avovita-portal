@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AvoVita Patient Portal
 
 Private lab testing patient portal for **AvoVita Wellness** (2490409 Alberta Ltd.), Calgary, AB.
@@ -86,7 +87,7 @@ Open [http://localhost:3000](http://localhost:3000).
 5. Set up Supabase Auth:
    - Enable Email provider
    - Set Site URL to your `NEXT_PUBLIC_APP_URL`
-   - Add redirect URLs: `https://app.avovita.ca/**`
+   - Add redirect URLs: `https://portal.avovita.ca/**`
 
 ---
 
@@ -141,7 +142,7 @@ This replaces the previous manual HighMail process:
 ## Stripe Webhook Setup
 
 1. In the Stripe dashboard, go to **Webhooks** → **Add Endpoint**
-2. URL: `https://app.avovita.ca/api/stripe/webhook`
+2. URL: `https://portal.avovita.ca/api/stripe/webhook`
 3. Events to listen for: `checkout.session.completed`
 4. Copy the signing secret into `STRIPE_WEBHOOK_SECRET`
 
@@ -224,3 +225,7 @@ supabase/
 └── migrations/
     └── 001_initial_schema.sql    # Full database schema + RLS + seed data
 ```
+=======
+# avovita-portal
+avovita-portal
+>>>>>>> 2f09f314932aaaeccb47e49acbc6bddeccd2aaba
