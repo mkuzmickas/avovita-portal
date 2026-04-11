@@ -107,6 +107,9 @@ create table if not exists public.patient_profiles (
   postal_code    text,
   is_minor       boolean not null default false,
   is_primary     boolean not null default false,
+  relationship   text check (relationship in (
+    'account_holder','spouse_partner','child','parent','sibling','friend','colleague','other'
+  )),
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );

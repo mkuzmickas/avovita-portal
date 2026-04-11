@@ -50,7 +50,12 @@ export default async function ResultsPage() {
     `)
     .in("profile_id", profileIds)
     .order("uploaded_at", { ascending: false });
-  const results = (resultsRaw ?? []) as unknown as ResultRow[];
+  // Filter out sentinel "direct delivery" rows — those are admin-only
+  // acknowledgements for labs that send results straight to the care provider.
+  // Sentinels are tagged with storage_path starting `__`.
+  const results = ((resultsRaw ?? []) as unknown as ResultRow[]).filter(
+    (r) => !r.storage_path.startsWith("__")
+  );
 
   const profileMap = new Map(profiles.map((p) => [p.id, p]));
 

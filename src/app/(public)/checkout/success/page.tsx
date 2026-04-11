@@ -1,13 +1,21 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { stripe } from "@/lib/stripe";
-import { CheckCircle } from "lucide-react";
-import { ProfileForm } from "@/components/ProfileForm";
+import { reassembleMetadata } from "@/lib/checkout/materialise";
+import { CheckoutSuccessClient } from "@/components/checkout/CheckoutSuccessClient";
+
+export const dynamic = "force-dynamic";
 
 interface SearchParams {
   session_id?: string;
 }
 
+/**
+ * Post-purchase landing page. Outcomes:
+ *   - Missing/invalid session_id  → redirect to /tests
+ *   - Logged in already           → CheckoutSuccessClient (auto-redirects to portal)
+ *   - Guest checkout              → CheckoutSuccessClient with the create-account form
+ */
 export default async function CheckoutSuccessPage({
   searchParams,
 }: {
@@ -16,90 +24,69 @@ export default async function CheckoutSuccessPage({
   const params = await searchParams;
   const sessionId = params.session_id;
 
+  if (!sessionId) {
+    redirect("/tests");
+  }
+
+  // Verify the Stripe session
+  let session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId);
+  } catch {
+    redirect("/tests");
+  }
+
+  if (session.payment_status !== "paid") {
+    redirect("/tests");
+  }
+
+  const payload = reassembleMetadata(
+    session.metadata as Record<string, string> | null
+  );
+  if (!payload) {
+    redirect("/tests");
+  }
+
+  // Are they currently logged in?
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const alreadyLoggedIn = !!user;
 
-  if (!user) redirect("/login");
+  // Try to find the order so we can show a real ID — webhook may not have
+  // fired yet, in which case we use a session-derived placeholder.
+  const service = createServiceRoleClient();
+  const { data: orderRaw } = await service
+    .from("orders")
+    .select("id, total_cad")
+    .eq("stripe_session_id", sessionId)
+    .maybeSingle();
 
-  if (sessionId) {
-    try {
-      await stripe.checkout.sessions.retrieve(sessionId);
-    } catch {
-      // Session not found — still show success gate
-    }
-  }
+  const order = orderRaw as { id: string; total_cad: number | null } | null;
 
-  const { data: profiles } = await supabase
-    .from("patient_profiles")
-    .select("id, first_name, is_primary")
-    .eq("account_id", user.id);
+  const orderIdShort = order
+    ? order.id.slice(0, 8).toUpperCase()
+    : sessionId.slice(-8).toUpperCase();
 
-  const hasProfile = (profiles?.length ?? 0) > 0;
+  const total =
+    order?.total_cad ??
+    (session.amount_total ?? Math.round(payload.total * 100)) / 100;
 
-  if (hasProfile) {
-    redirect("/portal/orders");
-  }
+  const summary = {
+    orderIdShort,
+    total,
+    personCount: payload.persons.length,
+    testCount: payload.assignments.length,
+    collectionCity: payload.collection_address.city,
+    prefilledEmail: session.customer_email ?? user?.email ?? "",
+  };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4 py-12"
-      style={{ backgroundColor: "#0a1a0d" }}
-    >
-      <div className="w-full max-w-lg">
-        <div
-          className="rounded-2xl border overflow-hidden"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
-        >
-          <div
-            className="px-8 py-6 text-center border-b"
-            style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
-          >
-            <CheckCircle
-              className="w-12 h-12 mx-auto mb-3"
-              style={{ color: "#c4973a" }}
-            />
-            <h1
-              className="font-heading text-2xl font-semibold"
-              style={{
-                color: "#ffffff",
-                fontFamily: '"Cormorant Garamond", Georgia, serif',
-              }}
-            >
-              Payment <span style={{ color: "#c4973a" }}>Confirmed</span>
-            </h1>
-            <p className="mt-1 text-sm" style={{ color: "#e8d5a3" }}>
-              One last step — create your patient profile so we know who to
-              collect from.
-            </p>
-          </div>
-
-          <div className="px-8 py-6">
-            <div className="mb-6">
-              <h2
-                className="font-heading text-xl font-semibold mb-1"
-                style={{
-                  color: "#ffffff",
-                  fontFamily: '"Cormorant Garamond", Georgia, serif',
-                }}
-              >
-                Create Your Patient Profile
-              </h2>
-              <p className="text-sm" style={{ color: "#e8d5a3" }}>
-                This information is required for specimen collection and your
-                lab results. All data is protected under Alberta PIPA.
-              </p>
-            </div>
-
-            <ProfileForm
-              accountId={user.id}
-              isPrimary={true}
-              redirectAfter="/portal/orders"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    <CheckoutSuccessClient
+      sessionId={sessionId}
+      alreadyLoggedIn={alreadyLoggedIn}
+      summary={summary}
+    />
   );
 }

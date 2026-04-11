@@ -13,19 +13,28 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-interface PortalSidebarProps {
+export interface PortalSidebarProps {
+  /** Displayed at the top of the sidebar. Pass primary profile first name when available. */
+  displayName: string;
+  /** Raw account email shown under the display name. */
   email: string;
+  /** When > 0, shows a gold dot next to "My Results". */
+  unviewedResultsCount: number;
 }
 
-const navLinks = [
-  { href: "/portal", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/portal/orders", label: "My Orders", icon: ClipboardList },
-  { href: "/portal/results", label: "My Results", icon: FileText },
-  { href: "/portal/profiles", label: "My Profiles", icon: Users },
-  { href: "/portal/settings", label: "Settings", icon: Settings },
+const NAV_LINKS = [
+  { href: "/portal", label: "Dashboard", icon: LayoutDashboard, key: "dashboard" },
+  { href: "/portal/orders", label: "My Orders", icon: ClipboardList, key: "orders" },
+  { href: "/portal/results", label: "My Results", icon: FileText, key: "results" },
+  { href: "/portal/profiles", label: "My Profiles", icon: Users, key: "profiles" },
+  { href: "/portal/settings", label: "Settings", icon: Settings, key: "settings" },
 ];
 
-export function PortalSidebar({ email }: PortalSidebarProps) {
+export function PortalSidebar({
+  displayName,
+  email,
+  unviewedResultsCount,
+}: PortalSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -38,15 +47,15 @@ export function PortalSidebar({ email }: PortalSidebarProps) {
 
   return (
     <aside
-      className="w-64 shrink-0 flex flex-col min-h-screen sticky top-0 border-r"
+      className="w-64 shrink-0 flex-col min-h-screen sticky top-0 border-r hidden md:flex"
       style={{ backgroundColor: "#0f2614", borderColor: "#1a3d22" }}
     >
-      {/* Logo */}
+      {/* Logo + user */}
       <div
         className="px-6 py-5 border-b"
         style={{ borderColor: "#1a3d22" }}
       >
-        <Link href="/portal" className="flex items-center gap-2.5 group">
+        <Link href="/portal" className="flex items-center gap-2.5 mb-3">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center border"
             style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
@@ -68,15 +77,34 @@ export function PortalSidebar({ email }: PortalSidebarProps) {
             </p>
           </div>
         </Link>
+
+        <div className="mt-2">
+          <p
+            className="text-sm font-semibold truncate"
+            style={{ color: "#ffffff" }}
+          >
+            {displayName}
+          </p>
+          {email && email !== displayName && (
+            <p
+              className="text-xs truncate mt-0.5"
+              style={{ color: "#6ab04c" }}
+            >
+              {email}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {navLinks.map(({ href, label, icon: Icon }) => {
+        {NAV_LINKS.map(({ href, label, icon: Icon, key }) => {
           const active =
             href === "/portal"
               ? pathname === "/portal"
               : pathname.startsWith(href);
+          const showDot = key === "results" && unviewedResultsCount > 0;
+
           return (
             <Link
               key={href}
@@ -99,35 +127,30 @@ export function PortalSidebar({ email }: PortalSidebarProps) {
               }
             >
               <Icon className="w-4 h-4 shrink-0" />
-              {label}
+              <span className="flex-1">{label}</span>
+              {showDot && (
+                <span
+                  className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold shrink-0"
+                  style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                  aria-label={`${unviewedResultsCount} unviewed results`}
+                >
+                  {unviewedResultsCount}
+                </span>
+              )}
             </Link>
           );
         })}
       </nav>
 
-      {/* User / Logout */}
+      {/* Logout */}
       <div
-        className="px-3 py-4 border-t space-y-1"
+        className="px-3 py-4 border-t"
         style={{ borderColor: "#1a3d22" }}
       >
-        <p
-          className="px-3 text-xs truncate"
-          style={{ color: "#6ab04c" }}
-        >
-          {email}
-        </p>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-left transition-colors"
           style={{ color: "#e8d5a3" }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#1f4a28";
-            e.currentTarget.style.color = "#e05252";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.color = "#e8d5a3";
-          }}
         >
           <LogOut className="w-4 h-4 shrink-0" />
           Sign Out

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
-import { ProfileForm } from "@/components/ProfileForm";
+import { ProfileFormWithConsent } from "@/components/portal/ProfileFormWithConsent";
 import type { PatientProfile } from "@/types/database";
 
 export default async function EditProfilePage({
@@ -14,7 +14,7 @@ export default async function EditProfilePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect(`/login?returnUrl=/portal/profiles/${id}/edit`);
 
   const { data: profileRaw } = await supabase
     .from("patient_profiles")
@@ -27,8 +27,8 @@ export default async function EditProfilePage({
   if (!profile) notFound();
 
   return (
-    <div className="p-8 max-w-xl mx-auto">
-      <div className="mb-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-xl mx-auto">
+      <div className="mb-6 sm:mb-8">
         <h1
           className="font-heading text-3xl font-semibold"
           style={{
@@ -43,10 +43,10 @@ export default async function EditProfilePage({
         </p>
       </div>
       <div
-        className="rounded-2xl border p-8"
+        className="rounded-2xl border p-6 sm:p-8"
         style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
       >
-        <ProfileForm
+        <ProfileFormWithConsent
           accountId={user.id}
           isPrimary={profile.is_primary}
           redirectAfter="/portal/profiles"

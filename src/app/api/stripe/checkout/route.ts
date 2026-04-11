@@ -1,138 +1,141 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
-import { calculateVisitFees } from "@/lib/utils";
-import type { PatientProfile, Lab } from "@/types/database";
+import type { CheckoutPayload } from "@/lib/checkout/types";
 
-interface CartRequestItem {
-  test_id: string;
-  profile_id: string;
-  quantity: number;
-}
-
-type TestRecord = {
-  id: string;
-  name: string;
-  price_cad: number;
-  turnaround_display: string | null;
-  lab_id: string;
-};
-
-type LabRecord = {
-  id: string;
-  name: string;
-  cross_border_country: string | null;
-};
-
+/**
+ * Multi-person checkout API. Accepts a CheckoutPayload built by the
+ * client wizard, validates the test prices server-side against the
+ * `tests` table (so the client can't tamper with them), creates a
+ * Stripe Checkout Session with one line item per (test × person) pair
+ * + one for the visit fee, and stuffs the full reconstruction data
+ * into Stripe metadata for the webhook to materialise after payment.
+ *
+ * Stripe metadata constraints:
+ *   - max 50 keys
+ *   - each value max 500 characters
+ * We split large JSON blobs across numbered chunks (`chunk_0`, `chunk_1`...)
+ * and the webhook reassembles them.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const body = (await request.json()) as CheckoutPayload;
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // ─── Basic validation ──────────────────────────────────────────
+    if (!body.persons || body.persons.length === 0) {
+      return NextResponse.json(
+        { error: "At least one person is required" },
+        { status: 400 }
+      );
+    }
+    if (!body.assignments || body.assignments.length === 0) {
+      return NextResponse.json(
+        { error: "No tests assigned" },
+        { status: 400 }
+      );
+    }
+    if (
+      !body.collection_address?.address_line1 ||
+      !body.collection_address?.city ||
+      !body.collection_address?.province ||
+      !body.collection_address?.postal_code
+    ) {
+      return NextResponse.json(
+        { error: "Collection address is incomplete" },
+        { status: 400 }
+      );
     }
 
-    const body = await request.json();
-    const cartItems: CartRequestItem[] = body.items;
-
-    if (!cartItems || cartItems.length === 0) {
-      return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
-    }
-
-    const testIds = [...new Set(cartItems.map((item) => item.test_id))];
-    const { data: testsRaw, error: testsError } = await supabase
-      .from("tests")
-      .select("id, name, price_cad, turnaround_display, lab_id")
-      .in("id", testIds)
-      .eq("active", true);
-
-    if (testsError || !testsRaw) {
-      return NextResponse.json({ error: "Failed to fetch tests" }, { status: 500 });
-    }
-    const tests = testsRaw as unknown as TestRecord[];
-
-    const testMap = new Map(tests.map((t) => [t.id, t]));
-
-    for (const item of cartItems) {
-      if (!testMap.has(item.test_id)) {
+    // Verify every person has at least one test
+    const personIndices = new Set(body.persons.map((p) => p.index));
+    const assignedPersonIndices = new Set(
+      body.assignments.map((a) => a.assigned_to_person)
+    );
+    for (const idx of personIndices) {
+      if (!assignedPersonIndices.has(idx)) {
         return NextResponse.json(
-          { error: `Test ${item.test_id} not found or inactive` },
+          { error: `Person ${idx + 1} has no tests assigned` },
           { status: 400 }
         );
       }
     }
 
-    const profileIds = [...new Set(cartItems.map((item) => item.profile_id))];
-    const { data: profilesRaw, error: profilesError } = await supabase
-      .from("patient_profiles")
-      .select("*")
-      .in("id", profileIds)
-      .eq("account_id", user.id);
-
-    if (profilesError || !profilesRaw) {
-      return NextResponse.json({ error: "Failed to fetch profiles" }, { status: 500 });
+    // Verify additional people consents
+    for (const p of body.persons) {
+      if (!p.is_account_holder && !p.consent_acknowledged) {
+        return NextResponse.json(
+          {
+            error: `${p.first_name || "Additional person"} must consent to sharing the account`,
+          },
+          { status: 400 }
+        );
+      }
+      if (!p.first_name || !p.last_name || !p.date_of_birth || !p.biological_sex) {
+        return NextResponse.json(
+          { error: `Person ${p.index + 1} has missing required fields` },
+          { status: 400 }
+        );
+      }
+      if (!p.is_account_holder && !p.relationship) {
+        return NextResponse.json(
+          { error: `Person ${p.index + 1} is missing a relationship` },
+          { status: 400 }
+        );
+      }
     }
-    const profiles = profilesRaw as unknown as PatientProfile[];
 
-    const { data: labsRaw } = await supabase
-      .from("labs")
-      .select("id, name, cross_border_country")
-      .in("id", tests.map((t) => t.lab_id));
-    const labs = (labsRaw ?? []) as unknown as LabRecord[];
-    const labMap = new Map(labs.map((l) => [l.id, l]));
+    // ─── Resolve tests server-side and verify prices ──────────────
+    const supabase = await createClient();
 
-    // Build enriched cart for fee calculation (minimal shape)
-    const enrichedCart = cartItems.map((item) => {
-      const test = testMap.get(item.test_id)!;
-      const lab = labMap.get(test.lab_id) ?? { id: test.lab_id, name: "", cross_border_country: null };
-      return {
-        test: {
-          id: test.id,
-          name: test.name,
-          price_cad: test.price_cad,
-          lab_id: test.lab_id,
-          lab: {
-            id: lab.id,
-            name: lab.name,
-            country: "",
-            shipping_schedule: "same_day" as const,
-            shipping_notes: null,
-            results_visibility: "full" as const,
-            turnaround_min_days: null,
-            turnaround_max_days: null,
-            turnaround_notes: null,
-            cross_border_country: lab.cross_border_country,
-            created_at: "",
-          } satisfies Lab,
-          slug: "",
-          description: null,
-          category: null,
-          turnaround_display: test.turnaround_display,
-          turnaround_min_days: null,
-          turnaround_max_days: null,
-          turnaround_note: null,
-          specimen_type: null,
-          order_type: "standard" as const,
-          stability_notes: null,
-          active: true,
-          featured: false,
-          created_at: "",
-          updated_at: "",
-        },
-        profile_id: item.profile_id,
-        quantity: item.quantity,
-      };
-    });
+    const testIds = [
+      ...new Set(body.assignments.map((a) => a.test_id)),
+    ];
 
-    const visitFeeBreakdowns = calculateVisitFees(enrichedCart, profiles);
-    const totalVisitFees = visitFeeBreakdowns.reduce((sum, b) => sum + b.total_fee, 0);
+    const { data: testsRaw, error: testsErr } = await supabase
+      .from("tests")
+      .select("id, name, price_cad, lab:labs(name)")
+      .in("id", testIds)
+      .eq("active", true);
 
-    // Build Stripe line items (using plain object literal — no imported type needed)
+    if (testsErr || !testsRaw) {
+      return NextResponse.json(
+        { error: "Failed to load tests" },
+        { status: 500 }
+      );
+    }
+
+    type TestRow = {
+      id: string;
+      name: string;
+      price_cad: number;
+      lab: { name: string } | { name: string }[] | null;
+    };
+    const tests = testsRaw as unknown as TestRow[];
+    const testMap = new Map<
+      string,
+      { id: string; name: string; price_cad: number; lab_name: string }
+    >();
+    for (const t of tests) {
+      const lab = Array.isArray(t.lab) ? t.lab[0] : t.lab;
+      testMap.set(t.id, {
+        id: t.id,
+        name: t.name,
+        price_cad: Number(t.price_cad),
+        lab_name: lab?.name ?? "",
+      });
+    }
+
+    // Reject any unknown / inactive tests
+    for (const a of body.assignments) {
+      if (!testMap.has(a.test_id)) {
+        return NextResponse.json(
+          { error: `Test ${a.test_id} is not available` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // ─── Build Stripe line items ──────────────────────────────────
     type StripeLineItem = {
       price_data: {
         currency: string;
@@ -143,11 +146,13 @@ export async function POST(request: NextRequest) {
     };
     const lineItems: StripeLineItem[] = [];
 
-    for (const item of cartItems) {
-      const test = testMap.get(item.test_id)!;
-      const profile = profiles.find((p) => p.id === item.profile_id);
-      const profileName = profile
-        ? `${profile.first_name} ${profile.last_name}`
+    let serverSubtotal = 0;
+
+    for (const assignment of body.assignments) {
+      const test = testMap.get(assignment.test_id)!;
+      const person = body.persons[assignment.assigned_to_person];
+      const personName = person
+        ? `${person.first_name} ${person.last_name}`.trim() || `Person ${assignment.assigned_to_person + 1}`
         : "Patient";
 
       lineItems.push({
@@ -155,71 +160,131 @@ export async function POST(request: NextRequest) {
           currency: "cad",
           product_data: {
             name: test.name,
-            description: `For: ${profileName}`,
+            description: `For: ${personName}`,
           },
           unit_amount: Math.round(test.price_cad * 100),
         },
-        quantity: item.quantity,
-      });
-    }
-
-    for (const breakdown of visitFeeBreakdowns) {
-      const description =
-        breakdown.person_count === 1
-          ? `In-home specimen collection — ${breakdown.address_label}`
-          : `In-home specimen collection (${breakdown.person_count} people) — ${breakdown.address_label}`;
-
-      lineItems.push({
-        price_data: {
-          currency: "cad",
-          product_data: {
-            name: "FloLabs Home Visit Fee",
-            description,
-          },
-          unit_amount: Math.round(breakdown.total_fee * 100),
-        },
         quantity: 1,
       });
+
+      serverSubtotal += test.price_cad;
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
+    // Visit fee — single line item
+    const visitFeeBase = Number(
+      process.env.NEXT_PUBLIC_HOME_VISIT_FEE_BASE ?? 85
+    );
+    const visitFeeAdditional = Number(
+      process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ADDITIONAL ?? 55
+    );
+    const additionalCount = Math.max(0, body.persons.length - 1);
+    const visitFeeTotal =
+      visitFeeBase + additionalCount * visitFeeAdditional;
+
+    const visitDescription =
+      body.persons.length === 1
+        ? `In-home specimen collection — ${body.collection_address.city}`
+        : `In-home specimen collection (${body.persons.length} people) — ${body.collection_address.city}`;
+
+    lineItems.push({
+      price_data: {
+        currency: "cad",
+        product_data: {
+          name: "FloLabs Home Visit Fee",
+          description: visitDescription,
+        },
+        unit_amount: Math.round(visitFeeTotal * 100),
+      },
+      quantity: 1,
+    });
+
+    // ─── Build metadata payload ───────────────────────────────────
+    // We serialise the order data into a single JSON string and split it
+    // across numbered metadata keys (each ≤ 500 chars per Stripe limit).
+    const orderPayload = {
+      version: 1,
+      account_user_id: body.account_user_id,
+      collection_address: body.collection_address,
+      persons: body.persons.map((p) => ({
+        index: p.index,
+        is_account_holder: p.is_account_holder,
+        first_name: p.first_name.trim(),
+        last_name: p.last_name.trim(),
+        date_of_birth: p.date_of_birth,
+        biological_sex: p.biological_sex,
+        relationship: p.relationship,
+      })),
+      assignments: body.assignments.map((a) => ({
+        test_id: a.test_id,
+        person_index: a.assigned_to_person,
+        unit_price_cad: testMap.get(a.test_id)!.price_cad,
+      })),
+      visit_fees: {
+        base: visitFeeBase,
+        additional_per_person: visitFeeAdditional,
+        additional_count: additionalCount,
+        total: visitFeeTotal,
+      },
+      subtotal: serverSubtotal,
+      total: serverSubtotal + visitFeeTotal,
+    };
+
+    const fullJson = JSON.stringify(orderPayload);
+    const CHUNK_SIZE = 480; // Stripe metadata value limit is 500
+    const chunks: string[] = [];
+    for (let i = 0; i < fullJson.length; i += CHUNK_SIZE) {
+      chunks.push(fullJson.slice(i, i + CHUNK_SIZE));
+    }
+
+    const metadata: Record<string, string> = {
+      version: "1",
+      chunk_count: chunks.length.toString(),
+      account_user_id: body.account_user_id ?? "",
+    };
+    chunks.forEach((c, i) => {
+      metadata[`chunk_${i}`] = c;
+    });
+
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
+
+    // ─── Resolve customer email for Stripe ─────────────────────────
+    const accountHolder = body.persons.find((p) => p.is_account_holder);
+    let customerEmail: string | undefined;
+    if (body.account_user_id) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user?.email) customerEmail = user.email;
+    }
+    void accountHolder; // We collect email at success-page time for guests
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "cad",
       line_items: lineItems,
       success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/tests`,
-      customer_email: user.email ?? undefined,
-      metadata: {
-        user_id: user.id,
-        cart_items: JSON.stringify(
-          cartItems.map((item) => ({
-            test_id: item.test_id,
-            profile_id: item.profile_id,
-            quantity: item.quantity,
-            unit_price_cad: testMap.get(item.test_id)!.price_cad,
-          }))
-        ),
-        visit_fee_total: totalVisitFees.toString(),
-        subtotal: cartItems
-          .reduce(
-            (sum, item) =>
-              sum + (testMap.get(item.test_id)?.price_cad ?? 0) * item.quantity,
-            0
-          )
-          .toString(),
-      },
+      cancel_url: `${appUrl}/checkout`,
+      customer_email: customerEmail,
+      metadata,
       payment_intent_data: {
-        metadata: { user_id: user.id },
+        metadata: {
+          version: "1",
+          account_user_id: body.account_user_id ?? "",
+        },
       },
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url, session_id: session.id });
   } catch (error) {
-    console.error("Stripe checkout error:", error);
+    console.error("[stripe-checkout] error:", error);
     return NextResponse.json(
-      { error: "Failed to create checkout session" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to create checkout session",
+      },
       { status: 500 }
     );
   }

@@ -11,7 +11,7 @@ export default async function ProfilesPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/login?returnUrl=/portal/profiles");
 
   const { data: profilesRaw } = await supabase
     .from("patient_profiles")
@@ -39,8 +39,8 @@ export default async function ProfilesPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="mb-8 flex items-start justify-between gap-4">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
+      <div className="mb-6 sm:mb-8 flex items-start justify-between gap-4">
         <div>
           <h1
             className="font-heading text-3xl font-semibold"
@@ -212,6 +212,20 @@ export default async function ProfilesPage() {
           </div>
         )}
       </div>
+
+      {profiles.length > 0 && (
+        <p className="text-xs mt-6 text-center" style={{ color: "#6ab04c" }}>
+          To remove a profile, please contact AvoVita support at{" "}
+          <a
+            href="mailto:hello@avovita.ca"
+            className="underline"
+            style={{ color: "#c4973a" }}
+          >
+            hello@avovita.ca
+          </a>
+          .
+        </p>
+      )}
     </div>
   );
 }

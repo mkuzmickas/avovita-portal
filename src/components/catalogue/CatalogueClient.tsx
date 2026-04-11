@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Leaf, Clock, ShoppingCart, Check } from "lucide-react";
 import { TestCard } from "./TestCard";
@@ -8,6 +8,7 @@ import { TestTable } from "./TestTable";
 import { SearchBar } from "./SearchBar";
 import { CategoryFilter } from "./CategoryFilter";
 import { CartBar } from "./CartBar";
+import { useCart } from "@/components/cart/CartContext";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
 interface CatalogueClientProps {
@@ -25,18 +26,15 @@ export function CatalogueClient({
   labs,
   isLoggedIn,
 }: CatalogueClientProps) {
-  const [cart, setCart] = useState<CatalogueCartItem[]>([]);
+  const { cart, addItem } = useCart();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedLab, setSelectedLab] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
-  const handleAdd = useCallback((item: CatalogueCartItem) => {
-    setCart((prev) => {
-      if (prev.some((c) => c.test_id === item.test_id)) return prev;
-      return [...prev, item];
-    });
-  }, []);
+  const handleAdd = (item: CatalogueCartItem) => {
+    addItem(item);
+  };
 
   // Dev-only sanity log so we can verify in browser devtools that data is
   // actually flowing through to TestTable. Stripped from production builds.

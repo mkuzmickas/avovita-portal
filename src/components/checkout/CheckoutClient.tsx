@@ -1,0 +1,314 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Leaf } from "lucide-react";
+import { useCart } from "@/components/cart/CartContext";
+import { CheckoutProgress } from "./CheckoutProgress";
+import { CheckoutCartSummary } from "./CheckoutCartSummary";
+import { Step1People } from "./Step1People";
+import {
+  Step2AssignTests,
+  type PersonAssignmentEntry,
+} from "./Step2AssignTests";
+import { Step3CollectionDetails } from "./Step3CollectionDetails";
+import { Step4Review } from "./Step4Review";
+import { computeVisitFees } from "@/lib/checkout/visit-fees";
+import type {
+  CheckoutPerson,
+  CollectionAddress,
+} from "@/lib/checkout/types";
+
+interface CheckoutClientProps {
+  /** Authenticated account id, or null for guest checkout. */
+  accountUserId: string | null;
+  /** Authenticated email, used to skip account creation if logged in. */
+  accountEmail: string | null;
+}
+
+const STORAGE_KEY = "avovita-checkout-v1";
+
+interface PersistedCheckoutState {
+  personCount: number;
+  assignments: PersonAssignmentEntry[];
+  persons: CheckoutPerson[];
+  collectionAddress: CollectionAddress;
+  step: number;
+}
+
+function defaultPersons(count: number): CheckoutPerson[] {
+  return Array.from({ length: count }, (_, i) => ({
+    index: i,
+    is_account_holder: i === 0,
+    first_name: "",
+    last_name: "",
+    date_of_birth: "",
+    biological_sex: "",
+    relationship: i === 0 ? "account_holder" : null,
+    consent_acknowledged: i === 0,
+  }));
+}
+
+const defaultAddress: CollectionAddress = {
+  address_line1: "",
+  address_line2: "",
+  city: "Calgary",
+  province: "AB",
+  postal_code: "",
+};
+
+export function CheckoutClient({
+  accountUserId,
+  accountEmail: _accountEmail,
+}: CheckoutClientProps) {
+  void _accountEmail;
+  const router = useRouter();
+  const { cart, hydrated } = useCart();
+
+  const [step, setStep] = useState(1);
+  const [personCount, setPersonCount] = useState(1);
+  const [persons, setPersons] = useState<CheckoutPerson[]>(defaultPersons(1));
+  const [assignments, setAssignments] = useState<PersonAssignmentEntry[]>([]);
+  const [collectionAddress, setCollectionAddress] =
+    useState<CollectionAddress>(defaultAddress);
+  const [restored, setRestored] = useState(false);
+
+  // ─── Restore persisted state ──────────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as PersistedCheckoutState;
+        if (parsed && typeof parsed === "object") {
+          if (parsed.personCount) setPersonCount(parsed.personCount);
+          if (Array.isArray(parsed.persons) && parsed.persons.length > 0) {
+            setPersons(parsed.persons);
+          }
+          if (Array.isArray(parsed.assignments)) {
+            setAssignments(parsed.assignments);
+          }
+          if (parsed.collectionAddress) {
+            setCollectionAddress(parsed.collectionAddress);
+          }
+          if (typeof parsed.step === "number") {
+            setStep(parsed.step);
+          }
+        }
+      }
+    } catch {
+      // Ignore parse errors — start fresh
+    }
+    setRestored(true);
+  }, []);
+
+  // ─── Persist on every change ──────────────────────────────────────────
+  useEffect(() => {
+    if (!restored || typeof window === "undefined") return;
+    try {
+      const snapshot: PersistedCheckoutState = {
+        personCount,
+        persons,
+        assignments,
+        collectionAddress,
+        step,
+      };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+    } catch {
+      // Ignore quota errors
+    }
+  }, [
+    personCount,
+    persons,
+    assignments,
+    collectionAddress,
+    step,
+    restored,
+  ]);
+
+  // ─── Cart redirect ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (hydrated && cart.length === 0) {
+      router.replace("/tests");
+    }
+  }, [hydrated, cart.length, router]);
+
+  // ─── Adjust persons when count changes ────────────────────────────────
+  const handlePersonCountChange = (count: number) => {
+    setPersonCount(count);
+    setPersons((prev) => {
+      // Preserve existing entries up to the new count
+      const next = defaultPersons(count);
+      for (let i = 0; i < count; i++) {
+        if (prev[i]) next[i] = { ...next[i], ...prev[i], index: i, is_account_holder: i === 0 };
+        // Account holder must always have account_holder relationship
+        if (i === 0) {
+          next[i].relationship = "account_holder";
+          next[i].consent_acknowledged = true;
+          next[i].is_account_holder = true;
+        }
+      }
+      return next;
+    });
+    // Drop assignments for people that no longer exist
+    setAssignments((prev) => prev.filter((a) => a.person_index < count));
+  };
+
+  // ─── Step navigation ──────────────────────────────────────────────────
+  const skipStep2 = personCount === 1;
+
+  const handleStep1Continue = () => {
+    if (personCount === 1) {
+      // Auto-assign every cart item to person 0
+      setAssignments(
+        cart.map((item) => ({
+          test_id: item.test_id,
+          test_name: item.test_name,
+          lab_name: item.lab_name,
+          price_cad: item.price_cad,
+          person_index: 0,
+        }))
+      );
+      setStep(3);
+    } else {
+      // Going to multi-person flow — clear any auto-assigned single-person
+      // entries that no longer match (e.g. user changed person count)
+      setStep(2);
+    }
+  };
+
+  const handleStep2Back = () => setStep(1);
+  const handleStep2Continue = () => setStep(3);
+  const handleStep3Back = () => (skipStep2 ? setStep(1) : setStep(2));
+  const handleStep3Continue = () => setStep(4);
+  const handleStep4Back = () => setStep(3);
+
+  const visitFees = useMemo(
+    () => (step === 1 ? null : computeVisitFees(personCount)),
+    [personCount, step]
+  );
+
+  // Don't render anything until hydration is done — avoids React mismatch
+  if (!hydrated || !restored) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "#0a1a0d" }}
+      >
+        <p className="text-sm" style={{ color: "#6ab04c" }}>
+          Loading checkout…
+        </p>
+      </div>
+    );
+  }
+
+  if (cart.length === 0) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "#0a1a0d" }}
+      >
+        <p className="text-sm" style={{ color: "#6ab04c" }}>
+          Redirecting to test catalogue…
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: "#0a1a0d" }}>
+      {/* Header */}
+      <header
+        className="border-b"
+        style={{ backgroundColor: "#0f2614", borderColor: "#1a3d22" }}
+      >
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link href="/tests" className="flex items-center gap-2.5">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center border"
+              style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            >
+              <Leaf className="w-4 h-4" style={{ color: "#8dc63f" }} />
+            </div>
+            <span
+              className="font-heading text-xl font-semibold"
+              style={{
+                color: "#ffffff",
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+              }}
+            >
+              AvoVita
+            </span>
+          </Link>
+          <Link
+            href="/tests"
+            className="text-xs font-medium px-3 py-1.5 rounded-lg border"
+            style={{
+              color: "#e8d5a3",
+              borderColor: "#2d6b35",
+              backgroundColor: "transparent",
+            }}
+          >
+            ← Back to catalogue
+          </Link>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <CheckoutProgress
+          currentStep={step as 1 | 2 | 3 | 4}
+          skipStep2={skipStep2}
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+          {/* Main step area */}
+          <div>
+            {step === 1 && (
+              <Step1People
+                personCount={personCount}
+                onPersonCountChange={handlePersonCountChange}
+                onContinue={handleStep1Continue}
+              />
+            )}
+            {step === 2 && (
+              <Step2AssignTests
+                cart={cart}
+                personCount={personCount}
+                assignments={assignments}
+                onAssignmentsChange={setAssignments}
+                onBack={handleStep2Back}
+                onContinue={handleStep2Continue}
+              />
+            )}
+            {step === 3 && (
+              <Step3CollectionDetails
+                persons={persons}
+                collectionAddress={collectionAddress}
+                assignments={assignments}
+                onPersonsChange={setPersons}
+                onAddressChange={setCollectionAddress}
+                onBack={handleStep3Back}
+                onContinue={handleStep3Continue}
+              />
+            )}
+            {step === 4 && (
+              <Step4Review
+                persons={persons}
+                collectionAddress={collectionAddress}
+                assignments={assignments}
+                accountUserId={accountUserId}
+                onBack={handleStep4Back}
+              />
+            )}
+          </div>
+
+          {/* Sidebar — hidden on mobile for steps 2-4 to save space */}
+          <div className={step === 1 ? "" : "hidden lg:block"}>
+            <CheckoutCartSummary cart={cart} visitFees={visitFees} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -19,6 +19,15 @@ export type ResultsVisibility = "full" | "none" | "partial";
 export type OrderType = "standard" | "kit" | "kit_with_collection";
 export type AccountRole = "patient" | "admin";
 export type BiologicalSex = "male" | "female" | "intersex";
+export type Relationship =
+  | "account_holder"
+  | "spouse_partner"
+  | "child"
+  | "parent"
+  | "sibling"
+  | "friend"
+  | "colleague"
+  | "other";
 export type ConsentType =
   | "general_pipa"
   | "cross_border_us"
@@ -67,6 +76,7 @@ export interface Test {
   turnaround_max_days: number | null;
   turnaround_note: string | null;
   specimen_type: string | null;
+  ship_temp: string | null;
   order_type: OrderType;
   stability_notes: string | null;
   active: boolean;
@@ -98,6 +108,7 @@ export interface PatientProfile {
   postal_code: string | null;
   is_minor: boolean;
   is_primary: boolean;
+  relationship: Relationship | null;
   created_at: string;
   updated_at: string;
 }

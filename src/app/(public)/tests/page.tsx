@@ -1,10 +1,23 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { CatalogueClient } from "@/components/catalogue/CatalogueClient";
 import { CatalogueSkeleton } from "@/components/catalogue/Skeleton";
 import type { CatalogueTest } from "@/components/catalogue/types";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Lab Test Catalogue",
+  description:
+    "Browse private lab tests available for in-home collection in Calgary. Hormones, fertility, autoimmune, heart health, cancer screening, and more — delivered by Mayo Clinic Laboratories, Armin Labs, Dynacare, ReligenDx, and Precision Epigenomics.",
+  openGraph: {
+    title: "Lab Test Catalogue — AvoVita Wellness",
+    description:
+      "Browse private lab tests available for in-home collection in Calgary.",
+    type: "website",
+  },
+};
 
 export default function TestsPage() {
   return (

@@ -3,13 +3,21 @@
 import Link from "next/link";
 import { ShoppingBag, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useCart } from "@/components/cart/CartContext";
 import type { CatalogueCartItem } from "./types";
 
 interface CartBarProps {
-  cart: CatalogueCartItem[];
+  /**
+   * Optional override — if not provided the bar reads from CartContext.
+   * Kept as a prop so server-rendered pages can pass an explicit list.
+   */
+  cart?: CatalogueCartItem[];
 }
 
-export function CartBar({ cart }: CartBarProps) {
+export function CartBar({ cart: cartProp }: CartBarProps) {
+  const ctx = useCart();
+  const cart = cartProp ?? ctx.cart;
+
   if (cart.length === 0) return null;
 
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);

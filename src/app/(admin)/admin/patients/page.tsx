@@ -1,0 +1,129 @@
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { AdminPatientsTable } from "@/components/admin/AdminPatientsTable";
+
+export const dynamic = "force-dynamic";
+
+export type AdminPatientProfile = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  date_of_birth: string;
+  biological_sex: string;
+  phone: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  province: string | null;
+  postal_code: string | null;
+  is_primary: boolean;
+  is_minor: boolean;
+};
+
+export type AdminPatientRow = {
+  id: string;
+  email: string | null;
+  created_at: string;
+  profiles: AdminPatientProfile[];
+  ordersCount: number;
+  primaryName: string;
+  primaryPhone: string | null;
+};
+
+export default async function AdminPatientsPage() {
+  const service = createServiceRoleClient();
+
+  // Accounts with role=patient + their profiles
+  const { data: accountsRaw } = await service
+    .from("accounts")
+    .select(
+      `
+      id, email, created_at,
+      profiles:patient_profiles(
+        id, first_name, last_name, date_of_birth, biological_sex,
+        phone, address_line1, address_line2, city, province, postal_code,
+        is_primary, is_minor
+      )
+    `
+    )
+    .eq("role", "patient")
+    .order("created_at", { ascending: false });
+
+  type RawAccount = {
+    id: string;
+    email: string | null;
+    created_at: string;
+    profiles: AdminPatientProfile[];
+  };
+
+  const accounts = (accountsRaw ?? []) as unknown as RawAccount[];
+  const accountIds = accounts.map((a) => a.id);
+
+  // Order counts per account (one query)
+  const orderCountMap = new Map<string, number>();
+  if (accountIds.length > 0) {
+    const { data: ordersForCount } = await service
+      .from("orders")
+      .select("account_id")
+      .in("account_id", accountIds);
+
+    for (const row of (ordersForCount ?? []) as Array<{
+      account_id: string;
+    }>) {
+      orderCountMap.set(
+        row.account_id,
+        (orderCountMap.get(row.account_id) ?? 0) + 1
+      );
+    }
+  }
+
+  const patients: AdminPatientRow[] = accounts.map((account) => {
+    const primary =
+      account.profiles.find((p) => p.is_primary) ?? account.profiles[0];
+    const primaryName = primary
+      ? `${primary.first_name} ${primary.last_name}`
+      : (account.email ?? "Unknown");
+    return {
+      id: account.id,
+      email: account.email,
+      created_at: account.created_at,
+      profiles: account.profiles,
+      ordersCount: orderCountMap.get(account.id) ?? 0,
+      primaryName,
+      primaryPhone: primary?.phone ?? null,
+    };
+  });
+
+  return (
+    <div className="p-8 max-w-7xl mx-auto">
+      <div className="mb-8 flex items-end justify-between">
+        <div>
+          <h1
+            className="font-heading text-3xl font-semibold"
+            style={{
+              color: "#ffffff",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+            }}
+          >
+            <span style={{ color: "#c4973a" }}>Patients</span>
+          </h1>
+          <p className="mt-1" style={{ color: "#e8d5a3" }}>
+            Manage patient accounts and profiles.
+          </p>
+        </div>
+        <div
+          className="rounded-lg border px-4 py-2"
+          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        >
+          <p className="text-xs" style={{ color: "#6ab04c" }}>
+            Total Patients
+          </p>
+          <p className="text-xl font-semibold" style={{ color: "#c4973a" }}>
+            {patients.length}
+          </p>
+        </div>
+      </div>
+
+      <AdminPatientsTable patients={patients} />
+    </div>
+  );
+}
