@@ -1,45 +1,78 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { TestCatalogue } from "@/components/TestCatalogue";
-import type { TestWithLab } from "@/types/database";
+import { CatalogueClient } from "@/components/catalogue/CatalogueClient";
+import { CatalogueSkeleton } from "@/components/catalogue/Skeleton";
+import type { CatalogueTest } from "@/components/catalogue/types";
 
-export default async function TestsPage() {
+export const dynamic = "force-dynamic";
+
+export default function TestsPage() {
+  return (
+    <Suspense fallback={<CatalogueSkeleton />}>
+      <CatalogueData />
+    </Suspense>
+  );
+}
+
+async function CatalogueData() {
   const supabase = await createClient();
 
-  const { data: tests } = await supabase
+  // Fetch all active tests with lab joined — single query, then split client-side
+  const { data: testsRaw } = await supabase
     .from("tests")
-    .select("*, lab:labs(*)")
+    .select(
+      `
+      id,
+      name,
+      slug,
+      description,
+      category,
+      price_cad,
+      turnaround_display,
+      specimen_type,
+      ship_temp,
+      stability_notes,
+      order_type,
+      featured,
+      lab:labs(id, name)
+      `
+    )
     .eq("active", true)
     .order("featured", { ascending: false })
     .order("name", { ascending: true });
 
-  // Fetch profiles if user is logged in
+  type RawRow = Omit<CatalogueTest, "lab"> & {
+    lab: { id: string; name: string } | { id: string; name: string }[] | null;
+  };
+
+  const allTests: CatalogueTest[] = ((testsRaw ?? []) as unknown as RawRow[]).map(
+    (row) => {
+      const lab = Array.isArray(row.lab) ? row.lab[0] : row.lab;
+      return {
+        ...row,
+        lab: lab ?? { id: "", name: "—" },
+      };
+    }
+  );
+
+  const featuredTests = allTests.filter((t) => t.featured);
+
+  const categories = Array.from(
+    new Set(allTests.map((t) => t.category).filter((c): c is string => !!c))
+  ).sort();
+
+  const labs = Array.from(new Set(allTests.map((t) => t.lab.name))).sort();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let profiles: import("@/types/database").PatientProfile[] = [];
-  if (user) {
-    const { data } = await supabase
-      .from("patient_profiles")
-      .select("*")
-      .eq("account_id", user.id)
-      .order("is_primary", { ascending: false });
-    profiles = data ?? [];
-  }
-
-  const categories = [
-    ...new Set(
-      (tests ?? [])
-        .map((t) => t.category)
-        .filter((c): c is string => Boolean(c))
-    ),
-  ].sort();
-
   return (
-    <TestCatalogue
-      tests={(tests ?? []) as unknown as TestWithLab[]}
-      profiles={profiles}
+    <CatalogueClient
+      featuredTests={featuredTests}
+      allTests={allTests}
       categories={categories}
+      labs={labs}
       isLoggedIn={!!user}
     />
   );

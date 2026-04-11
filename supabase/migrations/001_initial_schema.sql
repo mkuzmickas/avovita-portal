@@ -53,6 +53,7 @@ create table if not exists public.tests (
   turnaround_max_days integer,
   turnaround_note     text,
   specimen_type       text,
+  ship_temp           text,
   order_type          text not null default 'standard' check (order_type in ('standard','kit','kit_with_collection')),
   stability_notes     text,
   active              boolean not null default true,
