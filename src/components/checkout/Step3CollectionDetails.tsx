@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   ArrowRight,
   ArrowLeft,
   MapPin,
   AlertTriangle,
   AlertCircle,
+  CheckCircle,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
 import { DiscountBanner } from "./DiscountBanner";
@@ -72,6 +74,76 @@ export function Step3CollectionDetails({
       persons.map((p) => (p.index === index ? { ...p, ...patch } : p))
     );
   };
+
+  // Pre-fill account holder fields from their existing patient profile
+  const [profilePrefilled, setProfilePrefilled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const prefillFromProfile = async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user || cancelled) return;
+
+      const { data: profileRaw } = await supabase
+        .from("patient_profiles")
+        .select("first_name, last_name, date_of_birth, biological_sex")
+        .eq("account_id", user.id)
+        .eq("is_primary", true)
+        .maybeSingle();
+
+      if (!profileRaw || cancelled) return;
+
+      const profile = profileRaw as {
+        first_name: string;
+        last_name: string;
+        date_of_birth: string;
+        biological_sex: string;
+      };
+
+      // Only patch fields that are currently empty on person 0
+      const holder = persons[0];
+      if (!holder) return;
+
+      const patch: Partial<CheckoutPerson> = {};
+      let anyPatched = false;
+
+      if (!holder.first_name.trim() && profile.first_name) {
+        patch.first_name = profile.first_name;
+        anyPatched = true;
+      }
+      if (!holder.last_name.trim() && profile.last_name) {
+        patch.last_name = profile.last_name;
+        anyPatched = true;
+      }
+      if (!holder.date_of_birth && profile.date_of_birth) {
+        patch.date_of_birth = profile.date_of_birth;
+        anyPatched = true;
+      }
+      if (!holder.biological_sex && profile.biological_sex) {
+        patch.biological_sex = profile.biological_sex as "" | "male" | "female" | "intersex";
+        anyPatched = true;
+      }
+
+      if (anyPatched && !cancelled) {
+        updatePerson(0, patch);
+        setProfilePrefilled(true);
+      }
+    };
+
+    prefillFromProfile();
+
+    return () => {
+      cancelled = true;
+    };
+    // Run once on mount — persons[0] is intentionally read but not a dep
+    // to avoid re-fetching on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Validation
   const addressValid =
@@ -294,6 +366,20 @@ export function Step3CollectionDetails({
       </section>
 
       {/* ─── Person 1 (You) ────────────────────────────────────── */}
+      {profilePrefilled && (
+        <div
+          className="flex items-start gap-2.5 rounded-lg border px-4 py-3 mb-4"
+          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        >
+          <CheckCircle
+            className="w-4 h-4 shrink-0 mt-0.5"
+            style={{ color: "#8dc63f" }}
+          />
+          <p className="text-sm" style={{ color: "#e8d5a3" }}>
+            We&apos;ve pre-filled your information from your profile.
+          </p>
+        </div>
+      )}
       {accountHolder && (
         <PersonSection
           title="Your Information"

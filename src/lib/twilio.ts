@@ -1,12 +1,10 @@
 import twilio from "twilio";
 
-if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-  throw new Error("Missing Twilio environment variables");
-}
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
 
-export const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+export const TWILIO_FROM = process.env.TWILIO_PHONE_NUMBER ?? "";
 
-export const TWILIO_FROM = process.env.TWILIO_PHONE_NUMBER!;
+export const twilioClient = accountSid && authToken
+  ? twilio(accountSid, authToken)
+  : null;

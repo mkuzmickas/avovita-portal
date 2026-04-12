@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Send SMS ────────────────────────────────────────────────────
-    if (profile.phone) {
+    if (profile.phone && twilioClient) {
       try {
         await twilioClient.messages.create({
           from: TWILIO_FROM,

@@ -78,6 +78,11 @@ export async function POST(request: NextRequest) {
 // ─── Admin SMS — fires for EVERY paid checkout, guest or logged-in ────
 
 async function sendAdminSms(session: Stripe.Checkout.Session) {
+  if (!twilioClient) {
+    console.error("[stripe-webhook] Twilio client not initialized — check TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN env vars");
+    return;
+  }
+
   const adminPhones = [
     process.env.ADMIN_PHONE_NUMBER,
     process.env.ADMIN_PHONE_NUMBER_2,
@@ -108,16 +113,17 @@ async function sendAdminSms(session: Stripe.Checkout.Session) {
 
   for (const phone of adminPhones) {
     try {
+      console.log(`[stripe-webhook] attempting SMS to ${phone}`);
       await twilioClient.messages.create({
         from: TWILIO_FROM,
         to: phone,
         body: smsBody,
       });
-      console.log(`[stripe-webhook] admin SMS sent to ${phone}`);
+      console.log(`[stripe-webhook] SMS success to ${phone}`);
     } catch (err) {
       console.error(
-        `[stripe-webhook] admin SMS to ${phone} failed:`,
-        err
+        `[stripe-webhook] SMS to ${phone} failed:`,
+        JSON.stringify(err)
       );
     }
   }

@@ -399,12 +399,14 @@ export async function sendGuestOrderConfirmationEmail(
       stripeSessionId,
     });
 
+    console.log(`[checkout] attempting email to ${customerEmail}`);
     await resend.emails.send({
       from: process.env.RESEND_FROM_ORDERS!,
       to: customerEmail,
       subject: orderConfirmationSubject(orderIdShort),
       html,
     });
+    console.log(`[checkout] email sent successfully to ${customerEmail}`);
 
     await supabase.from("notifications").insert({
       profile_id: null,
@@ -420,6 +422,10 @@ export async function sendGuestOrderConfirmationEmail(
       `[checkout] guest confirmation email sent to ${customerEmail} for order ${orderId}`
     );
   } catch (err) {
+    console.error(
+      `[checkout] email failed:`,
+      JSON.stringify(err)
+    );
     console.error(
       `[checkout] Failed to send guest confirmation email for ${orderId}:`,
       err

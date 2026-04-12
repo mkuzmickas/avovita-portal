@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       }
 
       // SMS
-      if (phone) {
+      if (phone && twilioClient) {
         try {
           await twilioClient.messages.create({
             from: TWILIO_FROM,

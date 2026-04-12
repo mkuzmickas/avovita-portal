@@ -1,9 +1,10 @@
 "use client";
 
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, X } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { DiscountBanner } from "./DiscountBanner";
+import { useCart } from "@/components/cart/CartContext";
 import type { CatalogueCartItem } from "@/components/catalogue/types";
 import type { VisitFees } from "@/lib/checkout/types";
 
@@ -36,6 +37,7 @@ export function CheckoutCartSummary({
   lineCount,
   subtotalOverride,
 }: CheckoutCartSummaryProps) {
+  const { removeItem } = useCart();
   const effectiveLineCount = lineCount ?? cart.length;
   const discount = computeDiscount(effectiveLineCount);
 
@@ -100,12 +102,24 @@ export function CheckoutCartSummary({
                       {item.lab_name}
                     </p>
                   </div>
-                  <p
-                    className="text-sm font-semibold whitespace-nowrap shrink-0"
-                    style={{ color: "#c4973a" }}
-                  >
-                    {formatCurrency(item.price_cad)}
-                  </p>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <p
+                      className="text-sm font-semibold whitespace-nowrap"
+                      style={{ color: "#c4973a" }}
+                    >
+                      {formatCurrency(item.price_cad)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.test_id)}
+                      className="p-0.5 rounded transition-colors"
+                      style={{ color: "#c4973a" }}
+                      aria-label={`Remove ${item.test_name}`}
+                      title="Remove from cart"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
                 {discount.applies && (
                   <p
