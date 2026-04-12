@@ -16,12 +16,15 @@ export interface ResultsReadyProps {
   firstName: string;
   tests: ResultsReadyTest[];
   portalUrl: string;
+  /** Override the intro paragraph (used for partial vs final messaging). */
+  introOverride?: string;
 }
 
 export const RESULTS_READY_SUBJECT = "Your AvoVita results are ready";
 
 export function renderResultsReadyEmail(props: ResultsReadyProps): string {
-  const { firstName, tests, portalUrl } = props;
+  const { firstName, tests, portalUrl, introOverride } = props;
+  const introText = introOverride ?? "Sign in to your patient portal to view and download your lab results securely.";
 
   const testList = tests
     .map(
@@ -67,7 +70,7 @@ export function renderResultsReadyEmail(props: ResultsReadyProps): string {
                 Your results are ready, ${escapeHtml(firstName)}
               </h2>
               <p style="margin: 0 0 20px 0; font-size: 15px; color: #4b5563; line-height: 1.5;">
-                Sign in to your patient portal to view and download your lab results securely.
+                ${escapeHtml(introText)}
               </p>
             </td>
           </tr>

@@ -179,14 +179,15 @@ create table if not exists public.visit_groups (
   created_at              timestamptz not null default now()
 );
 
--- ─── results ─────────────────────────────────────────────────────────────────
+-- ─── results (one per order, not per order_line) ─────────────────────────────
 create table if not exists public.results (
   id                   uuid primary key default gen_random_uuid(),
-  order_line_id        uuid not null references public.order_lines(id) on delete restrict,
+  order_id             uuid references public.orders(id) on delete restrict,
   profile_id           uuid not null references public.patient_profiles(id) on delete restrict,
   lab_reference_number text,
   storage_path         text not null,
   file_name            text not null,
+  result_status        text not null default 'final' check (result_status in ('partial','final')),
   uploaded_by          uuid not null references public.accounts(id) on delete restrict,
   uploaded_at          timestamptz not null default now(),
   notified_at          timestamptz,
@@ -412,7 +413,7 @@ create index if not exists idx_order_lines_profile_id  on public.order_lines(pro
 create index if not exists idx_order_lines_test_id     on public.order_lines(test_id);
 
 create index if not exists idx_results_profile_id      on public.results(profile_id);
-create index if not exists idx_results_order_line_id   on public.results(order_line_id);
+create index if not exists idx_results_order_id         on public.results(order_id);
 create index if not exists idx_results_uploaded_at     on public.results(uploaded_at);
 
 create index if not exists idx_patient_profiles_account_id on public.patient_profiles(account_id);

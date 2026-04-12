@@ -170,13 +170,16 @@ export interface VisitGroup {
   created_at: string;
 }
 
+export type ResultStatus = "partial" | "final";
+
 export interface Result {
   id: string;
-  order_line_id: string;
+  order_id: string;
   profile_id: string;
   lab_reference_number: string | null;
   storage_path: string;
   file_name: string;
+  result_status: ResultStatus;
   uploaded_by: string;
   uploaded_at: string;
   notified_at: string | null;

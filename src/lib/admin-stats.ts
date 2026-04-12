@@ -12,53 +12,53 @@ type ServiceClient = ReturnType<typeof createServiceRoleClient>;
  */
 export const DIRECT_DELIVERY_SENTINEL = "__direct_delivery__";
 
+const MAYO_LAB_NAME = "Mayo Clinic Laboratories";
+
 /**
- * Counts order lines that still require admin action:
- *   - no result record yet
- *   - parent order is not cancelled
- *
- * Includes order lines whose lab has results_visibility='none' — those
- * still need the admin to click "Mark as Notified", so they count as
- * pending from a workflow perspective.
+ * Counts orders that contain at least one Mayo Clinic test and do NOT
+ * have a result record yet. This is the sidebar badge count for the
+ * admin "Upload Results" link.
  */
 export async function getPendingResultsCount(
   service: ServiceClient
 ): Promise<number> {
-  const { data } = await service.from("order_lines").select(`
-      id,
-      order:orders(status),
-      result:results(id)
-    `);
+  // Fetch all non-cancelled orders with their order_lines (test lab) + results
+  const { data } = await service
+    .from("orders")
+    .select(
+      `
+      id, status,
+      order_lines(test:tests(lab:labs(name))),
+      results(id)
+    `
+    )
+    .neq("status", "cancelled");
 
   if (!data) return 0;
 
   type Row = {
     id: string;
-    order: { status: string } | null;
-    result: Array<{ id: string }>;
+    status: string;
+    order_lines: Array<{
+      test: { lab: { name: string } | { name: string }[] | null } | null;
+    }>;
+    results: Array<{ id: string }>;
   };
 
   let count = 0;
   for (const row of data as unknown as Row[]) {
-    if (row.order?.status === "cancelled") continue;
-    if (row.result.length === 0) count += 1;
-  }
-  return count;
-}
+    // Only count orders with Mayo tests
+    const hasMayo = row.order_lines.some((ol) => {
+      const lab = Array.isArray(ol.test?.lab)
+        ? ol.test?.lab[0]
+        : ol.test?.lab;
+      return lab?.name === MAYO_LAB_NAME;
+    });
 
-/**
- * Returns the set of order_line IDs that currently have at least one
- * result row. Used to filter "pending upload" lists without the fragile
- * `not in (subquery string)` pattern.
- */
-export async function getOrderLineIdsWithResults(
-  service: ServiceClient
-): Promise<Set<string>> {
-  const { data } = await service.from("results").select("order_line_id");
-  if (!data) return new Set();
-  return new Set(
-    (data as unknown as Array<{ order_line_id: string }>).map(
-      (r) => r.order_line_id
-    )
-  );
+    if (hasMayo && row.results.length === 0) {
+      count += 1;
+    }
+  }
+
+  return count;
 }

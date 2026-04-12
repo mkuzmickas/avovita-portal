@@ -5,100 +5,145 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { generateSignedResultUrl } from "@/lib/server-utils";
 import {
   renderResultsReadyEmail,
-  RESULTS_READY_SUBJECT,
 } from "@/lib/emails/resultsReady";
 
 export const runtime = "nodejs";
 
+/**
+ * POST /api/notify
+ *
+ * Sends email + SMS notifications for a result. Accepts:
+ *   - result_id (required)
+ *   - result_status: "partial" | "final" (optional, defaults to "final")
+ *
+ * When result_status is "partial" the email subject and SMS wording
+ * reflect that additional results may follow.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const { result_id } = await request.json();
+    const body = await request.json();
+    const resultId: string | undefined = body.result_id;
+    const resultStatus: "partial" | "final" =
+      body.result_status === "partial" ? "partial" : "final";
 
-    if (!result_id) {
+    if (!resultId) {
       return NextResponse.json({ error: "Missing result_id" }, { status: 400 });
     }
 
     const supabase = createServiceRoleClient();
 
-    // Fetch result with related data
-    const { data: result, error: resultError } = await supabase
+    // Fetch result
+    const { data: resultRaw, error: resultError } = await supabase
       .from("results")
       .select("*")
-      .eq("id", result_id)
+      .eq("id", resultId)
       .single();
 
-    if (resultError || !result) {
+    if (resultError || !resultRaw) {
       return NextResponse.json({ error: "Result not found" }, { status: 404 });
     }
+    const result = resultRaw as {
+      id: string;
+      order_id: string;
+      profile_id: string;
+      storage_path: string;
+    };
 
-    // Fetch order line with test
-    const { data: orderLine } = await supabase
+    // Fetch order tests for the email
+    const { data: orderLinesRaw } = await supabase
       .from("order_lines")
-      .select("*, test:tests(name, lab:labs(name))")
-      .eq("id", result.order_line_id)
-      .single();
+      .select("test:tests(name, lab:labs(name))")
+      .eq("order_id", result.order_id);
+
+    type OlRow = { test: { name: string; lab: { name: string } | null } | null };
+    const orderLines = (orderLinesRaw ?? []) as unknown as OlRow[];
+    const tests = orderLines
+      .map((ol) => ({
+        name: ol.test?.name ?? "Lab test",
+        lab: (Array.isArray(ol.test?.lab) ? ol.test?.lab[0] : ol.test?.lab)?.name ?? "",
+      }))
+      .filter((t) => t.name);
 
     // Fetch profile
-    const { data: profile } = await supabase
+    const { data: profileRaw } = await supabase
       .from("patient_profiles")
-      .select("*")
+      .select("first_name, last_name, phone, account_id")
       .eq("id", result.profile_id)
       .single();
+    const profile = profileRaw as {
+      first_name: string;
+      last_name: string;
+      phone: string | null;
+      account_id: string;
+    } | null;
 
     // Fetch account
-    const { data: account } = await supabase
+    const { data: accountRaw } = await supabase
       .from("accounts")
       .select("email")
       .eq("id", profile?.account_id ?? "")
       .single();
+    const account = accountRaw as { email: string | null } | null;
 
     if (!profile || !account) {
-      return NextResponse.json({ error: "Profile or account not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Profile or account not found" },
+        { status: 404 }
+      );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
     const resultsUrl = `${appUrl}/portal/results`;
+    const firstName = profile.first_name;
 
-    // Pre-warm the signed URL to verify storage access is healthy before
-    // we notify the patient. If this fails we still send the email — the
-    // patient will generate a fresh signed URL when they click View.
+    // Pre-warm signed URL
     try {
       await generateSignedResultUrl(result.storage_path);
     } catch {
-      // Non-fatal — the portal page regenerates signed URLs on click.
+      // Non-fatal
     }
 
-    const firstName = profile.first_name;
-    const labName =
-      ((orderLine?.test as { lab?: { name?: string } } | null)?.lab
-        ?.name) ?? "";
-    const testName =
-      (orderLine?.test as { name?: string } | null)?.name ?? "your lab test";
+    const isPartial = resultStatus === "partial";
+
+    const emailSubject = isPartial
+      ? "Your AvoVita results are partially available"
+      : "Your AvoVita results are ready";
+
+    const emailBodyIntro = isPartial
+      ? `Some of your lab results are now available in your portal. Additional results from your panel may follow as they are completed by the laboratory.`
+      : `Your lab results are now available in your portal.`;
+
+    const smsBody = isPartial
+      ? `Hi ${firstName}, some of your AvoVita results are ready to view. More may follow: ${resultsUrl}`
+      : `Hi ${firstName}, your AvoVita results are ready: ${resultsUrl}`;
 
     const errors: string[] = [];
+    const orderId = result.order_id;
 
-    // ─── Send email ──────────────────────────────────────────────────────────
+    // ─── Send email ──────────────────────────────────────────────────
     if (account.email) {
       try {
         const html = renderResultsReadyEmail({
           firstName,
-          tests: [{ name: testName, lab: labName }],
+          tests,
           portalUrl: appUrl,
+          introOverride: emailBodyIntro,
         });
 
         await resend.emails.send({
           from: process.env.RESEND_FROM_RESULTS!,
           to: account.email,
-          subject: RESULTS_READY_SUBJECT,
+          subject: emailSubject,
           html,
         });
 
         await supabase.from("notifications").insert({
           profile_id: result.profile_id,
-          order_id: orderLine?.order_id ?? null,
+          order_id: orderId,
           result_id: result.id,
           channel: "email",
-          template: "results_ready",
+          template: isPartial ? "results_partial" : "results_ready",
           recipient: account.email,
           status: "sent",
         });
@@ -107,10 +152,10 @@ export async function POST(request: NextRequest) {
         errors.push("email");
         await supabase.from("notifications").insert({
           profile_id: result.profile_id,
-          order_id: orderLine?.order_id ?? null,
+          order_id: orderId,
           result_id: result.id,
           channel: "email",
-          template: "results_ready",
+          template: isPartial ? "results_partial" : "results_ready",
           recipient: account.email ?? "",
           status: "failed",
           error_message: String(emailErr),
@@ -118,21 +163,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ─── Send SMS ────────────────────────────────────────────────────────────
+    // ─── Send SMS ────────────────────────────────────────────────────
     if (profile.phone) {
       try {
         await twilioClient.messages.create({
           from: TWILIO_FROM,
           to: profile.phone,
-          body: `Hi ${firstName}, your AvoVita lab results are ready. Log in to view them securely: ${resultsUrl}`,
+          body: smsBody,
         });
 
         await supabase.from("notifications").insert({
           profile_id: result.profile_id,
-          order_id: orderLine?.order_id ?? null,
+          order_id: orderId,
           result_id: result.id,
           channel: "sms",
-          template: "results_ready",
+          template: isPartial ? "results_partial" : "results_ready",
           recipient: profile.phone,
           status: "sent",
         });
@@ -141,11 +186,11 @@ export async function POST(request: NextRequest) {
         errors.push("sms");
         await supabase.from("notifications").insert({
           profile_id: result.profile_id,
-          order_id: orderLine?.order_id ?? null,
+          order_id: orderId,
           result_id: result.id,
           channel: "sms",
-          template: "results_ready",
-          recipient: profile.phone ?? "",
+          template: isPartial ? "results_partial" : "results_ready",
+          recipient: profile.phone,
           status: "failed",
           error_message: String(smsErr),
         });
@@ -168,6 +213,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Notify error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
