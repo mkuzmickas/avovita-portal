@@ -94,6 +94,8 @@ export function Step3CollectionDetails({
         .select("first_name, last_name, date_of_birth, biological_sex")
         .eq("account_id", user.id)
         .eq("is_primary", true)
+        .order("created_at", { ascending: true })
+        .limit(1)
         .maybeSingle();
 
       if (!profileRaw || cancelled) return;
@@ -105,31 +107,14 @@ export function Step3CollectionDetails({
         biological_sex: string;
       };
 
-      // Only patch fields that are currently empty on person 0
-      const holder = persons[0];
-      if (!holder) return;
+      const patch: Partial<CheckoutPerson> = {
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        date_of_birth: profile.date_of_birth,
+        biological_sex: profile.biological_sex as "male" | "female" | "intersex" | "",
+      };
 
-      const patch: Partial<CheckoutPerson> = {};
-      let anyPatched = false;
-
-      if (!holder.first_name.trim() && profile.first_name) {
-        patch.first_name = profile.first_name;
-        anyPatched = true;
-      }
-      if (!holder.last_name.trim() && profile.last_name) {
-        patch.last_name = profile.last_name;
-        anyPatched = true;
-      }
-      if (!holder.date_of_birth && profile.date_of_birth) {
-        patch.date_of_birth = profile.date_of_birth;
-        anyPatched = true;
-      }
-      if (!holder.biological_sex && profile.biological_sex) {
-        patch.biological_sex = profile.biological_sex as "" | "male" | "female" | "intersex";
-        anyPatched = true;
-      }
-
-      if (anyPatched && !cancelled) {
+      if (!cancelled) {
         updatePerson(0, patch);
         setProfilePrefilled(true);
       }
