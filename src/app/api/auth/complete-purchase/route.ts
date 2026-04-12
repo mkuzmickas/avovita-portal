@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
 
     // 7. Send the confirmation email (was skipped on the webhook side
     //    because the order had no account at that point)
-    await sendOrderConfirmationEmail(supabase, pendingOrder.id, enrichedPayload);
+    await sendOrderConfirmationEmail(supabase, pendingOrder.id, enrichedPayload, sessionId);
 
     return NextResponse.json({
       success: true,

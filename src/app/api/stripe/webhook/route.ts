@@ -6,6 +6,7 @@ import {
   materialiseOrder,
   sendOrderConfirmationEmail,
 } from "@/lib/checkout/materialise";
+import { twilioClient, TWILIO_FROM } from "@/lib/twilio";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -28,12 +29,15 @@ const FLOLABS_NOTIFICATIONS_ENABLED =
  * and create duplicate orders).
  *
  * Behaviour:
- *   - Reassembles the chunked CheckoutPayload from session metadata.
- *   - Logged-in flow: creates the order, materialises profiles +
- *     order_lines + visit_group, sends confirmation email.
- *   - Guest flow: stores the order with `account_id = null` and the
- *     payload JSON in `notes`. /api/auth/complete-purchase will create
- *     the account, link the order, and call `materialiseOrder`.
+ *   1. Admin SMS fires IMMEDIATELY on payment confirmation (both guest
+ *      and logged-in) using data from the Stripe session itself — no
+ *      database order row required.
+ *   2. Order row created in Supabase.
+ *   3. Logged-in: materialise profiles + order_lines + visit_group,
+ *      send patient confirmation email + FloLabs requisition.
+ *   4. Guest: stash payload in order.notes — /api/auth/complete-purchase
+ *      will finish materialisation + send the confirmation email after
+ *      the account is created.
  */
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -70,10 +74,68 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ received: true });
 }
 
+// ─── Admin SMS — fires for EVERY paid checkout, guest or logged-in ────
+
+async function sendAdminSms(session: Stripe.Checkout.Session) {
+  const adminPhones = [
+    process.env.ADMIN_PHONE_NUMBER,
+    process.env.ADMIN_PHONE_NUMBER_2,
+  ].filter((p): p is string => !!p && p.length > 5);
+
+  if (adminPhones.length === 0) {
+    console.log("[stripe-webhook] no ADMIN_PHONE_NUMBER configured, skipping SMS");
+    return;
+  }
+
+  const lineItemCount = session.metadata?.chunk_count
+    ? (() => {
+        try {
+          const payload = reassembleMetadata(
+            session.metadata as Record<string, string>
+          );
+          return payload?.assignments?.length ?? 0;
+        } catch {
+          return 0;
+        }
+      })()
+    : 0;
+
+  const customerEmail = session.customer_email ?? "unknown";
+  const amountCad = ((session.amount_total ?? 0) / 100).toFixed(2);
+
+  const smsBody = `AvoVita — New order received. ${lineItemCount} test(s). ${customerEmail}. $${amountCad} CAD. portal.avovita.ca/admin/orders`;
+
+  for (const phone of adminPhones) {
+    try {
+      await twilioClient.messages.create({
+        from: TWILIO_FROM,
+        to: phone,
+        body: smsBody,
+      });
+      console.log(`[stripe-webhook] admin SMS sent to ${phone}`);
+    } catch (err) {
+      console.error(
+        `[stripe-webhook] admin SMS to ${phone} failed:`,
+        err
+      );
+    }
+  }
+}
+
+// ─── Main handler ─────────────────────────────────────────────────────
+
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const supabase = createServiceRoleClient();
 
-  // Idempotency
+  // ─── 1. Admin SMS — fires immediately, before any DB work ───────
+  // Independent try/catch: SMS failure must never block the order.
+  try {
+    await sendAdminSms(session);
+  } catch (err) {
+    console.error("[stripe-webhook] admin SMS error (non-fatal):", err);
+  }
+
+  // ─── 2. Idempotency — skip if order already exists ──────────────
   const { data: existingOrder } = await supabase
     .from("orders")
     .select("id")
@@ -98,7 +160,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     (session.amount_total ?? Math.round(payload.total * 100)) / 100;
   const isGuest = !payload.account_user_id;
 
-  // ─── Create the order row ──────────────────────────────────────
+  // ─── 3. Create the order row ────────────────────────────────────
   const orderInsert = {
     account_id: payload.account_user_id ?? null,
     stripe_payment_intent_id:
@@ -126,8 +188,28 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   }
   const orderId = (orderRaw as { id: string }).id;
 
-  // Guest path stops here — the success page will collect a password
-  // and call /api/auth/complete-purchase to finish the order.
+  // Log the admin SMS to notifications table (uses orderId now available)
+  try {
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER;
+    if (adminPhone) {
+      await supabase.from("notifications").insert({
+        profile_id: null,
+        order_id: orderId,
+        result_id: null,
+        channel: "sms",
+        template: "admin_new_order",
+        recipient: adminPhone,
+        status: "sent",
+      });
+    }
+  } catch {
+    // Non-fatal — notification logging failure shouldn't block
+  }
+
+  // ─── 4. Guest path stops here ──────────────────────────────────
+  // The success page collects a password, /api/auth/complete-purchase
+  // creates the account, links the order, materialises profiles, and
+  // sends the patient confirmation email.
   if (isGuest) {
     console.log(
       `[stripe-webhook] guest order ${orderId} stashed for post-payment account creation`
@@ -135,7 +217,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // Logged-in path: materialise + email
+  // ─── 5. Logged-in path: materialise + email + FloLabs ──────────
   await materialiseOrder(supabase, orderId, payload);
   await sendOrderConfirmationEmail(supabase, orderId, payload, session.id);
 
