@@ -31,7 +31,7 @@ const GENERAL_PIPA: ConsentSection = {
   type: "general_pipa",
   title: "General PIPA Consent",
   version: "1.0",
-  body: `I consent to AvoVita Wellness (2490409 Alberta Ltd) collecting, using, and storing my personal health information for the purpose of facilitating private laboratory testing services, in accordance with Alberta's Personal Information Protection Act (PIPA). I understand my information will be retained for a minimum of 10 years as required by health records legislation.`,
+  body: `I consent to AvoVita Wellness collecting, using, and storing my personal health information for the purpose of facilitating private laboratory testing services, in accordance with Alberta's Personal Information Protection Act (PIPA). I understand my information will be retained for a minimum of 10 years as required by health records legislation.`,
 };
 
 const US_CROSS_BORDER: ConsentSection = {

@@ -57,7 +57,7 @@ export function renderSpecimenShippedEmail(
     <p style="margin:0 0 8px;font-size:12px;color:#6b7280;">
       Track your order and view results at <a href="${portalUrl}/portal" style="color:#0f2614;font-weight:600;">${hostName(portalUrl)}</a>
     </p>
-    <p style="margin:0 0 6px;font-size:12px;color:#6b7280;">AvoVita Wellness · 2490409 Alberta Ltd. · Calgary, AB</p>
+    <p style="margin:0 0 6px;font-size:12px;color:#6b7280;">AvoVita Wellness · Calgary, AB</p>
     <p style="margin:0;font-size:11px;color:#9ca3af;">Your health information is protected under Alberta PIPA.</p>
   </td></tr>
 </table>

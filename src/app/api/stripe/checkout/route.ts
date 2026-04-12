@@ -238,6 +238,8 @@ export async function POST(request: NextRequest) {
         date_of_birth: p.date_of_birth,
         biological_sex: p.biological_sex,
         relationship: p.relationship,
+        wants_own_account: p.wants_own_account ?? false,
+        own_account_email: p.own_account_email?.trim() || null,
       })),
       assignments: body.assignments.map((a) => ({
         test_id: a.test_id,

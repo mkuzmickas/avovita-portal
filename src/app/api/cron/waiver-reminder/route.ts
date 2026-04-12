@@ -152,7 +152,7 @@ function renderReminderEmail(firstName: string, portalUrl: string): string {
     <a href="${FLO_LABS_URL}" style="display:inline-block;background:#0f2614;color:#ffffff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:700;font-size:15px;">Book FloLabs appointment</a>
   </td></tr>
   <tr><td style="padding:20px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
-    <p style="margin:0 0 6px;font-size:12px;color:#6b7280;">AvoVita Wellness \u00b7 2490409 Alberta Ltd. \u00b7 Calgary, AB</p>
+    <p style="margin:0 0 6px;font-size:12px;color:#6b7280;">AvoVita Wellness \u00b7 AvoVita Wellness \u00b7 Calgary, AB</p>
     <p style="margin:0;font-size:11px;color:#9ca3af;">Your health information is protected under Alberta PIPA.</p>
   </td></tr>
 </table>

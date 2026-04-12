@@ -32,6 +32,8 @@ export interface OrderMetadataPayload {
     date_of_birth: string;
     biological_sex: "male" | "female" | "intersex";
     relationship: string | null;
+    wants_own_account?: boolean;
+    own_account_email?: string | null;
   }>;
   assignments: Array<{
     test_id: string;

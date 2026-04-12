@@ -8,9 +8,12 @@ import {
   MapPin,
   Lock,
   AlertCircle,
+  AlertTriangle,
   ChevronDown,
   Tag,
   CheckCircle,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type {
@@ -42,6 +45,31 @@ const RELATIONSHIP_LABEL: Record<string, string> = {
   other: "Other",
 };
 
+// ─── Shipping risk test IDs ─────────────────────────────────────────
+
+const SHIPPING_RISK_TEST_IDS = new Set([
+  // Armin Labs
+  "5c4c3e00-f5c8-4649-a602-4a33f79e8e8a",
+  "8f87bbe5-c7bf-48e4-8ad8-a330747c634b",
+  "722938cd-7851-4e03-b749-b4288eca1ebe",
+  "ff187073-cff2-4219-bbaf-2473fc643cfa",
+  "4a1925f7-0a82-4934-bbc6-f1a5e7b4bbb3",
+  "7ffce401-88d8-4024-a07e-927c721c4d9f",
+  // Dynacare
+  "9cfa0cf1-b455-4c92-b32a-b7c2a0772dfd",
+  "192cd6b8-f057-4132-82f4-77ad23ee8c06",
+  "7df7be3c-e861-431c-b6b5-f504ddb56219",
+  // FRAT - ReligenDx
+  "7471d38d-d0c2-44b2-9e77-0cec3b575ddb",
+  // EPISEEK - Precision Epigenomics
+  "e034f672-92d6-477a-bd1f-f81d9d18662c",
+  // CBC - Mayo Clinic (special: only when it's the sole Mayo test)
+  "8e46bec5-526c-42be-909c-447235e9ecd0",
+]);
+
+const CBC_TEST_ID = "8e46bec5-526c-42be-909c-447235e9ecd0";
+const MAYO_LAB_NAME = "Mayo Clinic Laboratories";
+
 export function Step4Review({
   persons,
   collectionAddress,
@@ -55,6 +83,8 @@ export function Step4Review({
   const [promoInput, setPromoInput] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
+  const [shippingRiskAcknowledged, setShippingRiskAcknowledged] =
+    useState(false);
 
   const testModeEnabled =
     process.env.NEXT_PUBLIC_ENABLE_TEST_MODE === "true";
@@ -79,6 +109,26 @@ export function Step4Review({
     return m;
   }, [assignments, persons]);
 
+  // ─── Shipping risk logic ──────────────────────────────────────────
+  const showShippingRisk = useMemo(() => {
+    const testIds = assignments.map((a) => a.test_id);
+
+    // Non-CBC risk tests — always trigger if present
+    const hasNonCbcRiskTest = testIds.some(
+      (id) => SHIPPING_RISK_TEST_IDS.has(id) && id !== CBC_TEST_ID
+    );
+    if (hasNonCbcRiskTest) return true;
+
+    // CBC special logic: only triggers when CBC is the ONLY Mayo test
+    const hasCbc = testIds.includes(CBC_TEST_ID);
+    if (!hasCbc) return false;
+
+    const mayoTestCount = assignments.filter(
+      (a) => a.lab_name === MAYO_LAB_NAME
+    ).length;
+    return mayoTestCount === 1; // CBC is the sole Mayo test
+  }, [assignments]);
+
   const handleApplyPromo = () => {
     setPromoError(null);
     if (!testModeEnabled) {
@@ -94,7 +144,11 @@ export function Step4Review({
     }
   };
 
+  const canProceed =
+    !submitting && (!showShippingRisk || shippingRiskAcknowledged);
+
   const handlePay = async () => {
+    if (!canProceed) return;
     setSubmitting(true);
     setError(null);
 
@@ -445,6 +499,73 @@ export function Step4Review({
         </section>
       )}
 
+      {/* ─── Shipping Risk Disclaimer ──────────────────────────────── */}
+      {showShippingRisk && (
+        <section
+          className="rounded-lg border p-5 mb-5"
+          style={{
+            backgroundColor: "rgba(196, 151, 58, 0.1)",
+            borderColor: "#c4973a",
+          }}
+        >
+          <div className="flex items-start gap-3 mb-3">
+            <AlertTriangle
+              className="w-5 h-5 shrink-0 mt-0.5"
+              style={{ color: "#c4973a" }}
+            />
+            <div>
+              <h4
+                className="text-sm font-semibold mb-2"
+                style={{ color: "#c4973a" }}
+              >
+                Shipping Risk Acknowledgement
+              </h4>
+              <p
+                className="text-xs leading-relaxed"
+                style={{ color: "#e8d5a3" }}
+              >
+                One or more tests in your order require time-sensitive
+                specimen shipping via FedEx. In the rare event that a FedEx
+                delay or failed delivery causes your specimen to exceed its
+                stability window and become unusable, the test fee(s) for the
+                affected test(s) will be refunded in full. However, the home
+                visit fee is non-refundable as the collection service will
+                have been performed. By checking this box you acknowledge and
+                accept these terms.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShippingRiskAcknowledged((v) => !v)}
+            className="flex items-start gap-2.5 w-full text-left cursor-pointer"
+          >
+            <span className="mt-0.5 shrink-0">
+              {shippingRiskAcknowledged ? (
+                <CheckSquare
+                  className="w-5 h-5"
+                  style={{ color: "#c4973a" }}
+                />
+              ) : (
+                <Square
+                  className="w-5 h-5"
+                  style={{ color: "#6ab04c" }}
+                />
+              )}
+            </span>
+            <span
+              className="text-sm font-medium"
+              style={{
+                color: shippingRiskAcknowledged ? "#c4973a" : "#e8d5a3",
+              }}
+            >
+              I understand and accept the shipping risk policy
+            </span>
+          </button>
+        </section>
+      )}
+
       <p className="text-xs mb-5" style={{ color: "#6ab04c" }}>
         {promoApplied
           ? "Test mode — $0.00 checkout. The order will be created with all notifications firing normally."
@@ -482,7 +603,7 @@ export function Step4Review({
         <button
           type="button"
           onClick={handlePay}
-          disabled={submitting}
+          disabled={!canProceed}
           className="mf-btn-primary px-5 py-3 sm:flex-1 sm:max-w-xs text-base"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}

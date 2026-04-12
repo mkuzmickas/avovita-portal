@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Leaf, Clock, ShoppingCart, Check } from "lucide-react";
+import { Leaf } from "lucide-react";
 import { TestCard } from "./TestCard";
 import { TestTable } from "./TestTable";
 import { SearchBar } from "./SearchBar";
@@ -126,6 +126,23 @@ export function CatalogueClient({
         <p style={{ color: "#e8d5a3" }}>
           Private blood testing in Calgary — in-home collection by FloLabs phlebotomists.
         </p>
+
+        {/* Discount promo banner */}
+        <div
+          className="mt-4 inline-flex items-center gap-2 rounded-lg border px-4 py-2"
+          style={{
+            backgroundColor: "#1a3d22",
+            borderColor: "#c4973a",
+          }}
+        >
+          <span style={{ color: "#c4973a", fontSize: "16px" }}>✦</span>
+          <p
+            className="text-sm font-medium"
+            style={{ color: "#c4973a" }}
+          >
+            Order 2 or more tests and save $20 per test at checkout.
+          </p>
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 space-y-12">
@@ -142,7 +159,7 @@ export function CatalogueClient({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-stretch">
               {featuredTests.map((test) => {
                 const isExpanded = expandedCardId === test.id;
                 const inCart = cart.some((c) => c.test_id === test.id);
@@ -173,13 +190,6 @@ export function CatalogueClient({
                       onAdd={handleAdd}
                       expanded={isExpanded}
                     />
-                    {isExpanded && (
-                      <FeaturedExpandedPanel
-                        test={test}
-                        inCart={inCart}
-                        onAdd={handleAdd}
-                      />
-                    )}
                   </div>
                 );
               })}
@@ -265,140 +275,3 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
-// ─── Featured-card expansion panel (rendered in CatalogueClient) ─────────────
-
-function FeaturedExpandedPanel({
-  test,
-  inCart,
-  onAdd,
-}: {
-  test: CatalogueTest;
-  inCart: boolean;
-  onAdd: (item: CatalogueCartItem) => void;
-}) {
-  const [justAdded, setJustAdded] = useState(false);
-  const showInCart = inCart || justAdded;
-
-  const handleAdd = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (showInCart) return;
-    onAdd({
-      test_id: test.id,
-      test_name: test.name,
-      price_cad: test.price_cad,
-      lab_name: test.lab.name,
-      quantity: 1,
-    });
-    setJustAdded(true);
-    setTimeout(() => setJustAdded(false), 1500);
-  };
-
-  return (
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="mt-2 rounded-xl border p-5 space-y-4"
-      style={{ backgroundColor: "#0f2614", borderColor: "#c4973a" }}
-    >
-      {test.description && (
-        <div>
-          <p
-            className="text-xs uppercase tracking-wider mb-1"
-            style={{ color: "#6ab04c" }}
-          >
-            Description
-          </p>
-          <p
-            className="text-sm leading-relaxed"
-            style={{ color: "#e8d5a3" }}
-          >
-            {test.description}
-          </p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-        <PanelField label="Specimen Type" value={test.specimen_type} />
-        <PanelField label="Ship Temperature" value={test.ship_temp} />
-        <PanelField label="Stability" value={test.stability_notes} />
-        <PanelField
-          label="Order Type"
-          value={formatPanelOrderType(test.order_type)}
-        />
-      </div>
-
-      {test.turnaround_display && (
-        <div
-          className="flex items-center gap-2 text-sm pt-3 border-t"
-          style={{ borderColor: "#2d6b35", color: "#e8d5a3" }}
-        >
-          <Clock className="w-4 h-4 shrink-0" style={{ color: "#8dc63f" }} />
-          <span>{test.turnaround_display}</span>
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={handleAdd}
-        disabled={showInCart}
-        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-        style={
-          showInCart
-            ? {
-                backgroundColor: "rgba(141, 198, 63, 0.15)",
-                color: "#8dc63f",
-                border: "1px solid #8dc63f",
-                cursor: "default",
-              }
-            : { backgroundColor: "#c4973a", color: "#0a1a0d" }
-        }
-      >
-        {showInCart ? (
-          <>
-            <Check className="w-4 h-4" />
-            In Cart
-          </>
-        ) : (
-          <>
-            <ShoppingCart className="w-4 h-4" />
-            Add to Cart
-          </>
-        )}
-      </button>
-    </div>
-  );
-}
-
-function PanelField({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null;
-}) {
-  return (
-    <div>
-      <p
-        className="text-xs uppercase tracking-wider mb-0.5"
-        style={{ color: "#6ab04c" }}
-      >
-        {label}
-      </p>
-      <p className="text-sm" style={{ color: "#ffffff" }}>
-        {value ?? "—"}
-      </p>
-    </div>
-  );
-}
-
-function formatPanelOrderType(orderType: string): string {
-  switch (orderType) {
-    case "standard":
-      return "Standard collection";
-    case "kit":
-      return "Kit only";
-    case "kit_with_collection":
-      return "Kit with collection";
-    default:
-      return orderType;
-  }
-}

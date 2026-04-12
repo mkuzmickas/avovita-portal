@@ -217,11 +217,11 @@ export default async function ProfilesPage() {
         <p className="text-xs mt-6 text-center" style={{ color: "#6ab04c" }}>
           To remove a profile, please contact AvoVita support at{" "}
           <a
-            href="mailto:hello@avovita.ca"
+            href="mailto:support@avovita.ca"
             className="underline"
             style={{ color: "#c4973a" }}
           >
-            hello@avovita.ca
+            support@avovita.ca
           </a>
           .
         </p>

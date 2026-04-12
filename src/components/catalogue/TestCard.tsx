@@ -9,7 +9,7 @@ interface TestCardProps {
   test: CatalogueTest;
   inCart: boolean;
   onAdd: (item: CatalogueCartItem) => void;
-  /** Controlled by parent — when true, the chevron rotates and label flips. */
+  /** Controlled by parent — when true, inline details are shown. */
   expanded?: boolean;
 }
 
@@ -22,7 +22,6 @@ export function TestCard({
   const [justAdded, setJustAdded] = useState(false);
 
   const handleAdd = (e: React.MouseEvent) => {
-    // Stop click-to-expand from firing when the user hits Add to Cart.
     e.stopPropagation();
     if (inCart || justAdded) return;
     onAdd({
@@ -107,9 +106,35 @@ export function TestCard({
           </div>
         )}
 
+        {/* Expanded inline details */}
+        {expanded && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="mb-4 space-y-3"
+          >
+            {test.description && (
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: "#e8d5a3" }}
+              >
+                {test.description}
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <DetailField label="Ship Temperature" value={test.ship_temp} />
+              <DetailField label="Stability" value={test.stability_notes} />
+              <DetailField
+                label="Order Type"
+                value={formatOrderType(test.order_type)}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="flex-1" />
 
-        {/* Add to cart */}
+        {/* Add to cart — single button, always at bottom */}
         <button
           type="button"
           onClick={handleAdd}
@@ -156,7 +181,41 @@ export function TestCard({
           />
         </div>
       </div>
-
     </article>
   );
+}
+
+function DetailField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null;
+}) {
+  return (
+    <div>
+      <p
+        className="text-xs uppercase tracking-wider mb-0.5"
+        style={{ color: "#6ab04c" }}
+      >
+        {label}
+      </p>
+      <p className="text-sm" style={{ color: "#ffffff" }}>
+        {value ?? "—"}
+      </p>
+    </div>
+  );
+}
+
+function formatOrderType(orderType: string): string {
+  switch (orderType) {
+    case "standard":
+      return "Standard collection";
+    case "kit":
+      return "Kit only";
+    case "kit_with_collection":
+      return "Kit with collection";
+    default:
+      return orderType;
+  }
 }

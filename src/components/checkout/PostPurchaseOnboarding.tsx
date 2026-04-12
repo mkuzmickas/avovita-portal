@@ -19,6 +19,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { ProfileForm } from "@/components/portal/ProfileForm";
 import { WaiverForm } from "@/components/portal/WaiverForm";
+import { PasswordInput } from "@/components/PasswordInput";
 
 const FLO_LABS_URL =
   "https://flolabsbooking.as.me/?appointmentType=84416067";
@@ -211,7 +212,7 @@ export function PostPurchaseOnboarding({
           className="text-center text-xs mt-6"
           style={{ color: "#6ab04c" }}
         >
-          Protected by Alberta PIPA · 2490409 Alberta Ltd.
+          Protected by Alberta PIPA · AvoVita Wellness
         </p>
       </div>
     </div>
@@ -325,8 +326,7 @@ function Step1CreateAccount({
         >
           Password
         </label>
-        <input
-          type="password"
+        <PasswordInput
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="mf-input"
@@ -342,8 +342,7 @@ function Step1CreateAccount({
         >
           Confirm Password
         </label>
-        <input
-          type="password"
+        <PasswordInput
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           className="mf-input"

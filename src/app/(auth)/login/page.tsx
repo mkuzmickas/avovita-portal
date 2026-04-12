@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Leaf, Loader2, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/PasswordInput";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -69,8 +70,7 @@ function LoginForm() {
             Forgot password?
           </Link>
         </div>
-        <input
-          type="password"
+        <PasswordInput
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -160,7 +160,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: "#6ab04c" }}>
-          Protected by Alberta PIPA · 2490409 Alberta Ltd.
+          Protected by Alberta PIPA · AvoVita Wellness
         </p>
       </div>
     </div>

@@ -172,7 +172,7 @@ export function PostPurchaseOnboarding({
           className="text-center text-xs mt-6"
           style={{ color: "#6ab04c" }}
         >
-          Protected by Alberta PIPA · 2490409 Alberta Ltd.
+          Protected by Alberta PIPA · AvoVita Wellness
         </p>
       </div>
     </div>

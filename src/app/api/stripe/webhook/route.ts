@@ -106,10 +106,16 @@ async function sendAdminSms(session: Stripe.Checkout.Session) {
       })()
     : 0;
 
-  const customerEmail = session.customer_email ?? "unknown";
   const amountCad = ((session.amount_total ?? 0) / 100).toFixed(2);
 
-  const smsBody = `AvoVita — New order received. ${lineItemCount} test(s). ${customerEmail}. $${amountCad} CAD. portal.avovita.ca/admin/orders`;
+  let patientName = "Unknown";
+  try {
+    const p = reassembleMetadata(session.metadata as Record<string, string>);
+    const holder = p?.persons?.find((per) => per.is_account_holder);
+    if (holder) patientName = `${holder.first_name} ${holder.last_name}`;
+  } catch { /* ignore */ }
+
+  const smsBody = `AvoVita — New order. ${patientName}. ${lineItemCount} test(s). $${amountCad} CAD. portal.avovita.ca/admin/orders`;
 
   for (const phone of adminPhones) {
     try {

@@ -201,7 +201,7 @@ export default function HomePage() {
           color: "#6ab04c",
         }}
       >
-        <p>© {new Date().getFullYear()} AvoVita Wellness · 2490409 Alberta Ltd. · Calgary, AB</p>
+        <p>© {new Date().getFullYear()} AvoVita Wellness · Calgary, AB</p>
         <p className="mt-2">
           All health information protected under Alberta PIPA.{" "}
           <Link

@@ -236,10 +236,6 @@ function TestTableRow({
 
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     <DetailField
-                      label="Specimen Type"
-                      value={test.specimen_type}
-                    />
-                    <DetailField
                       label="Ship Temperature"
                       value={test.ship_temp}
                     />

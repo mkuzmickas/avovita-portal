@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/components/cart/CartContext";
+import { PasswordInput } from "@/components/PasswordInput";
 
 interface OrderSummaryShape {
   orderIdShort: string;
@@ -292,8 +293,7 @@ export function CheckoutSuccessClient({
                 >
                   Password
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="mf-input"
@@ -310,8 +310,7 @@ export function CheckoutSuccessClient({
                 >
                   Confirm Password
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   className="mf-input"
@@ -346,7 +345,7 @@ export function CheckoutSuccessClient({
               </button>
 
               <p className="text-center text-xs" style={{ color: "#6ab04c" }}>
-                Protected by Alberta PIPA · 2490409 Alberta Ltd.
+                Protected by Alberta PIPA · AvoVita Wellness
               </p>
             </form>
           )}

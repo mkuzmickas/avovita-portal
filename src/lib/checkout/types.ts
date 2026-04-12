@@ -27,6 +27,10 @@ export interface CheckoutPerson {
   relationship: Relationship | null;
   /** Mandatory for additional people; ignored for account holder. */
   consent_acknowledged: boolean;
+  /** True when the additional person wants their own portal account. */
+  wants_own_account?: boolean;
+  /** Email for the additional person's own account. */
+  own_account_email?: string;
 }
 
 export interface CollectionAddress {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Leaf, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -149,8 +150,7 @@ export default function SignupPage() {
               >
                 Password
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -167,8 +167,7 @@ export default function SignupPage() {
               >
                 Confirm Password
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -217,7 +216,7 @@ export default function SignupPage() {
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: "#6ab04c" }}>
-          Protected by Alberta PIPA · 2490409 Alberta Ltd.
+          Protected by Alberta PIPA · AvoVita Wellness
         </p>
       </div>
     </div>

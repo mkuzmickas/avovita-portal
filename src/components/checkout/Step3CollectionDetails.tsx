@@ -154,8 +154,13 @@ export function Step3CollectionDetails({
       p.relationship !== null
   );
 
+  const isEmailValid = (email: string | undefined) =>
+    !!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
   const allConsentsObtained = additionalPersons.every(
-    (p) => p.consent_acknowledged
+    (p) =>
+      p.consent_acknowledged ||
+      (p.wants_own_account && isEmailValid(p.own_account_email))
   );
 
   const canContinue =
@@ -398,6 +403,7 @@ export function Step3CollectionDetails({
             assignments={personAssignments}
             showRelationship
             showConsent
+            accountHolderFirstName={accountHolder?.first_name}
           />
         );
       })}
@@ -515,6 +521,7 @@ function PersonSection({
   assignments,
   showRelationship,
   showConsent,
+  accountHolderFirstName,
 }: {
   title: string;
   subtitle: string | null;
@@ -524,6 +531,7 @@ function PersonSection({
   assignments: PersonAssignmentEntry[];
   showRelationship: boolean;
   showConsent: boolean;
+  accountHolderFirstName?: string;
 }) {
   const labelStyle = { color: "#e8d5a3" };
   const reqMark = <span style={{ color: "#e05252" }}> *</span>;
@@ -655,45 +663,146 @@ function PersonSection({
       )}
 
       {showConsent && (
-        <div
-          className="mt-4 rounded-lg border p-4"
-          style={{
-            backgroundColor: person.consent_acknowledged
-              ? "rgba(141, 198, 63, 0.08)"
-              : "#0f2614",
-            borderColor: person.consent_acknowledged
-              ? "#8dc63f"
-              : "#c4973a",
-          }}
-        >
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={person.consent_acknowledged}
-              onChange={(e) =>
-                onChange({ consent_acknowledged: e.target.checked })
-              }
-              className="w-5 h-5 rounded mt-0.5 shrink-0"
-              style={{ accentColor: "#c4973a" }}
-            />
-            <span className="text-sm" style={{ color: "#e8d5a3" }}>
-              I confirm that{" "}
-              <strong style={{ color: "#ffffff" }}>
-                {person.first_name.trim() || "this person"}
-              </strong>{" "}
-              consents to their specimen being collected and tested, and
-              agrees to have their results uploaded to my AvoVita account
-              where I will have access to view them.
-            </span>
-          </label>
-          <p
-            className="text-xs mt-3 ml-8"
-            style={{ color: "#6ab04c" }}
+        <div className="mt-4 space-y-3">
+          {/* Option A — share account */}
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                wants_own_account: false,
+                consent_acknowledged: true,
+                own_account_email: "",
+              })
+            }
+            className="w-full text-left rounded-lg border p-4 transition-colors"
+            style={{
+              backgroundColor:
+                person.consent_acknowledged && !person.wants_own_account
+                  ? "rgba(141, 198, 63, 0.08)"
+                  : "#0f2614",
+              borderColor:
+                person.consent_acknowledged && !person.wants_own_account
+                  ? "#8dc63f"
+                  : "#2d6b35",
+            }}
           >
-            If this person requires a private individual account, please
-            remove their tests from this cart and have them place a
-            separate order.
-          </p>
+            <div className="flex items-start gap-3">
+              <span
+                className="w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center"
+                style={{
+                  borderColor:
+                    person.consent_acknowledged && !person.wants_own_account
+                      ? "#8dc63f"
+                      : "#2d6b35",
+                }}
+              >
+                {person.consent_acknowledged && !person.wants_own_account && (
+                  <span
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: "#8dc63f" }}
+                  />
+                )}
+              </span>
+              <div>
+                <p
+                  className="text-sm font-semibold mb-1"
+                  style={{ color: "#c4973a" }}
+                >
+                  Add results to {accountHolderFirstName || "the account holder"}&apos;s account
+                </p>
+                <p className="text-xs" style={{ color: "#e8d5a3" }}>
+                  I confirm that{" "}
+                  <strong style={{ color: "#ffffff" }}>
+                    {person.first_name.trim() || "this person"}
+                  </strong>{" "}
+                  consents to their specimen being collected and tested, and
+                  agrees to have their results uploaded to{" "}
+                  {accountHolderFirstName || "the account holder"}&apos;s
+                  AvoVita account where they will have access to view them.
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* Option B — own account */}
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                wants_own_account: true,
+                consent_acknowledged: true,
+              })
+            }
+            className="w-full text-left rounded-lg border p-4 transition-colors"
+            style={{
+              backgroundColor: person.wants_own_account
+                ? "rgba(141, 198, 63, 0.08)"
+                : "#0f2614",
+              borderColor: person.wants_own_account
+                ? "#8dc63f"
+                : "#2d6b35",
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <span
+                className="w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center"
+                style={{
+                  borderColor: person.wants_own_account
+                    ? "#8dc63f"
+                    : "#2d6b35",
+                }}
+              >
+                {person.wants_own_account && (
+                  <span
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: "#8dc63f" }}
+                  />
+                )}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p
+                  className="text-sm font-semibold mb-1"
+                  style={{ color: "#c4973a" }}
+                >
+                  I&apos;ll create my own account
+                </p>
+                <p className="text-xs" style={{ color: "#e8d5a3" }}>
+                  {person.first_name.trim() || "This person"} will receive
+                  their own login to view results privately.
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* Email input — shown when own account selected */}
+          {person.wants_own_account && (
+            <div
+              className="rounded-lg border p-4"
+              style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "#e8d5a3" }}
+              >
+                Your email address <span style={{ color: "#e05252" }}>*</span>
+              </label>
+              <input
+                type="email"
+                value={person.own_account_email ?? ""}
+                onChange={(e) =>
+                  onChange({ own_account_email: e.target.value })
+                }
+                placeholder="their.email@example.com"
+                className="mf-input"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <p className="text-xs mt-2" style={{ color: "#6ab04c" }}>
+                We&apos;ll send them an invite to set up their password and
+                access their results.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </section>

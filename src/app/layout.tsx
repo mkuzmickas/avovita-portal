@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
-  publisher: "2490409 Alberta Ltd",
+  publisher: "AvoVita Wellness",
   formatDetection: {
     email: false,
     address: false,

@@ -63,11 +63,11 @@ export default function GlobalError({ error, reset }: ErrorProps) {
           We&apos;ve logged the issue and our team has been notified. Please
           try again, or contact{" "}
           <a
-            href="mailto:hello@avovita.ca"
+            href="mailto:support@avovita.ca"
             className="underline"
             style={{ color: "#c4973a" }}
           >
-            hello@avovita.ca
+            support@avovita.ca
           </a>{" "}
           if the problem persists.
         </p>

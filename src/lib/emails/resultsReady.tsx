@@ -116,10 +116,10 @@ export function renderResultsReadyEmail(props: ResultsReadyProps): string {
           <tr>
             <td style="padding: 20px 32px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #6b7280;">
-                AvoVita Wellness · 2490409 Alberta Ltd. · Calgary, AB, Canada
+                AvoVita Wellness · Calgary, AB, Canada
               </p>
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #6b7280;">
-                Questions about your results? Contact <a href="mailto:hello@avovita.ca" style="color: #0f2614;">hello@avovita.ca</a>
+                Questions about your results? Contact <a href="mailto:support@avovita.ca" style="color: #0f2614;">support@avovita.ca</a>
               </p>
               <p style="margin: 0; font-size: 11px; color: #9ca3af;">
                 Your health information is protected under Alberta PIPA.

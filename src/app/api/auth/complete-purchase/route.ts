@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe";
+import { resend } from "@/lib/resend";
 import {
   reassembleMetadata,
   materialiseOrder,
   sendOrderConfirmationEmail,
+  type OrderMetadataPayload,
 } from "@/lib/checkout/materialise";
 import type { ConsentType } from "@/types/database";
 
@@ -170,6 +172,14 @@ export async function POST(request: NextRequest) {
     //    because the order had no account at that point)
     await sendOrderConfirmationEmail(supabase, pendingOrder.id, enrichedPayload, sessionId);
 
+    // 8. Create own accounts for additional people who opted in
+    await createOwnAccountsForAdditionalPersons(
+      supabase,
+      enrichedPayload,
+      pendingOrder.id,
+      userId
+    );
+
     return NextResponse.json({
       success: true,
       order_id: pendingOrder.id,
@@ -237,4 +247,238 @@ async function insertConsents(
   if (consentErr) {
     console.error("[complete-purchase] consent insert failed:", consentErr);
   }
+}
+
+// ─── Own-account creation for additional people ──────────────────────
+
+async function createOwnAccountsForAdditionalPersons(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  payload: OrderMetadataPayload,
+  orderId: string,
+  primaryAccountId: string
+): Promise<void> {
+  const personsWantingOwnAccount = payload.persons.filter(
+    (p) => !p.is_account_holder && p.wants_own_account && p.own_account_email
+  );
+
+  if (personsWantingOwnAccount.length === 0) return;
+
+  const primaryHolder = payload.persons.find((p) => p.is_account_holder);
+  const primaryFirstName = primaryHolder?.first_name ?? "Someone";
+  const portalUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
+
+  for (const person of personsWantingOwnAccount) {
+    const email = person.own_account_email!.trim();
+
+    try {
+      // 1. Create Supabase auth user (skip if already exists)
+      let newUserId: string | null = null;
+
+      const { data: createData, error: createErr } =
+        await supabase.auth.admin.createUser({
+          email,
+          email_confirm: true,
+        });
+
+      if (createErr) {
+        // User may already exist — look them up
+        const { data: listData } =
+          await supabase.auth.admin.listUsers();
+        const existing = listData?.users?.find(
+          (u) => u.email === email
+        );
+        if (existing) {
+          newUserId = existing.id;
+        } else {
+          console.error(
+            `[complete-purchase] failed to create user for ${email}:`,
+            createErr
+          );
+          continue;
+        }
+      } else {
+        newUserId = createData.user?.id ?? null;
+      }
+
+      if (!newUserId) continue;
+
+      // 2. Upsert accounts row
+      await supabase
+        .from("accounts")
+        .upsert({ id: newUserId, email }, { onConflict: "id" });
+
+      // 3. Find the profile created under the primary account for this person
+      const { data: sourceProfileRaw } = await supabase
+        .from("patient_profiles")
+        .select("*")
+        .eq("account_id", primaryAccountId)
+        .eq("first_name", person.first_name)
+        .eq("last_name", person.last_name)
+        .eq("date_of_birth", person.date_of_birth)
+        .maybeSingle();
+
+      const sourceProfile = sourceProfileRaw as {
+        id: string;
+        first_name: string;
+        last_name: string;
+        date_of_birth: string;
+        biological_sex: string;
+        phone: string | null;
+        address_line1: string | null;
+        address_line2: string | null;
+        city: string | null;
+        province: string | null;
+        postal_code: string | null;
+        is_minor: boolean;
+        relationship: string | null;
+      } | null;
+
+      if (!sourceProfile) {
+        console.error(
+          `[complete-purchase] no source profile found for ${person.first_name} ${person.last_name}`
+        );
+        continue;
+      }
+
+      // Create a copy of the profile under the new account
+      const { data: newProfileRaw } = await supabase
+        .from("patient_profiles")
+        .insert({
+          account_id: newUserId,
+          first_name: sourceProfile.first_name,
+          last_name: sourceProfile.last_name,
+          date_of_birth: sourceProfile.date_of_birth,
+          biological_sex: sourceProfile.biological_sex,
+          phone: sourceProfile.phone,
+          address_line1: sourceProfile.address_line1,
+          address_line2: sourceProfile.address_line2,
+          city: sourceProfile.city,
+          province: sourceProfile.province,
+          postal_code: sourceProfile.postal_code,
+          is_minor: sourceProfile.is_minor,
+          is_primary: true,
+          relationship: sourceProfile.relationship,
+        })
+        .select("id")
+        .single();
+
+      const newProfileId =
+        (newProfileRaw as { id: string } | null)?.id ?? null;
+
+      // 4. Update order_lines for this person to point to the new profile
+      if (newProfileId) {
+        await supabase
+          .from("order_lines")
+          .update({ profile_id: newProfileId })
+          .eq("order_id", orderId)
+          .eq("profile_id", sourceProfile.id);
+      }
+
+      // 5. Send invite email with magic link
+      const { data: linkData } =
+        await supabase.auth.admin.generateLink({
+          type: "magiclink",
+          email,
+          options: {
+            redirectTo: `${portalUrl}/portal`,
+          },
+        });
+
+      const magicLink =
+        linkData?.properties?.action_link ?? `${portalUrl}/login`;
+
+      await resend.emails.send({
+        from: process.env.RESEND_FROM_ORDERS!,
+        to: email,
+        subject: "Your AvoVita results account is ready",
+        html: renderInviteEmail(
+          person.first_name,
+          primaryFirstName,
+          magicLink,
+          portalUrl
+        ),
+      });
+
+      // Log notification
+      await supabase.from("notifications").insert({
+        profile_id: newProfileId,
+        order_id: orderId,
+        result_id: null,
+        channel: "email",
+        template: "own_account_invite",
+        recipient: email,
+        status: "sent",
+      });
+
+      console.log(
+        `[complete-purchase] own account created for ${email}, invite sent`
+      );
+    } catch (err) {
+      console.error(
+        `[complete-purchase] own account creation failed for ${email}:`,
+        err
+      );
+    }
+  }
+}
+
+function renderInviteEmail(
+  firstName: string,
+  primaryFirstName: string,
+  magicLink: string,
+  portalUrl: string
+): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+  <tr><td style="background:#0f2614;padding:32px;text-align:center;border-bottom:3px solid #c4973a;">
+    <h1 style="margin:0;font-size:28px;font-family:Georgia,'Cormorant Garamond',serif;color:#ffffff;">AvoVita <span style="color:#c4973a;">Wellness</span></h1>
+    <p style="margin:8px 0 0;font-size:13px;color:#8dc63f;">PRIVATE LAB TESTING · CALGARY</p>
+  </td></tr>
+  <tr><td style="padding:36px 32px 16px;">
+    <h2 style="margin:0 0 12px;font-size:24px;font-family:Georgia,'Cormorant Garamond',serif;color:#111827;">
+      Your results account is ready, ${esc(firstName)}
+    </h2>
+    <p style="margin:0 0 20px;font-size:15px;color:#4b5563;line-height:1.5;">
+      ${esc(primaryFirstName)} has placed a lab testing order that includes tests for you through AvoVita Wellness. Your account has been created so you can access your results privately.
+    </p>
+    <p style="margin:0 0 20px;font-size:15px;color:#4b5563;line-height:1.5;">
+      Click the button below to set up your password and access your portal.
+    </p>
+  </td></tr>
+  <tr><td style="padding:0 32px 32px;text-align:center;">
+    <a href="${magicLink}" target="_blank" style="display:inline-block;background:#c4973a;color:#0a1a0d;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:700;font-size:15px;">
+      Set Up My Account
+    </a>
+  </td></tr>
+  <tr><td style="padding:0 32px 28px;">
+    <div style="background:#f9fafb;border-left:4px solid #0f2614;padding:16px;border-radius:4px;">
+      <p style="margin:0;font-size:13px;color:#4b5563;line-height:1.5;">
+        Once your specimens are processed, your lab results will be uploaded to your portal and you'll receive an email notification.
+      </p>
+    </div>
+  </td></tr>
+  <tr><td style="padding:20px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
+    <p style="margin:0 0 6px;font-size:12px;color:#6b7280;">
+      Questions? Contact <a href="mailto:support@avovita.ca" style="color:#0f2614;font-weight:600;">support@avovita.ca</a>
+    </p>
+    <p style="margin:0 0 6px;font-size:12px;color:#6b7280;">AvoVita Wellness · Calgary, AB</p>
+    <p style="margin:0;font-size:11px;color:#9ca3af;">Your health information is protected under Alberta PIPA.</p>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
