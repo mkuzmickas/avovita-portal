@@ -131,6 +131,7 @@ export interface Order {
   stripe_session_id: string | null;
   status: OrderStatus;
   subtotal_cad: number | null;
+  discount_cad: number | null;
   home_visit_fee_cad: number | null;
   tax_cad: number | null;
   total_cad: number | null;

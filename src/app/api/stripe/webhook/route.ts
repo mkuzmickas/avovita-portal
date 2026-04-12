@@ -99,6 +99,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     stripe_session_id: session.id,
     status: "confirmed" as const,
     subtotal_cad: payload.subtotal,
+    discount_cad: payload.discount_cad ?? 0,
     home_visit_fee_cad: payload.visit_fees.total,
     tax_cad: 0,
     total_cad: total,

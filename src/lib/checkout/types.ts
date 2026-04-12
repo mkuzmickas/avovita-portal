@@ -59,6 +59,8 @@ export interface CheckoutPayload {
   assignments: TestAssignment[];
   visit_fees: VisitFees;
   subtotal: number;
+  /** Multi-test discount amount ($20 × line count, or 0 if under threshold). */
+  discount_cad: number;
   total: number;
   account_user_id: string | null;
 }

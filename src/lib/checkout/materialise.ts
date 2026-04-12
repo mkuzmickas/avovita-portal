@@ -45,6 +45,8 @@ export interface OrderMetadataPayload {
     total: number;
   };
   subtotal: number;
+  /** Multi-test discount total ($20 × line count, 0 if under threshold). */
+  discount_cad: number;
   total: number;
 }
 
@@ -291,6 +293,7 @@ export async function sendOrderConfirmationEmail(
       orderIdShort,
       tests: emailTests,
       subtotal: payload.subtotal,
+      discountTotal: payload.discount_cad ?? 0,
       visitFeeBase: payload.visit_fees.base,
       visitFeeAdditional:
         payload.visit_fees.additional_per_person *

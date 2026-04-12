@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
+import { computeDiscount } from "@/lib/checkout/discount";
 import type { CheckoutPayload } from "@/lib/checkout/types";
 
 /**
@@ -135,6 +136,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ─── Compute discount (recomputed server-side — never trust client) ──
+    // Multi-test discount: $20 off each order line when there are 2+ lines.
+    //
+    // Stripe Checkout Sessions do NOT support negative line items and we
+    // were told not to use coupons or promotion codes, so the discount is
+    // applied by reducing each test line's unit_amount at line-item
+    // creation time. The test's product_data.description is annotated so
+    // the discount is visible on Stripe's native checkout and receipt
+    // pages, and our own branded confirmation email + portal UI show the
+    // full breakdown with a dedicated "Multi-test discount" line.
+    const discount = computeDiscount(body.assignments.length);
+
     // ─── Build Stripe line items ──────────────────────────────────
     type StripeLineItem = {
       price_data: {
@@ -147,27 +160,39 @@ export async function POST(request: NextRequest) {
     const lineItems: StripeLineItem[] = [];
 
     let serverSubtotal = 0;
+    let appliedDiscountTotal = 0;
 
     for (const assignment of body.assignments) {
       const test = testMap.get(assignment.test_id)!;
       const person = body.persons[assignment.assigned_to_person];
       const personName = person
-        ? `${person.first_name} ${person.last_name}`.trim() || `Person ${assignment.assigned_to_person + 1}`
+        ? `${person.first_name} ${person.last_name}`.trim() ||
+          `Person ${assignment.assigned_to_person + 1}`
         : "Patient";
+
+      // Clamp reduction to the test's own price so unit_amount can never
+      // go negative (Stripe rejects negative amounts).
+      const lineReduction = discount.applies
+        ? Math.min(discount.per_line, test.price_cad)
+        : 0;
+      const effectivePrice = test.price_cad - lineReduction;
 
       lineItems.push({
         price_data: {
           currency: "cad",
           product_data: {
             name: test.name,
-            description: `For: ${personName}`,
+            description: discount.applies
+              ? `For: ${personName} · Multi-test discount −$${lineReduction.toFixed(2)}`
+              : `For: ${personName}`,
           },
-          unit_amount: Math.round(test.price_cad * 100),
+          unit_amount: Math.round(effectivePrice * 100),
         },
         quantity: 1,
       });
 
       serverSubtotal += test.price_cad;
+      appliedDiscountTotal += lineReduction;
     }
 
     // Visit fee — single line item
@@ -226,7 +251,8 @@ export async function POST(request: NextRequest) {
         total: visitFeeTotal,
       },
       subtotal: serverSubtotal,
-      total: serverSubtotal + visitFeeTotal,
+      discount_cad: appliedDiscountTotal,
+      total: serverSubtotal - appliedDiscountTotal + visitFeeTotal,
     };
 
     const fullJson = JSON.stringify(orderPayload);

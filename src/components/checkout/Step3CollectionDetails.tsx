@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
+import { DiscountBanner } from "./DiscountBanner";
 import type {
   CheckoutPerson,
   CollectionAddress,
@@ -125,7 +126,7 @@ export function Step3CollectionDetails({
       </div>
 
       <h1
-        className="font-heading text-2xl sm:text-3xl font-semibold mb-6"
+        className="font-heading text-2xl sm:text-3xl font-semibold mb-4"
         style={{
           color: "#ffffff",
           fontFamily: '"Cormorant Garamond", Georgia, serif',
@@ -133,6 +134,13 @@ export function Step3CollectionDetails({
       >
         Collection <span style={{ color: "#c4973a" }}>Details</span>
       </h1>
+
+      {/* Multi-test discount banner */}
+      {assignments.length >= 2 && (
+        <div className="mb-6">
+          <DiscountBanner lineCount={assignments.length} />
+        </div>
+      )}
 
       {/* ─── Collection Address ──────────────────────────────────── */}
       <section className="mb-8">

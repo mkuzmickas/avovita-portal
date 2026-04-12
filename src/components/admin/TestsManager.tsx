@@ -488,7 +488,7 @@ function ToggleSwitch({
       <span
         className="relative inline-block w-9 h-5 rounded-full transition-colors"
         style={{
-          backgroundColor: on ? "#c4973a" : "#2d6b35",
+          backgroundColor: on ? "#8dc63f" : "#2d6b35",
         }}
       >
         <span
@@ -499,7 +499,7 @@ function ToggleSwitch({
           }}
         />
       </span>
-      <span className="text-xs" style={{ color: on ? "#c4973a" : "#6ab04c" }}>
+      <span className="text-xs" style={{ color: on ? "#8dc63f" : "#6ab04c" }}>
         {on ? "On" : "Off"}
       </span>
     </button>

@@ -214,12 +214,26 @@ export function AdminOrdersTable({
                         </p>
                       </td>
                       <td
-                        className="px-5 py-4 font-semibold whitespace-nowrap"
-                        style={{ color: "#c4973a" }}
+                        className="px-5 py-4 whitespace-nowrap"
                       >
-                        {order.total_cad != null
-                          ? formatCurrency(order.total_cad)
-                          : "—"}
+                        <span
+                          className="font-semibold"
+                          style={{ color: "#c4973a" }}
+                        >
+                          {order.total_cad != null
+                            ? formatCurrency(order.total_cad)
+                            : "—"}
+                        </span>
+                        {order.discount_cad != null &&
+                          order.discount_cad > 0 && (
+                            <div
+                              className="text-[10px] font-medium mt-0.5"
+                              style={{ color: "#8dc63f" }}
+                              title="Multi-test discount applied"
+                            >
+                              −{formatCurrency(order.discount_cad)} discount
+                            </div>
+                          )}
                       </td>
                       <td className="px-5 py-4">
                         <AdminOrderStatusUpdater

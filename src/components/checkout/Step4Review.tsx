@@ -17,6 +17,8 @@ import type {
   TestAssignment,
 } from "@/lib/checkout/types";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
+import { computeDiscount } from "@/lib/checkout/discount";
+import { DiscountBanner } from "./DiscountBanner";
 import type { PersonAssignmentEntry } from "./Step2AssignTests";
 
 interface Step4Props {
@@ -53,7 +55,12 @@ export function Step4Review({
   );
 
   const subtotal = assignments.reduce((s, a) => s + a.price_cad, 0);
-  const total = subtotal + visitFees.total;
+  const discount = useMemo(
+    () => computeDiscount(assignments.length),
+    [assignments.length]
+  );
+  const subtotalAfterDiscount = subtotal - discount.total;
+  const total = subtotalAfterDiscount + visitFees.total;
 
   const assignmentsByPerson = useMemo(() => {
     const m = new Map<number, PersonAssignmentEntry[]>();
@@ -78,6 +85,7 @@ export function Step4Review({
       })),
       visit_fees: visitFees,
       subtotal,
+      discount_cad: discount.total,
       total,
       account_user_id: accountUserId,
     };
@@ -116,7 +124,7 @@ export function Step4Review({
       </div>
 
       <h1
-        className="font-heading text-2xl sm:text-3xl font-semibold mb-6"
+        className="font-heading text-2xl sm:text-3xl font-semibold mb-4"
         style={{
           color: "#ffffff",
           fontFamily: '"Cormorant Garamond", Georgia, serif',
@@ -124,6 +132,13 @@ export function Step4Review({
       >
         Review & <span style={{ color: "#c4973a" }}>Pay</span>
       </h1>
+
+      {/* Multi-test discount banner */}
+      {discount.applies && (
+        <div className="mb-6">
+          <DiscountBanner lineCount={assignments.length} />
+        </div>
+      )}
 
       {/* Collection address */}
       <section className="mb-6">
@@ -218,23 +233,34 @@ export function Step4Review({
                   </span>
                 </div>
                 <ul
-                  className="space-y-1 pl-3 border-l-2"
+                  className="space-y-1.5 pl-3 border-l-2"
                   style={{ borderColor: "#2d6b35" }}
                 >
                   {personItems.map((a) => (
                     <li
                       key={`${a.test_id}-${a.person_index}`}
-                      className="flex items-center justify-between gap-3 text-xs"
+                      className="flex flex-col gap-0.5"
                     >
-                      <span style={{ color: "#e8d5a3" }}>
-                        {a.test_name}{" "}
-                        <span style={{ color: "#6ab04c" }}>
-                          · {a.lab_name}
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span style={{ color: "#e8d5a3" }}>
+                          {a.test_name}{" "}
+                          <span style={{ color: "#6ab04c" }}>
+                            · {a.lab_name}
+                          </span>
                         </span>
-                      </span>
-                      <span style={{ color: "#c4973a" }}>
-                        {formatCurrency(a.price_cad)}
-                      </span>
+                        <span style={{ color: "#c4973a" }}>
+                          {formatCurrency(a.price_cad)}
+                        </span>
+                      </div>
+                      {discount.applies && (
+                        <div
+                          className="flex items-center justify-end gap-3 text-[10px] font-medium"
+                          style={{ color: "#8dc63f" }}
+                        >
+                          −{formatCurrency(discount.per_line)} multi-test
+                          discount
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -257,9 +283,27 @@ export function Step4Review({
             <span>Tests subtotal ({assignments.length} lines)</span>
             <span>{formatCurrency(subtotal)}</span>
           </div>
+          {discount.applies && (
+            <>
+              <div
+                className="flex justify-between font-medium"
+                style={{ color: "#8dc63f" }}
+              >
+                <span>Multi-test discount ($20 off per test)</span>
+                <span>−{formatCurrency(discount.total)}</span>
+              </div>
+              <div
+                className="flex justify-between"
+                style={{ color: "#e8d5a3" }}
+              >
+                <span>Subtotal after discount</span>
+                <span>{formatCurrency(subtotalAfterDiscount)}</span>
+              </div>
+            </>
+          )}
           <div
-            className="flex justify-between"
-            style={{ color: "#e8d5a3" }}
+            className="flex justify-between pt-2 mt-1 border-t"
+            style={{ color: "#e8d5a3", borderColor: "#2d6b35" }}
           >
             <span>Visit fee base</span>
             <span>{formatCurrency(visitFees.base_fee)}</span>

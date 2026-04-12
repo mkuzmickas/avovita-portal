@@ -131,7 +131,7 @@ export function CatalogueClient({
       <div className="max-w-7xl mx-auto px-6 space-y-12">
         {/* ─── SECTION 1: Featured ────────────────────────────────────── */}
         <section>
-          <SectionHeading title="Featured Tests" />
+          <SectionHeading title="Featured Tests" hint="(scroll down for full catalogue)" />
           {featuredTests.length === 0 ? (
             <div
               className="rounded-xl border px-6 py-12 text-center"
@@ -231,18 +231,32 @@ export function CatalogueClient({
   );
 }
 
-function SectionHeading({ title }: { title: string }) {
+function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="mb-6">
-      <h2
-        className="font-heading text-3xl font-semibold mb-2"
-        style={{
-          color: "#ffffff",
-          fontFamily: '"Cormorant Garamond", Georgia, serif',
-        }}
-      >
-        {title}
-      </h2>
+      <div className="flex items-baseline gap-3 flex-wrap mb-2">
+        <h2
+          className="font-heading text-3xl font-semibold"
+          style={{
+            color: "#ffffff",
+            fontFamily: '"Cormorant Garamond", Georgia, serif',
+          }}
+        >
+          {title}
+        </h2>
+        {hint && (
+          <span
+            className="text-sm"
+            style={{
+              color: "#e8d5a3",
+              fontFamily: '"DM Sans", system-ui, sans-serif',
+              fontSize: "14px",
+            }}
+          >
+            {hint}
+          </span>
+        )}
+      </div>
       <div
         className="h-[3px] w-16 rounded-full"
         style={{ backgroundColor: "#c4973a" }}

@@ -87,7 +87,20 @@ export function CheckoutClient({
             setPersons(parsed.persons);
           }
           if (Array.isArray(parsed.assignments)) {
-            setAssignments(parsed.assignments);
+            // Dedupe by test_id — older versions of the wizard allowed
+            // multiple assignments per test, but the new rule is one
+            // assignment per test, so we collapse duplicates by keeping
+            // the most recently-pushed entry.
+            const seen = new Set<string>();
+            const deduped: PersonAssignmentEntry[] = [];
+            for (let i = parsed.assignments.length - 1; i >= 0; i--) {
+              const a = parsed.assignments[i];
+              if (!seen.has(a.test_id)) {
+                seen.add(a.test_id);
+                deduped.unshift(a);
+              }
+            }
+            setAssignments(deduped);
           }
           if (parsed.collectionAddress) {
             setCollectionAddress(parsed.collectionAddress);
@@ -102,6 +115,20 @@ export function CheckoutClient({
     }
     setRestored(true);
   }, []);
+
+  // ─── Sync assignments to cart ───────────────────────────────────────
+  // Drop any assignment whose underlying cart item has been removed.
+  // Only updates state when the filter actually changes anything so it
+  // can't loop. Runs after restore + whenever the cart changes.
+  useEffect(() => {
+    if (!restored || !hydrated) return;
+    setAssignments((prev) => {
+      const filtered = prev.filter((a) =>
+        cart.some((c) => c.test_id === a.test_id)
+      );
+      return filtered.length === prev.length ? prev : filtered;
+    });
+  }, [restored, hydrated, cart]);
 
   // ─── Persist on every change ──────────────────────────────────────────
   useEffect(() => {
@@ -187,6 +214,18 @@ export function CheckoutClient({
   const visitFees = useMemo(
     () => (step === 1 ? null : computeVisitFees(personCount)),
     [personCount, step]
+  );
+
+  // Sidebar always reflects the cart, never the partial assignment state.
+  // Each cart item is exactly one order line — assigning it to a person
+  // moves it but never duplicates it — so the cart is the single source
+  // of truth for line count, subtotal, and discount preview on every
+  // checkout step. The Step 2 step body uses the same numbers, so the
+  // sidebar and step body always agree.
+  const sidebarLineCount = cart.length;
+  const sidebarSubtotal = cart.reduce(
+    (s, c) => s + c.price_cad * c.quantity,
+    0
   );
 
   // Don't render anything until hydration is done — avoids React mismatch
@@ -303,9 +342,14 @@ export function CheckoutClient({
             )}
           </div>
 
-          {/* Sidebar — hidden on mobile for steps 2-4 to save space */}
-          <div className={step === 1 ? "" : "hidden lg:block"}>
-            <CheckoutCartSummary cart={cart} visitFees={visitFees} />
+          {/* Sidebar — stacks below step content on mobile, beside on desktop */}
+          <div className="order-2 lg:order-none">
+            <CheckoutCartSummary
+              cart={cart}
+              visitFees={visitFees}
+              lineCount={sidebarLineCount}
+              subtotalOverride={sidebarSubtotal}
+            />
           </div>
         </div>
       </div>

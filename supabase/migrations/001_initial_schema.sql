@@ -138,6 +138,7 @@ create table if not exists public.orders (
     'pending','confirmed','collected','shipped','resulted','complete','cancelled'
   )),
   subtotal_cad             numeric(10,2),
+  discount_cad             numeric(10,2) default 0,
   home_visit_fee_cad       numeric(10,2),
   tax_cad                  numeric(10,2),
   total_cad                numeric(10,2),

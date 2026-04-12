@@ -20,6 +20,8 @@ export interface OrderConfirmationProps {
   orderIdShort: string;
   tests: OrderConfirmationTest[];
   subtotal: number;
+  /** Multi-test discount total. 0 or undefined to hide the row. */
+  discountTotal?: number;
   visitFeeBase: number;
   visitFeeAdditional: number;
   visitFeeTotal: number;
@@ -46,6 +48,7 @@ export function renderOrderConfirmationEmail(
     orderIdShort,
     tests,
     subtotal,
+    discountTotal,
     visitFeeBase,
     visitFeeAdditional,
     visitFeeTotal,
@@ -91,6 +94,21 @@ export function renderOrderConfirmationEmail(
         </tr>
       `
       : "";
+
+  const hasDiscount = (discountTotal ?? 0) > 0;
+  const subtotalAfterDiscount = subtotal - (discountTotal ?? 0);
+  const discountRowsHtml = hasDiscount
+    ? `
+        <tr>
+          <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">Multi-test discount ($20 off per test)</td>
+          <td style="padding: 6px 0; text-align: right; color: #6fa030; font-size: 13px; font-weight: 600;">−${formatCurrency(discountTotal ?? 0)}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Subtotal after discount</td>
+          <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(subtotalAfterDiscount)}</td>
+        </tr>
+      `
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -145,6 +163,7 @@ export function renderOrderConfirmationEmail(
                   <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Tests subtotal</td>
                   <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(subtotal)}</td>
                 </tr>
+                ${discountRowsHtml}
                 <tr>
                   <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Home visit fee (base)</td>
                   <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(visitFeeBase)}</td>
