@@ -328,3 +328,101 @@ export async function sendOrderConfirmationEmail(
     );
   }
 }
+
+/**
+ * Sends the order confirmation email for GUEST checkouts immediately
+ * on webhook receipt, using the Stripe session email directly.
+ * Does NOT require an account to exist in Supabase yet.
+ * The complete-purchase route will ALSO send the full confirmation
+ * after account creation — this is a safety net so the customer
+ * always gets notified even if they close the tab.
+ */
+export async function sendGuestOrderConfirmationEmail(
+  supabase: ServiceClient,
+  orderId: string,
+  payload: OrderMetadataPayload,
+  customerEmail: string,
+  stripeSessionId?: string
+): Promise<void> {
+  try {
+    const accountHolder = payload.persons.find((p) => p.is_account_holder);
+    const firstName = accountHolder?.first_name || "there";
+
+    const testIds = [...new Set(payload.assignments.map((a) => a.test_id))];
+    const { data: testsRaw } = await supabase
+      .from("tests")
+      .select("id, name, turnaround_display, lab:labs(name)")
+      .in("id", testIds);
+
+    type TestRow = {
+      id: string;
+      name: string;
+      turnaround_display: string | null;
+      lab: { name: string } | { name: string }[] | null;
+    };
+    const testMap = new Map<string, TestRow>();
+    for (const t of (testsRaw ?? []) as unknown as TestRow[]) {
+      testMap.set(t.id, t);
+    }
+
+    const emailTests: OrderConfirmationTest[] = payload.assignments.map(
+      (a) => {
+        const t = testMap.get(a.test_id);
+        const lab = Array.isArray(t?.lab) ? t?.lab[0] : t?.lab;
+        const fasting = /fasting/i.test(t?.turnaround_display ?? "");
+        return {
+          name: t?.name ?? "Unknown test",
+          lab: lab?.name ?? "",
+          price_cad: a.unit_price_cad,
+          requires_fasting: fasting,
+        };
+      }
+    );
+
+    const portalUrl =
+      process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
+    const orderIdShort = orderId.slice(0, 8).toUpperCase();
+
+    const html = renderOrderConfirmationEmail({
+      firstName,
+      orderIdShort,
+      tests: emailTests,
+      subtotal: payload.subtotal,
+      discountTotal: payload.discount_cad ?? 0,
+      visitFeeBase: payload.visit_fees.base,
+      visitFeeAdditional:
+        payload.visit_fees.additional_per_person *
+        payload.visit_fees.additional_count,
+      visitFeeTotal: payload.visit_fees.total,
+      total: payload.total,
+      portalUrl,
+      stripeSessionId,
+    });
+
+    await resend.emails.send({
+      from: process.env.RESEND_FROM_ORDERS!,
+      to: customerEmail,
+      subject: orderConfirmationSubject(orderIdShort),
+      html,
+    });
+
+    await supabase.from("notifications").insert({
+      profile_id: null,
+      order_id: orderId,
+      result_id: null,
+      channel: "email",
+      template: "order_confirmation_guest",
+      recipient: customerEmail,
+      status: "sent",
+    });
+
+    console.log(
+      `[checkout] guest confirmation email sent to ${customerEmail} for order ${orderId}`
+    );
+  } catch (err) {
+    console.error(
+      `[checkout] Failed to send guest confirmation email for ${orderId}:`,
+      err
+    );
+  }
+}

@@ -5,6 +5,7 @@ import {
   reassembleMetadata,
   materialiseOrder,
   sendOrderConfirmationEmail,
+  sendGuestOrderConfirmationEmail,
 } from "@/lib/checkout/materialise";
 import { twilioClient, TWILIO_FROM } from "@/lib/twilio";
 import type Stripe from "stripe";
@@ -214,6 +215,27 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     console.log(
       `[stripe-webhook] guest order ${orderId} stashed for post-payment account creation`
     );
+    // Send confirmation email immediately using Stripe session email.
+    // complete-purchase will send a second one after account creation
+    // with the portal link — that is intentional (first = receipt,
+    // second = portal access). If the customer never completes account
+    // creation, they at least have the receipt.
+    const guestEmail = session.customer_email ?? session.customer_details?.email;
+    if (guestEmail) {
+      try {
+        await sendGuestOrderConfirmationEmail(
+          supabase,
+          orderId,
+          payload,
+          guestEmail,
+          session.id
+        );
+      } catch (err) {
+        console.error("[stripe-webhook] guest confirmation email failed (non-fatal):", err);
+      }
+    } else {
+      console.warn(`[stripe-webhook] guest order ${orderId} has no email on Stripe session — confirmation email skipped`);
+    }
     return;
   }
 
