@@ -8,6 +8,7 @@ import {
   type OnboardingPerson,
   type OnboardingAssignment,
 } from "@/components/checkout/PostPurchaseOnboarding";
+import { ClearCartOnMount } from "@/components/checkout/ClearCartOnMount";
 
 export const dynamic = "force-dynamic";
 
@@ -149,11 +150,14 @@ export default async function CheckoutSuccessPage({
   };
 
   return (
-    <PostPurchaseOnboarding
-      alreadyLoggedIn={alreadyLoggedIn}
-      hasProfile={hasProfile}
-      waiverDone={waiverDone}
-      summary={summary}
-    />
+    <>
+      <ClearCartOnMount />
+      <PostPurchaseOnboarding
+        alreadyLoggedIn={alreadyLoggedIn}
+        hasProfile={hasProfile}
+        waiverDone={waiverDone}
+        summary={summary}
+      />
+    </>
   );
 }

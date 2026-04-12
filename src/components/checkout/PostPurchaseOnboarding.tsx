@@ -19,7 +19,6 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { ProfileForm } from "@/components/portal/ProfileForm";
 import { WaiverForm } from "@/components/portal/WaiverForm";
-import { useCart } from "@/components/cart/CartContext";
 
 const FLO_LABS_URL =
   "https://flolabsbooking.as.me/?appointmentType=84416067";
@@ -79,7 +78,6 @@ export function PostPurchaseOnboarding({
   summary,
 }: PostPurchaseOnboardingProps) {
   const router = useRouter();
-  const { clearCart } = useCart();
 
   // Determine starting step based on existing state
   const initialStep: Step = useMemo(() => {
@@ -90,16 +88,6 @@ export function PostPurchaseOnboarding({
   }, [alreadyLoggedIn, hasProfile, waiverDone]);
 
   const [step, setStep] = useState<Step>(initialStep);
-
-  // Clear cart on mount — payment is done
-  useEffect(() => {
-    try {
-      window.localStorage.removeItem("avovita-checkout-v1");
-    } catch {
-      // ignore
-    }
-    clearCart();
-  }, [clearCart]);
 
   const stepLabels = ["Create Account", "Your Information", "Sign Waiver", "Book Collection"];
 

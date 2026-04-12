@@ -73,6 +73,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = useCallback(() => {
     setCart([]);
+    // Eagerly nuke localStorage so even if hydration re-runs (e.g. in a
+    // different component tree) it won't resurrect stale cart items.
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+    }
   }, []);
 
   const value = useMemo<CartContextValue>(
