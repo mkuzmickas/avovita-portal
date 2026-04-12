@@ -64,11 +64,16 @@ create table if not exists public.tests (
 
 -- ─── accounts (extends Supabase Auth) ────────────────────────────────────────
 create table if not exists public.accounts (
-  id         uuid primary key references auth.users(id) on delete cascade,
-  email      text,
-  role       text not null default 'patient' check (role in ('patient','admin')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  id                    uuid primary key references auth.users(id) on delete cascade,
+  email                 text,
+  role                  text not null default 'patient' check (role in ('patient','admin')),
+  waiver_completed      boolean not null default false,
+  waiver_completed_at   timestamptz,
+  waiver_ip_address     text,
+  waiver_signed_name    text,
+  waiver_version        text default '1.0',
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
 );
 
 -- Trigger: auto-create an accounts row when a new Supabase Auth user signs up.

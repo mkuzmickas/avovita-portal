@@ -236,7 +236,8 @@ export async function materialiseOrder(
 export async function sendOrderConfirmationEmail(
   supabase: ServiceClient,
   orderId: string,
-  payload: OrderMetadataPayload
+  payload: OrderMetadataPayload,
+  stripeSessionId?: string
 ): Promise<void> {
   try {
     const accountId = payload.account_user_id;
@@ -301,6 +302,7 @@ export async function sendOrderConfirmationEmail(
       visitFeeTotal: payload.visit_fees.total,
       total: payload.total,
       portalUrl,
+      stripeSessionId,
     });
 
     await resend.emails.send({

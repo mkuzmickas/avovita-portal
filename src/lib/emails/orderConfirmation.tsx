@@ -28,6 +28,8 @@ export interface OrderConfirmationProps {
   total: number;
   portalUrl: string;
   floLabsUrl?: string;
+  /** Stripe session ID — used to build the waiver completion link. */
+  stripeSessionId?: string;
 }
 
 const FLO_LABS_URL = "https://flo-labs.janeapp.com/";
@@ -55,7 +57,12 @@ export function renderOrderConfirmationEmail(
     total,
     portalUrl,
     floLabsUrl = FLO_LABS_URL,
+    stripeSessionId,
   } = props;
+
+  const waiverUrl = stripeSessionId
+    ? `${portalUrl}/checkout/success?session_id=${encodeURIComponent(stripeSessionId)}`
+    : `${portalUrl}/portal`;
 
   const hasFastingTests = tests.some((t) => t.requires_fasting);
 
@@ -183,18 +190,32 @@ export function renderOrderConfirmationEmail(
 
           ${fastingNotice}
 
-          <!-- Next steps -->
+          <!-- Two things to do now -->
           <tr>
             <td style="padding: 20px 32px;">
-              <h3 style="margin: 0 0 12px 0; font-size: 18px; font-family: Georgia, serif; color: #111827;">Next steps</h3>
-              <p style="margin: 0 0 16px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
-                A FloLabs phlebotomist will visit your home to collect your specimen. Please book your appointment at a time that works for you.
-              </p>
-              <div style="text-align: center; margin: 20px 0;">
-                <a href="${floLabsUrl}" target="_blank" style="display: inline-block; background: #c4973a; color: #0a1a0d; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 15px;">
-                  Book FloLabs Appointment
-                </a>
-              </div>
+              <h3 style="margin: 0 0 16px 0; font-size: 18px; font-family: Georgia, serif; color: #111827;">Two things to do now</h3>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding: 0 0 12px 0; text-align: center;">
+                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #4b5563;">
+                      <strong style="color: #111827;">1.</strong> Complete your waiver (required before collection)
+                    </p>
+                    <a href="${waiverUrl}" target="_blank" style="display: inline-block; background: #c4973a; color: #0a1a0d; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 15px;">
+                      Complete your waiver
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 16px 0 0 0; text-align: center; border-top: 1px solid #e5e7eb;">
+                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #4b5563;">
+                      <strong style="color: #111827;">2.</strong> Book your FloLabs appointment
+                    </p>
+                    <a href="${floLabsUrl}" target="_blank" style="display: inline-block; background: #0f2614; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 15px;">
+                      Book FloLabs appointment
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 

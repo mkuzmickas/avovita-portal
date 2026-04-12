@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Protect /portal/** — require authentication
+  // ─── Protect /portal/** — require authentication ───────────────────
   if (pathname.startsWith("/portal")) {
     if (!user) {
       const redirectUrl = request.nextUrl.clone();
@@ -40,9 +40,31 @@ export async function middleware(request: NextRequest) {
       redirectUrl.searchParams.set("redirectTo", pathname);
       return NextResponse.redirect(redirectUrl);
     }
+
+    // Waiver check: if the patient hasn't completed their waiver,
+    // redirect to /portal/complete-waiver (unless they're already there).
+    if (!pathname.startsWith("/portal/complete-waiver")) {
+      const { data: account } = await supabase
+        .from("accounts")
+        .select("role, waiver_completed")
+        .eq("id", user.id)
+        .single();
+
+      const acct = account as {
+        role: string;
+        waiver_completed: boolean;
+      } | null;
+
+      // Only enforce waiver for patients, not admins
+      if (acct && acct.role === "patient" && !acct.waiver_completed) {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/portal/complete-waiver";
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
   }
 
-  // Protect /admin/** — require admin role
+  // ─── Protect /admin/** — require admin role ────────────────────────
   if (pathname.startsWith("/admin")) {
     if (!user) {
       const redirectUrl = request.nextUrl.clone();
@@ -51,7 +73,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    // Check admin role
     const { data: account } = await supabase
       .from("accounts")
       .select("role")
@@ -70,14 +91,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder files
-     * - api routes (handled individually)
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

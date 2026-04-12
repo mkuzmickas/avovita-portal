@@ -8,6 +8,9 @@ import {
   MapPin,
   Lock,
   AlertCircle,
+  ChevronDown,
+  Tag,
+  CheckCircle,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type {
@@ -48,6 +51,13 @@ export function Step4Review({
 }: Step4Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoInput, setPromoInput] = useState("");
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
+  const testModeEnabled =
+    process.env.NEXT_PUBLIC_ENABLE_TEST_MODE === "true";
 
   const visitFees = useMemo(
     () => computeVisitFees(persons.length),
@@ -69,6 +79,21 @@ export function Step4Review({
     return m;
   }, [assignments, persons]);
 
+  const handleApplyPromo = () => {
+    setPromoError(null);
+    if (!testModeEnabled) {
+      setPromoError("Promo codes are not currently available.");
+      return;
+    }
+    if (promoInput.trim().toUpperCase() === "AVOVITA-TEST") {
+      setPromoApplied(true);
+      setPromoError(null);
+    } else {
+      setPromoError("Invalid promo code.");
+      setPromoApplied(false);
+    }
+  };
+
   const handlePay = async () => {
     setSubmitting(true);
     setError(null);
@@ -88,6 +113,7 @@ export function Step4Review({
       discount_cad: discount.total,
       total,
       account_user_id: accountUserId,
+      promo_code: promoApplied ? "AVOVITA-TEST" : undefined,
     };
 
     try {
@@ -336,11 +362,97 @@ export function Step4Review({
         </div>
       </section>
 
+      {/* Promo code section — only shown when test mode is enabled */}
+      {testModeEnabled && (
+        <section className="mb-5">
+          <button
+            type="button"
+            onClick={() => setPromoOpen((v) => !v)}
+            className="flex items-center gap-2 text-sm font-medium mb-2 cursor-pointer"
+            style={{ color: "#e8d5a3" }}
+          >
+            <Tag className="w-4 h-4" style={{ color: "#6ab04c" }} />
+            Have a promo code?
+            <ChevronDown
+              className="w-3.5 h-3.5 transition-transform"
+              style={{
+                color: "#6ab04c",
+                transform: promoOpen ? "rotate(180deg)" : "rotate(0deg)",
+              }}
+            />
+          </button>
+          {promoOpen && (
+            <div
+              className="rounded-lg border p-4"
+              style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+            >
+              {promoApplied ? (
+                <div
+                  className="flex items-center gap-2 p-3 rounded-lg border"
+                  style={{
+                    backgroundColor: "rgba(141, 198, 63, 0.12)",
+                    borderColor: "#8dc63f",
+                  }}
+                >
+                  <CheckCircle
+                    className="w-5 h-5 shrink-0"
+                    style={{ color: "#8dc63f" }}
+                  />
+                  <div>
+                    <p
+                      className="text-sm font-semibold"
+                      style={{ color: "#8dc63f" }}
+                    >
+                      Test code applied — 100% discount
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "#6ab04c" }}>
+                      No payment will be charged. The order will process
+                      normally.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promoInput}
+                    onChange={(e) => {
+                      setPromoInput(e.target.value);
+                      setPromoError(null);
+                    }}
+                    placeholder="Enter promo code"
+                    className="mf-input flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyPromo}
+                    className="mf-btn-secondary px-4 py-2 shrink-0"
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
+              {promoError && (
+                <p
+                  className="text-xs mt-2"
+                  style={{ color: "#e05252" }}
+                >
+                  {promoError}
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
       <p className="text-xs mb-5" style={{ color: "#6ab04c" }}>
-        Payment is processed securely by Stripe.{" "}
-        {accountUserId
-          ? "Your order will be linked to your existing account."
-          : "You will be prompted to create your AvoVita account after payment to access your results."}
+        {promoApplied
+          ? "Test mode — $0.00 checkout. The order will be created with all notifications firing normally."
+          : `Payment is processed securely by Stripe. ${
+              accountUserId
+                ? "Your order will be linked to your existing account."
+                : "You will be prompted to create your AvoVita account after payment to access your results."
+            }`}
       </p>
 
       {error && (

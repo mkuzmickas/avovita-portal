@@ -63,4 +63,6 @@ export interface CheckoutPayload {
   discount_cad: number;
   total: number;
   account_user_id: string | null;
+  /** Test promo code — only honoured when NEXT_PUBLIC_ENABLE_TEST_MODE=true. */
+  promo_code?: string;
 }

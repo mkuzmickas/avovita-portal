@@ -23,6 +23,8 @@ export type AdminPatientRow = {
   id: string;
   email: string | null;
   created_at: string;
+  waiver_completed: boolean;
+  waiver_completed_at: string | null;
   profiles: AdminPatientProfile[];
   ordersCount: number;
   primaryName: string;
@@ -32,12 +34,11 @@ export type AdminPatientRow = {
 export default async function AdminPatientsPage() {
   const service = createServiceRoleClient();
 
-  // Accounts with role=patient + their profiles
   const { data: accountsRaw } = await service
     .from("accounts")
     .select(
       `
-      id, email, created_at,
+      id, email, created_at, waiver_completed, waiver_completed_at,
       profiles:patient_profiles(
         id, first_name, last_name, date_of_birth, biological_sex,
         phone, address_line1, address_line2, city, province, postal_code,
@@ -52,13 +53,14 @@ export default async function AdminPatientsPage() {
     id: string;
     email: string | null;
     created_at: string;
+    waiver_completed: boolean;
+    waiver_completed_at: string | null;
     profiles: AdminPatientProfile[];
   };
 
   const accounts = (accountsRaw ?? []) as unknown as RawAccount[];
   const accountIds = accounts.map((a) => a.id);
 
-  // Order counts per account (one query)
   const orderCountMap = new Map<string, number>();
   if (accountIds.length > 0) {
     const { data: ordersForCount } = await service
@@ -86,6 +88,8 @@ export default async function AdminPatientsPage() {
       id: account.id,
       email: account.email,
       created_at: account.created_at,
+      waiver_completed: account.waiver_completed,
+      waiver_completed_at: account.waiver_completed_at,
       profiles: account.profiles,
       ordersCount: orderCountMap.get(account.id) ?? 0,
       primaryName,
@@ -93,9 +97,13 @@ export default async function AdminPatientsPage() {
     };
   });
 
+  const waiverPendingCount = patients.filter(
+    (p) => !p.waiver_completed
+  ).length;
+
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8 flex items-end justify-between">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="mb-8 flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1
             className="font-heading text-3xl font-semibold"
@@ -110,16 +118,37 @@ export default async function AdminPatientsPage() {
             Manage patient accounts and profiles.
           </p>
         </div>
-        <div
-          className="rounded-lg border px-4 py-2"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
-        >
-          <p className="text-xs" style={{ color: "#6ab04c" }}>
-            Total Patients
-          </p>
-          <p className="text-xl font-semibold" style={{ color: "#c4973a" }}>
-            {patients.length}
-          </p>
+        <div className="flex items-center gap-3">
+          {waiverPendingCount > 0 && (
+            <div
+              className="rounded-lg border px-4 py-2"
+              style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+            >
+              <p className="text-xs" style={{ color: "#c4973a" }}>
+                Waiver Pending
+              </p>
+              <p
+                className="text-xl font-semibold"
+                style={{ color: "#c4973a" }}
+              >
+                {waiverPendingCount}
+              </p>
+            </div>
+          )}
+          <div
+            className="rounded-lg border px-4 py-2"
+            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          >
+            <p className="text-xs" style={{ color: "#6ab04c" }}>
+              Total Patients
+            </p>
+            <p
+              className="text-xl font-semibold"
+              style={{ color: "#c4973a" }}
+            >
+              {patients.length}
+            </p>
+          </div>
         </div>
       </div>
 

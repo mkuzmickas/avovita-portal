@@ -2,12 +2,14 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, ChevronDown, Baby, ArrowRight } from "lucide-react";
+import { Search, ChevronDown, Baby, ArrowRight, CheckCircle, Clock } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type {
   AdminPatientRow,
   AdminPatientProfile,
 } from "@/app/(admin)/admin/patients/page";
+
+type WaiverFilter = "all" | "complete" | "pending";
 
 interface AdminPatientsTableProps {
   patients: AdminPatientRow[];
@@ -15,12 +17,18 @@ interface AdminPatientsTableProps {
 
 export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [waiverFilter, setWaiverFilter] = useState<WaiverFilter>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return patients;
     return patients.filter((p) => {
+      // Waiver filter
+      if (waiverFilter === "complete" && !p.waiver_completed) return false;
+      if (waiverFilter === "pending" && p.waiver_completed) return false;
+
+      // Search
+      if (!q) return true;
       if (p.primaryName.toLowerCase().includes(q)) return true;
       if (p.email?.toLowerCase().includes(q)) return true;
       for (const profile of p.profiles) {
@@ -29,16 +37,23 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
       }
       return false;
     });
-  }, [patients, searchQuery]);
+  }, [patients, searchQuery, waiverFilter]);
 
   const toggle = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
+  const filterBtnStyle = (active: boolean) => ({
+    backgroundColor: active ? "#c4973a" : "transparent",
+    color: active ? "#0a1a0d" : "#e8d5a3",
+    borderColor: active ? "#c4973a" : "#2d6b35",
+  });
+
   return (
     <>
-      <div className="mb-4">
-        <div className="relative max-w-md">
+      {/* Controls: search + waiver filter */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="relative flex-1 max-w-md">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
             style={{ color: "#6ab04c" }}
@@ -50,6 +65,25 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
             placeholder="Search by patient name or email…"
             className="mf-input pl-10"
           />
+        </div>
+        <div className="flex gap-1">
+          {(
+            [
+              { key: "all", label: "All Patients" },
+              { key: "complete", label: "Waiver Complete" },
+              { key: "pending", label: "Waiver Pending" },
+            ] as const
+          ).map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setWaiverFilter(key)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+              style={filterBtnStyle(waiverFilter === key)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -67,6 +101,7 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
                   "Phone",
                   "Profiles",
                   "Orders",
+                  "Waiver",
                   "Member Since",
                   "",
                 ].map((h, i) => (
@@ -87,7 +122,7 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-6 py-16 text-center"
                     style={{
                       backgroundColor: "#0a1a0d",
@@ -162,6 +197,26 @@ function PatientRow({
         <td className="px-5 py-4" style={{ color: "#c4973a", fontWeight: 600 }}>
           {patient.ordersCount}
         </td>
+        <td className="px-5 py-4 whitespace-nowrap">
+          {patient.waiver_completed ? (
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="w-3.5 h-3.5" style={{ color: "#8dc63f" }} />
+              <div>
+                <span className="text-xs font-medium" style={{ color: "#8dc63f" }}>Signed</span>
+                {patient.waiver_completed_at && (
+                  <p className="text-[10px]" style={{ color: "#6ab04c" }}>
+                    {formatDate(patient.waiver_completed_at)}
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" style={{ color: "#c4973a" }} />
+              <span className="text-xs font-medium" style={{ color: "#c4973a" }}>Pending</span>
+            </div>
+          )}
+        </td>
         <td
           className="px-5 py-4 text-xs whitespace-nowrap"
           style={{ color: "#6ab04c" }}
@@ -181,7 +236,7 @@ function PatientRow({
 
       {isExpanded && (
         <tr style={{ backgroundColor: rowBg }}>
-          <td colSpan={7} className="p-0">
+          <td colSpan={8} className="p-0">
             <div
               className="px-6 py-5 border-t"
               style={{

@@ -89,6 +89,11 @@ export interface Account {
   id: string;
   email: string | null;
   role: AccountRole;
+  waiver_completed: boolean;
+  waiver_completed_at: string | null;
+  waiver_ip_address: string | null;
+  waiver_signed_name: string | null;
+  waiver_version: string | null;
   created_at: string;
   updated_at: string;
 }

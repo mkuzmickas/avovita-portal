@@ -285,20 +285,49 @@ export async function POST(request: NextRequest) {
     }
     void accountHolder; // We collect email at success-page time for guests
 
+    // ─── Handle test promo code ────────────────────────────────────
+    // AVOVITA-TEST applies a 100% coupon. Only works when the
+    // NEXT_PUBLIC_ENABLE_TEST_MODE env var is "true".
+    const testModeEnabled =
+      process.env.NEXT_PUBLIC_ENABLE_TEST_MODE === "true";
+    const promoCode = body.promo_code?.trim().toUpperCase();
+    const applyTestDiscount =
+      testModeEnabled && promoCode === "AVOVITA-TEST";
+
+    let discounts:
+      | Array<{ coupon: string }>
+      | undefined;
+
+    if (applyTestDiscount) {
+      // Create a one-time 100% off coupon dynamically
+      const coupon = await stripe.coupons.create({
+        percent_off: 100,
+        duration: "once",
+        name: "AVOVITA-TEST (100% off)",
+        max_redemptions: 1,
+      });
+      discounts = [{ coupon: coupon.id }];
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "cad",
       line_items: lineItems,
+      ...(discounts ? { discounts } : {}),
       success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/checkout`,
       customer_email: customerEmail,
       metadata,
-      payment_intent_data: {
-        metadata: {
-          version: "1",
-          account_user_id: body.account_user_id ?? "",
-        },
-      },
+      ...(discounts
+        ? {}
+        : {
+            payment_intent_data: {
+              metadata: {
+                version: "1",
+                account_user_id: body.account_user_id ?? "",
+              },
+            },
+          }),
     });
 
     return NextResponse.json({ url: session.url, session_id: session.id });

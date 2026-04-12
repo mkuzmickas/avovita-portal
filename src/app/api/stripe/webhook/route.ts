@@ -12,6 +12,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
+ * Feature flag for FloLabs requisition emails. Disabled by default —
+ * set FLOLABS_NOTIFICATIONS_ENABLED=true in Vercel env vars when
+ * ready to go live. Patient confirmation emails and admin SMS
+ * notifications fire regardless of this flag.
+ */
+const FLOLABS_NOTIFICATIONS_ENABLED =
+  process.env.FLOLABS_NOTIFICATIONS_ENABLED === "true";
+
+/**
  * Stripe webhook for the multi-person checkout flow.
  *
  * Always returns 200 once the signature is verified — downstream errors
@@ -128,5 +137,20 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
   // Logged-in path: materialise + email
   await materialiseOrder(supabase, orderId, payload);
-  await sendOrderConfirmationEmail(supabase, orderId, payload);
+  await sendOrderConfirmationEmail(supabase, orderId, payload, session.id);
+
+  // FloLabs requisition email — gated behind feature flag
+  if (FLOLABS_NOTIFICATIONS_ENABLED) {
+    try {
+      const { sendFloLabsRequisition } = await import(
+        "@/lib/emails/floLabsRequisition"
+      );
+      await sendFloLabsRequisition(supabase, orderId, payload);
+    } catch (err) {
+      console.error(
+        `[stripe-webhook] FloLabs requisition email failed for order ${orderId}:`,
+        err
+      );
+    }
+  }
 }
