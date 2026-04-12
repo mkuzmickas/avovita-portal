@@ -139,6 +139,13 @@ export default async function CheckoutSuccessPage({
     persons,
     assignments,
     collectionCity: payload.collection_address.city,
+    collectionAddress: {
+      address_line1: payload.collection_address.address_line1,
+      address_line2: payload.collection_address.address_line2,
+      city: payload.collection_address.city,
+      province: payload.collection_address.province,
+      postal_code: payload.collection_address.postal_code,
+    },
   };
 
   return (

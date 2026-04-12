@@ -26,6 +26,24 @@ const CA_PROVINCES: Array<{ code: string; name: string }> = [
   { code: "YT", name: "Yukon" },
 ];
 
+/**
+ * Lightweight prefill shape — a subset of PatientProfile fields used to
+ * pre-populate the form from checkout metadata without requiring a full
+ * Supabase row to exist yet.
+ */
+export interface ProfilePrefillData {
+  first_name?: string;
+  last_name?: string;
+  date_of_birth?: string;
+  biological_sex?: "male" | "female" | "intersex";
+  phone?: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  province?: string;
+  postal_code?: string | null;
+}
+
 export interface ProfileFormProps {
   accountId: string;
   /** Mark this profile as the primary (first) profile on the account. */
@@ -34,6 +52,13 @@ export interface ProfileFormProps {
   redirectAfter?: string;
   /** Pass an existing profile to switch the form to edit mode. */
   existingProfile?: PatientProfile;
+  /**
+   * Pre-fill form fields from checkout metadata. Lower priority than
+   * existingProfile — if both are provided existingProfile wins.
+   */
+  prefillData?: ProfilePrefillData;
+  /** Override the submit button text (e.g. "Confirm and Continue"). */
+  submitLabel?: string;
   /**
    * Called after Supabase insert/update succeeds. Receives the saved
    * profile id so the caller can chain into a consent flow.
@@ -46,23 +71,29 @@ export function ProfileForm({
   isPrimary = false,
   redirectAfter,
   existingProfile,
+  prefillData,
+  submitLabel,
   onSuccess,
 }: ProfileFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // existingProfile takes priority, then prefillData, then empty defaults.
+  const src = existingProfile ?? prefillData;
+
   const [form, setForm] = useState({
-    first_name: existingProfile?.first_name ?? "",
-    last_name: existingProfile?.last_name ?? "",
-    date_of_birth: existingProfile?.date_of_birth ?? "",
-    biological_sex: existingProfile?.biological_sex ?? ("" as string),
-    phone: existingProfile?.phone ?? "",
-    address_line1: existingProfile?.address_line1 ?? "",
-    address_line2: existingProfile?.address_line2 ?? "",
-    city: existingProfile?.city ?? "",
-    province: existingProfile?.province ?? "AB",
-    postal_code: existingProfile?.postal_code ?? "",
+    first_name: src?.first_name ?? "",
+    last_name: src?.last_name ?? "",
+    date_of_birth: src?.date_of_birth ?? "",
+    biological_sex:
+      (existingProfile?.biological_sex ?? prefillData?.biological_sex ?? "") as string,
+    phone: src?.phone ?? "",
+    address_line1: src?.address_line1 ?? "",
+    address_line2: src?.address_line2 ?? "",
+    city: src?.city ?? "",
+    province: src?.province ?? "AB",
+    postal_code: src?.postal_code ?? "",
     is_minor: existingProfile?.is_minor ?? false,
   });
 
@@ -336,7 +367,7 @@ export function ProfileForm({
         className="mf-btn-primary w-full py-2.5"
       >
         {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-        {existingProfile ? "Save Changes" : "Create Profile"}
+        {submitLabel ?? (existingProfile ? "Save Changes" : "Create Profile")}
       </button>
     </form>
   );

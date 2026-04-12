@@ -41,6 +41,14 @@ export interface OnboardingAssignment {
   person_index: number;
 }
 
+export interface OnboardingCollectionAddress {
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  province: string;
+  postal_code: string;
+}
+
 export interface OnboardingSummary {
   sessionId: string;
   orderIdShort: string;
@@ -49,6 +57,7 @@ export interface OnboardingSummary {
   persons: OnboardingPerson[];
   assignments: OnboardingAssignment[];
   collectionCity: string;
+  collectionAddress: OnboardingCollectionAddress;
 }
 
 interface PostPurchaseOnboardingProps {
@@ -190,6 +199,7 @@ export function PostPurchaseOnboarding({
               accountHolderPerson={summary.persons.find(
                 (p) => p.is_account_holder
               )}
+              collectionAddress={summary.collectionAddress}
               onComplete={() => setStep(3)}
             />
           )}
@@ -384,9 +394,11 @@ function Step1CreateAccount({
 
 function Step2YourInfo({
   accountHolderPerson,
+  collectionAddress,
   onComplete,
 }: {
   accountHolderPerson: OnboardingPerson | undefined;
+  collectionAddress: OnboardingCollectionAddress;
   onComplete: () => void;
 }) {
   const [userId, setUserId] = useState<string | null>(null);
@@ -404,6 +416,30 @@ function Step2YourInfo({
     };
     load();
   }, []);
+
+  // Build prefill data from the checkout metadata so the patient
+  // doesn't have to re-enter their name / DOB / sex / address.
+  const hasPrefill = !!(
+    accountHolderPerson?.first_name && accountHolderPerson?.last_name
+  );
+
+  const prefillProfile = useMemo(() => {
+    if (!accountHolderPerson) return undefined;
+    return {
+      first_name: accountHolderPerson.first_name,
+      last_name: accountHolderPerson.last_name,
+      date_of_birth: accountHolderPerson.date_of_birth,
+      biological_sex: accountHolderPerson.biological_sex as
+        | "male"
+        | "female"
+        | "intersex",
+      address_line1: collectionAddress.address_line1 || null,
+      address_line2: collectionAddress.address_line2 || null,
+      city: collectionAddress.city || null,
+      province: collectionAddress.province || "AB",
+      postal_code: collectionAddress.postal_code || null,
+    };
+  }, [accountHolderPerson, collectionAddress]);
 
   if (loading || !userId) {
     return (
@@ -437,9 +473,31 @@ function Step2YourInfo({
         </p>
       </div>
 
+      {/* Pre-fill banner */}
+      {hasPrefill && (
+        <div
+          className="flex items-start gap-2.5 rounded-lg border px-4 py-3 mb-5"
+          style={{
+            backgroundColor: "#1a3d22",
+            borderColor: "#2d6b35",
+          }}
+        >
+          <CheckCircle
+            className="w-4 h-4 shrink-0 mt-0.5"
+            style={{ color: "#8dc63f" }}
+          />
+          <p className="text-sm" style={{ color: "#e8d5a3" }}>
+            We&apos;ve pre-filled your information from your order — please
+            review and confirm.
+          </p>
+        </div>
+      )}
+
       <ProfileForm
         accountId={userId}
         isPrimary
+        prefillData={prefillProfile}
+        submitLabel={hasPrefill ? "Confirm and Continue" : undefined}
         onSuccess={() => onComplete()}
       />
     </div>
