@@ -31,20 +31,20 @@ const statusConfig: Record<
   },
   shipped: {
     label: "Shipped",
-    bg: "rgba(141, 198, 63, 0.125)",
-    text: "#8dc63f",
-    border: "#8dc63f",
+    bg: "rgba(59, 130, 246, 0.125)",
+    text: "#93c5fd",
+    border: "#3b82f6",
   },
   resulted: {
     label: "Resulted",
-    bg: "rgba(45, 107, 53, 0.125)",
-    text: "#8dc63f",
-    border: "#2d6b35",
+    bg: "rgba(196, 151, 58, 0.125)",
+    text: "#c4973a",
+    border: "#c4973a",
   },
   complete: {
     label: "Complete",
-    bg: "rgba(45, 107, 53, 0.125)",
-    text: "#6ab04c",
+    bg: "rgba(45, 107, 53, 0.2)",
+    text: "#8dc63f",
     border: "#2d6b35",
   },
   cancelled: {

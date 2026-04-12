@@ -11,6 +11,7 @@ import {
   Mail,
   FlaskConical,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type { PendingOrder } from "@/app/(admin)/admin/results/page";
@@ -56,9 +57,8 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
   const [resultStatus, setResultStatus] = useState<"partial" | "final">(
     "final"
   );
-  const [labRef, setLabRef] = useState(
-    result?.lab_reference_number ?? ""
-  );
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -89,7 +89,6 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
     const formData = new FormData();
     formData.append("order_id", order.orderId);
     formData.append("result_status", resultStatus);
-    if (labRef.trim()) formData.append("lab_reference_number", labRef.trim());
     formData.append("file", selectedFile);
 
     try {
@@ -110,7 +109,7 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
         file_name: selectedFile.name,
         result_status: resultStatus,
         uploaded_at: new Date().toISOString(),
-        lab_reference_number: labRef.trim() || null,
+        lab_reference_number: null,
       });
       setJustUploaded(true);
       setShowUploadZone(false);
@@ -120,6 +119,33 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!result) return;
+    setDeleting(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/results/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ result_id: result.id }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Delete failed");
+      }
+
+      setResult(null);
+      setConfirmDelete(false);
+      setShowUploadZone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -137,17 +163,11 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
         style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
       >
         <div className="flex items-center gap-3 flex-wrap">
-          <span
-            className="font-mono text-xs"
-            style={{ color: "#6ab04c" }}
-          >
+          <span className="font-mono text-xs" style={{ color: "#6ab04c" }}>
             Order #{order.orderIdShort}
           </span>
           <span className="text-xs" style={{ color: "#6ab04c" }}>·</span>
-          <p
-            className="text-sm font-semibold"
-            style={{ color: "#ffffff" }}
-          >
+          <p className="text-sm font-semibold" style={{ color: "#ffffff" }}>
             {order.patientName}
           </p>
           {order.patientEmail !== "—" && (
@@ -161,14 +181,13 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
           )}
         </div>
         <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
-          Placed {formatDate(order.createdAt)} ·{" "}
-          {order.mayoTests.length} Mayo{" "}
+          Placed {formatDate(order.createdAt)} · {order.mayoTests.length} Mayo{" "}
           {order.mayoTests.length === 1 ? "test" : "tests"}
         </p>
       </div>
 
-      {/* Mayo tests list */}
       <div className="px-5 sm:px-6 py-4">
+        {/* Mayo tests */}
         <p
           className="text-xs uppercase tracking-wider mb-2 font-semibold"
           style={{ color: "#6ab04c" }}
@@ -196,10 +215,10 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
           ))}
         </ul>
 
-        {/* Existing result status indicator */}
-        {hasResult && !showUploadZone && (
+        {/* Result on file indicator */}
+        {hasResult && !showUploadZone && !confirmDelete && (
           <div
-            className="flex items-center justify-between gap-3 rounded-lg border p-4 mb-4"
+            className="flex items-center justify-between gap-3 rounded-lg border p-4 mb-4 flex-wrap"
             style={{
               backgroundColor: "#0f2614",
               borderColor: isPartial ? "#c4973a" : "#8dc63f",
@@ -216,31 +235,86 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
                   className="text-sm font-semibold"
                   style={{ color: isPartial ? "#c4973a" : "#8dc63f" }}
                 >
-                  {isPartial
-                    ? "Partial results on file"
-                    : "Final results on file"}
+                  {isPartial ? "Partial results on file" : "Final results on file"}
                 </p>
                 <p className="text-xs" style={{ color: "#6ab04c" }}>
                   Uploaded {formatDate(result!.uploaded_at)}
-                  {result!.file_name && (
-                    <> · {result!.file_name}</>
-                  )}
+                  {result!.file_name && <> · {result!.file_name}</>}
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowUploadZone(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors shrink-0"
-              style={{
-                color: "#e8d5a3",
-                borderColor: "#2d6b35",
-                backgroundColor: "transparent",
-              }}
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Replace PDF
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowUploadZone(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border shrink-0"
+                style={{
+                  color: "#e8d5a3",
+                  borderColor: "#2d6b35",
+                  backgroundColor: "transparent",
+                }}
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Replace PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border shrink-0"
+                style={{
+                  color: "#e05252",
+                  borderColor: "#e05252",
+                  backgroundColor: "transparent",
+                }}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Delete confirmation */}
+        {confirmDelete && (
+          <div
+            className="rounded-lg border p-4 mb-4"
+            style={{
+              backgroundColor: "rgba(224, 82, 82, 0.08)",
+              borderColor: "#e05252",
+            }}
+          >
+            <p className="text-sm mb-3" style={{ color: "#e05252" }}>
+              Are you sure you want to delete this result? The patient will
+              lose access to this PDF.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold"
+                style={{
+                  backgroundColor: "#e05252",
+                  color: "#ffffff",
+                  opacity: deleting ? 0.6 : 1,
+                }}
+              >
+                {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Confirm Delete
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold border"
+                style={{
+                  color: "#e8d5a3",
+                  borderColor: "#2d6b35",
+                  backgroundColor: "transparent",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
@@ -253,15 +327,9 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
               borderColor: "#8dc63f",
             }}
           >
-            <CheckCircle
-              className="w-5 h-5 shrink-0"
-              style={{ color: "#8dc63f" }}
-            />
+            <CheckCircle className="w-5 h-5 shrink-0" style={{ color: "#8dc63f" }} />
             <div>
-              <p
-                className="text-sm font-semibold"
-                style={{ color: "#ffffff" }}
-              >
+              <p className="text-sm font-semibold" style={{ color: "#ffffff" }}>
                 Results uploaded — patient notified by email and SMS
               </p>
               <p className="text-xs" style={{ color: "#8dc63f" }}>
@@ -274,27 +342,15 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
         {/* Upload zone */}
         {showUploadZone && (
           <div className="space-y-3">
-            {/* Drop zone */}
             <div
               onDrop={handleDrop}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragging(true);
-              }}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onClick={() => inputRef.current?.click()}
               className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors"
               style={{
-                borderColor: dragging
-                  ? "#c4973a"
-                  : selectedFile
-                  ? "#8dc63f"
-                  : "#2d6b35",
-                backgroundColor: dragging
-                  ? "#1f4a28"
-                  : selectedFile
-                  ? "#1a3d22"
-                  : "#0f2614",
+                borderColor: dragging ? "#c4973a" : selectedFile ? "#8dc63f" : "#2d6b35",
+                backgroundColor: dragging ? "#1f4a28" : selectedFile ? "#1a3d22" : "#0f2614",
               }}
             >
               <input
@@ -309,14 +365,8 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
               />
               {selectedFile ? (
                 <div className="flex items-center justify-center gap-2">
-                  <FileText
-                    className="w-5 h-5"
-                    style={{ color: "#8dc63f" }}
-                  />
-                  <span
-                    className="text-sm font-medium truncate max-w-xs"
-                    style={{ color: "#ffffff" }}
-                  >
+                  <FileText className="w-5 h-5" style={{ color: "#8dc63f" }} />
+                  <span className="text-sm font-medium truncate max-w-xs" style={{ color: "#ffffff" }}>
                     {selectedFile.name}
                   </span>
                   <span className="text-xs" style={{ color: "#6ab04c" }}>
@@ -325,18 +375,9 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
                 </div>
               ) : (
                 <div>
-                  <Upload
-                    className="w-8 h-8 mx-auto mb-2"
-                    style={{ color: "#6ab04c" }}
-                  />
+                  <Upload className="w-8 h-8 mx-auto mb-2" style={{ color: "#6ab04c" }} />
                   <p className="text-sm" style={{ color: "#e8d5a3" }}>
-                    <span
-                      className="font-semibold"
-                      style={{ color: "#c4973a" }}
-                    >
-                      Drop PDF here
-                    </span>{" "}
-                    or click to upload
+                    <span className="font-semibold" style={{ color: "#c4973a" }}>Drop PDF here</span> or click to upload
                   </p>
                   <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
                     One PDF for all Mayo tests in this order
@@ -345,19 +386,11 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
               )}
             </div>
 
-            {/* Result status toggle */}
+            {/* Status toggle */}
             <div className="flex items-center gap-4">
-              <p
-                className="text-xs font-medium"
-                style={{ color: "#e8d5a3" }}
-              >
-                Status:
-              </p>
+              <p className="text-xs font-medium" style={{ color: "#e8d5a3" }}>Status:</p>
               {(["final", "partial"] as const).map((s) => (
-                <label
-                  key={s}
-                  className="flex items-center gap-1.5 cursor-pointer"
-                >
+                <label key={s} className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="radio"
                     name={`status-${order.orderId}`}
@@ -369,12 +402,9 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
                   <span
                     className="text-xs font-medium capitalize"
                     style={{
-                      color:
-                        resultStatus === s
-                          ? s === "partial"
-                            ? "#c4973a"
-                            : "#8dc63f"
-                          : "#6ab04c",
+                      color: resultStatus === s
+                        ? s === "partial" ? "#c4973a" : "#8dc63f"
+                        : "#6ab04c",
                     }}
                   >
                     {s === "final" ? "Final Results" : "Partial Results"}
@@ -383,27 +413,13 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
               ))}
             </div>
 
-            {/* Lab reference */}
-            <input
-              type="text"
-              value={labRef}
-              onChange={(e) => setLabRef(e.target.value)}
-              placeholder="Lab reference number (optional)"
-              className="mf-input"
-            />
-
-            {/* Error */}
             {error && (
-              <div
-                className="flex items-center gap-2 text-sm"
-                style={{ color: "#e05252" }}
-              >
+              <div className="flex items-center gap-2 text-sm" style={{ color: "#e05252" }}>
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 {error}
               </div>
             )}
 
-            {/* Upload button */}
             {selectedFile && (
               <button
                 type="button"
@@ -412,28 +428,17 @@ function OrderUploadCard({ order }: { order: PendingOrder }) {
                 className="mf-btn-primary w-full py-2.5"
               >
                 {uploading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Uploading & notifying patient…
-                  </>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Uploading & notifying patient…</>
                 ) : (
-                  <>
-                    <Upload className="w-4 h-4" />
-                    Upload and Notify
-                  </>
+                  <><Upload className="w-4 h-4" /> Upload and Notify</>
                 )}
               </button>
             )}
 
-            {/* Cancel replace */}
             {hasResult && (
               <button
                 type="button"
-                onClick={() => {
-                  setShowUploadZone(false);
-                  setSelectedFile(null);
-                  setError(null);
-                }}
+                onClick={() => { setShowUploadZone(false); setSelectedFile(null); setError(null); }}
                 className="w-full text-center text-xs font-medium py-1"
                 style={{ color: "#6ab04c" }}
               >

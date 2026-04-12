@@ -2,7 +2,16 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  Search,
+  X,
+  Truck,
+  ExternalLink,
+  CheckCircle,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { AdminOrderStatusUpdater } from "@/components/AdminOrderStatusUpdater";
@@ -24,45 +33,113 @@ const STATUS_OPTIONS: OrderStatus[] = [
   "cancelled",
 ];
 
+const SHIPPABLE_STATUSES: OrderStatus[] = ["confirmed", "collected"];
+
+function fedexUrl(tracking: string) {
+  return `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(tracking)}`;
+}
+
 export function AdminOrdersTable({
   orders,
   patientFilter,
 }: AdminOrdersTableProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showShipModal, setShowShipModal] = useState(false);
+  const [shipTracking, setShipTracking] = useState("");
+  const [shipDate, setShipDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
+  const [shipping, setShipping] = useState(false);
+  const [shipError, setShipError] = useState<string | null>(null);
+  const [shipSuccess, setShipSuccess] = useState<string | null>(null);
 
   const filteredOrders = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return orders.filter((order) => {
-      // Status filter
-      if (statusFilter !== "all" && order.status !== statusFilter) {
-        return false;
-      }
-
+      if (statusFilter !== "all" && order.status !== statusFilter) return false;
       if (!q) return true;
-
-      // Match by order ID prefix
       if (order.id.toLowerCase().includes(q)) return true;
-
-      // Match by email
       if (order.account?.email?.toLowerCase().includes(q)) return true;
-
-      // Match by patient name (any profile on the order)
       for (const line of order.order_lines) {
         if (!line.profile) continue;
-        const fullName = `${line.profile.first_name} ${line.profile.last_name}`.toLowerCase();
-        if (fullName.includes(q)) return true;
+        const fn = `${line.profile.first_name} ${line.profile.last_name}`.toLowerCase();
+        if (fn.includes(q)) return true;
       }
-
       return false;
     });
   }, [orders, searchQuery, statusFilter]);
 
-  const isEmptyDb = orders.length === 0;
+  const eligibleIds = useMemo(
+    () =>
+      new Set(
+        filteredOrders
+          .filter((o) => SHIPPABLE_STATUSES.includes(o.status))
+          .map((o) => o.id)
+      ),
+    [filteredOrders]
+  );
+
+  const toggleOne = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === eligibleIds.size && eligibleIds.size > 0) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(eligibleIds));
+    }
+  };
+
+  const handleShip = async () => {
+    if (!shipTracking.trim()) {
+      setShipError("FedEx tracking number is required.");
+      return;
+    }
+    setShipping(true);
+    setShipError(null);
+
+    try {
+      const res = await fetch("/api/orders/ship", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_ids: Array.from(selected),
+          tracking_number: shipTracking.trim(),
+          shipping_date: shipDate,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Ship failed");
+      }
+      const data = await res.json();
+      setShowShipModal(false);
+      setSelected(new Set());
+      setShipTracking("");
+      setShipSuccess(
+        `${data.shipped} order(s) marked as shipped. Patients notified.`
+      );
+      setTimeout(() => setShipSuccess(null), 6000);
+      router.refresh();
+    } catch (err) {
+      setShipError(err instanceof Error ? err.message : "Failed to ship");
+    } finally {
+      setShipping(false);
+    }
+  };
 
   return (
     <>
-      {/* Filter row */}
+      {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search
@@ -84,15 +161,9 @@ export function AdminOrdersTable({
           }
           className="mf-input sm:max-w-[200px] cursor-pointer"
         >
-          <option value="all" style={{ backgroundColor: "#0f2614" }}>
-            All statuses
-          </option>
+          <option value="all">All statuses</option>
           {STATUS_OPTIONS.map((s) => (
-            <option
-              key={s}
-              value={s}
-              style={{ backgroundColor: "#0f2614" }}
-            >
+            <option key={s} value={s}>
               {s.charAt(0).toUpperCase() + s.slice(1)}
             </option>
           ))}
@@ -113,12 +184,28 @@ export function AdminOrdersTable({
           </p>
           <Link
             href="/admin/orders"
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
             style={{ color: "#c4973a", border: "1px solid #c4973a" }}
           >
             <X className="w-3.5 h-3.5" />
             Clear filter
           </Link>
+        </div>
+      )}
+
+      {/* Ship success banner */}
+      {shipSuccess && (
+        <div
+          className="flex items-center gap-3 rounded-xl border px-4 py-3 mb-4"
+          style={{
+            backgroundColor: "rgba(141, 198, 63, 0.12)",
+            borderColor: "#8dc63f",
+          }}
+        >
+          <CheckCircle className="w-5 h-5 shrink-0" style={{ color: "#8dc63f" }} />
+          <p className="text-sm font-medium" style={{ color: "#8dc63f" }}>
+            {shipSuccess}
+          </p>
         </div>
       )}
 
@@ -131,34 +218,50 @@ export function AdminOrdersTable({
           <table className="w-full text-sm">
             <thead>
               <tr style={{ backgroundColor: "#0f2614" }}>
-                {["Order ID", "Date", "Patient", "Tests", "Total", "Status"].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider"
-                      style={{
-                        color: "#c4973a",
-                        fontFamily: '"DM Sans", sans-serif',
-                      }}
-                    >
-                      {h}
-                    </th>
-                  )
-                )}
+                <th className="px-3 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={
+                      eligibleIds.size > 0 &&
+                      selected.size === eligibleIds.size
+                    }
+                    onChange={toggleAll}
+                    style={{ accentColor: "#c4973a" }}
+                    className="w-4 h-4"
+                    title="Select all shippable orders"
+                  />
+                </th>
+                {[
+                  "Order ID",
+                  "Date",
+                  "Patient",
+                  "Tests",
+                  "Total",
+                  "Tracking",
+                  "Status",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
+                    style={{
+                      color: "#c4973a",
+                      fontFamily: '"DM Sans", sans-serif',
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={8}
                     className="px-6 py-16 text-center"
-                    style={{
-                      backgroundColor: "#0a1a0d",
-                      color: "#6ab04c",
-                    }}
+                    style={{ backgroundColor: "#0a1a0d", color: "#6ab04c" }}
                   >
-                    {isEmptyDb
+                    {orders.length === 0
                       ? "No orders yet"
                       : "No orders match your search"}
                   </td>
@@ -175,6 +278,8 @@ export function AdminOrdersTable({
                     .map((l) => l.test?.name)
                     .filter(Boolean)
                     .join(", ");
+                  const isEligible = SHIPPABLE_STATUSES.includes(order.status);
+                  const isChecked = selected.has(order.id);
 
                   return (
                     <tr
@@ -184,26 +289,36 @@ export function AdminOrdersTable({
                         borderTop: "1px solid #1a3d22",
                       }}
                     >
+                      <td className="px-3 py-4">
+                        {isEligible ? (
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleOne(order.id)}
+                            style={{ accentColor: "#c4973a" }}
+                            className="w-4 h-4"
+                          />
+                        ) : (
+                          <span className="w-4 h-4 block" />
+                        )}
+                      </td>
                       <td
-                        className="px-5 py-4 font-mono text-xs whitespace-nowrap"
+                        className="px-4 py-4 font-mono text-xs whitespace-nowrap"
                         style={{ color: "#6ab04c" }}
                       >
                         #{order.id.slice(0, 8).toUpperCase()}
                       </td>
                       <td
-                        className="px-5 py-4 text-xs whitespace-nowrap"
+                        className="px-4 py-4 text-xs whitespace-nowrap"
                         style={{ color: "#e8d5a3" }}
                       >
                         {formatDate(order.created_at)}
                       </td>
-                      <td
-                        className="px-5 py-4"
-                        style={{ color: "#ffffff" }}
-                      >
+                      <td className="px-4 py-4" style={{ color: "#ffffff" }}>
                         {patientName}
                       </td>
                       <td
-                        className="px-5 py-4 max-w-[260px]"
+                        className="px-4 py-4 max-w-[220px]"
                         style={{ color: "#e8d5a3" }}
                       >
                         <p className="text-xs font-medium mb-0.5">
@@ -213,13 +328,8 @@ export function AdminOrdersTable({
                           {testNames || "—"}
                         </p>
                       </td>
-                      <td
-                        className="px-5 py-4 whitespace-nowrap"
-                      >
-                        <span
-                          className="font-semibold"
-                          style={{ color: "#c4973a" }}
-                        >
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className="font-semibold" style={{ color: "#c4973a" }}>
                           {order.total_cad != null
                             ? formatCurrency(order.total_cad)
                             : "—"}
@@ -229,13 +339,31 @@ export function AdminOrdersTable({
                             <div
                               className="text-[10px] font-medium mt-0.5"
                               style={{ color: "#8dc63f" }}
-                              title="Multi-test discount applied"
                             >
                               −{formatCurrency(order.discount_cad)} discount
                             </div>
                           )}
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {order.fedex_tracking_number ? (
+                          <a
+                            href={fedexUrl(order.fedex_tracking_number)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs font-medium"
+                            style={{ color: "#93c5fd" }}
+                          >
+                            <Truck className="w-3 h-3" />
+                            {order.fedex_tracking_number}
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        ) : (
+                          <span className="text-xs" style={{ color: "#6ab04c" }}>
+                            —
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
                         <AdminOrderStatusUpdater
                           orderId={order.id}
                           currentStatus={order.status}
@@ -254,6 +382,140 @@ export function AdminOrdersTable({
       <p className="mt-3 text-xs text-right" style={{ color: "#6ab04c" }}>
         Showing {filteredOrders.length} of {orders.length} orders
       </p>
+
+      {/* Sticky selection action bar */}
+      {selected.size > 0 && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-40 border-t"
+          style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+        >
+          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
+            <p className="text-sm flex-1" style={{ color: "#ffffff" }}>
+              <span className="font-semibold" style={{ color: "#c4973a" }}>
+                {selected.size}
+              </span>{" "}
+              order{selected.size !== 1 ? "s" : ""} selected
+            </p>
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="mf-btn-secondary px-4 py-2 text-xs"
+            >
+              Cancel Selection
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowShipModal(true)}
+              className="mf-btn-primary px-5 py-2"
+            >
+              <Truck className="w-4 h-4" />
+              Ship Selected
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Ship modal overlay */}
+      {showShipModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+        >
+          <div
+            className="rounded-2xl border w-full max-w-lg p-6"
+            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          >
+            <h2
+              className="font-heading text-2xl font-semibold mb-4"
+              style={{
+                color: "#ffffff",
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+              }}
+            >
+              Ship selected <span style={{ color: "#c4973a" }}>orders</span>
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1.5"
+                  style={{ color: "#e8d5a3" }}
+                >
+                  FedEx Tracking Number{" "}
+                  <span style={{ color: "#e05252" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={shipTracking}
+                  onChange={(e) => setShipTracking(e.target.value)}
+                  placeholder="e.g. 7489 2348 9823"
+                  className="mf-input"
+                />
+              </div>
+
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1.5"
+                  style={{ color: "#e8d5a3" }}
+                >
+                  Shipping Date
+                </label>
+                <input
+                  type="date"
+                  value={shipDate}
+                  onChange={(e) => setShipDate(e.target.value)}
+                  className="mf-input"
+                  style={{ colorScheme: "dark" }}
+                />
+              </div>
+
+              <p className="text-xs" style={{ color: "#e8d5a3" }}>
+                All {selected.size} selected order
+                {selected.size !== 1 ? "s" : ""} will be marked as shipped
+                and patients will be notified by email and SMS.
+              </p>
+
+              {shipError && (
+                <div
+                  className="flex items-center gap-2 p-3 rounded-lg text-sm border"
+                  style={{
+                    backgroundColor: "rgba(224, 82, 82, 0.12)",
+                    borderColor: "#e05252",
+                    color: "#e05252",
+                  }}
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {shipError}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowShipModal(false);
+                    setShipError(null);
+                  }}
+                  className="mf-btn-secondary flex-1 py-2.5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShip}
+                  disabled={shipping}
+                  className="mf-btn-primary flex-1 py-2.5"
+                >
+                  {shipping && (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  )}
+                  {shipping ? "Shipping…" : "Save and Notify"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

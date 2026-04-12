@@ -10,6 +10,8 @@ export type AdminOrderRow = {
   total_cad: number | null;
   subtotal_cad: number | null;
   discount_cad: number | null;
+  fedex_tracking_number: string | null;
+  shipped_at: string | null;
   created_at: string;
   account: { id: string; email: string | null } | null;
   order_lines: Array<{
@@ -37,7 +39,8 @@ export default async function AdminOrdersPage({
     .from("orders")
     .select(
       `
-      id, status, total_cad, subtotal_cad, discount_cad, created_at,
+      id, status, total_cad, subtotal_cad, discount_cad,
+      fedex_tracking_number, shipped_at, created_at,
       account:accounts(id, email),
       order_lines(
         id,

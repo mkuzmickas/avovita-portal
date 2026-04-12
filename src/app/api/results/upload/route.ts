@@ -201,6 +201,14 @@ export async function POST(request: NextRequest) {
       resultId = (insertedRaw as { id: string }).id;
     }
 
+    // Auto-sync order status with result status
+    const newOrderStatus =
+      resultStatus === "final" ? "complete" : "resulted";
+    await serviceClient
+      .from("orders")
+      .update({ status: newOrderStatus })
+      .eq("id", orderId);
+
     // Trigger notification with result_status
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";

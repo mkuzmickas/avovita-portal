@@ -148,6 +148,9 @@ create table if not exists public.orders (
   tax_cad                  numeric(10,2),
   total_cad                numeric(10,2),
   notes                    text,
+  fedex_tracking_number    text,
+  shipped_at               timestamptz,
+  shipping_date            date,
   created_at               timestamptz not null default now(),
   updated_at               timestamptz not null default now()
 );

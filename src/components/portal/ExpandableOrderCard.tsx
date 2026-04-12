@@ -7,6 +7,7 @@ import {
   ExternalLink,
   FileText,
   FlaskConical,
+  Truck,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
@@ -35,6 +36,8 @@ export type PortalOrder = {
   subtotal_cad: number | null;
   home_visit_fee_cad: number | null;
   notes: string | null;
+  fedex_tracking_number: string | null;
+  shipped_at: string | null;
   created_at: string;
   order_lines: PortalOrderLine[];
 };
@@ -157,6 +160,60 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
               >
                 <Calendar className="w-4 h-4" />
                 Book FloLabs Appointment
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          )}
+
+          {/* FedEx tracking — shown when shipped or later */}
+          {order.fedex_tracking_number && (
+            <div
+              className="mx-4 sm:mx-6 my-5 rounded-xl border p-4 sm:p-5"
+              style={{
+                backgroundColor: "rgba(59, 130, 246, 0.06)",
+                borderColor: "#3b82f6",
+              }}
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <Truck
+                  className="w-5 h-5 shrink-0 mt-0.5"
+                  style={{ color: "#93c5fd" }}
+                />
+                <div>
+                  <h4
+                    className="font-heading text-lg font-semibold mb-1"
+                    style={{
+                      color: "#ffffff",
+                      fontFamily: '"Cormorant Garamond", Georgia, serif',
+                    }}
+                  >
+                    Specimens shipped
+                  </h4>
+                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                    Your specimens are en route to the laboratory.
+                    {order.shipped_at && (
+                      <span style={{ color: "#6ab04c" }}>
+                        {" "}
+                        · Shipped {formatDate(order.shipped_at)}
+                      </span>
+                    )}
+                  </p>
+                  <p
+                    className="text-xs mt-1 font-mono"
+                    style={{ color: "#93c5fd" }}
+                  >
+                    Tracking: {order.fedex_tracking_number}
+                  </p>
+                </div>
+              </div>
+              <a
+                href={`https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(order.fedex_tracking_number)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mf-btn-primary w-full sm:w-auto sm:inline-flex px-5 py-2.5"
+              >
+                <Truck className="w-4 h-4" />
+                Track Shipment
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
