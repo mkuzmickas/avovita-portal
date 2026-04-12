@@ -8,6 +8,7 @@ import {
   sendGuestOrderConfirmationEmail,
 } from "@/lib/checkout/materialise";
 import { twilioClient, TWILIO_FROM } from "@/lib/twilio";
+import { resend } from "@/lib/resend";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -85,7 +86,6 @@ async function sendAdminSms(session: Stripe.Checkout.Session) {
 
   const adminPhones = [
     process.env.ADMIN_PHONE_NUMBER,
-    process.env.ADMIN_PHONE_NUMBER_2,
   ].filter((p): p is string => !!p && p.length > 5);
 
   if (adminPhones.length === 0) {
@@ -135,17 +135,87 @@ async function sendAdminSms(session: Stripe.Checkout.Session) {
   }
 }
 
+// ─── Admin email to Jenna — fires for EVERY paid checkout ────────────
+
+async function sendAdminNotificationEmail(session: Stripe.Checkout.Session) {
+  let patientName = "Unknown";
+  let lineItemCount = 0;
+  try {
+    const p = reassembleMetadata(
+      session.metadata as Record<string, string>
+    );
+    const holder = p?.persons?.find((per) => per.is_account_holder);
+    if (holder) patientName = `${holder.first_name} ${holder.last_name}`;
+    lineItemCount = p?.assignments?.length ?? 0;
+  } catch { /* ignore */ }
+
+  const amountCad = ((session.amount_total ?? 0) / 100).toFixed(2);
+
+  try {
+    console.log("[stripe-webhook] sending admin notification email to jenna@avovita.ca");
+    await resend.emails.send({
+      from: process.env.RESEND_FROM_ORDERS!,
+      to: "jenna@avovita.ca",
+      subject: "AvoVita — New Order Received",
+      html: `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px;">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#0a1a0d;border-radius:12px;overflow:hidden;">
+  <tr><td style="background:#0f2614;padding:28px 32px;text-align:center;border-bottom:3px solid #c4973a;">
+    <h1 style="margin:0;font-size:24px;font-family:Georgia,'Cormorant Garamond',serif;color:#ffffff;">AvoVita <span style="color:#c4973a;">Wellness</span></h1>
+    <p style="margin:6px 0 0;font-size:12px;color:#8dc63f;">NEW ORDER NOTIFICATION</p>
+  </td></tr>
+  <tr><td style="padding:32px;">
+    <h2 style="margin:0 0 16px;font-size:22px;font-family:Georgia,serif;color:#ffffff;">New Order Received</h2>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr><td style="padding:8px 0;color:#6ab04c;font-size:13px;border-bottom:1px solid #1a3d22;">Patient</td>
+          <td style="padding:8px 0;color:#ffffff;font-size:14px;font-weight:600;text-align:right;border-bottom:1px solid #1a3d22;">${escapeHtml(patientName)}</td></tr>
+      <tr><td style="padding:8px 0;color:#6ab04c;font-size:13px;border-bottom:1px solid #1a3d22;">Tests</td>
+          <td style="padding:8px 0;color:#ffffff;font-size:14px;font-weight:600;text-align:right;border-bottom:1px solid #1a3d22;">${lineItemCount}</td></tr>
+      <tr><td style="padding:8px 0;color:#6ab04c;font-size:13px;border-bottom:1px solid #1a3d22;">Total</td>
+          <td style="padding:8px 0;color:#c4973a;font-size:14px;font-weight:600;text-align:right;border-bottom:1px solid #1a3d22;">$${amountCad} CAD</td></tr>
+    </table>
+    <div style="text-align:center;">
+      <a href="https://portal.avovita.ca/admin/orders" style="display:inline-block;background:#c4973a;color:#0a1a0d;padding:12px 28px;text-decoration:none;border-radius:6px;font-weight:700;font-size:14px;">View in Admin Panel</a>
+    </div>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`,
+    });
+    console.log("[stripe-webhook] admin email sent to jenna@avovita.ca");
+  } catch (err) {
+    console.error(
+      "[stripe-webhook] admin email to jenna@avovita.ca failed:",
+      JSON.stringify(err)
+    );
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const supabase = createServiceRoleClient();
 
-  // ─── 1. Admin SMS — fires immediately, before any DB work ───────
-  // Independent try/catch: SMS failure must never block the order.
+  // ─── 1. Admin notifications — fire immediately, before any DB work ──
   try {
     await sendAdminSms(session);
   } catch (err) {
     console.error("[stripe-webhook] admin SMS error (non-fatal):", err);
+  }
+  try {
+    await sendAdminNotificationEmail(session);
+  } catch (err) {
+    console.error("[stripe-webhook] admin email error (non-fatal):", err);
   }
 
   // ─── 2. Idempotency — skip if order already exists ──────────────

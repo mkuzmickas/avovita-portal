@@ -13,21 +13,33 @@ interface WaiverFormProps {
   onComplete: () => void;
 }
 
-const WAIVER_TEXT = `AVOVITA WELLNESS CLIENT CONSENT AND SERVICE ACKNOWLEDGEMENT
+const WAIVER_TEXT = `AVOVITA WELLNESS CLIENT CONSENT, RELEASE OF LIABILITY, AND INDEMNIFICATION AGREEMENT
 
-This form is to be completed by the individual who has ordered the testing, or the parent/legal guardian of the minor who will be having the blood draw completed on them.
+This agreement must be completed by the individual purchasing testing services, or by the parent or legal guardian of a minor who will be subject to specimen collection and testing. By signing below you confirm you have read, understood, and agree to all terms.
 
 ROLE OF AVOVITA WELLNESS
 
-AvoVita Wellness acts as a facilitator of private laboratory testing services. We assist clients in arranging laboratory testing with independent third-party laboratories and specimen collection providers. AvoVita Wellness does not perform laboratory testing and does not collect blood or other biological specimens. All testing services are performed by licensed laboratories, and specimen collection is performed by independent third-party collection providers. By purchasing our services you acknowledge that AvoVita Wellness does not control or supervise these laboratories or collection providers and acts only as an intermediary facilitating access to private testing services.
+AvoVita Wellness acts solely as a facilitator connecting clients with independent third-party laboratory testing and specimen collection services. AvoVita Wellness does not perform laboratory testing, does not collect or handle biological specimens, does not employ phlebotomists or laboratory technicians, and does not provide medical advice, diagnosis, or treatment. All specimen collection is performed by independent contractors and all laboratory analysis is performed by independent licensed laboratories.
 
-LIABILITY AND THIRD-PARTY SERVICES
+RELEASE OF LIABILITY AND INDEMNIFICATION
 
-I understand that laboratory testing, specimen collection, and specimen transportation are performed by independent third-party providers. I acknowledge that AvoVita Wellness is not responsible for incidents, delays, or outcomes related to these services including but not limited to: blood draw or phlebotomy complications, specimen handling or laboratory processing issues, laboratory testing inaccuracies or reporting errors, specimen shipping or courier delays including FedEx or other carriers. Any consent for or notice of adverse reactions to specimen collection will be provided directly by the collection provider.
+To the fullest extent permitted by applicable law, I hereby release, waive, discharge, and covenant not to sue AvoVita Wellness, its owners, officers, employees, agents, and assigns (collectively "AvoVita") from any and all liability, claims, demands, actions, or causes of action whatsoever arising out of or related to any loss, damage, injury, or death that may be sustained by me or any person for whom I am ordering testing, including minors, arising out of or in connection with: (a) the in-home specimen collection visit, including but not limited to any adverse reaction to phlebotomy, needle injury, bruising, infection, or any other complication arising from specimen collection performed by the independent collection provider; (b) any act, omission, negligence, or conduct of the independent specimen collection provider or laboratory; (c) specimen handling, processing, shipping, or courier delays including FedEx or any other carrier; (d) laboratory testing inaccuracies, errors, or omissions; (e) any delay in or failure to deliver results.
 
-MEDICAL DISCLAIMER AND DATA HANDLING
+WHERE I AM COMPLETING THIS AGREEMENT ON BEHALF OF A MINOR, I represent that I am the parent or legal guardian of the minor with full authority to execute this agreement. I agree to indemnify, defend, and hold harmless AvoVita from and against any and all claims, damages, losses, costs, and expenses (including legal fees) brought by or on behalf of the minor arising out of or related to the services facilitated by AvoVita, including any claim the minor may bring upon reaching the age of majority.
 
-AvoVita Wellness does not provide medical advice, diagnosis, or treatment. Any information provided regarding laboratory testing is for general informational purposes only and should not be considered medical guidance. Laboratory test results are generated and maintained by the performing laboratory within their laboratory information systems. AvoVita Wellness does not maintain permanent medical records. Results may be temporarily downloaded solely for the purpose of delivering them to the client via secure email and will be deleted from AvoVita systems upon delivery. By purchasing testing services you acknowledge that as a facilitator of private laboratory testing, associated information may be transmitted to partner laboratories located in the United States and Germany for processing.`;
+I acknowledge and agree that the home visit fee paid to AvoVita is compensation solely for facilitation and coordination services and is non-refundable once the specimen collection visit has been performed, regardless of subsequent specimen or shipping outcomes.
+
+MEDICAL DISCLAIMER
+
+AvoVita Wellness does not provide medical advice, diagnosis, or treatment. Laboratory results are for informational purposes only and should not be relied upon as a substitute for professional medical advice. I acknowledge that I have been advised to consult a qualified healthcare professional regarding the interpretation of any results.
+
+DATA AND PRIVACY
+
+By proceeding I consent to my personal and health information being transmitted to third-party laboratories, which may be located in the United States or Germany, solely for the purpose of performing the requested testing. AvoVita Wellness does not maintain permanent medical records. Results may be temporarily stored solely for the purpose of delivery via the secure patient portal and will be handled in accordance with Alberta's Personal Information Protection Act (PIPA).
+
+GOVERNING LAW
+
+This agreement shall be governed by the laws of the Province of Alberta. Any dispute arising hereunder shall be subject to the exclusive jurisdiction of the courts of Alberta.`;
 
 export function WaiverForm({ onComplete }: WaiverFormProps) {
   const [check1, setCheck1] = useState(false);

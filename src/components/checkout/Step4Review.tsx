@@ -404,97 +404,109 @@ export function Step4Review({
               </span>
             </div>
           )}
+          {promoApplied && (
+            <div
+              className="flex justify-between font-medium pt-2 mt-1 border-t"
+              style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
+            >
+              <span>Promo applied — 100% discount</span>
+              <span>−{formatCurrency(total)}</span>
+            </div>
+          )}
           <div
             className="flex justify-between text-xl font-semibold pt-3 border-t mt-2"
             style={{ borderColor: "#2d6b35" }}
           >
             <span style={{ color: "#ffffff" }}>Grand Total</span>
-            <span style={{ color: "#c4973a" }}>
-              {formatCurrency(total)} CAD
-            </span>
+            {promoApplied ? (
+              <span className="flex items-center gap-2">
+                <span
+                  className="line-through text-base"
+                  style={{ color: "#6ab04c" }}
+                >
+                  {formatCurrency(total)}
+                </span>
+                <span style={{ color: "#8dc63f" }}>
+                  $0.00 CAD
+                </span>
+              </span>
+            ) : (
+              <span style={{ color: "#c4973a" }}>
+                {formatCurrency(total)} CAD
+              </span>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Promo code section — only shown when test mode is enabled */}
+      {/* Promo code section */}
       {testModeEnabled && (
-        <section className="mb-5">
-          <button
-            type="button"
-            onClick={() => setPromoOpen((v) => !v)}
-            className="flex items-center gap-2 text-sm font-medium mb-2 cursor-pointer"
-            style={{ color: "#e8d5a3" }}
-          >
-            <Tag className="w-4 h-4" style={{ color: "#6ab04c" }} />
-            Have a promo code?
-            <ChevronDown
-              className="w-3.5 h-3.5 transition-transform"
-              style={{
-                color: "#6ab04c",
-                transform: promoOpen ? "rotate(180deg)" : "rotate(0deg)",
-              }}
-            />
-          </button>
-          {promoOpen && (
-            <div
-              className="rounded-lg border p-4"
-              style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+        <section
+          className="rounded-lg border p-5 mb-5"
+          style={{
+            backgroundColor: "rgba(196, 151, 58, 0.1)",
+            borderColor: "#c4973a",
+          }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <Tag className="w-4 h-4" style={{ color: "#c4973a" }} />
+            <h4
+              className="text-sm font-semibold"
+              style={{ color: "#c4973a" }}
             >
-              {promoApplied ? (
-                <div
-                  className="flex items-center gap-2 p-3 rounded-lg border"
-                  style={{
-                    backgroundColor: "rgba(141, 198, 63, 0.12)",
-                    borderColor: "#8dc63f",
-                  }}
-                >
-                  <CheckCircle
-                    className="w-5 h-5 shrink-0"
-                    style={{ color: "#8dc63f" }}
-                  />
-                  <div>
-                    <p
-                      className="text-sm font-semibold"
-                      style={{ color: "#8dc63f" }}
-                    >
-                      Test code applied — 100% discount
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: "#6ab04c" }}>
-                      No payment will be charged. The order will process
-                      normally.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={promoInput}
-                    onChange={(e) => {
-                      setPromoInput(e.target.value);
-                      setPromoError(null);
-                    }}
-                    placeholder="Enter promo code"
-                    className="mf-input flex-1"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleApplyPromo}
-                    className="mf-btn-secondary px-4 py-2 shrink-0"
-                  >
-                    Apply
-                  </button>
-                </div>
-              )}
-              {promoError && (
+              Promo Code
+            </h4>
+          </div>
+
+          {promoApplied ? (
+            <div
+              className="flex items-center gap-2 p-3 rounded-lg border"
+              style={{
+                backgroundColor: "rgba(141, 198, 63, 0.12)",
+                borderColor: "#8dc63f",
+              }}
+            >
+              <CheckCircle
+                className="w-5 h-5 shrink-0"
+                style={{ color: "#8dc63f" }}
+              />
+              <div>
                 <p
-                  className="text-xs mt-2"
-                  style={{ color: "#e05252" }}
+                  className="text-sm font-semibold"
+                  style={{ color: "#8dc63f" }}
                 >
-                  {promoError}
+                  Promo applied — 100% discount
                 </p>
-              )}
+                <p className="text-xs mt-0.5" style={{ color: "#6ab04c" }}>
+                  No payment will be charged. The order will process normally.
+                </p>
+              </div>
             </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={promoInput}
+                onChange={(e) => {
+                  setPromoInput(e.target.value);
+                  setPromoError(null);
+                }}
+                placeholder="Enter promo code"
+                className="mf-input flex-1"
+              />
+              <button
+                type="button"
+                onClick={handleApplyPromo}
+                className="mf-btn-primary px-5 py-2 shrink-0"
+              >
+                Apply
+              </button>
+            </div>
+          )}
+          {promoError && (
+            <p className="text-xs mt-2" style={{ color: "#e05252" }}>
+              {promoError}
+            </p>
           )}
         </section>
       )}

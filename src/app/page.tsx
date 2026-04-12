@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Leaf, FlaskConical, Shield, Clock, ArrowRight } from "lucide-react";
+import { Leaf, FlaskConical, Shield, Clock, ArrowRight, LogIn } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -89,6 +89,77 @@ export default function HomePage() {
             Browse Tests
             <ArrowRight className="w-5 h-5" />
           </Link>
+        </div>
+      </section>
+
+      {/* ─── New vs Returning ──────────────────────────────────────────── */}
+      <section className="px-6 py-16" style={{ backgroundColor: "#0a1a0d" }}>
+        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* New to AvoVita */}
+          <div
+            className="rounded-2xl border p-7 flex flex-col"
+            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          >
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center border mb-5"
+              style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+            >
+              <FlaskConical className="w-6 h-6" style={{ color: "#8dc63f" }} />
+            </div>
+            <h3
+              className="font-heading text-2xl font-semibold mb-2"
+              style={{
+                color: "#ffffff",
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+              }}
+            >
+              New to AvoVita?
+            </h3>
+            <p className="text-sm mb-6 flex-1" style={{ color: "#e8d5a3" }}>
+              Browse our full test catalogue and place your first order.
+            </p>
+            <Link
+              href="/tests"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg transition-colors self-start"
+              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            >
+              Browse Tests
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {/* Returning Client */}
+          <div
+            className="rounded-2xl border p-7 flex flex-col"
+            style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+          >
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center border mb-5"
+              style={{ backgroundColor: "#0f2614", borderColor: "#c4973a" }}
+            >
+              <LogIn className="w-6 h-6" style={{ color: "#c4973a" }} />
+            </div>
+            <h3
+              className="font-heading text-2xl font-semibold mb-2"
+              style={{
+                color: "#ffffff",
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+              }}
+            >
+              Returning Client?
+            </h3>
+            <p className="text-sm mb-6 flex-1" style={{ color: "#e8d5a3" }}>
+              Sign in to view your results, orders, and profile.
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg transition-colors self-start"
+              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            >
+              Sign In to Portal
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       </section>
 
