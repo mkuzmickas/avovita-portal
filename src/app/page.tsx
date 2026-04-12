@@ -25,7 +25,7 @@ export default function HomePage() {
             </span>
           </Link>
 
-          {/* Understated Patient Login — only login entry on homepage */}
+          {/* Understated Existing Client Login — only login entry on homepage */}
           <Link
             href="/login"
             className="text-sm font-medium px-4 py-2 rounded-lg border transition-colors"
@@ -36,7 +36,7 @@ export default function HomePage() {
             }}
             onMouseEnter={undefined}
           >
-            Patient Login
+            Existing Client Login
           </Link>
         </div>
       </header>
@@ -209,7 +209,7 @@ export default function HomePage() {
             className="underline"
             style={{ color: "#e8d5a3" }}
           >
-            Patient Login
+            Existing Client Login
           </Link>
         </p>
       </footer>

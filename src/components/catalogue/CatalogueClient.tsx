@@ -106,7 +106,7 @@ export function CatalogueClient({
                 backgroundColor: "transparent",
               }}
             >
-              Patient Login
+              Existing Client Login
             </Link>
           )}
         </div>
