@@ -142,7 +142,9 @@ export function Step3CollectionDetails({
     accountHolder?.first_name.trim().length > 0 &&
     accountHolder?.last_name.trim().length > 0 &&
     accountHolder?.date_of_birth.length > 0 &&
-    accountHolder?.biological_sex !== "";
+    accountHolder?.biological_sex !== "" &&
+    !!accountHolder?.phone &&
+    accountHolder.phone.trim().length > 0;
 
   const additionalPersons = persons.slice(1);
   const additionalAllValid = additionalPersons.every(
@@ -640,10 +642,11 @@ function PersonSection({
             className="block text-sm font-medium mb-1.5"
             style={labelStyle}
           >
-            Mobile Number (optional)
+            Mobile Number{reqMark}
           </label>
           <input
             type="tel"
+            required
             value={person.phone ?? ""}
             onChange={(e) => onChange({ phone: e.target.value || null })}
             className="mf-input"
@@ -651,7 +654,7 @@ function PersonSection({
             autoComplete="tel"
           />
           <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
-            For SMS notifications when your order ships and results are ready
+            Required for SMS notifications when your order ships and results are ready
           </p>
         </div>
       )}

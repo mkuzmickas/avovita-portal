@@ -104,6 +104,12 @@ export function ProfileForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!form.phone.trim()) {
+      setError("Mobile number is required for SMS notifications");
+      return;
+    }
+
     setLoading(true);
 
     const supabase = createClient();
@@ -230,10 +236,11 @@ export function ProfileForm({
 
       <div>
         <label className="block text-sm font-medium mb-1.5" style={labelStyle}>
-          Mobile Number (optional)
+          Mobile Number{reqMark}
         </label>
         <input
           type="tel"
+          required
           value={form.phone}
           onChange={(e) => handleChange("phone", e.target.value)}
           className="mf-input"
@@ -241,7 +248,7 @@ export function ProfileForm({
           autoComplete="tel"
         />
         <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
-          For SMS notifications when your order ships and results are ready
+          Required for SMS notifications when your order ships and results are ready
         </p>
       </div>
 

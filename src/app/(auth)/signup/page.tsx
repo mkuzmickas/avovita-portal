@@ -81,6 +81,17 @@ export default function SignupPage() {
               We sent a confirmation link to <strong>{email}</strong>. Click the link
               to activate your account, then sign in.
             </p>
+            <div
+              className="mt-4 rounded-lg border p-3 text-left"
+              style={{
+                backgroundColor: "rgba(141, 198, 63, 0.08)",
+                borderColor: "#2d6b35",
+              }}
+            >
+              <p className="text-xs leading-relaxed" style={{ color: "#e8d5a3" }}>
+                This email may have landed in your junk or spam folder. If so, please move it to your inbox before clicking the confirmation link — it may not work from the spam folder.
+              </p>
+            </div>
             <Link
               href="/login"
               className="mf-btn-primary mt-6 px-6"
