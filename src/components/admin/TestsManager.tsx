@@ -315,7 +315,11 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
                   "Name",
                   "Lab",
                   "Category",
-                  "Price",
+                  "Ship Temp",
+                  "Stability",
+                  "Cost",
+                  "Client Price",
+                  "Margin",
                   "Stock",
                   "Active",
                   "Featured",
@@ -338,7 +342,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={12}
                     className="px-6 py-16 text-center"
                     style={{
                       backgroundColor: "#0a1a0d",
@@ -440,10 +444,31 @@ function TestRow({
           {test.category ?? "—"}
         </td>
         <td
+          className="px-4 py-4 text-xs whitespace-nowrap"
+          style={{ color: "#e8d5a3" }}
+        >
+          {test.ship_temp ?? "—"}
+        </td>
+        <td
+          className="px-4 py-4 text-xs"
+          style={{ color: "#e8d5a3" }}
+        >
+          {test.stability_notes ?? "—"}
+        </td>
+        <td
+          className="px-5 py-4 whitespace-nowrap"
+          style={{ color: "#e8d5a3" }}
+        >
+          {test.cost_cad != null ? formatCurrency(test.cost_cad) : "—"}
+        </td>
+        <td
           className="px-5 py-4 font-semibold whitespace-nowrap"
           style={{ color: "#c4973a" }}
         >
           {test.price_cad != null ? formatCurrency(test.price_cad) : "—"}
+        </td>
+        <td className="px-5 py-4 font-semibold whitespace-nowrap">
+          <MarginCell price={test.price_cad} cost={test.cost_cad} />
         </td>
         <td className="px-5 py-4">
           <StockCell test={test} onUpdateStock={onUpdateStock} />
@@ -489,7 +514,7 @@ function TestRow({
 
       {isEditing && (
         <tr style={{ backgroundColor: rowBg }}>
-          <td colSpan={8} className="p-0">
+          <td colSpan={12} className="p-0">
             <div
               className="px-6 py-5 border-t"
               style={{
@@ -510,6 +535,24 @@ function TestRow({
       )}
     </>
   );
+}
+
+// ─── Margin cell ────────────────────────────────────────────────────────
+
+function MarginCell({
+  price,
+  cost,
+}: {
+  price: number | null;
+  cost: number | null;
+}) {
+  if (price == null || cost == null || price === 0) {
+    return <span style={{ color: "#6ab04c" }}>—</span>;
+  }
+  const margin = ((price - cost) / price) * 100;
+  const color =
+    margin >= 50 ? "#8dc63f" : margin >= 25 ? "#c4973a" : "#e05252";
+  return <span style={{ color }}>{margin.toFixed(1)}%</span>;
 }
 
 // ─── Stock cell ─────────────────────────────────────────────────────────
