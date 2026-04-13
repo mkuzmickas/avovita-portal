@@ -23,6 +23,12 @@ const statusConfig: Record<
     text: "#93c5fd",
     border: "#3b82f6",
   },
+  scheduled: {
+    label: "Scheduled",
+    bg: "rgba(196, 151, 58, 0.125)",
+    text: "#c4973a",
+    border: "#c4973a",
+  },
   collected: {
     label: "Collected",
     bg: "rgba(141, 198, 63, 0.125)",
@@ -37,9 +43,9 @@ const statusConfig: Record<
   },
   resulted: {
     label: "Resulted",
-    bg: "rgba(196, 151, 58, 0.125)",
-    text: "#c4973a",
-    border: "#c4973a",
+    bg: "rgba(141, 198, 63, 0.125)",
+    text: "#8dc63f",
+    border: "#8dc63f",
   },
   complete: {
     label: "Complete",

@@ -11,6 +11,7 @@ import {
   LogOut,
   ArrowLeft,
   Leaf,
+  Calendar,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -29,6 +30,7 @@ interface NavLink {
 const NAV_LINKS: NavLink[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, key: "dashboard" },
   { href: "/admin/orders", label: "Orders", icon: Package, key: "orders" },
+  { href: "/admin/manifests", label: "Manifests", icon: Calendar, key: "manifests" },
   { href: "/admin/patients", label: "Patients", icon: Users, key: "patients" },
   { href: "/admin/results", label: "Upload Results", icon: Upload, key: "results" },
   { href: "/admin/tests", label: "Tests", icon: FlaskConical, key: "tests" },

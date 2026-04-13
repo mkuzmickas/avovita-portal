@@ -31,6 +31,7 @@ type RecentOrderRow = {
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Pending",
   confirmed: "Confirmed",
+  scheduled: "Scheduled",
   collected: "Collected",
   shipped: "Shipped",
   resulted: "Resulted",
@@ -41,6 +42,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 const ALL_STATUSES: OrderStatus[] = [
   "pending",
   "confirmed",
+  "scheduled",
   "collected",
   "shipped",
   "resulted",

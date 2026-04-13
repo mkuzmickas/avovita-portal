@@ -36,11 +36,14 @@ export type ConsentType =
 export type OrderStatus =
   | "pending"
   | "confirmed"
+  | "scheduled"
   | "collected"
   | "shipped"
   | "resulted"
   | "complete"
   | "cancelled";
+
+export type ManifestStatus = "open" | "closed";
 export type NotificationChannel = "email" | "sms";
 export type NotificationStatus = "sent" | "failed";
 
@@ -142,6 +145,18 @@ export interface Order {
   fedex_tracking_number: string | null;
   shipped_at: string | null;
   shipping_date: string | null;
+  appointment_date: string | null;
+  manifest_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Manifest {
+  id: string;
+  name: string;
+  ship_date: string;
+  status: ManifestStatus;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -11,21 +11,27 @@ import {
   CheckCircle,
   Loader2,
   AlertCircle,
+  Calendar,
+  Package,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { AdminOrderStatusUpdater } from "@/components/AdminOrderStatusUpdater";
 import type { OrderStatus } from "@/types/database";
-import type { AdminOrderRow } from "@/app/(admin)/admin/orders/page";
+import type {
+  AdminOrderRow,
+  OpenManifestOption,
+} from "@/app/(admin)/admin/orders/page";
 
 interface AdminOrdersTableProps {
   orders: AdminOrderRow[];
+  openManifests: OpenManifestOption[];
   patientFilter: { label: string; accountId: string } | null;
 }
 
 const STATUS_OPTIONS: OrderStatus[] = [
   "pending",
   "confirmed",
+  "scheduled",
   "collected",
   "shipped",
   "resulted",
@@ -33,17 +39,19 @@ const STATUS_OPTIONS: OrderStatus[] = [
   "cancelled",
 ];
 
-const SHIPPABLE_STATUSES: OrderStatus[] = ["confirmed", "collected"];
+const SHIPPABLE_STATUSES: OrderStatus[] = ["confirmed", "scheduled", "collected"];
 
 function fedexUrl(tracking: string) {
   return `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(tracking)}`;
 }
 
 export function AdminOrdersTable({
-  orders,
+  orders: initialOrders,
+  openManifests,
   patientFilter,
 }: AdminOrdersTableProps) {
   const router = useRouter();
+  const [orders, setOrders] = useState<AdminOrderRow[]>(initialOrders);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -55,6 +63,65 @@ export function AdminOrdersTable({
   const [shipping, setShipping] = useState(false);
   const [shipError, setShipError] = useState<string | null>(null);
   const [shipSuccess, setShipSuccess] = useState<string | null>(null);
+  const [showManifestPicker, setShowManifestPicker] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+
+  const updateAppointment = async (orderId: string, dateStr: string) => {
+    const value = dateStr || null;
+    const res = await fetch(`/api/admin/orders/${orderId}/appointment`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointment_date: value }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(`Failed to set appointment: ${data.error ?? res.statusText}`);
+      return;
+    }
+    const data = await res.json();
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              appointment_date: value,
+              status: (data.status ?? o.status) as OrderStatus,
+            }
+          : o
+      )
+    );
+  };
+
+  const assignToManifest = async (manifestId: string) => {
+    setAssigning(true);
+    try {
+      const ids = Array.from(selected);
+      const res = await fetch("/api/admin/manifests/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_ids: ids, manifest_id: manifestId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(`Failed: ${data.error ?? res.statusText}`);
+        return;
+      }
+      const manifest = openManifests.find((m) => m.id === manifestId);
+      setOrders((prev) =>
+        prev.map((o) =>
+          ids.includes(o.id) ? { ...o, manifest_id: manifestId } : o
+        )
+      );
+      setShipSuccess(
+        `${ids.length} order${ids.length !== 1 ? "s" : ""} added to ${manifest?.name ?? "manifest"}`
+      );
+      setTimeout(() => setShipSuccess(null), 6000);
+      setShowManifestPicker(false);
+      setSelected(new Set());
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   const filteredOrders = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -234,6 +301,7 @@ export function AdminOrdersTable({
                 {[
                   "Order ID",
                   "Date",
+                  "Appointment",
                   "Patient",
                   "Tests",
                   "Total",
@@ -257,7 +325,7 @@ export function AdminOrdersTable({
               {filteredOrders.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-6 py-16 text-center"
                     style={{ backgroundColor: "#0a1a0d", color: "#6ab04c" }}
                   >
@@ -313,6 +381,24 @@ export function AdminOrdersTable({
                         style={{ color: "#e8d5a3" }}
                       >
                         {formatDate(order.created_at)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <input
+                          type="date"
+                          value={order.appointment_date ?? ""}
+                          onChange={(e) =>
+                            updateAppointment(order.id, e.target.value)
+                          }
+                          className="rounded border px-2 py-1 text-xs"
+                          style={{
+                            backgroundColor: "#0f2614",
+                            borderColor: order.appointment_date
+                              ? "#c4973a"
+                              : "#2d6b35",
+                            color: order.appointment_date ? "#c4973a" : "#e8d5a3",
+                            colorScheme: "dark",
+                          }}
+                        />
                       </td>
                       <td className="px-4 py-4" style={{ color: "#ffffff" }}>
                         {patientName}
@@ -405,12 +491,98 @@ export function AdminOrdersTable({
             </button>
             <button
               type="button"
+              disabled={openManifests.length === 0}
+              onClick={() => setShowManifestPicker(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
+              style={{
+                backgroundColor: "transparent",
+                borderColor: "#c4973a",
+                color: "#c4973a",
+                opacity: openManifests.length === 0 ? 0.5 : 1,
+              }}
+              title={
+                openManifests.length === 0
+                  ? "No open manifests — create one in Manifests"
+                  : "Add selected orders to a manifest"
+              }
+            >
+              <Package className="w-4 h-4" />
+              Add to Manifest
+            </button>
+            <button
+              type="button"
               onClick={() => setShowShipModal(true)}
               className="mf-btn-primary px-5 py-2"
             >
               <Truck className="w-4 h-4" />
               Ship Selected
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add to Manifest picker modal */}
+      {showManifestPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+          onClick={() => !assigning && setShowManifestPicker(false)}
+        >
+          <div
+            className="rounded-2xl border w-full max-w-md p-6 space-y-4"
+            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3
+                className="font-heading text-xl font-semibold"
+                style={{
+                  color: "#ffffff",
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                }}
+              >
+                Add to Manifest
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowManifestPicker(false)}
+                disabled={assigning}
+                aria-label="Close"
+                style={{ color: "#e8d5a3" }}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs" style={{ color: "#e8d5a3" }}>
+              Selecting a manifest will assign all{" "}
+              <span style={{ color: "#c4973a" }}>{selected.size}</span> selected
+              order{selected.size !== 1 ? "s" : ""}.
+            </p>
+            <div className="space-y-1.5 max-h-80 overflow-y-auto">
+              {openManifests.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  disabled={assigning}
+                  onClick={() => assignToManifest(m.id)}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border text-sm transition-colors text-left"
+                  style={{
+                    backgroundColor: "#0f2614",
+                    borderColor: "#2d6b35",
+                    color: "#ffffff",
+                  }}
+                >
+                  <span>{m.name}</span>
+                  <span
+                    className="flex items-center gap-1 text-xs"
+                    style={{ color: "#c4973a" }}
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    {m.ship_date}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

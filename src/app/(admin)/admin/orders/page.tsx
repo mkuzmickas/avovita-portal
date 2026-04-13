@@ -12,6 +12,8 @@ export type AdminOrderRow = {
   discount_cad: number | null;
   fedex_tracking_number: string | null;
   shipped_at: string | null;
+  appointment_date: string | null;
+  manifest_id: string | null;
   created_at: string;
   account: { id: string; email: string | null } | null;
   order_lines: Array<{
@@ -23,6 +25,12 @@ export type AdminOrderRow = {
       last_name: string;
     } | null;
   }>;
+};
+
+export type OpenManifestOption = {
+  id: string;
+  name: string;
+  ship_date: string;
 };
 
 export default async function AdminOrdersPage({
@@ -40,7 +48,7 @@ export default async function AdminOrdersPage({
     .select(
       `
       id, status, total_cad, subtotal_cad, discount_cad,
-      fedex_tracking_number, shipped_at, created_at,
+      fedex_tracking_number, shipped_at, appointment_date, manifest_id, created_at,
       account:accounts(id, email),
       order_lines(
         id,
@@ -59,6 +67,13 @@ export default async function AdminOrdersPage({
 
   const { data: ordersRaw } = await query;
   const orders = (ordersRaw ?? []) as unknown as AdminOrderRow[];
+
+  const { data: manifestsRaw } = await service
+    .from("manifests")
+    .select("id, name, ship_date")
+    .eq("status", "open")
+    .order("ship_date", { ascending: true });
+  const openManifests = (manifestsRaw ?? []) as unknown as OpenManifestOption[];
 
   // Resolve patient label for the "filtered by patient" banner
   let patientBannerLabel: string | null = null;
@@ -92,6 +107,7 @@ export default async function AdminOrdersPage({
 
       <AdminOrdersTable
         orders={orders}
+        openManifests={openManifests}
         patientFilter={
           patientBannerLabel
             ? { label: patientBannerLabel, accountId: patientId! }
