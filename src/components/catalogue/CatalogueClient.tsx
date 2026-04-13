@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Leaf, Search } from "lucide-react";
+import { Leaf, ChevronLeft, ChevronRight } from "lucide-react";
 import { TestCard } from "./TestCard";
 import { TestTable } from "./TestTable";
 import { SearchBar } from "./SearchBar";
@@ -162,27 +162,52 @@ export function CatalogueClient({
           </p>
         </div>
 
-        {/* AI Test Finder trigger */}
-        <div className="mt-4">
+        {/* AI Test Finder card */}
+        <div
+          className="mt-5 rounded-xl border px-6 py-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-6"
+          style={{
+            backgroundColor: "rgba(196,151,58,0.08)",
+            borderColor: "#c4973a",
+          }}
+        >
+          <div className="flex-1 min-w-0">
+            <p
+              className="font-semibold uppercase mb-1.5"
+              style={{
+                color: "#c4973a",
+                fontSize: "11px",
+                letterSpacing: "0.15em",
+              }}
+            >
+              AI-POWERED TEST RECOMMENDATIONS
+            </p>
+            <h3
+              className="font-heading mb-1.5"
+              style={{
+                color: "#ffffff",
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+                fontSize: "22px",
+              }}
+            >
+              Not sure where to start?
+            </h3>
+            <p style={{ color: "#e8d5a3", fontSize: "14px" }}>
+              Describe your symptoms to our AI assistant and get personalised test recommendations from our catalogue.
+            </p>
+            <p className="mt-1.5" style={{ color: "#6ab04c", fontSize: "12px" }}>
+              Requires a free AvoVita account
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => setAiOpen(true)}
-            className="ai-finder-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold border transition-colors"
-            style={{
-              backgroundColor: "transparent",
-              borderColor: "#c4973a",
-              color: "#c4973a",
-            }}
+            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg text-base font-semibold transition-colors shrink-0 w-full md:w-auto"
+            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
           >
-            <Search className="w-4 h-4" />
-            AI Test Finder
+            <span aria-hidden>🔍</span>
+            Try AI Test Finder
+            <span aria-hidden>→</span>
           </button>
-          <style jsx>{`
-            .ai-finder-btn:hover {
-              background-color: #c4973a !important;
-              color: #0a1a0d !important;
-            }
-          `}</style>
         </div>
       </div>
 
@@ -200,35 +225,13 @@ export function CatalogueClient({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-stretch">
-              {featuredTests.map((test) => {
-                const isExpanded = expandedCardId === test.id;
-                const inCart = cart.some((c) => c.test_id === test.id);
-                return (
-                  <div
-                    key={test.id}
-                    role="button"
-                    tabIndex={0}
-                    aria-expanded={isExpanded}
-                    onClick={() => toggleExpanded(test.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        toggleExpanded(test.id);
-                      }
-                    }}
-                    className="cursor-pointer focus:outline-none"
-                  >
-                    <TestCard
-                      test={test}
-                      inCart={inCart}
-                      onAdd={handleAdd}
-                      expanded={isExpanded}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+            <FeaturedCarousel
+              tests={featuredTests}
+              cart={cart}
+              onAdd={handleAdd}
+              expandedId={expandedCardId}
+              onToggleExpand={toggleExpanded}
+            />
           )}
         </section>
 
@@ -311,6 +314,160 @@ export function CatalogueClient({
         onScrollToTest={scrollToTest}
       />
     </div>
+  );
+}
+
+function FeaturedCarousel({
+  tests,
+  cart,
+  onAdd,
+  expandedId,
+  onToggleExpand,
+}: {
+  tests: CatalogueTest[];
+  cart: CatalogueCartItem[];
+  onAdd: (item: CatalogueCartItem) => void;
+  expandedId: string | null;
+  onToggleExpand: (testId: string) => void;
+}) {
+  const [visibleCount, setVisibleCount] = useState(3);
+  const [index, setIndex] = useState(0);
+
+  // Responsive: 1 on mobile, 2 on tablet, 3 on desktop
+  useEffect(() => {
+    const compute = () => {
+      const w = window.innerWidth;
+      if (w >= 1024) setVisibleCount(3);
+      else if (w >= 768) setVisibleCount(2);
+      else setVisibleCount(1);
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+
+  const maxIndex = Math.max(0, tests.length - visibleCount);
+
+  // Clamp index when visibleCount changes
+  useEffect(() => {
+    setIndex((prev) => Math.min(prev, maxIndex));
+  }, [maxIndex]);
+
+  const slotWidthPct = 100 / visibleCount;
+  const translatePct = -index * slotWidthPct;
+
+  const canPrev = index > 0;
+  const canNext = index < maxIndex;
+
+  return (
+    <div className="relative">
+      <div className="overflow-hidden">
+        <div
+          className="flex"
+          style={{
+            transform: `translateX(${translatePct}%)`,
+            transition: "transform 300ms ease",
+          }}
+        >
+          {tests.map((test) => {
+            const isExpanded = expandedId === test.id;
+            const inCart = cart.some((c) => c.test_id === test.id);
+            return (
+              <div
+                key={test.id}
+                className="px-2.5 shrink-0"
+                style={{ width: `${slotWidthPct}%` }}
+              >
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isExpanded}
+                  onClick={() => onToggleExpand(test.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onToggleExpand(test.id);
+                    }
+                  }}
+                  className="cursor-pointer focus:outline-none h-full"
+                >
+                  <TestCard
+                    test={test}
+                    inCart={inCart}
+                    onAdd={onAdd}
+                    expanded={isExpanded}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {tests.length > visibleCount && (
+        <>
+          <CarouselArrow
+            direction="left"
+            disabled={!canPrev}
+            onClick={() => setIndex((i) => Math.max(0, i - 1))}
+          />
+          <CarouselArrow
+            direction="right"
+            disabled={!canNext}
+            onClick={() => setIndex((i) => Math.min(maxIndex, i + 1))}
+          />
+
+          {/* Dot indicators */}
+          <div className="mt-4 flex items-center justify-center gap-1.5">
+            {Array.from({ length: maxIndex + 1 }).map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setIndex(i)}
+                aria-label={`Go to slide ${i + 1}`}
+                className="rounded-full transition-colors"
+                style={{
+                  width: i === index ? "20px" : "8px",
+                  height: "8px",
+                  backgroundColor: i === index ? "#c4973a" : "#2d6b35",
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function CarouselArrow({
+  direction,
+  disabled,
+  onClick,
+}: {
+  direction: "left" | "right";
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const Icon = direction === "left" ? ChevronLeft : ChevronRight;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={direction === "left" ? "Previous" : "Next"}
+      className="absolute top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center border z-10 transition-opacity"
+      style={{
+        backgroundColor: "rgba(196,151,58,0.15)",
+        borderColor: "#c4973a",
+        color: "#c4973a",
+        opacity: disabled ? 0.3 : 1,
+        cursor: disabled ? "default" : "pointer",
+        [direction === "left" ? "left" : "right"]: "-12px",
+      }}
+    >
+      <Icon className="w-5 h-5" />
+    </button>
   );
 }
 
