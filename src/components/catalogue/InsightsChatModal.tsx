@@ -5,14 +5,12 @@ import Link from "next/link";
 import { X, Send, Sparkles, Loader2, ShoppingCart, Check, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/components/cart/CartContext";
+import { formatCurrency } from "@/lib/utils";
 
 interface InsightsChatModalProps {
   open: boolean;
   onClose: () => void;
-  /**
-   * Called when the user clicks "View" on a recommended test.
-   * The modal closes itself before invoking this. Receives the test id.
-   */
+  /** Called when the user clicks "View" on a recommended test. The modal closes itself first. */
   onScrollToTest?: (testId: string) => void;
 }
 
@@ -51,6 +49,7 @@ export function InsightsChatModal({
   const [testIndex, setTestIndex] = useState<Map<string, CatalogueLookupTest>>(new Map());
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastAssistantRef = useRef<HTMLDivElement>(null);
 
   // Auth subscription
   useEffect(() => {
@@ -105,10 +104,24 @@ export function InsightsChatModal({
     };
   }, [open, authState, supabase, testIndex.size]);
 
-  // Auto-scroll to bottom on new messages
+  // Scroll behavior:
+  // - If the latest message is from the user, scroll to bottom (so they see their input + "thinking")
+  // - If the latest message is assistant (i.e. a fresh response just landed), scroll to its top
   useEffect(() => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const last = messages[messages.length - 1];
+    if (!last) return;
+    if (last.role === "assistant" && messages.length > 1) {
+      // Skip the initial intro message — only anchor on real responses
+      requestAnimationFrame(() => {
+        lastAssistantRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    } else if (last.role === "user" || sending) {
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      });
+    }
   }, [messages, sending]);
 
   // Lock body scroll when open
@@ -121,7 +134,7 @@ export function InsightsChatModal({
     };
   }, [open]);
 
-  // Escape closes the modal
+  // Escape closes
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -152,7 +165,7 @@ export function InsightsChatModal({
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Something went wrong.");
-        setMessages(messages); // roll back to pre-send state
+        setMessages(messages); // roll back
         return;
       }
       setMessages([...next, { role: "assistant", content: data.content }]);
@@ -177,6 +190,15 @@ export function InsightsChatModal({
   };
 
   if (!open) return null;
+
+  // Find the index of the last assistant message so we can attach a ref to it
+  let lastAssistantIdx = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "assistant") {
+      lastAssistantIdx = i;
+      break;
+    }
+  }
 
   return (
     <div
@@ -237,22 +259,27 @@ export function InsightsChatModal({
           <>
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto px-5 py-4 space-y-4"
+              className="flex-1 overflow-y-auto px-5 py-4 space-y-5"
               style={{ minHeight: "320px" }}
             >
-              {messages.map((m, i) => (
-                <MessageBubble
-                  key={i}
-                  message={m}
-                  testIndex={testIndex}
-                  cart={cart}
-                  onAdd={handleAdd}
-                  onView={(testId) => {
-                    onClose();
-                    onScrollToTest?.(testId);
-                  }}
-                />
-              ))}
+              {messages.map((m, i) =>
+                m.role === "user" ? (
+                  <UserMessage key={i} content={m.content} />
+                ) : (
+                  <AssistantMessage
+                    key={i}
+                    ref={i === lastAssistantIdx ? lastAssistantRef : undefined}
+                    content={m.content}
+                    testIndex={testIndex}
+                    cart={cart}
+                    onAdd={handleAdd}
+                    onView={(testId) => {
+                      onClose();
+                      onScrollToTest?.(testId);
+                    }}
+                  />
+                )
+              )}
               {sending && (
                 <div className="flex items-center gap-2" style={{ color: "#e8d5a3" }}>
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -308,10 +335,7 @@ export function InsightsChatModal({
                 Send
               </button>
             </div>
-            <p
-              className="px-5 pb-3 text-xs"
-              style={{ color: "#6ab04c" }}
-            >
+            <p className="px-5 pb-3 text-xs" style={{ color: "#6ab04c" }}>
               Educational only — not a diagnosis. Discuss results with a healthcare provider of your choice.
             </p>
           </>
@@ -360,7 +384,30 @@ function SignedOut() {
   );
 }
 
-// ─── Message bubble + inline test action chips ────────────────────────
+// ─── User message bubble ──────────────────────────────────────────────
+
+function UserMessage({ content }: { content: string }) {
+  // Short single-line message → pill; longer → softly-rounded bubble
+  const isShort = content.length < 40 && !content.includes("\n");
+  return (
+    <div className="flex justify-end">
+      <div
+        className={`max-w-[70%] px-4 py-2 text-sm whitespace-pre-wrap ${
+          isShort ? "rounded-full" : "rounded-2xl"
+        }`}
+        style={{
+          backgroundColor: "#c4973a",
+          color: "#0a1a0d",
+          fontFamily: '"DM Sans", system-ui, sans-serif',
+        }}
+      >
+        {content}
+      </div>
+    </div>
+  );
+}
+
+// ─── Assistant message: structured render ─────────────────────────────
 
 const TEST_CODE_REGEX = /Code:\s*([A-Za-z0-9_\-]+)/g;
 
@@ -377,50 +424,50 @@ function extractCodes(text: string): string[] {
   return out;
 }
 
-function MessageBubble({
-  message,
-  testIndex,
-  cart,
-  onAdd,
-  onView,
-}: {
-  message: ChatMessage;
+interface AssistantMessageProps {
+  content: string;
   testIndex: Map<string, CatalogueLookupTest>;
   cart: { test_id: string }[];
   onAdd: (test: CatalogueLookupTest) => void;
   onView: (testId: string) => void;
-}) {
-  const isUser = message.role === "user";
-  const codes = isUser ? [] : extractCodes(message.content);
+}
+
+const AssistantMessage = ({
+  ref,
+  content,
+  testIndex,
+  cart,
+  onAdd,
+  onView,
+}: AssistantMessageProps & { ref?: React.Ref<HTMLDivElement> }) => {
+  const codes = extractCodes(content);
   const referencedTests = codes
     .map((c) => testIndex.get(c))
     .filter((t): t is CatalogueLookupTest => !!t);
 
   return (
-    <div className={isUser ? "flex justify-end" : "flex justify-start"}>
+    <div ref={ref} className="flex gap-3">
+      {/* AV avatar dot */}
       <div
-        className="max-w-[85%] rounded-xl px-4 py-3 text-sm whitespace-pre-wrap"
-        style={
-          isUser
-            ? {
-                backgroundColor: "#c4973a",
-                color: "#0a1a0d",
-                fontFamily: '"DM Sans", system-ui, sans-serif',
-              }
-            : {
-                backgroundColor: "#0f2614",
-                color: "#e8d5a3",
-                border: "1px solid #2d6b35",
-                fontFamily: '"DM Sans", system-ui, sans-serif',
-              }
-        }
+        className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5"
+        style={{
+          backgroundColor: "#0f2614",
+          border: "1px solid #c4973a",
+        }}
       >
-        {message.content}
+        <span style={{ color: "#c4973a", fontSize: "10px", fontWeight: 700 }}>AV</span>
+      </div>
+
+      <div
+        className="flex-1 pl-4 min-w-0"
+        style={{ borderLeft: "4px solid #2d6b35" }}
+      >
+        <RenderMarkdown content={content} />
 
         {referencedTests.length > 0 && (
           <div
-            className="mt-3 pt-3 border-t flex flex-col gap-2"
-            style={{ borderColor: "#2d6b35" }}
+            className="mt-4 pt-3 flex flex-col gap-2"
+            style={{ borderTop: "1px solid #2d6b35" }}
           >
             {referencedTests.map((t) => {
               const inCart = cart.some((c) => c.test_id === t.id);
@@ -430,7 +477,15 @@ function MessageBubble({
                   key={t.id}
                   className="flex items-center justify-between gap-2 text-xs"
                 >
-                  <span style={{ color: "#ffffff" }}>{t.name}</span>
+                  <div className="min-w-0 flex items-baseline gap-2 flex-wrap">
+                    <span style={{ color: "#ffffff" }}>{t.name}</span>
+                    <span style={{ color: "#c4973a", fontWeight: 600 }}>
+                      —{" "}
+                      {t.price_cad != null
+                        ? `${formatCurrency(t.price_cad)} CAD`
+                        : "Contact us"}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {canAdd ? (
                       <button
@@ -492,4 +547,142 @@ function MessageBubble({
       </div>
     </div>
   );
+};
+
+// ─── Markdown subset renderer ─────────────────────────────────────────
+
+function RenderMarkdown({ content }: { content: string }) {
+  const lines = content.split("\n");
+  const blocks: React.ReactNode[] = [];
+  let bulletBuffer: string[] = [];
+  let key = 0;
+
+  const flushBullets = () => {
+    if (bulletBuffer.length === 0) return;
+    blocks.push(
+      <ul key={key++} className="my-2 space-y-1.5 list-none pl-0">
+        {bulletBuffer.map((b, i) => (
+          <li key={i} className="flex gap-2 text-sm" style={{ color: "#e8d5a3" }}>
+            <span style={{ color: "#c4973a", lineHeight: 1.5 }}>•</span>
+            <span className="flex-1">{renderInline(b)}</span>
+          </li>
+        ))}
+      </ul>
+    );
+    bulletBuffer = [];
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.trim();
+
+    if (line === "") {
+      flushBullets();
+      continue;
+    }
+
+    if (line === "---") {
+      flushBullets();
+      blocks.push(
+        <hr
+          key={key++}
+          className="my-3"
+          style={{ border: "none", borderTop: "1px solid #2d6b35" }}
+        />
+      );
+      continue;
+    }
+
+    if (line.startsWith("## ")) {
+      flushBullets();
+      blocks.push(
+        <p
+          key={key++}
+          className="mt-4 mb-2 font-semibold uppercase"
+          style={{
+            color: "#c4973a",
+            fontSize: "11px",
+            letterSpacing: "0.15em",
+          }}
+        >
+          {line.slice(3).trim()}
+        </p>
+      );
+      continue;
+    }
+
+    if (line.startsWith("- ")) {
+      bulletBuffer.push(line.slice(2));
+      continue;
+    }
+
+    flushBullets();
+
+    // Closing italic disclaimer line: an entire line wrapped in single asterisks
+    const fullItalic = /^\*([^*]+)\*$/.exec(line);
+    if (fullItalic) {
+      blocks.push(
+        <p
+          key={key++}
+          className="mt-3 italic"
+          style={{ color: "#6ab04c", fontSize: "12px" }}
+        >
+          {fullItalic[1]}
+        </p>
+      );
+      continue;
+    }
+
+    // Default paragraph
+    blocks.push(
+      <p
+        key={key++}
+        className="my-2"
+        style={{ color: "#e8d5a3", fontSize: "15px", lineHeight: 1.55 }}
+      >
+        {renderInline(line)}
+      </p>
+    );
+  }
+
+  flushBullets();
+  return <>{blocks}</>;
+}
+
+// Inline parser: **bold**, *italic*
+function renderInline(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  let lastIdx = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > lastIdx) {
+      parts.push(text.slice(lastIdx, m.index));
+    }
+    const token = m[0];
+    if (token.startsWith("**")) {
+      parts.push(
+        <strong key={key++} style={{ color: "#ffffff", fontWeight: 700 }}>
+          {token.slice(2, -2)}
+        </strong>
+      );
+    } else {
+      parts.push(
+        <em
+          key={key++}
+          className="italic"
+          style={{ color: "#e8d5a3", fontSize: "0.95em" }}
+        >
+          {token.slice(1, -1)}
+        </em>
+      );
+    }
+    lastIdx = m.index + token.length;
+  }
+  if (lastIdx < text.length) {
+    parts.push(text.slice(lastIdx));
+  }
+  return <>{parts}</>;
 }

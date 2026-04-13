@@ -333,7 +333,6 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
                   "Cost",
                   "Client Price",
                   "Margin",
-                  "Stock",
                   "Active",
                   "Featured",
                   "",
@@ -355,7 +354,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={13}
+                    colSpan={12}
                     className="px-6 py-16 text-center"
                     style={{
                       backgroundColor: "#0a1a0d",
@@ -450,7 +449,8 @@ function TestRow({
         }}
       >
         <td className="px-5 py-4 font-medium" style={{ color: "#ffffff" }}>
-          {test.name}
+          <div>{test.name}</div>
+          {test.track_inventory && <StockBadge test={test} />}
         </td>
         <td
           className="px-3 py-4 text-xs whitespace-nowrap"
@@ -493,9 +493,6 @@ function TestRow({
         </td>
         <td className="px-5 py-4 font-semibold whitespace-nowrap">
           <MarginCell price={test.price_cad} cost={test.cost_cad} />
-        </td>
-        <td className="px-5 py-4">
-          <StockCell test={test} onUpdateStock={onUpdateStock} />
         </td>
         <td className="px-5 py-4">
           <ToggleSwitch
@@ -555,7 +552,7 @@ function TestRow({
 
       {isEditing && (
         <tr style={{ backgroundColor: rowBg }}>
-          <td colSpan={13} className="p-0">
+          <td colSpan={12} className="p-0">
             <div
               className="px-6 py-5 border-t"
               style={{
@@ -569,6 +566,8 @@ function TestRow({
                 initialFields={initialFields}
                 onCancel={onCancel}
                 onSubmit={onSave}
+                stockTest={test}
+                onUpdateStock={onUpdateStock}
               />
             </div>
           </td>
@@ -594,6 +593,18 @@ function MarginCell({
   const color =
     margin >= 50 ? "#8dc63f" : margin >= 20 ? "#c4973a" : "#e05252";
   return <span style={{ color }}>{formatCurrency(margin)}</span>;
+}
+
+// ─── Stock badge (display-only, in Name cell) ───────────────────────────
+
+function StockBadge({ test }: { test: AdminTestRow }) {
+  const qty = test.stock_qty ?? 0;
+  const threshold = test.low_stock_threshold ?? 2;
+  const color =
+    qty === 0 ? "#e05252" : qty <= threshold ? "#c4973a" : "#8dc63f";
+  return (
+    <div style={{ color, fontSize: "11px" }}>Stock: {qty}</div>
+  );
 }
 
 // ─── Stock cell ─────────────────────────────────────────────────────────
@@ -751,12 +762,16 @@ function InlineTestForm({
   initialFields,
   onCancel,
   onSubmit,
+  stockTest,
+  onUpdateStock,
 }: {
   mode: "create" | "edit";
   labs: AdminLabRow[];
   initialFields: EditableFields;
   onCancel: () => void;
   onSubmit: (fields: EditableFields) => Promise<void>;
+  stockTest?: AdminTestRow;
+  onUpdateStock?: (testId: string, newQty: number) => Promise<void>;
 }) {
   const [fields, setFields] = useState<EditableFields>(initialFields);
   const [saving, setSaving] = useState(false);
@@ -948,6 +963,12 @@ function InlineTestForm({
           rows={2}
         />
       </Field>
+
+      {stockTest && stockTest.track_inventory && onUpdateStock && (
+        <Field label="Stock">
+          <StockCell test={stockTest} onUpdateStock={onUpdateStock} />
+        </Field>
+      )}
 
       {error && (
         <div
