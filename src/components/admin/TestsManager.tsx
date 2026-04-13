@@ -9,9 +9,11 @@ import {
   Loader2,
   AlertCircle,
   Check,
+  Sparkles,
 } from "lucide-react";
 import { formatCurrency, slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { InsightsChatModal } from "@/components/catalogue/InsightsChatModal";
 import type {
   AdminTestRow,
   AdminLabRow,
@@ -64,6 +66,12 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+
+  const scrollToTest = (testId: string) => {
+    const el = document.getElementById(`test-${testId}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   const categories = useMemo(() => {
     return Array.from(
@@ -292,6 +300,19 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
           </span>
         </label>
         <button
+          type="button"
+          onClick={() => setAiOpen(true)}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border transition-colors shrink-0"
+          style={{
+            backgroundColor: "transparent",
+            borderColor: "#c4973a",
+            color: "#c4973a",
+          }}
+        >
+          <Sparkles className="w-4 h-4" />
+          AI Test Finder
+        </button>
+        <button
           onClick={() => setCreating((v) => !v)}
           className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors shrink-0"
           style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
@@ -395,6 +416,12 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       <p className="mt-3 text-xs text-right" style={{ color: "#6ab04c" }}>
         Showing {filtered.length} of {tests.length} tests
       </p>
+
+      <InsightsChatModal
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onScrollToTest={scrollToTest}
+      />
     </>
   );
 }
@@ -443,6 +470,7 @@ function TestRow({
   return (
     <>
       <tr
+        id={`test-${test.id}`}
         style={{
           backgroundColor: rowBg,
           borderTop: "1px solid #1a3d22",
@@ -453,11 +481,8 @@ function TestRow({
           {test.track_inventory && <StockBadge test={test} />}
         </td>
         <td
-          className="px-3 py-4 text-xs whitespace-nowrap"
-          style={{
-            color: "#c4973a",
-            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-          }}
+          className="px-3 py-4 whitespace-nowrap"
+          style={{ color: "#ffffff" }}
         >
           {test.sku ?? "—"}
         </td>
@@ -477,7 +502,7 @@ function TestRow({
           className="px-4 py-4 text-xs"
           style={{ color: "#e8d5a3" }}
         >
-          {test.stability_notes ?? "—"}
+          {extractDuration(test.stability_notes)}
         </td>
         <td
           className="px-5 py-4 whitespace-nowrap"
@@ -499,6 +524,8 @@ function TestRow({
             on={test.active}
             onClick={() => onToggle(test, "active")}
             label="Active"
+            onLabel="Active"
+            offLabel="Inactive"
           />
         </td>
         <td className="px-5 py-4">
@@ -506,6 +533,8 @@ function TestRow({
             on={test.featured}
             onClick={() => onToggle(test, "featured")}
             label="Featured"
+            onLabel="Featured"
+            offLabel="Not Featured"
           />
         </td>
         <td className="px-5 py-4 text-right">
@@ -575,6 +604,12 @@ function TestRow({
       )}
     </>
   );
+}
+
+function extractDuration(notes: string | null): string {
+  if (!notes) return "—";
+  const m = notes.match(/(\d+)\s*(days?|hours?|weeks?)/i);
+  return m ? `${m[1]} ${m[2].toLowerCase()}` : "—";
 }
 
 // ─── Margin cell ────────────────────────────────────────────────────────
@@ -719,11 +754,16 @@ function ToggleSwitch({
   on,
   onClick,
   label,
+  onLabel,
+  offLabel,
 }: {
   on: boolean;
   onClick: () => void;
   label: string;
+  onLabel?: string;
+  offLabel?: string;
 }) {
+  const visibleLabel = on ? (onLabel ?? label) : (offLabel ?? "Off");
   return (
     <button
       type="button"
@@ -734,7 +774,7 @@ function ToggleSwitch({
       className="inline-flex items-center gap-1.5"
     >
       <span
-        className="relative inline-block w-9 h-5 rounded-full transition-colors"
+        className="relative inline-block w-9 h-5 rounded-full transition-colors shrink-0"
         style={{
           backgroundColor: on ? "#8dc63f" : "#2d6b35",
         }}
@@ -747,8 +787,8 @@ function ToggleSwitch({
           }}
         />
       </span>
-      <span className="text-xs" style={{ color: on ? "#8dc63f" : "#6ab04c" }}>
-        {on ? "On" : "Off"}
+      <span className="text-sm whitespace-nowrap" style={{ color: "#ffffff" }}>
+        {visibleLabel}
       </span>
     </button>
   );

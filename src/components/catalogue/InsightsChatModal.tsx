@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { X, Send, Sparkles, Loader2, ShoppingCart, Check, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -48,8 +48,6 @@ export function InsightsChatModal({
   const [error, setError] = useState<string | null>(null);
   const [testIndex, setTestIndex] = useState<Map<string, CatalogueLookupTest>>(new Map());
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const lastAssistantRef = useRef<HTMLDivElement>(null);
 
   // Auth subscription
   useEffect(() => {
@@ -103,26 +101,6 @@ export function InsightsChatModal({
       cancelled = true;
     };
   }, [open, authState, supabase, testIndex.size]);
-
-  // Scroll behavior:
-  // - If the latest message is from the user, scroll to bottom (so they see their input + "thinking")
-  // - If the latest message is assistant (i.e. a fresh response just landed), scroll to its top
-  useEffect(() => {
-    const last = messages[messages.length - 1];
-    if (!last) return;
-    if (last.role === "assistant" && messages.length > 1) {
-      // Skip the initial intro message — only anchor on real responses
-      requestAnimationFrame(() => {
-        lastAssistantRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    } else if (last.role === "user" || sending) {
-      requestAnimationFrame(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-      });
-    }
-  }, [messages, sending]);
 
   // Lock body scroll when open
   useEffect(() => {
@@ -191,15 +169,6 @@ export function InsightsChatModal({
 
   if (!open) return null;
 
-  // Find the index of the last assistant message so we can attach a ref to it
-  let lastAssistantIdx = -1;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === "assistant") {
-      lastAssistantIdx = i;
-      break;
-    }
-  }
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
@@ -258,7 +227,6 @@ export function InsightsChatModal({
         ) : (
           <>
             <div
-              ref={scrollRef}
               className="flex-1 overflow-y-auto px-5 py-4 space-y-5"
               style={{ minHeight: "320px" }}
             >
@@ -268,7 +236,6 @@ export function InsightsChatModal({
                 ) : (
                   <AssistantMessage
                     key={i}
-                    ref={i === lastAssistantIdx ? lastAssistantRef : undefined}
                     content={m.content}
                     testIndex={testIndex}
                     cart={cart}
@@ -433,20 +400,19 @@ interface AssistantMessageProps {
 }
 
 const AssistantMessage = ({
-  ref,
   content,
   testIndex,
   cart,
   onAdd,
   onView,
-}: AssistantMessageProps & { ref?: React.Ref<HTMLDivElement> }) => {
+}: AssistantMessageProps) => {
   const codes = extractCodes(content);
   const referencedTests = codes
     .map((c) => testIndex.get(c))
     .filter((t): t is CatalogueLookupTest => !!t);
 
   return (
-    <div ref={ref} className="flex gap-3">
+    <div className="flex gap-3">
       {/* AV avatar dot */}
       <div
         className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5"
@@ -562,7 +528,7 @@ function RenderMarkdown({ content }: { content: string }) {
     blocks.push(
       <ul key={key++} className="my-2 space-y-1.5 list-none pl-0">
         {bulletBuffer.map((b, i) => (
-          <li key={i} className="flex gap-2 text-sm" style={{ color: "#e8d5a3" }}>
+          <li key={i} className="flex gap-2 text-sm" style={{ color: "#ffffff" }}>
             <span style={{ color: "#c4973a", lineHeight: 1.5 }}>•</span>
             <span className="flex-1">{renderInline(b)}</span>
           </li>
@@ -638,7 +604,7 @@ function RenderMarkdown({ content }: { content: string }) {
       <p
         key={key++}
         className="my-2"
-        style={{ color: "#e8d5a3", fontSize: "15px", lineHeight: 1.55 }}
+        style={{ color: "#ffffff", fontSize: "15px", lineHeight: 1.55 }}
       >
         {renderInline(line)}
       </p>
