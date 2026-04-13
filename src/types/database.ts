@@ -44,6 +44,18 @@ export type OrderStatus =
   | "cancelled";
 
 export type ManifestStatus = "open" | "closed";
+
+export type ExpenseCategory =
+  | "software"
+  | "utilities"
+  | "supplies"
+  | "labour"
+  | "shipping"
+  | "marketing"
+  | "other";
+export type ExpenseFrequency = "monthly" | "annual" | "one_time";
+
+export type QuoteStatus = "draft" | "sent" | "accepted" | "expired";
 export type NotificationChannel = "email" | "sms";
 export type NotificationStatus = "sent" | "failed";
 
@@ -159,6 +171,48 @@ export interface Manifest {
   notes: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Expense {
+  id: string;
+  name: string;
+  amount_cad: number;
+  category: ExpenseCategory;
+  frequency: ExpenseFrequency;
+  active: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface Quote {
+  id: string;
+  quote_number: string;
+  client_first_name: string;
+  client_last_name: string;
+  client_email: string;
+  person_count: number;
+  collection_city: string | null;
+  notes: string | null;
+  status: QuoteStatus;
+  subtotal_cad: number;
+  discount_cad: number;
+  visit_fee_cad: number;
+  total_cad: number;
+  sent_at: string | null;
+  expires_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuoteLine {
+  id: string;
+  quote_id: string;
+  test_id: string;
+  person_label: string | null;
+  unit_price_cad: number;
+  discount_applied: number;
+  created_at: string;
 }
 
 export interface OrderLine {

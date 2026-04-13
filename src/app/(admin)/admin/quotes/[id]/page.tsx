@@ -1,0 +1,120 @@
+import { notFound } from "next/navigation";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { QuoteBuilder } from "@/components/admin/QuoteBuilder";
+import type { Quote } from "@/types/database";
+
+export const dynamic = "force-dynamic";
+
+export type QuoteLineWithTest = {
+  id: string;
+  test_id: string;
+  person_label: string | null;
+  unit_price_cad: number;
+  test_name: string;
+  lab_name: string;
+};
+
+export type CatalogueTestForQuote = {
+  id: string;
+  name: string;
+  sku: string | null;
+  price_cad: number;
+  lab_name: string;
+};
+
+export default async function AdminQuoteBuilderPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const service = createServiceRoleClient();
+
+  const { data: quoteRaw } = await service
+    .from("quotes")
+    .select(
+      `
+      id, quote_number, client_first_name, client_last_name, client_email,
+      person_count, collection_city, notes, status,
+      subtotal_cad, discount_cad, visit_fee_cad, total_cad,
+      sent_at, expires_at, created_by, created_at, updated_at
+    `
+    )
+    .eq("id", id)
+    .maybeSingle();
+  const quote = quoteRaw as Quote | null;
+  if (!quote) notFound();
+
+  const { data: linesRaw } = await service
+    .from("quote_lines")
+    .select(
+      `
+      id, test_id, person_label, unit_price_cad,
+      test:tests ( name, lab:labs ( name ) )
+    `
+    )
+    .eq("quote_id", id)
+    .order("created_at", { ascending: true });
+
+  type RawLine = {
+    id: string;
+    test_id: string;
+    person_label: string | null;
+    unit_price_cad: number;
+    test: {
+      name: string;
+      lab: { name: string } | { name: string }[] | null;
+    } | null;
+  };
+  const lines: QuoteLineWithTest[] = ((linesRaw ?? []) as unknown as RawLine[]).map(
+    (l) => {
+      const lab = Array.isArray(l.test?.lab) ? l.test?.lab[0] : l.test?.lab;
+      return {
+        id: l.id,
+        test_id: l.test_id,
+        person_label: l.person_label,
+        unit_price_cad: l.unit_price_cad,
+        test_name: l.test?.name ?? "Test",
+        lab_name: lab?.name ?? "—",
+      };
+    }
+  );
+
+  // Active tests with a price (only priced tests can be added to a quote)
+  const { data: testsRaw } = await service
+    .from("tests")
+    .select("id, name, sku, price_cad, lab:labs(name)")
+    .eq("active", true)
+    .not("price_cad", "is", null)
+    .order("name", { ascending: true });
+
+  type RawTest = {
+    id: string;
+    name: string;
+    sku: string | null;
+    price_cad: number;
+    lab: { name: string } | { name: string }[] | null;
+  };
+  const catalogue: CatalogueTestForQuote[] = (
+    (testsRaw ?? []) as unknown as RawTest[]
+  ).map((t) => {
+    const lab = Array.isArray(t.lab) ? t.lab[0] : t.lab;
+    return {
+      id: t.id,
+      name: t.name,
+      sku: t.sku,
+      price_cad: t.price_cad,
+      lab_name: lab?.name ?? "—",
+    };
+  });
+
+  return (
+    <div className="p-6 max-w-[1800px] mx-auto">
+      <QuoteBuilder
+        initialQuote={quote}
+        initialLines={lines}
+        catalogue={catalogue}
+      />
+    </div>
+  );
+}
