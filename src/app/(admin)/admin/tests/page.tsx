@@ -6,6 +6,9 @@ export const dynamic = "force-dynamic";
 
 export type AdminTestRow = Test & {
   lab: Pick<Lab, "id" | "name">;
+  track_inventory: boolean | null;
+  stock_qty: number | null;
+  low_stock_threshold: number | null;
 };
 
 export type AdminLabRow = Pick<Lab, "id" | "name">;
@@ -22,6 +25,7 @@ export default async function AdminTestsPage() {
         turnaround_display, turnaround_min_days, turnaround_max_days,
         turnaround_note, specimen_type, ship_temp, order_type,
         stability_notes, active, featured, created_at, updated_at,
+        track_inventory, stock_qty, low_stock_threshold,
         lab:labs(id, name)
       `
       )

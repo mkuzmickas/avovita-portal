@@ -77,6 +77,23 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
     });
   }, [tests, searchQuery, labFilter, categoryFilter]);
 
+  const updateStock = async (testId: string, newQty: number) => {
+    const safeQty = Math.max(0, Math.floor(newQty));
+    const res = await fetch("/api/admin/tests/stock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ test_id: testId, stock_qty: safeQty }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({ error: "Unknown error" }));
+      alert(`Failed to update stock: ${data.error ?? res.statusText}`);
+      return;
+    }
+    setTests((prev) =>
+      prev.map((t) => (t.id === testId ? { ...t, stock_qty: safeQty } : t))
+    );
+  };
+
   const toggleField = async (
     test: AdminTestRow,
     field: "active" | "featured"
@@ -275,6 +292,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
                   "Lab",
                   "Category",
                   "Price",
+                  "Stock",
                   "Active",
                   "Featured",
                   "",
@@ -296,7 +314,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-6 py-16 text-center"
                     style={{
                       backgroundColor: "#0a1a0d",
@@ -324,6 +342,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
                       onCancel={() => setEditingId(null)}
                       onToggle={toggleField}
                       onSave={(fields) => saveEdit(test.id, fields)}
+                      onUpdateStock={updateStock}
                     />
                   );
                 })
@@ -351,6 +370,7 @@ function TestRow({
   onCancel,
   onToggle,
   onSave,
+  onUpdateStock,
 }: {
   test: AdminTestRow;
   rowBg: string;
@@ -360,6 +380,7 @@ function TestRow({
   onCancel: () => void;
   onToggle: (test: AdminTestRow, field: "active" | "featured") => void;
   onSave: (fields: EditableFields) => Promise<void>;
+  onUpdateStock: (testId: string, newQty: number) => Promise<void>;
 }) {
   const initialFields: EditableFields = {
     name: test.name,
@@ -402,6 +423,9 @@ function TestRow({
           {formatCurrency(test.price_cad)}
         </td>
         <td className="px-5 py-4">
+          <StockCell test={test} onUpdateStock={onUpdateStock} />
+        </td>
+        <td className="px-5 py-4">
           <ToggleSwitch
             on={test.active}
             onClick={() => onToggle(test, "active")}
@@ -442,7 +466,7 @@ function TestRow({
 
       {isEditing && (
         <tr style={{ backgroundColor: rowBg }}>
-          <td colSpan={7} className="p-0">
+          <td colSpan={8} className="p-0">
             <div
               className="px-6 py-5 border-t"
               style={{
@@ -462,6 +486,112 @@ function TestRow({
         </tr>
       )}
     </>
+  );
+}
+
+// ─── Stock cell ─────────────────────────────────────────────────────────
+
+function StockCell({
+  test,
+  onUpdateStock,
+}: {
+  test: AdminTestRow;
+  onUpdateStock: (testId: string, newQty: number) => Promise<void>;
+}) {
+  const [input, setInput] = useState<string>(
+    test.stock_qty != null ? String(test.stock_qty) : ""
+  );
+  const [busy, setBusy] = useState(false);
+
+  if (!test.track_inventory) {
+    return <span style={{ color: "#6ab04c" }}>—</span>;
+  }
+
+  const qty = test.stock_qty ?? 0;
+  const threshold = test.low_stock_threshold ?? 2;
+  const isOut = qty === 0;
+  const isLow = !isOut && qty <= threshold;
+
+  const color = isOut ? "#e05252" : isLow ? "#c4973a" : "#8dc63f";
+
+  const step = async (delta: number) => {
+    setBusy(true);
+    try {
+      const next = Math.max(0, qty + delta);
+      await onUpdateStock(test.id, next);
+      setInput(String(next));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submit = async () => {
+    const parsed = parseInt(input, 10);
+    if (!Number.isFinite(parsed)) {
+      setInput(String(qty));
+      return;
+    }
+    if (parsed === qty) return;
+    setBusy(true);
+    try {
+      await onUpdateStock(test.id, parsed);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => step(-1)}
+        disabled={busy || qty === 0}
+        className="w-6 h-6 rounded flex items-center justify-center text-sm font-bold"
+        style={{
+          backgroundColor: "#2d6b35",
+          color: "#e8d5a3",
+          opacity: busy || qty === 0 ? 0.4 : 1,
+        }}
+        aria-label="Decrease stock"
+      >
+        −
+      </button>
+      <input
+        type="number"
+        min={0}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onBlur={submit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        disabled={busy}
+        className="w-14 text-center rounded border text-sm font-semibold"
+        style={{
+          backgroundColor: "#0f2614",
+          borderColor: color,
+          color,
+          padding: "2px 4px",
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => step(1)}
+        disabled={busy}
+        className="w-6 h-6 rounded flex items-center justify-center text-sm font-bold"
+        style={{
+          backgroundColor: "#2d6b35",
+          color: "#e8d5a3",
+          opacity: busy ? 0.4 : 1,
+        }}
+        aria-label="Increase stock"
+      >
+        +
+      </button>
+    </div>
   );
 }
 

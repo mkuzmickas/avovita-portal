@@ -201,6 +201,128 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+// ─── Kit inventory — decrement + low-stock alerts ────────────────────
+
+const LOW_STOCK_THRESHOLD = 2;
+
+async function processKitInventory(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  payload: NonNullable<ReturnType<typeof reassembleMetadata>>
+) {
+  // Count purchased quantity per test
+  const qtyByTest = new Map<string, number>();
+  for (const a of payload.assignments) {
+    qtyByTest.set(a.test_id, (qtyByTest.get(a.test_id) ?? 0) + 1);
+  }
+
+  const testIds = [...qtyByTest.keys()];
+  if (testIds.length === 0) return;
+
+  const { data: testsRaw } = await supabase
+    .from("tests")
+    .select("id, name, track_inventory, stock_qty, low_stock_threshold")
+    .in("id", testIds);
+
+  type TestRow = {
+    id: string;
+    name: string;
+    track_inventory: boolean | null;
+    stock_qty: number | null;
+    low_stock_threshold: number | null;
+  };
+  const tests = (testsRaw ?? []) as unknown as TestRow[];
+
+  for (const test of tests) {
+    if (!test.track_inventory) continue;
+    const purchased = qtyByTest.get(test.id) ?? 0;
+    if (purchased === 0) continue;
+
+    const current = test.stock_qty ?? 0;
+    const next = Math.max(0, current - purchased);
+
+    const { error: updErr } = await supabase
+      .from("tests")
+      .update({ stock_qty: next })
+      .eq("id", test.id);
+
+    if (updErr) {
+      console.error(
+        `[stripe-webhook] failed to decrement stock for ${test.name}:`,
+        updErr.message
+      );
+      continue;
+    }
+
+    console.log(
+      `[stripe-webhook] stock for ${test.name}: ${current} -> ${next}`
+    );
+
+    const threshold = test.low_stock_threshold ?? LOW_STOCK_THRESHOLD;
+    if (next <= threshold) {
+      await sendLowStockAlerts(test.name, next, threshold);
+    }
+  }
+}
+
+async function sendLowStockAlerts(
+  testName: string,
+  stockQty: number,
+  threshold: number
+) {
+  // SMS to admin
+  try {
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER;
+    if (twilioClient && adminPhone) {
+      await twilioClient.messages.create({
+        from: TWILIO_FROM,
+        to: adminPhone,
+        body: `AvoVita — Low kit stock: ${testName} has ${stockQty} remaining. Time to reorder.`,
+      });
+      console.log(`[stripe-webhook] low-stock SMS sent for ${testName}`);
+    }
+  } catch (err) {
+    console.error(`[stripe-webhook] low-stock SMS failed for ${testName}:`, err);
+  }
+
+  // Email to Jenna
+  try {
+    await resend.emails.send({
+      from: process.env.RESEND_FROM_ORDERS!,
+      to: "jenna@avovita.ca",
+      subject: `Low Kit Stock Alert — ${testName}`,
+      html: `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px;">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;">
+  <tr><td style="background:#0f2614;padding:28px 32px;text-align:center;border-bottom:3px solid #c4973a;">
+    <h1 style="margin:0;font-size:24px;font-family:Georgia,'Cormorant Garamond',serif;color:#ffffff;">AvoVita <span style="color:#c4973a;">Wellness</span></h1>
+    <p style="margin:6px 0 0;font-size:12px;color:#c4973a;">LOW KIT STOCK ALERT</p>
+  </td></tr>
+  <tr><td style="padding:32px;">
+    <h2 style="margin:0 0 16px;font-size:20px;font-family:Georgia,serif;color:#111827;">Time to reorder</h2>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr><td style="padding:8px 0;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;">Test</td>
+          <td style="padding:8px 0;color:#111827;font-size:14px;font-weight:600;text-align:right;border-bottom:1px solid #e5e7eb;">${escapeHtml(testName)}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;">Stock remaining</td>
+          <td style="padding:8px 0;color:#c4973a;font-size:14px;font-weight:700;text-align:right;border-bottom:1px solid #e5e7eb;">${stockQty}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;">Threshold</td>
+          <td style="padding:8px 0;color:#111827;font-size:14px;text-align:right;border-bottom:1px solid #e5e7eb;">${threshold}</td></tr>
+    </table>
+    <div style="text-align:center;">
+      <a href="https://portal.avovita.ca/admin/tests" style="display:inline-block;background:#c4973a;color:#0a1a0d;padding:12px 28px;text-decoration:none;border-radius:6px;font-weight:700;font-size:14px;">Manage Tests</a>
+    </div>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`,
+    });
+    console.log(`[stripe-webhook] low-stock email sent for ${testName}`);
+  } catch (err) {
+    console.error(`[stripe-webhook] low-stock email failed for ${testName}:`, err);
+  }
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
@@ -287,6 +409,14 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     }
   } catch {
     // Non-fatal — notification logging failure shouldn't block
+  }
+
+  // ─── 3b. Kit inventory — decrement stock, alert if low ────────
+  // Wrapped so stock errors never block order completion.
+  try {
+    await processKitInventory(supabase, payload);
+  } catch (err) {
+    console.error("[stripe-webhook] inventory processing failed (non-fatal):", err);
   }
 
   // ─── 4. Guest path stops here ──────────────────────────────────
