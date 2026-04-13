@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Leaf } from "lucide-react";
+import { Leaf, Search } from "lucide-react";
 import { TestCard } from "./TestCard";
 import { TestTable } from "./TestTable";
 import { SearchBar } from "./SearchBar";
 import { CategoryFilter } from "./CategoryFilter";
 import { CartBar } from "./CartBar";
+import { InsightsChatModal } from "./InsightsChatModal";
 import { useCart } from "@/components/cart/CartContext";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
@@ -31,10 +32,25 @@ export function CatalogueClient({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedLab, setSelectedLab] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
 
   const handleAdd = (item: CatalogueCartItem) => {
     addItem(item);
   };
+
+  const toggleExpanded = useCallback((testId: string) => {
+    setExpandedCardId((prev) => (prev === testId ? null : testId));
+  }, []);
+
+  const scrollToTest = useCallback((testId: string) => {
+    setExpandedCardId(testId);
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`test-${testId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+  }, []);
 
   // Dev-only sanity log so we can verify in browser devtools that data is
   // actually flowing through to TestTable. Stripped from production builds.
@@ -145,6 +161,29 @@ export function CatalogueClient({
             Order 2 or more tests and save $20 per test at checkout.
           </p>
         </div>
+
+        {/* AI Test Finder trigger */}
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setAiOpen(true)}
+            className="ai-finder-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold border transition-colors"
+            style={{
+              backgroundColor: "transparent",
+              borderColor: "#c4973a",
+              color: "#c4973a",
+            }}
+          >
+            <Search className="w-4 h-4" />
+            AI Test Finder
+          </button>
+          <style jsx>{`
+            .ai-finder-btn:hover {
+              background-color: #c4973a !important;
+              color: #0a1a0d !important;
+            }
+          `}</style>
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 space-y-12">
@@ -171,17 +210,11 @@ export function CatalogueClient({
                     role="button"
                     tabIndex={0}
                     aria-expanded={isExpanded}
-                    onClick={() =>
-                      setExpandedCardId((prev) =>
-                        prev === test.id ? null : test.id
-                      )
-                    }
+                    onClick={() => toggleExpanded(test.id)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        setExpandedCardId((prev) =>
-                          prev === test.id ? null : test.id
-                        );
+                        toggleExpanded(test.id);
                       }
                     }}
                     className="cursor-pointer focus:outline-none"
@@ -262,12 +295,21 @@ export function CatalogueClient({
             onClearFilters={clearFilters}
             hasFiltersActive={hasFiltersActive}
             totalTestsInDb={allTests.length}
+            expandedId={expandedCardId}
+            onToggleExpand={toggleExpanded}
           />
         </section>
       </div>
 
       {/* Sticky cart bar */}
       <CartBar cart={cart} />
+
+      {/* AI Test Finder modal */}
+      <InsightsChatModal
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onScrollToTest={scrollToTest}
+      />
     </div>
   );
 }

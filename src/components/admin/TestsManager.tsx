@@ -325,6 +325,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
               <tr style={{ backgroundColor: "#0f2614" }}>
                 {[
                   "Name",
+                  "SKU",
                   "Lab",
                   "Category",
                   "Ship Temp",
@@ -354,7 +355,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={12}
+                    colSpan={13}
                     className="px-6 py-16 text-center"
                     style={{
                       backgroundColor: "#0a1a0d",
@@ -449,12 +450,16 @@ function TestRow({
         }}
       >
         <td className="px-5 py-4 font-medium" style={{ color: "#ffffff" }}>
-          <div>{test.name}</div>
-          {test.sku && (
-            <div style={{ color: "#6ab04c", fontSize: "11px" }}>
-              SKU: {test.sku}
-            </div>
-          )}
+          {test.name}
+        </td>
+        <td
+          className="px-3 py-4 text-xs whitespace-nowrap"
+          style={{
+            color: "#c4973a",
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          }}
+        >
+          {test.sku ?? "—"}
         </td>
         <td className="px-5 py-4" style={{ color: "#e8d5a3" }}>
           {test.lab.name}
@@ -550,7 +555,7 @@ function TestRow({
 
       {isEditing && (
         <tr style={{ backgroundColor: rowBg }}>
-          <td colSpan={12} className="p-0">
+          <td colSpan={13} className="p-0">
             <div
               className="px-6 py-5 border-t"
               style={{

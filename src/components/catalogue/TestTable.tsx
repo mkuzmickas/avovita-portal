@@ -12,6 +12,8 @@ interface TestTableProps {
   onClearFilters?: () => void;
   hasFiltersActive: boolean;
   totalTestsInDb: number;
+  expandedId: string | null;
+  onToggleExpand: (testId: string) => void;
 }
 
 /**
@@ -26,12 +28,9 @@ export function TestTable({
   onClearFilters,
   hasFiltersActive,
   totalTestsInDb,
+  expandedId,
+  onToggleExpand,
 }: TestTableProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const toggle = (id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  };
 
   const isEmpty = tests.length === 0;
   const dbIsEmpty = totalTestsInDb === 0;
@@ -120,7 +119,7 @@ export function TestTable({
                     expanded={expanded}
                     inCart={inCart}
                     rowBg={rowBg}
-                    onToggle={() => toggle(test.id)}
+                    onToggle={() => onToggleExpand(test.id)}
                     onAdd={onAdd}
                   />
                 );
@@ -175,6 +174,7 @@ function TestTableRow({
   return (
     <>
       <tr
+        id={`test-${test.id}`}
         onClick={onToggle}
         className="cursor-pointer transition-colors"
         style={{ backgroundColor: rowBg, borderTop: "1px solid #1a3d22" }}

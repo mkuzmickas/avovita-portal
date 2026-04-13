@@ -41,6 +41,7 @@ export function TestCard({
 
   return (
     <article
+      id={`test-${test.id}`}
       className="flex flex-col rounded-xl border overflow-hidden transition-colors h-full"
       style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
     >
