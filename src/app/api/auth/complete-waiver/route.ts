@@ -58,16 +58,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert a consent record (append-only PIPA compliance log)
-    await supabase.from("consents").insert({
-      account_id: user.id,
-      profile_id: null,
-      consent_type: "general_pipa",
-      consent_text_version: "1.0",
-      ip_address: ipAddress,
-      user_agent:
-        request.headers.get("user-agent") ?? null,
-    });
+    // Insert a consent record (append-only PIPA compliance log).
+    // The waiver itself is already saved on the account row; treat the
+    // consent log insert as best-effort so a slow/failing log can't block
+    // the user's response and leave them spinning forever.
+    try {
+      await supabase.from("consents").insert({
+        account_id: user.id,
+        profile_id: null,
+        consent_type: "general_pipa",
+        consent_text_version: "1.0",
+        ip_address: ipAddress,
+        user_agent: request.headers.get("user-agent") ?? null,
+      });
+    } catch (consentErr) {
+      console.error(
+        "[complete-waiver] consent log insert failed (non-fatal):",
+        consentErr
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

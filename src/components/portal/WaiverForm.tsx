@@ -73,26 +73,36 @@ export function WaiverForm({ onComplete }: WaiverFormProps) {
     setSubmitting(true);
     setError(null);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000);
+
     try {
       const res = await fetch("/api/auth/complete-waiver", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ signed_name: signedName.trim() }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(
-          data.error ?? "Failed to save waiver"
-        );
+        throw new Error(data.error ?? "Failed to save waiver");
       }
 
       onComplete();
     } catch (err) {
+      const isTimeout =
+        err instanceof DOMException && err.name === "AbortError";
       setError(
-        err instanceof Error ? err.message : "Failed to save waiver"
+        isTimeout
+          ? "Saving is taking longer than expected. Your waiver may have been saved — please refresh the page and try again if the next step doesn't load."
+          : err instanceof Error
+            ? err.message
+            : "Failed to save waiver"
       );
       setSubmitting(false);
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
