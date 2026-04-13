@@ -203,6 +203,21 @@ export function CatalogueClient({
         <section>
           <SectionHeading title="Full Test Catalogue" />
 
+          <p
+            className="mb-5"
+            style={{ color: "#e8d5a3", fontSize: "13.5px" }}
+          >
+            Don&apos;t see the test you&apos;re looking for? We have access to thousands of Mayo Clinic tests not listed here —{" "}
+            <a
+              href="mailto:support@avovita.ca"
+              className="no-underline hover:underline"
+              style={{ color: "#c4973a" }}
+            >
+              contact us
+            </a>{" "}
+            and we&apos;ll get it added.
+          </p>
+
           {/* Filter row */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <SearchBar

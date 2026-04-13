@@ -283,11 +283,12 @@ function TestTableRow({
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors self-start"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors self-start"
                       style={{
-                        backgroundColor: "transparent",
-                        borderColor: "#c4973a",
-                        color: "#c4973a",
+                        backgroundColor: "#c4973a",
+                        color: "#0a1a0d",
+                        border: "none",
+                        fontWeight: 600,
                       }}
                     >
                       <Download className="w-4 h-4" />
