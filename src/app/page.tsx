@@ -43,7 +43,7 @@ export default function HomePage() {
 
       {/* ─── Hero (full viewport) ───────────────────────────────────────── */}
       <section
-        className="relative flex items-center justify-center px-6 pt-40 pb-16 md:pt-48 md:pb-20"
+        className="relative flex items-center justify-center px-6 pt-40 pb-4 md:pt-48 md:pb-6"
         style={{ backgroundColor: "#0a1a0d" }}
       >
         {/* Soft radial glow */}
@@ -106,7 +106,7 @@ export default function HomePage() {
       </section>
 
       {/* ─── How It Works ───────────────────────────────────────────────── */}
-      <section className="px-6 py-24" style={{ backgroundColor: "#0a1a0d" }}>
+      <section className="px-6 pt-12 pb-24" style={{ backgroundColor: "#0a1a0d" }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2
@@ -143,7 +143,7 @@ export default function HomePage() {
                 description:
                   "Results delivered to your private patient portal. Protected under Alberta PIPA.",
               },
-            ].map(({ icon: Icon, title, description }) => (
+            ].map(({ icon: Icon, title, description }, idx) => (
               <div
                 key={title}
                 className="p-8 rounded-2xl border text-center transition-colors"
@@ -152,6 +152,16 @@ export default function HomePage() {
                   borderColor: "#2d6b35",
                 }}
               >
+                <p
+                  className="mb-3 font-semibold uppercase"
+                  style={{
+                    color: "#c4973a",
+                    fontSize: "11px",
+                    letterSpacing: "0.15em",
+                  }}
+                >
+                  Step {idx + 1}
+                </p>
                 <div
                   className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5 border"
                   style={{
