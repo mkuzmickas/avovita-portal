@@ -34,6 +34,8 @@ type EditableFields = {
   turnaround_min_days: string;
   turnaround_max_days: string;
   lab_id: string;
+  sku: string;
+  mayo_test_id: string;
 };
 
 const EMPTY_FORM: EditableFields = {
@@ -48,7 +50,11 @@ const EMPTY_FORM: EditableFields = {
   turnaround_min_days: "",
   turnaround_max_days: "",
   lab_id: "",
+  sku: "",
+  mayo_test_id: "",
 };
+
+const MAYO_URL_BASE = "https://mayocliniclabs.com/test-catalog/overview/";
 
 export function TestsManager({ initialTests, labs }: TestsManagerProps) {
   const [tests, setTests] = useState<AdminTestRow[]>(initialTests);
@@ -138,6 +144,8 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         ? parseInt(fields.turnaround_max_days, 10)
         : null,
       lab_id: fields.lab_id,
+      sku: fields.sku || null,
+      mayo_test_id: fields.mayo_test_id || null,
     };
 
     const { error } = await supabase
@@ -184,6 +192,8 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         ? parseInt(fields.turnaround_max_days, 10)
         : null,
       lab_id: fields.lab_id,
+      sku: fields.sku || null,
+      mayo_test_id: fields.mayo_test_id || null,
       active: true,
       featured: false,
     };
@@ -196,7 +206,9 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         id, lab_id, name, slug, description, category, price_cad,
         turnaround_display, turnaround_min_days, turnaround_max_days,
         turnaround_note, specimen_type, ship_temp,
-        stability_notes, active, featured, created_at, updated_at
+        stability_notes, active, featured, created_at, updated_at,
+        sku, mayo_test_id, cost_cad,
+        track_inventory, stock_qty, low_stock_threshold
       `
       )
       .single();
@@ -424,6 +436,8 @@ function TestRow({
     turnaround_max_days:
       test.turnaround_max_days != null ? String(test.turnaround_max_days) : "",
     lab_id: test.lab_id,
+    sku: test.sku ?? "",
+    mayo_test_id: test.mayo_test_id ?? "",
   };
 
   return (
@@ -488,6 +502,22 @@ function TestRow({
           />
         </td>
         <td className="px-5 py-4 text-right">
+          <div className="flex items-center justify-end gap-2">
+            {test.mayo_test_id && (
+              <a
+                href={`${MAYO_URL_BASE}${test.mayo_test_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                style={{
+                  color: "#8dc63f",
+                  border: "1px solid #2d6b35",
+                  backgroundColor: "transparent",
+                }}
+              >
+                Mayo ↗
+              </a>
+            )}
           <button
             onClick={isEditing ? onCancel : onEdit}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
@@ -509,6 +539,7 @@ function TestRow({
               </>
             )}
           </button>
+          </div>
         </td>
       </tr>
 
@@ -800,6 +831,40 @@ function InlineTestForm({
             className="mf-input"
           />
         </Field>
+        <Field label="SKU">
+          <input
+            type="text"
+            value={fields.sku}
+            onChange={(e) => update("sku", e.target.value)}
+            className="mf-input"
+            placeholder="e.g. AVO-12345"
+          />
+        </Field>
+        <Field
+          label="Mayo Test ID"
+          helper="Numeric ID from mayocliniclabs.com URL (e.g. 63416)"
+        >
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={fields.mayo_test_id}
+              onChange={(e) => update("mayo_test_id", e.target.value)}
+              className="mf-input"
+              placeholder="63416"
+            />
+            {fields.mayo_test_id.trim() && (
+              <a
+                href={`${MAYO_URL_BASE}${fields.mayo_test_id.trim()}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-semibold whitespace-nowrap"
+                style={{ color: "#8dc63f" }}
+              >
+                View on Mayo ↗
+              </a>
+            )}
+          </div>
+        </Field>
         <Field label="Price (CAD)">
           <input
             type="number"
@@ -923,10 +988,12 @@ function InlineTestForm({
 function Field({
   label,
   required,
+  helper,
   children,
 }: {
   label: string;
   required?: boolean;
+  helper?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -939,6 +1006,14 @@ function Field({
         {required && <span style={{ color: "#e05252" }}> *</span>}
       </label>
       {children}
+      {helper && (
+        <p
+          className="mt-1 text-xs"
+          style={{ color: "#6ab04c" }}
+        >
+          {helper}
+        </p>
+      )}
     </div>
   );
 }

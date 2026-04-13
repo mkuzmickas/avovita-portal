@@ -11,6 +11,7 @@ export type AdminTestRow = Test & {
   low_stock_threshold: number | null;
   sku: string | null;
   cost_cad: number | null;
+  mayo_test_id: string | null;
 };
 
 export type AdminLabRow = Pick<Lab, "id" | "name">;
@@ -28,7 +29,7 @@ export default async function AdminTestsPage() {
         turnaround_note, specimen_type, ship_temp,
         stability_notes, active, featured, created_at, updated_at,
         track_inventory, stock_qty, low_stock_threshold,
-        sku, cost_cad,
+        sku, cost_cad, mayo_test_id,
         lab:labs(id, name)
       `
       )
