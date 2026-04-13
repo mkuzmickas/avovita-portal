@@ -23,6 +23,8 @@ interface CheckoutCartSummaryProps {
    * computed from assignments (one billed line per assignment).
    */
   subtotalOverride?: number;
+  /** Test-mode AVOVITA-TEST promo applied — zeroes out the grand total. */
+  promoApplied?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export function CheckoutCartSummary({
   visitFees,
   lineCount,
   subtotalOverride,
+  promoApplied = false,
 }: CheckoutCartSummaryProps) {
   const { removeItem } = useCart();
   const effectiveLineCount = lineCount ?? cart.length;
@@ -204,14 +207,36 @@ export function CheckoutCartSummary({
               </p>
             )}
 
+            {promoApplied && (
+              <div
+                className="flex justify-between text-sm font-medium pt-2 mt-1 border-t"
+                style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
+              >
+                <span>Promo code applied (AVOVITA-TEST)</span>
+                <span>−{formatCurrency(total)}</span>
+              </div>
+            )}
+
             <div
               className="flex justify-between text-base font-semibold pt-2 mt-1 border-t"
               style={{ borderColor: "#2d6b35" }}
             >
               <span style={{ color: "#ffffff" }}>Total</span>
-              <span style={{ color: "#c4973a" }}>
-                {formatCurrency(total)} CAD
-              </span>
+              {promoApplied ? (
+                <span className="flex items-center gap-2">
+                  <span
+                    className="line-through text-sm font-medium"
+                    style={{ color: "#6ab04c" }}
+                  >
+                    {formatCurrency(total)}
+                  </span>
+                  <span style={{ color: "#8dc63f" }}>$0.00 CAD</span>
+                </span>
+              ) : (
+                <span style={{ color: "#c4973a" }}>
+                  {formatCurrency(total)} CAD
+                </span>
+              )}
             </div>
           </div>
         </>

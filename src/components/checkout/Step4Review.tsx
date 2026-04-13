@@ -33,6 +33,9 @@ interface Step4Props {
   assignments: PersonAssignmentEntry[];
   accountUserId: string | null;
   onBack: () => void;
+  /** Promo state lifted to CheckoutClient so the Order Summary sidebar can react. */
+  promoApplied: boolean;
+  onPromoChange: (applied: boolean) => void;
 }
 
 const RELATIONSHIP_LABEL: Record<string, string> = {
@@ -76,13 +79,15 @@ export function Step4Review({
   assignments,
   accountUserId,
   onBack,
+  promoApplied,
+  onPromoChange,
 }: Step4Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [promoOpen, setPromoOpen] = useState(false);
   const [promoInput, setPromoInput] = useState("");
-  const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
+  const setPromoApplied = onPromoChange;
   const [shippingRiskAcknowledged, setShippingRiskAcknowledged] =
     useState(false);
 

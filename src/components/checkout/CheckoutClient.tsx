@@ -73,6 +73,7 @@ export function CheckoutClient({
   const [collectionAddress, setCollectionAddress] =
     useState<CollectionAddress>(defaultAddress);
   const [restored, setRestored] = useState(false);
+  const [promoApplied, setPromoApplied] = useState(false);
 
   // ─── Restore persisted state ──────────────────────────────────────────
   useEffect(() => {
@@ -338,6 +339,8 @@ export function CheckoutClient({
                 assignments={assignments}
                 accountUserId={accountUserId}
                 onBack={handleStep4Back}
+                promoApplied={promoApplied}
+                onPromoChange={setPromoApplied}
               />
             )}
           </div>
@@ -349,6 +352,7 @@ export function CheckoutClient({
               visitFees={visitFees}
               lineCount={sidebarLineCount}
               subtotalOverride={sidebarSubtotal}
+              promoApplied={promoApplied}
             />
           </div>
         </div>
