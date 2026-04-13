@@ -32,7 +32,7 @@ export interface OrderConfirmationProps {
   stripeSessionId?: string;
 }
 
-const FLO_LABS_URL = "https://flo-labs.janeapp.com/";
+const FLO_LABS_URL = "https://flolabsbooking.as.me/?appointmentType=84416067";
 
 function formatCurrency(amount: number): string {
   return `$${amount.toFixed(2)} CAD`;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Clock, ShoppingCart, Check, ChevronDown } from "lucide-react";
+import { Clock, ShoppingCart, Check, ChevronDown, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
@@ -95,6 +95,25 @@ export function TestCard({
           </span>
         </p>
 
+        {/* Requisition required notice */}
+        {test.requisition_url && (
+          <div
+            className="flex items-start gap-2 rounded-md border px-3 py-2 mb-3"
+            style={{
+              backgroundColor: "rgba(196,151,58,0.1)",
+              borderColor: "#c4973a",
+            }}
+          >
+            <FileText
+              className="w-3.5 h-3.5 shrink-0 mt-0.5"
+              style={{ color: "#c4973a" }}
+            />
+            <span className="text-xs" style={{ color: "#c4973a" }}>
+              Physician requisition required — must be present at time of collection
+            </span>
+          </div>
+        )}
+
         {/* Turnaround */}
         {test.turnaround_display && (
           <div
@@ -129,6 +148,24 @@ export function TestCard({
                 value={formatOrderType(test.order_type)}
               />
             </div>
+
+            {test.requisition_url && (
+              <a
+                href={test.requisition_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
+                style={{
+                  backgroundColor: "transparent",
+                  borderColor: "#c4973a",
+                  color: "#c4973a",
+                }}
+              >
+                <Download className="w-4 h-4" />
+                Download Requisition Form
+              </a>
+            )}
           </div>
         )}
 

@@ -47,6 +47,8 @@ async function CatalogueData() {
       stability_notes,
       order_type,
       featured,
+      sku,
+      requisition_url,
       lab:labs(id, name)
       `
     )

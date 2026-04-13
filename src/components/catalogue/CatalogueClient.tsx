@@ -54,7 +54,9 @@ export function CatalogueClient({
     const query = searchQuery.trim().toLowerCase();
     return allTests.filter((test) => {
       const matchesSearch =
-        query === "" || test.name.toLowerCase().includes(query);
+        query === "" ||
+        test.name.toLowerCase().includes(query) ||
+        (test.sku !== null && test.sku.toLowerCase().includes(query));
       const matchesCategory =
         selectedCategory === null || test.category === selectedCategory;
       const matchesLab = selectedLab === null || test.lab.name === selectedLab;
@@ -206,7 +208,7 @@ export function CatalogueClient({
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder="Search by test name…"
+              placeholder="Search by test name or SKU..."
             />
             <CategoryFilter
               label="Categories"

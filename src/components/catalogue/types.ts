@@ -15,6 +15,8 @@ export type CatalogueTest = {
   stability_notes: string | null;
   order_type: string;
   featured: boolean;
+  sku: string | null;
+  requisition_url: string | null;
   lab: { id: string; name: string };
 };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Clock, ShoppingCart, Check } from "lucide-react";
+import { ChevronDown, Clock, ShoppingCart, Check, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
@@ -178,7 +178,22 @@ function TestTableRow({
         style={{ backgroundColor: rowBg, borderTop: "1px solid #1a3d22" }}
       >
         <td className="px-5 py-4 font-medium" style={{ color: "#ffffff" }}>
-          {test.name}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>{test.name}</span>
+            {test.requisition_url && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
+                style={{
+                  backgroundColor: "rgba(196,151,58,0.1)",
+                  borderColor: "#c4973a",
+                  color: "#c4973a",
+                }}
+              >
+                <FileText className="w-3 h-3" />
+                Req. Required
+              </span>
+            )}
+          </div>
         </td>
         <td className="px-5 py-4" style={{ color: "#e8d5a3" }}>
           {test.lab.name}
@@ -260,6 +275,24 @@ function TestTableRow({
                       />
                       <span>{test.turnaround_display}</span>
                     </div>
+                  )}
+
+                  {test.requisition_url && (
+                    <a
+                      href={test.requisition_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors self-start"
+                      style={{
+                        backgroundColor: "transparent",
+                        borderColor: "#c4973a",
+                        color: "#c4973a",
+                      }}
+                    >
+                      <Download className="w-4 h-4" />
+                      Download Requisition Form
+                    </a>
                   )}
                 </div>
 
