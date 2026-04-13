@@ -230,18 +230,18 @@ export function ProfileForm({
 
       <div>
         <label className="block text-sm font-medium mb-1.5" style={labelStyle}>
-          Phone Number
+          Mobile Number (optional)
         </label>
         <input
           type="tel"
           value={form.phone}
           onChange={(e) => handleChange("phone", e.target.value)}
           className="mf-input"
-          placeholder="+1 (403) 555-0100"
+          placeholder="+1 (403) 555-0000"
           autoComplete="tel"
         />
         <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
-          Used for SMS result notifications
+          For SMS notifications when your order ships and results are ready
         </p>
       </div>
 

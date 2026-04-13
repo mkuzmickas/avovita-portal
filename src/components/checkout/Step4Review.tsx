@@ -409,7 +409,7 @@ export function Step4Review({
               className="flex justify-between font-medium pt-2 mt-1 border-t"
               style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
             >
-              <span>Promo applied — 100% discount</span>
+              <span>Promo code applied (AVOVITA-TEST)</span>
               <span>−{formatCurrency(total)}</span>
             </div>
           )}

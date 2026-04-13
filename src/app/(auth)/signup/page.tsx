@@ -59,7 +59,7 @@ export default function SignupPage() {
       >
         <div className="w-full max-w-md">
           <div
-            className="rounded-2xl border p-8 text-center"
+            className="rounded-2xl border p-6 sm:p-8 text-center"
             style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
           >
             <div
@@ -121,7 +121,7 @@ export default function SignupPage() {
         </div>
 
         <div
-          className="rounded-2xl border p-8"
+          className="rounded-2xl border p-6 sm:p-8"
           style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
         >
           <form onSubmit={handleSubmit} className="space-y-4">

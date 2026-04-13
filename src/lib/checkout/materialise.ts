@@ -32,6 +32,7 @@ export interface OrderMetadataPayload {
     date_of_birth: string;
     biological_sex: "male" | "female" | "intersex";
     relationship: string | null;
+    phone?: string | null;
     wants_own_account?: boolean;
     own_account_email?: string | null;
   }>;
@@ -50,6 +51,8 @@ export interface OrderMetadataPayload {
   /** Multi-test discount total ($20 × line count, 0 if under threshold). */
   discount_cad: number;
   total: number;
+  /** Promo code applied at checkout (e.g. "AVOVITA-TEST"), if any. */
+  promo_code?: string | null;
 }
 
 /**
@@ -154,7 +157,7 @@ export async function materialiseOrder(
         last_name: person.last_name,
         date_of_birth: person.date_of_birth,
         biological_sex: person.biological_sex,
-        phone: null,
+        phone: person.phone ?? null,
         address_line1: payload.collection_address.address_line1,
         address_line2: payload.collection_address.address_line2 || null,
         city: payload.collection_address.city,
@@ -291,6 +294,12 @@ export async function sendOrderConfirmationEmail(
       process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
     const orderIdShort = orderId.slice(0, 8).toUpperCase();
 
+    const promoCode = payload.promo_code ?? null;
+    // AVOVITA-TEST is the only supported coupon today and applies 100% off
+    // (handled in the Stripe checkout route). When set, the entire payload
+    // total is the discount amount.
+    const promoDiscount = promoCode ? payload.total : 0;
+
     const html = renderOrderConfirmationEmail({
       firstName,
       orderIdShort,
@@ -305,6 +314,8 @@ export async function sendOrderConfirmationEmail(
       total: payload.total,
       portalUrl,
       stripeSessionId,
+      promoCode,
+      promoDiscount,
     });
 
     await resend.emails.send({
@@ -385,6 +396,12 @@ export async function sendGuestOrderConfirmationEmail(
       process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
     const orderIdShort = orderId.slice(0, 8).toUpperCase();
 
+    const promoCode = payload.promo_code ?? null;
+    // AVOVITA-TEST is the only supported coupon today and applies 100% off
+    // (handled in the Stripe checkout route). When set, the entire payload
+    // total is the discount amount.
+    const promoDiscount = promoCode ? payload.total : 0;
+
     const html = renderOrderConfirmationEmail({
       firstName,
       orderIdShort,
@@ -399,6 +416,8 @@ export async function sendGuestOrderConfirmationEmail(
       total: payload.total,
       portalUrl,
       stripeSessionId,
+      promoCode,
+      promoDiscount,
     });
 
     console.log(`[checkout] attempting email to ${customerEmail}`);

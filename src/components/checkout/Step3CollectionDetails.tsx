@@ -634,6 +634,28 @@ function PersonSection({
         </div>
       </div>
 
+      {!showRelationship && (
+        <div className="mt-3">
+          <label
+            className="block text-sm font-medium mb-1.5"
+            style={labelStyle}
+          >
+            Mobile Number (optional)
+          </label>
+          <input
+            type="tel"
+            value={person.phone ?? ""}
+            onChange={(e) => onChange({ phone: e.target.value || null })}
+            className="mf-input"
+            placeholder="+1 (403) 555-0000"
+            autoComplete="tel"
+          />
+          <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
+            For SMS notifications when your order ships and results are ready
+          </p>
+        </div>
+      )}
+
       {showRelationship && (
         <div className="mt-3">
           <label

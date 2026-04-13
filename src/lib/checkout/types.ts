@@ -23,6 +23,8 @@ export interface CheckoutPerson {
   last_name: string;
   date_of_birth: string;
   biological_sex: Sex | "";
+  /** Optional mobile number, only collected for the account holder. */
+  phone?: string | null;
   /** Required for additional people, null for the account holder. */
   relationship: Relationship | null;
   /** Mandatory for additional people; ignored for account holder. */

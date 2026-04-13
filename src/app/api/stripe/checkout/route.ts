@@ -238,6 +238,7 @@ export async function POST(request: NextRequest) {
         date_of_birth: p.date_of_birth,
         biological_sex: p.biological_sex,
         relationship: p.relationship,
+        phone: p.phone?.trim() || null,
         wants_own_account: p.wants_own_account ?? false,
         own_account_email: p.own_account_email?.trim() || null,
       })),
@@ -255,6 +256,7 @@ export async function POST(request: NextRequest) {
       subtotal: serverSubtotal,
       discount_cad: appliedDiscountTotal,
       total: serverSubtotal - appliedDiscountTotal + visitFeeTotal,
+      promo_code: body.promo_code?.trim().toUpperCase() || null,
     };
 
     const fullJson = JSON.stringify(orderPayload);

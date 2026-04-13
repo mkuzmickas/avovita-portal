@@ -30,6 +30,10 @@ export interface OrderConfirmationProps {
   floLabsUrl?: string;
   /** Stripe session ID — used to build the waiver completion link. */
   stripeSessionId?: string;
+  /** Promo code applied at checkout (e.g. "AVOVITA-TEST"). */
+  promoCode?: string | null;
+  /** Discount amount the promo took off, CAD. 0 or undefined to hide. */
+  promoDiscount?: number;
 }
 
 const FLO_LABS_URL = "https://flolabsbooking.as.me/?appointmentType=84416067";
@@ -58,7 +62,12 @@ export function renderOrderConfirmationEmail(
     portalUrl,
     floLabsUrl = FLO_LABS_URL,
     stripeSessionId,
+    promoCode,
+    promoDiscount = 0,
   } = props;
+
+  const hasPromo = promoDiscount > 0;
+  const finalTotal = Math.max(0, total - (hasPromo ? promoDiscount : 0));
 
   const waiverUrl = stripeSessionId
     ? `${portalUrl}/checkout/success?session_id=${encodeURIComponent(stripeSessionId)}`
@@ -180,9 +189,24 @@ export function renderOrderConfirmationEmail(
                   <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Visit fee total</td>
                   <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(visitFeeTotal)}</td>
                 </tr>
+                ${
+                  hasPromo
+                    ? `
+                <tr>
+                  <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">Promo discount${promoCode ? ` (${escapeHtml(promoCode)})` : ""}</td>
+                  <td style="padding: 6px 0; text-align: right; color: #6fa030; font-size: 13px; font-weight: 600;">−${formatCurrency(promoDiscount)}</td>
+                </tr>`
+                    : ""
+                }
                 <tr>
                   <td style="padding: 12px 0; border-top: 2px solid #e5e7eb; font-size: 16px; color: #111827; font-weight: 700;">Total</td>
-                  <td style="padding: 12px 0; border-top: 2px solid #e5e7eb; text-align: right; font-size: 16px; color: #c4973a; font-weight: 700;">${formatCurrency(total)}</td>
+                  <td style="padding: 12px 0; border-top: 2px solid #e5e7eb; text-align: right; font-size: 16px; color: #c4973a; font-weight: 700;">
+                    ${
+                      hasPromo
+                        ? `<span style="text-decoration: line-through; color: #9ca3af; font-weight: 500; font-size: 13px; margin-right: 8px;">${formatCurrency(total)}</span>`
+                        : ""
+                    }${formatCurrency(finalTotal)}
+                  </td>
                 </tr>
               </table>
             </td>

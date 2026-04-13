@@ -31,6 +31,7 @@ export interface OnboardingPerson {
   biological_sex: string;
   relationship: string | null;
   is_account_holder: boolean;
+  phone?: string | null;
 }
 
 export interface OnboardingAssignment {
@@ -420,6 +421,7 @@ function Step2YourInfo({
         | "male"
         | "female"
         | "intersex",
+      phone: accountHolderPerson.phone ?? null,
       address_line1: collectionAddress.address_line1 || null,
       address_line2: collectionAddress.address_line2 || null,
       city: collectionAddress.city || null,

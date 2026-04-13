@@ -171,16 +171,15 @@ export function InsightsChatModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+      className="fixed inset-0 z-50 flex items-stretch sm:items-center sm:justify-center sm:px-4 sm:py-6"
       style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl border flex flex-col"
+        className="w-full sm:max-w-2xl border-0 sm:border rounded-none sm:rounded-2xl flex flex-col h-full sm:h-auto sm:max-h-[85vh]"
         style={{
           backgroundColor: "#1a3d22",
           borderColor: "#2d6b35",
-          maxHeight: "90vh",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -441,7 +440,7 @@ const AssistantMessage = ({
               return (
                 <div
                   key={t.id}
-                  className="flex items-center justify-between gap-2 text-xs"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
                 >
                   <div className="min-w-0 flex items-baseline gap-2 flex-wrap">
                     <span style={{ color: "#ffffff" }}>{t.name}</span>
