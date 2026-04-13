@@ -1,7 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
+
+/**
+ * Resolves once `promise` settles or after `ms` milliseconds, whichever
+ * comes first. Used to defend against Supabase client calls that hang
+ * indefinitely on stale serverless connections — try/catch alone doesn't
+ * help because a hung await never throws.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T | null> {
+  return Promise.race<T | null>([
+    promise.then((v) => v as T),
+    new Promise<null>((resolve) =>
+      setTimeout(() => {
+        console.warn(`[complete-waiver] ${label} timed out after ${ms}ms`);
+        resolve(null);
+      }, ms)
+    ),
+  ]);
+}
 
 /**
  * POST /api/auth/complete-waiver
@@ -62,15 +80,26 @@ export async function POST(request: NextRequest) {
     // The waiver itself is already saved on the account row; treat the
     // consent log insert as best-effort so a slow/failing log can't block
     // the user's response and leave them spinning forever.
+    //
+    // Use the service-role client (stateless, no cookie/auth dependency)
+    // and race against a 3s timeout. Either way we move on to return the
+    // success response — the user has done their part by saving the waiver.
     try {
-      await supabase.from("consents").insert({
-        account_id: user.id,
-        profile_id: null,
-        consent_type: "general_pipa",
-        consent_text_version: "1.0",
-        ip_address: ipAddress,
-        user_agent: request.headers.get("user-agent") ?? null,
-      });
+      const service = createServiceRoleClient();
+      await withTimeout(
+        Promise.resolve(
+          service.from("consents").insert({
+            account_id: user.id,
+            profile_id: null,
+            consent_type: "general_pipa",
+            consent_text_version: "1.0",
+            ip_address: ipAddress,
+            user_agent: request.headers.get("user-agent") ?? null,
+          })
+        ),
+        3000,
+        "consent insert"
+      );
     } catch (consentErr) {
       console.error(
         "[complete-waiver] consent log insert failed (non-fatal):",
