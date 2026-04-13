@@ -43,7 +43,7 @@ export default function HomePage() {
 
       {/* ─── Hero (full viewport) ───────────────────────────────────────── */}
       <section
-        className="relative min-h-screen flex items-center justify-center px-6"
+        className="relative flex items-center justify-center px-6 pt-40 pb-16 md:pt-48 md:pb-20"
         style={{ backgroundColor: "#0a1a0d" }}
       >
         {/* Soft radial glow */}
