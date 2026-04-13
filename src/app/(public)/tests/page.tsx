@@ -53,7 +53,6 @@ async function CatalogueData() {
       `
     )
     .eq("active", true)
-    .order("featured", { ascending: false })
     .order("name", { ascending: true });
 
   type RawRow = Omit<CatalogueTest, "lab"> & {
