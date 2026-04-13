@@ -144,7 +144,7 @@ export default async function AdminResultsUploadPage() {
   ).length;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-[1800px] mx-auto">
       <div className="mb-8">
         <h1
           className="font-heading text-3xl font-semibold"

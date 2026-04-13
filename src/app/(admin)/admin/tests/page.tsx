@@ -54,7 +54,7 @@ export default async function AdminTestsPage() {
   const labs = (labsRaw ?? []) as AdminLabRow[];
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-6 max-w-[1800px] mx-auto">
       <div className="mb-8 flex items-end justify-between gap-4">
         <div>
           <h1

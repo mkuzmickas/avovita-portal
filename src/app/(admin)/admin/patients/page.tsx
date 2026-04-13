@@ -102,7 +102,7 @@ export default async function AdminPatientsPage() {
   ).length;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-[1800px] mx-auto">
       <div className="mb-8 flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1

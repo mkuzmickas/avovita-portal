@@ -449,7 +449,12 @@ function TestRow({
         }}
       >
         <td className="px-5 py-4 font-medium" style={{ color: "#ffffff" }}>
-          {test.name}
+          <div>{test.name}</div>
+          {test.sku && (
+            <div style={{ color: "#6ab04c", fontSize: "11px" }}>
+              SKU: {test.sku}
+            </div>
+          )}
         </td>
         <td className="px-5 py-4" style={{ color: "#e8d5a3" }}>
           {test.lab.name}
@@ -577,13 +582,13 @@ function MarginCell({
   price: number | null;
   cost: number | null;
 }) {
-  if (price == null || cost == null || price === 0) {
+  if (price == null || cost == null) {
     return <span style={{ color: "#6ab04c" }}>—</span>;
   }
-  const margin = ((price - cost) / price) * 100;
+  const margin = price - cost;
   const color =
-    margin >= 50 ? "#8dc63f" : margin >= 25 ? "#c4973a" : "#e05252";
-  return <span style={{ color }}>{margin.toFixed(1)}%</span>;
+    margin >= 50 ? "#8dc63f" : margin >= 20 ? "#c4973a" : "#e05252";
+  return <span style={{ color }}>{formatCurrency(margin)}</span>;
 }
 
 // ─── Stock cell ─────────────────────────────────────────────────────────
