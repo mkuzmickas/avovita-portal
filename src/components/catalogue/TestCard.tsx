@@ -21,13 +21,15 @@ export function TestCard({
 }: TestCardProps) {
   const [justAdded, setJustAdded] = useState(false);
 
+  const hasPrice = test.price_cad !== null;
+
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (inCart || justAdded) return;
+    if (inCart || justAdded || !hasPrice) return;
     onAdd({
       test_id: test.id,
       test_name: test.name,
-      price_cad: test.price_cad,
+      price_cad: test.price_cad as number,
       lab_name: test.lab.name,
       quantity: 1,
     });
@@ -86,13 +88,19 @@ export function TestCard({
           className="font-semibold mb-2"
           style={{ color: "#c4973a", fontSize: "26px" }}
         >
-          {formatCurrency(test.price_cad)}
-          <span
-            className="text-xs font-normal ml-1.5"
-            style={{ color: "#e8d5a3" }}
-          >
-            CAD
-          </span>
+          {hasPrice ? (
+            <>
+              {formatCurrency(test.price_cad as number)}
+              <span
+                className="text-xs font-normal ml-1.5"
+                style={{ color: "#e8d5a3" }}
+              >
+                CAD
+              </span>
+            </>
+          ) : (
+            <span style={{ fontSize: "18px" }}>Contact us for pricing</span>
+          )}
         </p>
 
         {/* Requisition required notice */}
@@ -143,10 +151,6 @@ export function TestCard({
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <DetailField label="Ship Temperature" value={test.ship_temp} />
               <DetailField label="Stability" value={test.stability_notes} />
-              <DetailField
-                label="Order Type"
-                value={formatOrderType(test.order_type)}
-              />
             </div>
 
             {test.requisition_url && (
@@ -172,38 +176,49 @@ export function TestCard({
 
         <div className="flex-1" />
 
-        {/* Add to cart — single button, always at bottom */}
-        <button
-          type="button"
-          onClick={handleAdd}
-          disabled={showInCart}
-          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-          style={
-            showInCart
-              ? {
-                  backgroundColor: "rgba(141, 198, 63, 0.15)",
-                  color: "#8dc63f",
-                  border: "1px solid #8dc63f",
-                  cursor: "default",
-                }
-              : {
-                  backgroundColor: "#c4973a",
-                  color: "#0a1a0d",
-                }
-          }
-        >
-          {showInCart ? (
-            <>
-              <Check className="w-4 h-4" />
-              In Cart
-            </>
-          ) : (
-            <>
-              <ShoppingCart className="w-4 h-4" />
-              Add to Cart
-            </>
-          )}
-        </button>
+        {/* Add to cart — or Contact Us when no price */}
+        {hasPrice ? (
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={showInCart}
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+            style={
+              showInCart
+                ? {
+                    backgroundColor: "rgba(141, 198, 63, 0.15)",
+                    color: "#8dc63f",
+                    border: "1px solid #8dc63f",
+                    cursor: "default",
+                  }
+                : {
+                    backgroundColor: "#c4973a",
+                    color: "#0a1a0d",
+                  }
+            }
+          >
+            {showInCart ? (
+              <>
+                <Check className="w-4 h-4" />
+                In Cart
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="w-4 h-4" />
+                Add to Cart
+              </>
+            )}
+          </button>
+        ) : (
+          <a
+            href="mailto:support@avovita.ca"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+          >
+            Contact Us to Order
+          </a>
+        )}
 
         {/* View Details indicator */}
         <div
@@ -245,15 +260,3 @@ function DetailField({
   );
 }
 
-function formatOrderType(orderType: string): string {
-  switch (orderType) {
-    case "standard":
-      return "Standard collection";
-    case "kit":
-      return "Kit only";
-    case "kit_with_collection":
-      return "Kit with collection";
-    default:
-      return orderType;
-  }
-}

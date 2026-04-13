@@ -34,7 +34,6 @@ type EditableFields = {
   turnaround_min_days: string;
   turnaround_max_days: string;
   lab_id: string;
-  order_type: "standard" | "kit" | "kit_with_collection";
 };
 
 const EMPTY_FORM: EditableFields = {
@@ -49,7 +48,6 @@ const EMPTY_FORM: EditableFields = {
   turnaround_min_days: "",
   turnaround_max_days: "",
   lab_id: "",
-  order_type: "standard",
 };
 
 export function TestsManager({ initialTests, labs }: TestsManagerProps) {
@@ -57,6 +55,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [labFilter, setLabFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [featuredOnly, setFeaturedOnly] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -69,13 +68,19 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return tests.filter((t) => {
-      if (q && !t.name.toLowerCase().includes(q)) return false;
+      if (q) {
+        const matches =
+          t.name.toLowerCase().includes(q) ||
+          (!!t.sku && t.sku.toLowerCase().includes(q));
+        if (!matches) return false;
+      }
       if (labFilter !== "all" && t.lab_id !== labFilter) return false;
       if (categoryFilter !== "all" && t.category !== categoryFilter)
         return false;
+      if (featuredOnly && !t.featured) return false;
       return true;
     });
-  }, [tests, searchQuery, labFilter, categoryFilter]);
+  }, [tests, searchQuery, labFilter, categoryFilter, featuredOnly]);
 
   const updateStock = async (testId: string, newQty: number) => {
     const safeQty = Math.max(0, Math.floor(newQty));
@@ -121,7 +126,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       name: fields.name,
       description: fields.description || null,
       category: fields.category || null,
-      price_cad: parseFloat(fields.price_cad) || 0,
+      price_cad: fields.price_cad ? parseFloat(fields.price_cad) : null,
       specimen_type: fields.specimen_type || null,
       ship_temp: fields.ship_temp || null,
       stability_notes: fields.stability_notes || null,
@@ -133,7 +138,6 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         ? parseInt(fields.turnaround_max_days, 10)
         : null,
       lab_id: fields.lab_id,
-      order_type: fields.order_type,
     };
 
     const { error } = await supabase
@@ -168,7 +172,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       slug,
       description: fields.description || null,
       category: fields.category || null,
-      price_cad: parseFloat(fields.price_cad) || 0,
+      price_cad: fields.price_cad ? parseFloat(fields.price_cad) : null,
       specimen_type: fields.specimen_type || null,
       ship_temp: fields.ship_temp || null,
       stability_notes: fields.stability_notes || null,
@@ -180,7 +184,6 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         ? parseInt(fields.turnaround_max_days, 10)
         : null,
       lab_id: fields.lab_id,
-      order_type: fields.order_type,
       active: true,
       featured: false,
     };
@@ -192,7 +195,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         `
         id, lab_id, name, slug, description, category, price_cad,
         turnaround_display, turnaround_min_days, turnaround_max_days,
-        turnaround_note, specimen_type, ship_temp, order_type,
+        turnaround_note, specimen_type, ship_temp,
         stability_notes, active, featured, created_at, updated_at
       `
       )
@@ -227,7 +230,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by test name…"
+            placeholder="Search by test name or SKU…"
             className="mf-input pl-10"
           />
         </div>
@@ -255,6 +258,27 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
             </option>
           ))}
         </select>
+        <label
+          className="flex items-center gap-2 px-3 rounded-lg border cursor-pointer shrink-0"
+          style={{
+            backgroundColor: featuredOnly ? "#1a3d22" : "transparent",
+            borderColor: featuredOnly ? "#c4973a" : "#2d6b35",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={featuredOnly}
+            onChange={(e) => setFeaturedOnly(e.target.checked)}
+            className="cursor-pointer"
+            style={{ accentColor: "#c4973a" }}
+          />
+          <span
+            className="text-sm font-medium"
+            style={{ color: featuredOnly ? "#c4973a" : "#e8d5a3" }}
+          >
+            Featured only
+          </span>
+        </label>
         <button
           onClick={() => setCreating((v) => !v)}
           className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors shrink-0"
@@ -386,7 +410,7 @@ function TestRow({
     name: test.name,
     description: test.description ?? "",
     category: test.category ?? "",
-    price_cad: String(test.price_cad),
+    price_cad: test.price_cad != null ? String(test.price_cad) : "",
     specimen_type: test.specimen_type ?? "",
     ship_temp: test.ship_temp ?? "",
     stability_notes: test.stability_notes ?? "",
@@ -396,7 +420,6 @@ function TestRow({
     turnaround_max_days:
       test.turnaround_max_days != null ? String(test.turnaround_max_days) : "",
     lab_id: test.lab_id,
-    order_type: test.order_type as EditableFields["order_type"],
   };
 
   return (
@@ -420,7 +443,7 @@ function TestRow({
           className="px-5 py-4 font-semibold whitespace-nowrap"
           style={{ color: "#c4973a" }}
         >
-          {formatCurrency(test.price_cad)}
+          {test.price_cad != null ? formatCurrency(test.price_cad) : "—"}
         </td>
         <td className="px-5 py-4">
           <StockCell test={test} onUpdateStock={onUpdateStock} />
@@ -675,11 +698,6 @@ function InlineTestForm({
       setError("Lab is required");
       return;
     }
-    if (!fields.price_cad) {
-      setError("Price is required");
-      return;
-    }
-
     setSaving(true);
     try {
       await onSubmit(fields);
@@ -739,7 +757,7 @@ function InlineTestForm({
             className="mf-input"
           />
         </Field>
-        <Field label="Price (CAD)" required>
+        <Field label="Price (CAD)">
           <input
             type="number"
             step="0.01"
@@ -764,22 +782,6 @@ function InlineTestForm({
             className="mf-input"
             placeholder="e.g. Frozen"
           />
-        </Field>
-        <Field label="Order Type">
-          <select
-            value={fields.order_type}
-            onChange={(e) =>
-              update(
-                "order_type",
-                e.target.value as EditableFields["order_type"]
-              )
-            }
-            className="mf-input cursor-pointer"
-          >
-            <option value="standard">Standard</option>
-            <option value="kit">Kit only</option>
-            <option value="kit_with_collection">Kit with collection</option>
-          </select>
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Turnaround min (days)">

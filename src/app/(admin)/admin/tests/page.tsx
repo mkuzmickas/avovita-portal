@@ -9,6 +9,7 @@ export type AdminTestRow = Test & {
   track_inventory: boolean | null;
   stock_qty: number | null;
   low_stock_threshold: number | null;
+  sku: string | null;
 };
 
 export type AdminLabRow = Pick<Lab, "id" | "name">;
@@ -23,9 +24,10 @@ export default async function AdminTestsPage() {
         `
         id, lab_id, name, slug, description, category, price_cad,
         turnaround_display, turnaround_min_days, turnaround_max_days,
-        turnaround_note, specimen_type, ship_temp, order_type,
+        turnaround_note, specimen_type, ship_temp,
         stability_notes, active, featured, created_at, updated_at,
         track_inventory, stock_qty, low_stock_threshold,
+        sku,
         lab:labs(id, name)
       `
       )

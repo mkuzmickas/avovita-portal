@@ -45,7 +45,6 @@ async function CatalogueData() {
       specimen_type,
       ship_temp,
       stability_notes,
-      order_type,
       featured,
       sku,
       requisition_url,

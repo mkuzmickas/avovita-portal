@@ -154,13 +154,15 @@ function TestTableRow({
 }: TestTableRowProps) {
   const [justAdded, setJustAdded] = useState(false);
 
+  const hasPrice = test.price_cad !== null;
+
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (inCart || justAdded) return;
+    if (inCart || justAdded || !hasPrice) return;
     onAdd({
       test_id: test.id,
       test_name: test.name,
-      price_cad: test.price_cad,
+      price_cad: test.price_cad as number,
       lab_name: test.lab.name,
       quantity: 1,
     });
@@ -205,7 +207,7 @@ function TestTableRow({
           className="px-5 py-4 font-semibold whitespace-nowrap"
           style={{ color: "#c4973a" }}
         >
-          {formatCurrency(test.price_cad)}
+          {hasPrice ? formatCurrency(test.price_cad as number) : "Contact us"}
         </td>
         <td className="px-5 py-4" style={{ color: "#e8d5a3" }}>
           {test.turnaround_display ?? "—"}
@@ -258,10 +260,6 @@ function TestTableRow({
                       label="Stability"
                       value={test.stability_notes}
                     />
-                    <DetailField
-                      label="Order Type"
-                      value={formatOrderType(test.order_type)}
-                    />
                   </div>
 
                   {test.turnaround_display && (
@@ -303,43 +301,57 @@ function TestTableRow({
                       className="text-3xl font-semibold"
                       style={{ color: "#c4973a" }}
                     >
-                      {formatCurrency(test.price_cad)}
+                      {hasPrice
+                        ? formatCurrency(test.price_cad as number)
+                        : "Contact us for pricing"}
                     </p>
                     <p className="text-xs" style={{ color: "#e8d5a3" }}>
-                      CAD · {test.lab.name}
+                      {hasPrice ? "CAD · " : ""}
+                      {test.lab.name}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAdd}
-                    disabled={showInCart}
-                    className="flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold transition-colors lg:min-w-[180px]"
-                    style={
-                      showInCart
-                        ? {
-                            backgroundColor: "rgba(141, 198, 63, 0.15)",
-                            color: "#8dc63f",
-                            border: "1px solid #8dc63f",
-                            cursor: "default",
-                          }
-                        : {
-                            backgroundColor: "#c4973a",
-                            color: "#0a1a0d",
-                          }
-                    }
-                  >
-                    {showInCart ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        In Cart
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="w-4 h-4" />
-                        Add to Cart
-                      </>
-                    )}
-                  </button>
+                  {hasPrice ? (
+                    <button
+                      type="button"
+                      onClick={handleAdd}
+                      disabled={showInCart}
+                      className="flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold transition-colors lg:min-w-[180px]"
+                      style={
+                        showInCart
+                          ? {
+                              backgroundColor: "rgba(141, 198, 63, 0.15)",
+                              color: "#8dc63f",
+                              border: "1px solid #8dc63f",
+                              cursor: "default",
+                            }
+                          : {
+                              backgroundColor: "#c4973a",
+                              color: "#0a1a0d",
+                            }
+                      }
+                    >
+                      {showInCart ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          In Cart
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart className="w-4 h-4" />
+                          Add to Cart
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <a
+                      href="mailto:support@avovita.ca"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold transition-colors lg:min-w-[180px]"
+                      style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                    >
+                      Contact Us to Order
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -372,15 +384,3 @@ function DetailField({
   );
 }
 
-function formatOrderType(orderType: string): string {
-  switch (orderType) {
-    case "standard":
-      return "Standard collection";
-    case "kit":
-      return "Kit only";
-    case "kit_with_collection":
-      return "Kit with collection";
-    default:
-      return orderType;
-  }
-}

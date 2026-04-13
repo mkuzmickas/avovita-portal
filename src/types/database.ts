@@ -16,7 +16,6 @@ export type Json =
 
 export type ShippingSchedule = "weekly_wednesday" | "same_day" | "kit_only" | "other";
 export type ResultsVisibility = "full" | "none" | "partial";
-export type OrderType = "standard" | "kit" | "kit_with_collection";
 export type AccountRole = "patient" | "admin";
 export type BiologicalSex = "male" | "female" | "intersex";
 export type Relationship =
@@ -70,14 +69,13 @@ export interface Test {
   slug: string;
   description: string | null;
   category: string | null;
-  price_cad: number;
+  price_cad: number | null;
   turnaround_display: string | null;
   turnaround_min_days: number | null;
   turnaround_max_days: number | null;
   turnaround_note: string | null;
   specimen_type: string | null;
   ship_temp: string | null;
-  order_type: OrderType;
   stability_notes: string | null;
   active: boolean;
   featured: boolean;

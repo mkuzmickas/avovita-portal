@@ -8,12 +8,11 @@ export type CatalogueTest = {
   slug: string;
   description: string | null;
   category: string | null;
-  price_cad: number;
+  price_cad: number | null;
   turnaround_display: string | null;
   specimen_type: string | null;
   ship_temp: string | null;
   stability_notes: string | null;
-  order_type: string;
   featured: boolean;
   sku: string | null;
   requisition_url: string | null;
