@@ -35,8 +35,14 @@ export interface GuestAccountResult {
  * the confirmation link and set a password through the optional /portal
  * prompt later.
  */
+export interface GuestAccountOptions {
+  /** White-label org the account was created via. Tagged on accounts.org_id. */
+  orgId?: string | null;
+}
+
 export async function createOrFindGuestAccount(
-  email: string
+  email: string,
+  options: GuestAccountOptions = {}
 ): Promise<GuestAccountResult> {
   const normEmail = email.trim().toLowerCase();
   if (!normEmail) {
@@ -44,11 +50,38 @@ export async function createOrFindGuestAccount(
   }
 
   const service = createServiceRoleClient();
+  const orgId = options.orgId ?? null;
 
   // Try to find an existing auth user for this email
   const existing = await findUserByEmail(normEmail);
 
   if (existing) {
+    // If the existing account has no org tag yet but this checkout has
+    // one, backfill — first-touch wins. Don't overwrite an already-set
+    // org (avoids one partner clobbering another's attribution).
+    if (orgId) {
+      try {
+        const { data: existingAcc } = await service
+          .from("accounts")
+          .select("org_id")
+          .eq("id", existing.id)
+          .maybeSingle();
+        const currentOrg = (existingAcc as { org_id: string | null } | null)
+          ?.org_id;
+        if (!currentOrg) {
+          await service
+            .from("accounts")
+            .update({ org_id: orgId })
+            .eq("id", existing.id);
+        }
+      } catch (err) {
+        console.warn(
+          "[createGuestAccount] org backfill failed (non-fatal):",
+          err
+        );
+      }
+    }
+
     if (existing.email_confirmed_at) {
       return {
         accountId: existing.id,
@@ -94,6 +127,7 @@ export async function createOrFindGuestAccount(
         email: normEmail,
         role: "patient",
         waiver_completed: false,
+        org_id: orgId,
       },
       { onConflict: "id" }
     );

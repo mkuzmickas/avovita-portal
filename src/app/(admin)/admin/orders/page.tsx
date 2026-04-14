@@ -14,6 +14,9 @@ export type AdminOrderRow = {
   shipped_at: string | null;
   appointment_date: string | null;
   manifest_id: string | null;
+  org_id: string | null;
+  org_name: string | null;
+  org_color: string | null;
   created_at: string;
   account: { id: string; email: string | null } | null;
   order_lines: Array<{
@@ -48,7 +51,9 @@ export default async function AdminOrdersPage({
     .select(
       `
       id, status, total_cad, subtotal_cad, discount_cad,
-      fedex_tracking_number, shipped_at, appointment_date, manifest_id, created_at,
+      fedex_tracking_number, shipped_at, appointment_date, manifest_id,
+      org:organizations(id, name, primary_color),
+      created_at,
       account:accounts(id, email),
       order_lines(
         id,
@@ -66,7 +71,25 @@ export default async function AdminOrdersPage({
   }
 
   const { data: ordersRaw } = await query;
-  const orders = (ordersRaw ?? []) as unknown as AdminOrderRow[];
+  type OrderFromDB = Omit<AdminOrderRow, "org_id" | "org_name" | "org_color"> & {
+    org:
+      | { id: string; name: string; primary_color: string }
+      | { id: string; name: string; primary_color: string }[]
+      | null;
+  };
+  const orders: AdminOrderRow[] = (
+    (ordersRaw ?? []) as unknown as OrderFromDB[]
+  ).map((o) => {
+    const org = Array.isArray(o.org) ? o.org[0] : o.org;
+    const { org: _drop, ...rest } = o;
+    void _drop;
+    return {
+      ...rest,
+      org_id: org?.id ?? null,
+      org_name: org?.name ?? null,
+      org_color: org?.primary_color ?? null,
+    };
+  });
 
   const { data: manifestsRaw } = await service
     .from("manifests")

@@ -71,4 +71,6 @@ export interface CheckoutPayload {
   account_user_id: string | null;
   /** Test promo code — only honoured when NEXT_PUBLIC_ENABLE_TEST_MODE=true. */
   promo_code?: string;
+  /** White-label org slug — server resolves to org_id and tags the order. */
+  org_slug?: string | null;
 }

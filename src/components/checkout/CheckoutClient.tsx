@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Leaf } from "lucide-react";
@@ -74,6 +75,23 @@ export function CheckoutClient({
     useState<CollectionAddress>(defaultAddress);
   const [restored, setRestored] = useState(false);
   const [promoApplied, setPromoApplied] = useState(false);
+
+  // Org tagging — when the user arrived via /org/[slug]/checkout the
+  // server redirect drops org_slug into the query string. We persist it
+  // to localStorage so any in-flight cart from the same browser session
+  // keeps its org affinity even if the user wanders out and back.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const fromQuery = searchParams.get("org_slug");
+    if (fromQuery) {
+      try {
+        window.localStorage.setItem("avovita-org-slug", fromQuery);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [searchParams]);
 
   // ─── Restore persisted state ──────────────────────────────────────────
   useEffect(() => {

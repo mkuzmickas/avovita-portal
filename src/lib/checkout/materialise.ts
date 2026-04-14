@@ -54,6 +54,8 @@ export interface OrderMetadataPayload {
   total: number;
   /** Promo code applied at checkout (e.g. "AVOVITA-TEST"), if any. */
   promo_code?: string | null;
+  /** Tagged organization (white-label partner) the order was placed via. */
+  org_id?: string | null;
 }
 
 /**

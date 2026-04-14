@@ -183,7 +183,19 @@ function PatientRow({
         style={{ backgroundColor: rowBg, borderTop: "1px solid #1a3d22" }}
       >
         <td className="px-5 py-4 font-medium" style={{ color: "#ffffff" }}>
-          {patient.primaryName}
+          <div>{patient.primaryName}</div>
+          {patient.org_name && (
+            <span
+              className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+              style={{
+                backgroundColor: `${patient.org_color ?? "#2d6b35"}1f`,
+                color: patient.org_color ?? "#8dc63f",
+                borderColor: patient.org_color ?? "#2d6b35",
+              }}
+            >
+              via {patient.org_name}
+            </span>
+          )}
         </td>
         <td className="px-5 py-4" style={{ color: "#e8d5a3" }}>
           {patient.email ?? "—"}

@@ -401,7 +401,19 @@ export function AdminOrdersTable({
                         />
                       </td>
                       <td className="px-4 py-4" style={{ color: "#ffffff" }}>
-                        {patientName}
+                        <div>{patientName}</div>
+                        {order.org_name && (
+                          <span
+                            className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+                            style={{
+                              backgroundColor: `${order.org_color ?? "#2d6b35"}1f`,
+                              color: order.org_color ?? "#8dc63f",
+                              borderColor: order.org_color ?? "#2d6b35",
+                            }}
+                          >
+                            via {order.org_name}
+                          </span>
+                        )}
                       </td>
                       <td
                         className="px-4 py-4 max-w-[220px]"

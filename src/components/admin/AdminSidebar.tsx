@@ -14,6 +14,7 @@ import {
   Calendar,
   TrendingUp,
   FileText,
+  Building2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -35,6 +36,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/admin/manifests", label: "Manifests", icon: Calendar, key: "manifests" },
   { href: "/admin/quotes", label: "Quotes", icon: FileText, key: "quotes" },
   { href: "/admin/financials", label: "Financials", icon: TrendingUp, key: "financials" },
+  { href: "/admin/organizations", label: "Organizations", icon: Building2, key: "organizations" },
   { href: "/admin/patients", label: "Clients", icon: Users, key: "patients" },
   { href: "/admin/results", label: "Upload Results", icon: Upload, key: "results" },
   { href: "/admin/tests", label: "Tests", icon: FlaskConical, key: "tests" },

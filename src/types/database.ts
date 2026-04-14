@@ -184,6 +184,18 @@ export interface Expense {
   created_at: string;
 }
 
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  primary_color: string;
+  accent_color: string;
+  contact_email: string | null;
+  active: boolean;
+  created_at: string;
+}
+
 export interface Quote {
   id: string;
   quote_number: string;

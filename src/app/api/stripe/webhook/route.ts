@@ -408,13 +408,15 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       );
     }
     try {
-      const accountResult = await createOrFindGuestAccount(guestEmail);
+      const accountResult = await createOrFindGuestAccount(guestEmail, {
+        orgId: payload.org_id ?? null,
+      });
       payload.account_user_id = accountResult.accountId;
       confirmationLink = accountResult.confirmationLink;
       console.log(
         `[stripe-webhook] guest account ${accountResult.accountId} ${
           accountResult.created ? "created" : "linked"
-        } (alreadyConfirmed=${accountResult.alreadyConfirmed})`
+        } (alreadyConfirmed=${accountResult.alreadyConfirmed}, org=${payload.org_id ?? "none"})`
       );
     } catch (err) {
       console.error(
@@ -440,6 +442,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     tax_cad: 0,
     total_cad: total,
     notes: null,
+    org_id: payload.org_id ?? null,
   };
 
   const { data: orderRaw, error: orderErr } = await supabase

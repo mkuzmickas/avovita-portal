@@ -239,6 +239,16 @@ export async function POST(request: NextRequest) {
     });
 
     // ─── Build metadata payload ───────────────────────────────────
+    // Resolve the org affinity (set by /org/[slug] persistence). Slug
+    // → id is done server-side so the client can't forge an arbitrary
+    // org_id. If the slug doesn't match an active org, we silently
+    // drop it — the order just won't be tagged.
+    let resolvedOrgId: string | null = null;
+    if (typeof body.org_slug === "string" && body.org_slug.trim()) {
+      const { getOrgIdBySlug } = await import("@/lib/org");
+      resolvedOrgId = await getOrgIdBySlug(body.org_slug.trim());
+    }
+
     // We serialise the order data into a single JSON string and split it
     // across numbered metadata keys (each ≤ 500 chars per Stripe limit).
     const orderPayload = {
@@ -272,6 +282,7 @@ export async function POST(request: NextRequest) {
       discount_cad: appliedDiscountTotal,
       total: serverSubtotal - appliedDiscountTotal + visitFeeTotal,
       promo_code: body.promo_code?.trim().toUpperCase() || null,
+      org_id: resolvedOrgId,
     };
 
     const fullJson = JSON.stringify(orderPayload);

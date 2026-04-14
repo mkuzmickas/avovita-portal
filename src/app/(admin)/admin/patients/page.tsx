@@ -29,6 +29,9 @@ export type AdminPatientRow = {
   ordersCount: number;
   primaryName: string;
   primaryPhone: string | null;
+  org_id: string | null;
+  org_name: string | null;
+  org_color: string | null;
 };
 
 export default async function AdminPatientsPage() {
@@ -39,6 +42,7 @@ export default async function AdminPatientsPage() {
     .select(
       `
       id, email, created_at, waiver_completed, waiver_completed_at,
+      org:organizations(id, name, primary_color),
       profiles:patient_profiles(
         id, first_name, last_name, date_of_birth, biological_sex,
         phone, address_line1, address_line2, city, province, postal_code,
@@ -56,6 +60,10 @@ export default async function AdminPatientsPage() {
     waiver_completed: boolean;
     waiver_completed_at: string | null;
     profiles: AdminPatientProfile[];
+    org:
+      | { id: string; name: string; primary_color: string }
+      | { id: string; name: string; primary_color: string }[]
+      | null;
   };
 
   const accounts = (accountsRaw ?? []) as unknown as RawAccount[];
@@ -84,6 +92,7 @@ export default async function AdminPatientsPage() {
     const primaryName = primary
       ? `${primary.first_name} ${primary.last_name}`
       : (account.email ?? "Unknown");
+    const org = Array.isArray(account.org) ? account.org[0] : account.org;
     return {
       id: account.id,
       email: account.email,
@@ -94,6 +103,9 @@ export default async function AdminPatientsPage() {
       ordersCount: orderCountMap.get(account.id) ?? 0,
       primaryName,
       primaryPhone: primary?.phone ?? null,
+      org_id: org?.id ?? null,
+      org_name: org?.name ?? null,
+      org_color: org?.primary_color ?? null,
     };
   });
 

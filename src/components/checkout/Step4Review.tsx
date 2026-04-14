@@ -168,11 +168,24 @@ export function Step4Review({
       promo_code: promoApplied ? "AVOVITA-TEST" : undefined,
     };
 
+    // Org affinity — set in localStorage by OrgProvider when the user
+    // visited /org/[slug]/* or by CheckoutClient when the URL had
+    // ?org_slug=. Server resolves slug → org_id and tags the order.
+    let orgSlug: string | null = null;
+    try {
+      orgSlug =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("avovita-org-slug")
+          : null;
+    } catch {
+      /* ignore */
+    }
+
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, org_slug: orgSlug }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
