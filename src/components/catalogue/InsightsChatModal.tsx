@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { X, Send, Sparkles, Loader2, ShoppingCart, Check, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/components/cart/CartContext";
@@ -41,34 +40,16 @@ export function InsightsChatModal({
   const supabase = useMemo(() => createClient(), []);
   const { cart, addItem } = useCart();
 
-  const [authState, setAuthState] = useState<"loading" | "signed_in" | "signed_out">("loading");
   const [messages, setMessages] = useState<ChatMessage[]>([INTRO_MESSAGE]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testIndex, setTestIndex] = useState<Map<string, CatalogueLookupTest>>(new Map());
 
-
-  // Auth subscription
+  // Load test catalogue (sku → test) once when modal opens.
+  // Public read — no auth required (matches the catalogue page itself).
   useEffect(() => {
-    let mounted = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (!mounted) return;
-      setAuthState(data.user ? "signed_in" : "signed_out");
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setAuthState(session?.user ? "signed_in" : "signed_out");
-    });
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, [supabase]);
-
-  // Load test catalogue (sku → test) once when modal opens for a signed-in user
-  useEffect(() => {
-    if (!open || authState !== "signed_in" || testIndex.size > 0) return;
+    if (!open || testIndex.size > 0) return;
     let cancelled = false;
     (async () => {
       const { data } = await supabase
@@ -100,7 +81,7 @@ export function InsightsChatModal({
     return () => {
       cancelled = true;
     };
-  }, [open, authState, supabase, testIndex.size]);
+  }, [open, supabase, testIndex.size]);
 
   // Lock body scroll when open
   useEffect(() => {
@@ -216,14 +197,8 @@ export function InsightsChatModal({
           </button>
         </div>
 
-        {/* Body */}
-        {authState === "loading" ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#c4973a" }} />
-          </div>
-        ) : authState === "signed_out" ? (
-          <SignedOut />
-        ) : (
+        {/* Body — open to all visitors */}
+        {(
           <>
             <div
               className="flex-1 overflow-y-auto px-5 py-4 space-y-5"
@@ -306,45 +281,6 @@ export function InsightsChatModal({
             </p>
           </>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Signed-out state ─────────────────────────────────────────────────
-
-function SignedOut() {
-  return (
-    <div className="flex flex-col items-center justify-center text-center px-6 py-16 gap-6">
-      <Sparkles className="w-10 h-10" style={{ color: "#c4973a" }} />
-      <p
-        className="font-heading text-2xl"
-        style={{
-          color: "#ffffff",
-          fontFamily: '"Cormorant Garamond", Georgia, serif',
-        }}
-      >
-        Sign in or Create Account to use AI Test Finder
-      </p>
-      <div className="flex flex-col sm:flex-row items-stretch gap-3 w-full sm:w-auto">
-        <Link
-          href="/login"
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-colors"
-          style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
-        >
-          Sign In
-        </Link>
-        <Link
-          href="/signup"
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold border transition-colors"
-          style={{
-            backgroundColor: "transparent",
-            borderColor: "#c4973a",
-            color: "#c4973a",
-          }}
-        >
-          Create Account
-        </Link>
       </div>
     </div>
   );

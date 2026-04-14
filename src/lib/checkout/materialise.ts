@@ -242,7 +242,13 @@ export async function sendOrderConfirmationEmail(
   supabase: ServiceClient,
   orderId: string,
   payload: OrderMetadataPayload,
-  stripeSessionId?: string
+  stripeSessionId?: string,
+  /**
+   * Magic-link confirmation URL for newly auto-created guest accounts.
+   * Pass null/undefined for already-confirmed customers (logged-in flow
+   * or returning guests).
+   */
+  confirmationLink?: string | null
 ): Promise<void> {
   try {
     const accountId = payload.account_user_id;
@@ -316,6 +322,7 @@ export async function sendOrderConfirmationEmail(
       stripeSessionId,
       promoCode,
       promoDiscount,
+      confirmationLink: confirmationLink ?? null,
     });
 
     await resend.emails.send({

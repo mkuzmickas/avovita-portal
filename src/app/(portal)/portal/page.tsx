@@ -13,6 +13,7 @@ import {
   FileText,
 } from "lucide-react";
 import type { PatientProfile, OrderStatus } from "@/types/database";
+import { SetPasswordBanner } from "@/components/portal/SetPasswordBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,7 @@ export default async function PortalDashboard() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
+      <SetPasswordBanner />
       {/* Welcome header — variant for new users with no profiles */}
       {hasProfile ? (
         <div className="mb-6">

@@ -1,11 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { SYSTEM_PROMPT } from "@/lib/systemPrompt";
 
 export const runtime = "nodejs";
 
 const CATALOG_TTL_MS = 5 * 60 * 1000;
+
+// ─── Per-IP rate limiting ──────────────────────────────────────────
+// In-memory sliding window: 10 requests per hour per IP. The map resets
+// on serverless cold start which is acceptable for this scale; for a
+// stricter cap swap to Upstash Redis or similar.
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const ipHits = new Map<string, number[]>();
+
+function clientIp(request: NextRequest): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown"
+  );
+}
+
+function checkRateLimit(ip: string): {
+  ok: boolean;
+  retryAfterSec: number;
+} {
+  const now = Date.now();
+  const cutoff = now - RATE_LIMIT_WINDOW_MS;
+  const arr = (ipHits.get(ip) ?? []).filter((t) => t > cutoff);
+  if (arr.length >= RATE_LIMIT_MAX) {
+    const oldest = arr[0];
+    const retryAfterSec = Math.max(
+      1,
+      Math.ceil((oldest + RATE_LIMIT_WINDOW_MS - now) / 1000)
+    );
+    return { ok: false, retryAfterSec };
+  }
+  arr.push(now);
+  ipHits.set(ip, arr);
+  return { ok: true, retryAfterSec: 0 };
+}
 
 let cachedCatalog: { value: string; expiresAt: number } | null = null;
 
@@ -63,12 +99,23 @@ interface ChatMessage {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  // Public endpoint — gated by per-IP rate limit instead of auth.
+  const ip = clientIp(request);
+  const rl = checkRateLimit(ip);
+  if (!rl.ok) {
+    return NextResponse.json(
+      {
+        error: `Rate limit exceeded — try again in ${rl.retryAfterSec} second${rl.retryAfterSec === 1 ? "" : "s"}.`,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rl.retryAfterSec),
+          "X-RateLimit-Limit": String(RATE_LIMIT_MAX),
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
   }
 
   let messages: ChatMessage[];

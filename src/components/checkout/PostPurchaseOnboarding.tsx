@@ -81,15 +81,23 @@ export function PostPurchaseOnboarding({
 }: PostPurchaseOnboardingProps) {
   const router = useRouter();
 
-  // Determine starting step based on existing state
+  // Determine starting step based on existing state. For !alreadyLoggedIn
+  // we render a separate "check your email" card below before any of the
+  // step-driven UI runs, so initialStep is irrelevant in that case.
   const initialStep: Step = useMemo(() => {
-    if (!alreadyLoggedIn) return 1;
     if (!hasProfile) return 2;
     if (!waiverDone) return 3;
     return 4;
-  }, [alreadyLoggedIn, hasProfile, waiverDone]);
+  }, [hasProfile, waiverDone]);
 
   const [step, setStep] = useState<Step>(initialStep);
+
+  // Guests no longer set a password here — the webhook auto-creates the
+  // account and emails a magic confirmation link. Show a simple success
+  // card and let them activate from their inbox.
+  if (!alreadyLoggedIn) {
+    return <GuestCheckEmailCard summary={summary} />;
+  }
 
   const stepLabels = ["Create Account", "Your Information", "Sign Waiver", "Book Collection"];
 
@@ -699,6 +707,91 @@ function Step4BookCollection({
       >
         Go to my portal →
       </button>
+    </div>
+  );
+}
+
+// ─── Guest "check your email" success card ──────────────────────────────
+
+function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-10"
+      style={{ backgroundColor: "#0a1a0d" }}
+    >
+      <div className="w-full max-w-xl text-center">
+        <div className="flex items-center justify-center gap-2.5 mb-6">
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center border"
+            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          >
+            <Leaf className="w-5 h-5" style={{ color: "#8dc63f" }} />
+          </div>
+          <span
+            className="font-heading text-xl font-semibold"
+            style={{
+              color: "#ffffff",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+            }}
+          >
+            AvoVita Wellness
+          </span>
+        </div>
+
+        <div
+          className="rounded-2xl border p-6 sm:p-8"
+          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        >
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
+            style={{ backgroundColor: "#0f2614", borderColor: "#8dc63f" }}
+          >
+            <CheckCircle className="w-7 h-7" style={{ color: "#8dc63f" }} />
+          </div>
+          <h1
+            className="font-heading text-2xl sm:text-3xl font-semibold mb-2"
+            style={{
+              color: "#ffffff",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+            }}
+          >
+            Your order is <span style={{ color: "#c4973a" }}>confirmed</span>
+          </h1>
+          <p className="text-sm mb-1" style={{ color: "#e8d5a3" }}>
+            Order #{summary.orderIdShort} ·{" "}
+            <span style={{ color: "#c4973a", fontWeight: 600 }}>
+              {formatCurrency(summary.total)} CAD
+            </span>
+          </p>
+          <p
+            className="text-sm mt-5 leading-relaxed"
+            style={{ color: "#e8d5a3" }}
+          >
+            We&apos;ve sent a confirmation email to{" "}
+            <strong style={{ color: "#ffffff" }}>
+              {summary.prefilledEmail || "your inbox"}
+            </strong>
+            . Click the link inside to activate your account and access your
+            secure portal where you&apos;ll receive your results.
+          </p>
+          <div
+            className="mt-5 rounded-lg border p-3 text-left"
+            style={{
+              backgroundColor: "rgba(141, 198, 63, 0.08)",
+              borderColor: "#2d6b35",
+            }}
+          >
+            <p
+              className="text-xs leading-relaxed"
+              style={{ color: "#e8d5a3" }}
+            >
+              The email may have landed in your junk or spam folder. If so,
+              please move it to your inbox before clicking the activation
+              link — it may not work from the spam folder.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

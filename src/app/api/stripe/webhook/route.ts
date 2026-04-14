@@ -5,8 +5,8 @@ import {
   reassembleMetadata,
   materialiseOrder,
   sendOrderConfirmationEmail,
-  sendGuestOrderConfirmationEmail,
 } from "@/lib/checkout/materialise";
+import { createOrFindGuestAccount } from "@/lib/auth/createGuestAccount";
 import { twilioClient, TWILIO_FROM } from "@/lib/twilio";
 import { resend } from "@/lib/resend";
 import type Stripe from "stripe";
@@ -365,9 +365,41 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     (session.amount_total ?? Math.round(payload.total * 100)) / 100;
   const isGuest = !payload.account_user_id;
 
+  // ─── 2b. Guest path — auto-create the Supabase account ────────
+  // The new model creates the account immediately at checkout instead
+  // of asking the customer to set a password on the success page. The
+  // confirmation link from createOrFindGuestAccount is embedded in the
+  // order email so the customer can activate with one click.
+  let confirmationLink: string | null = null;
+  if (isGuest) {
+    const guestEmail =
+      session.customer_email ?? session.customer_details?.email;
+    if (!guestEmail) {
+      throw new Error(
+        "Guest checkout has no customer_email on Stripe session — cannot provision account"
+      );
+    }
+    try {
+      const accountResult = await createOrFindGuestAccount(guestEmail);
+      payload.account_user_id = accountResult.accountId;
+      confirmationLink = accountResult.confirmationLink;
+      console.log(
+        `[stripe-webhook] guest account ${accountResult.accountId} ${
+          accountResult.created ? "created" : "linked"
+        } (alreadyConfirmed=${accountResult.alreadyConfirmed})`
+      );
+    } catch (err) {
+      console.error(
+        "[stripe-webhook] guest account provisioning failed:",
+        err
+      );
+      throw err;
+    }
+  }
+
   // ─── 3. Create the order row ────────────────────────────────────
   const orderInsert = {
-    account_id: payload.account_user_id ?? null,
+    account_id: payload.account_user_id,
     stripe_payment_intent_id:
       typeof session.payment_intent === "string"
         ? session.payment_intent
@@ -379,7 +411,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     home_visit_fee_cad: payload.visit_fees.total,
     tax_cad: 0,
     total_cad: total,
-    notes: isGuest ? JSON.stringify({ pending_payload: payload }) : null,
+    notes: null,
   };
 
   const { data: orderRaw, error: orderErr } = await supabase
@@ -419,41 +451,17 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     console.error("[stripe-webhook] inventory processing failed (non-fatal):", err);
   }
 
-  // ─── 4. Guest path stops here ──────────────────────────────────
-  // The success page collects a password, /api/auth/complete-purchase
-  // creates the account, links the order, materialises profiles, and
-  // sends the patient confirmation email.
-  if (isGuest) {
-    console.log(
-      `[stripe-webhook] guest order ${orderId} stashed for post-payment account creation`
-    );
-    // Send confirmation email immediately using Stripe session email.
-    // complete-purchase will send a second one after account creation
-    // with the portal link — that is intentional (first = receipt,
-    // second = portal access). If the customer never completes account
-    // creation, they at least have the receipt.
-    const guestEmail = session.customer_email ?? session.customer_details?.email;
-    if (guestEmail) {
-      try {
-        await sendGuestOrderConfirmationEmail(
-          supabase,
-          orderId,
-          payload,
-          guestEmail,
-          session.id
-        );
-      } catch (err) {
-        console.error("[stripe-webhook] guest confirmation email failed (non-fatal):", err);
-      }
-    } else {
-      console.warn(`[stripe-webhook] guest order ${orderId} has no email on Stripe session — confirmation email skipped`);
-    }
-    return;
-  }
-
-  // ─── 5. Logged-in path: materialise + email + FloLabs ──────────
+  // ─── 4. Materialise + send confirmation email ──────────────────
+  // Single path now — guests went through createOrFindGuestAccount above
+  // so payload.account_user_id is always set by this point.
   await materialiseOrder(supabase, orderId, payload);
-  await sendOrderConfirmationEmail(supabase, orderId, payload, session.id);
+  await sendOrderConfirmationEmail(
+    supabase,
+    orderId,
+    payload,
+    session.id,
+    confirmationLink
+  );
 
   // FloLabs requisition email — gated behind feature flag
   if (FLOLABS_NOTIFICATIONS_ENABLED) {

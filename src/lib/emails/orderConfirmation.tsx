@@ -34,6 +34,12 @@ export interface OrderConfirmationProps {
   promoCode?: string | null;
   /** Discount amount the promo took off, CAD. 0 or undefined to hide. */
   promoDiscount?: number;
+  /**
+   * If present, an "Account created — confirm your email" section is rendered
+   * with this URL as the CTA. Pass null/undefined for already-confirmed
+   * customers (logged-in flow or returning guests).
+   */
+  confirmationLink?: string | null;
 }
 
 const FLO_LABS_URL = "https://flolabsbooking.as.me/?appointmentType=84416067";
@@ -64,6 +70,7 @@ export function renderOrderConfirmationEmail(
     stripeSessionId,
     promoCode,
     promoDiscount = 0,
+    confirmationLink,
   } = props;
 
   const hasPromo = promoDiscount > 0;
@@ -211,6 +218,32 @@ export function renderOrderConfirmationEmail(
               </table>
             </td>
           </tr>
+
+          ${
+            confirmationLink
+              ? `
+          <!-- Account created — confirm email -->
+          <tr>
+            <td style="padding: 24px 32px 0 32px;">
+              <div style="border: 2px solid #c4973a; border-radius: 10px; padding: 20px; background: #fffbeb;">
+                <p style="margin: 0 0 6px 0; font-size: 12px; color: #c4973a; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700;">
+                  Your AvoVita account is ready
+                </p>
+                <p style="margin: 0 0 14px 0; font-size: 14px; color: #4b5563; line-height: 1.5;">
+                  We've created an account for <strong style="color: #111827;">${escapeHtml(props.firstName)}</strong> at <strong style="color: #111827;">${escapeHtml(hostName(portalUrl))}</strong>. Confirm your email to access your secure portal where you'll receive your results.
+                </p>
+                <a href="${confirmationLink}" target="_blank" style="display: inline-block; background: #c4973a; color: #0a1a0d; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 14px;">
+                  Confirm Email & Access Portal
+                </a>
+                <p style="margin: 12px 0 0 0; font-size: 11px; color: #6b7280;">
+                  Link expires in 24 hours. If it expires, we'll send a fresh one tomorrow.
+                </p>
+              </div>
+            </td>
+          </tr>
+          `
+              : ""
+          }
 
           ${fastingNotice}
 
