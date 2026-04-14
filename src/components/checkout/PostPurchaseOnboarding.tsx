@@ -59,6 +59,8 @@ export interface OnboardingSummary {
   assignments: OnboardingAssignment[];
   collectionCity: string;
   collectionAddress: OnboardingCollectionAddress;
+  /** False when every test ships kit-only — no in-person FloLabs visit needed. */
+  needsCollection: boolean;
 }
 
 interface PostPurchaseOnboardingProps {
@@ -771,8 +773,8 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
             <strong style={{ color: "#ffffff" }}>
               {summary.prefilledEmail || "your inbox"}
             </strong>
-            . Click the link inside to activate your account and access your
-            secure portal where you&apos;ll receive your results.
+            . Start by confirming your email, then complete your profile and
+            waiver to prepare for your appointment.
           </p>
           <div
             className="mt-5 rounded-lg border p-3 text-left"
@@ -789,6 +791,33 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
               please move it to your inbox before clicking the activation
               link — it may not work from the spam folder.
             </p>
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row gap-3">
+            <a
+              href="/portal"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold transition-colors"
+              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            >
+              Complete Your Profile
+              <ArrowRight className="w-4 h-4" />
+            </a>
+            {summary.needsCollection && (
+              <a
+                href={FLO_LABS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold border transition-colors"
+                style={{
+                  backgroundColor: "transparent",
+                  borderColor: "#2d6b35",
+                  color: "#e8d5a3",
+                }}
+              >
+                <Calendar className="w-4 h-4" />
+                Book Your Collection
+              </a>
+            )}
           </div>
         </div>
       </div>

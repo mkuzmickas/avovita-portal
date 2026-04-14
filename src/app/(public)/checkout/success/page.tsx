@@ -94,20 +94,31 @@ export default async function CheckoutSuccessPage({
   ];
   const { data: testsRaw } = await service
     .from("tests")
-    .select("id, name, specimen_type, turnaround_display, lab:labs(name)")
+    .select(
+      "id, name, specimen_type, turnaround_display, lab:labs(name, shipping_schedule)"
+    )
     .in("id", testIds);
 
+  type LabShape = { name: string; shipping_schedule: string };
   type TestRow = {
     id: string;
     name: string;
     specimen_type: string | null;
     turnaround_display: string | null;
-    lab: { name: string } | { name: string }[] | null;
+    lab: LabShape | LabShape[] | null;
   };
   const testMap = new Map<string, TestRow>();
   for (const t of (testsRaw ?? []) as unknown as TestRow[]) {
     testMap.set(t.id, t);
   }
+
+  // Any non kit-only lab in the order means an in-person collection is
+  // needed. Used to gate the "Book Your Collection" CTA.
+  const needsCollection = (testsRaw ?? []).some((t) => {
+    const row = t as unknown as TestRow;
+    const lab = Array.isArray(row.lab) ? row.lab[0] : row.lab;
+    return lab && lab.shipping_schedule !== "kit_only";
+  });
 
   const persons: OnboardingPerson[] = payload.persons.map((p) => ({
     first_name: p.first_name,
@@ -147,6 +158,7 @@ export default async function CheckoutSuccessPage({
       province: payload.collection_address.province,
       postal_code: payload.collection_address.postal_code,
     },
+    needsCollection,
   };
 
   return (
