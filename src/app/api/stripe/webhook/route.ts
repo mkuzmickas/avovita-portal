@@ -9,6 +9,7 @@ import {
 import { createOrFindGuestAccount } from "@/lib/auth/createGuestAccount";
 import { twilioClient, TWILIO_FROM } from "@/lib/twilio";
 import { resend } from "@/lib/resend";
+import { logNotification } from "@/lib/notifications";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -117,6 +118,7 @@ async function sendAdminSms(session: Stripe.Checkout.Session) {
 
   const smsBody = `AvoVita — New order. ${patientName}. ${lineItemCount} test(s). $${amountCad} CAD. portal.avovita.ca/admin/orders`;
 
+  const service = createServiceRoleClient();
   for (const phone of adminPhones) {
     try {
       console.log(`[stripe-webhook] attempting SMS to ${phone}`);
@@ -126,11 +128,24 @@ async function sendAdminSms(session: Stripe.Checkout.Session) {
         body: smsBody,
       });
       console.log(`[stripe-webhook] SMS success to ${phone}`);
+      await logNotification(service, {
+        channel: "sms",
+        template: "order_notification_admin",
+        recipient: phone,
+        status: "sent",
+      });
     } catch (err) {
       console.error(
         `[stripe-webhook] SMS to ${phone} failed:`,
         JSON.stringify(err)
       );
+      await logNotification(service, {
+        channel: "sms",
+        template: "order_notification_admin",
+        recipient: phone,
+        status: "failed",
+        error_message: String(err),
+      });
     }
   }
 }
@@ -185,11 +200,24 @@ async function sendAdminNotificationEmail(session: Stripe.Checkout.Session) {
 </body></html>`,
     });
     console.log("[stripe-webhook] admin email sent to jenna@avovita.ca");
+    await logNotification(createServiceRoleClient(), {
+      channel: "email",
+      template: "order_notification_admin",
+      recipient: "jenna@avovita.ca",
+      status: "sent",
+    });
   } catch (err) {
     console.error(
       "[stripe-webhook] admin email to jenna@avovita.ca failed:",
       JSON.stringify(err)
     );
+    await logNotification(createServiceRoleClient(), {
+      channel: "email",
+      template: "order_notification_admin",
+      recipient: "jenna@avovita.ca",
+      status: "failed",
+      error_message: String(err),
+    });
   }
 }
 
@@ -425,23 +453,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   }
   const orderId = (orderRaw as { id: string }).id;
 
-  // Log the admin SMS to notifications table (uses orderId now available)
-  try {
-    const adminPhone = process.env.ADMIN_PHONE_NUMBER;
-    if (adminPhone) {
-      await supabase.from("notifications").insert({
-        profile_id: null,
-        order_id: orderId,
-        result_id: null,
-        channel: "sms",
-        template: "admin_new_order",
-        recipient: adminPhone,
-        status: "sent",
-      });
-    }
-  } catch {
-    // Non-fatal — notification logging failure shouldn't block
-  }
+  // (Admin SMS + email to Jenna were already logged to notifications
+  // inside sendAdminSms / sendAdminNotificationEmail above, with their
+  // real sent/failed status.)
 
   // ─── 3b. Kit inventory — decrement stock, alert if low ────────
   // Wrapped so stock errors never block order completion.

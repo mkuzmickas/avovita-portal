@@ -6,6 +6,7 @@ import {
   renderSpecimenShippedEmail,
   SPECIMEN_SHIPPED_SUBJECT,
 } from "@/lib/emails/specimenShipped";
+import { logNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -133,29 +134,26 @@ export async function POST(request: NextRequest) {
             subject: SPECIMEN_SHIPPED_SUBJECT,
             html,
           });
-
-          await service.from("notifications").insert({
-            profile_id: null,
-            order_id: order.id,
-            result_id: null,
+          await logNotification(service, {
             channel: "email",
-            template: "specimen_shipped",
+            template: "shipping_notification",
             recipient: email,
             status: "sent",
+            order_id: order.id,
+            account_id: order.account_id,
           });
         } catch (err) {
           console.error(
             `[ship] email failed for order ${order.id}:`,
             err
           );
-          await service.from("notifications").insert({
-            profile_id: null,
-            order_id: order.id,
-            result_id: null,
+          await logNotification(service, {
             channel: "email",
-            template: "specimen_shipped",
+            template: "shipping_notification",
             recipient: email,
             status: "failed",
+            order_id: order.id,
+            account_id: order.account_id,
             error_message: String(err),
           });
         }
@@ -169,29 +167,26 @@ export async function POST(request: NextRequest) {
             to: phone,
             body: `AvoVita — Your specimens have shipped. Track via FedEx: ${trackingUrl} — Results will be uploaded to your portal when ready.`,
           });
-
-          await service.from("notifications").insert({
-            profile_id: null,
-            order_id: order.id,
-            result_id: null,
+          await logNotification(service, {
             channel: "sms",
-            template: "specimen_shipped",
+            template: "shipping_notification",
             recipient: phone,
             status: "sent",
+            order_id: order.id,
+            account_id: order.account_id,
           });
         } catch (err) {
           console.error(
             `[ship] SMS failed for order ${order.id}:`,
             err
           );
-          await service.from("notifications").insert({
-            profile_id: null,
-            order_id: order.id,
-            result_id: null,
+          await logNotification(service, {
             channel: "sms",
-            template: "specimen_shipped",
+            template: "shipping_notification",
             recipient: phone,
             status: "failed",
+            order_id: order.id,
+            account_id: order.account_id,
             error_message: String(err),
           });
         }

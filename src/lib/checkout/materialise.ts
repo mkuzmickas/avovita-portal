@@ -6,6 +6,7 @@ import {
   renderOrderConfirmationEmail,
   type OrderConfirmationTest,
 } from "@/lib/emails/orderConfirmation";
+import { logNotification } from "@/lib/notifications";
 
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
 
@@ -325,25 +326,39 @@ export async function sendOrderConfirmationEmail(
       confirmationLink: confirmationLink ?? null,
     });
 
-    await resend.emails.send({
-      from: process.env.RESEND_FROM_ORDERS!,
-      to: account.email,
-      subject: orderConfirmationSubject(orderIdShort),
-      html,
-    });
-
-    await supabase.from("notifications").insert({
-      profile_id: null,
-      order_id: orderId,
-      result_id: null,
-      channel: "email",
-      template: "order_confirmation",
-      recipient: account.email,
-      status: "sent",
-    });
+    try {
+      await resend.emails.send({
+        from: process.env.RESEND_FROM_ORDERS!,
+        to: account.email,
+        subject: orderConfirmationSubject(orderIdShort),
+        html,
+      });
+      await logNotification(supabase, {
+        channel: "email",
+        template: "order_confirmation",
+        recipient: account.email,
+        status: "sent",
+        account_id: accountId,
+        order_id: orderId,
+      });
+    } catch (sendErr) {
+      console.error(
+        `[checkout] Resend failed for order_confirmation ${orderId}:`,
+        sendErr
+      );
+      await logNotification(supabase, {
+        channel: "email",
+        template: "order_confirmation",
+        recipient: account.email,
+        status: "failed",
+        account_id: accountId,
+        order_id: orderId,
+        error_message: String(sendErr),
+      });
+    }
   } catch (err) {
     console.error(
-      `[checkout] Failed to send confirmation email for ${orderId}:`,
+      `[checkout] Failed to build confirmation email for ${orderId}:`,
       err
     );
   }
@@ -428,27 +443,35 @@ export async function sendGuestOrderConfirmationEmail(
     });
 
     console.log(`[checkout] attempting email to ${customerEmail}`);
-    await resend.emails.send({
-      from: process.env.RESEND_FROM_ORDERS!,
-      to: customerEmail,
-      subject: orderConfirmationSubject(orderIdShort),
-      html,
-    });
-    console.log(`[checkout] email sent successfully to ${customerEmail}`);
-
-    await supabase.from("notifications").insert({
-      profile_id: null,
-      order_id: orderId,
-      result_id: null,
-      channel: "email",
-      template: "order_confirmation_guest",
-      recipient: customerEmail,
-      status: "sent",
-    });
-
-    console.log(
-      `[checkout] guest confirmation email sent to ${customerEmail} for order ${orderId}`
-    );
+    try {
+      await resend.emails.send({
+        from: process.env.RESEND_FROM_ORDERS!,
+        to: customerEmail,
+        subject: orderConfirmationSubject(orderIdShort),
+        html,
+      });
+      console.log(`[checkout] email sent successfully to ${customerEmail}`);
+      await logNotification(supabase, {
+        channel: "email",
+        template: "order_confirmation_guest",
+        recipient: customerEmail,
+        status: "sent",
+        order_id: orderId,
+      });
+    } catch (sendErr) {
+      console.error(
+        `[checkout] Resend failed for guest ${customerEmail}:`,
+        sendErr
+      );
+      await logNotification(supabase, {
+        channel: "email",
+        template: "order_confirmation_guest",
+        recipient: customerEmail,
+        status: "failed",
+        order_id: orderId,
+        error_message: String(sendErr),
+      });
+    }
   } catch (err) {
     console.error(
       `[checkout] email failed:`,
