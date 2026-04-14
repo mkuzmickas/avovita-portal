@@ -13,6 +13,7 @@ import { ViewResultButton } from "@/components/ViewResultButton";
 import { ResendConfirmationButton } from "@/components/portal/ResendConfirmationButton";
 import { MyRecordsUpload } from "@/components/portal/MyRecordsUpload";
 import { DeleteMyRecordButton } from "@/components/portal/DeleteMyRecordButton";
+import { AiInterpretationButton } from "@/components/portal/AiInterpretationButton";
 
 export const dynamic = "force-dynamic";
 
@@ -247,11 +248,14 @@ function OrderResultCard({
           </p>
         </div>
 
-        <ViewResultButton
-          resultId={result.id}
-          storagePath={result.storage_path}
-          isNew={isNew}
-        />
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <ViewResultButton
+            resultId={result.id}
+            storagePath={result.storage_path}
+            isNew={isNew}
+          />
+          <AiInterpretationButton resultId={result.id} />
+        </div>
       </div>
     </div>
   );
@@ -303,13 +307,16 @@ function UploadedResultCard({ result }: { result: ResultRow }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <ViewResultButton
-            resultId={result.id}
-            storagePath={result.storage_path}
-            isNew={false}
-          />
-          {isPatientUpload && <DeleteMyRecordButton resultId={result.id} />}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <ViewResultButton
+              resultId={result.id}
+              storagePath={result.storage_path}
+              isNew={false}
+            />
+            {isPatientUpload && <DeleteMyRecordButton resultId={result.id} />}
+          </div>
+          <AiInterpretationButton resultId={result.id} />
         </div>
       </div>
     </div>

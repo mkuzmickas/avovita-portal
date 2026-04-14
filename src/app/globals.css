@@ -195,6 +195,44 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--border-default);
 }
 
+/* ─── Print styles for AI Interpretation report ─────────────────────────── */
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0a1a0d !important;
+  }
+  .ai-no-print {
+    display: none !important;
+  }
+  /* Hide elements ONLY visible in print (link-text fallbacks) */
+  .ai-print-only {
+    display: inline !important;
+  }
+  /* Whiten brand cards for paper */
+  .interpretation-root {
+    background: #ffffff !important;
+  }
+  .interpretation-root .print-safe {
+    background: #ffffff !important;
+    border-color: #c4973a !important;
+    color: #0a1a0d !important;
+    box-shadow: none !important;
+  }
+  .interpretation-root .print-safe h1,
+  .interpretation-root .print-safe h2,
+  .interpretation-root .print-safe p,
+  .interpretation-root .print-safe li,
+  .interpretation-root .print-safe td {
+    color: #0a1a0d !important;
+  }
+  /* Keep the gold/red status badges colourful — they carry meaning */
+  .interpretation-root a {
+    color: #0a1a0d !important;
+    text-decoration: underline;
+  }
+}
+
 /* ─── Form autofill overrides ────────────────────────────────────────────── */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
