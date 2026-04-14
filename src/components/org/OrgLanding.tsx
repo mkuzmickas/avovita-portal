@@ -10,9 +10,18 @@ import { useOrg } from "./OrgContext";
  * structure of the public homepage (hero + dual CTAs + reassurance
  * footer) but pulls colours and copy from the org via OrgContext.
  */
+// Palette rules for org landing on Midnight Forest:
+//   - Large text + headings → AvoVita gold (#c4973a). Org primary_color
+//     is often a deep brand colour (navy, maroon) that washes out on
+//     #0a1a0d, so we don't use it for type.
+//   - Section labels → AvoVita light green (#8dc63f) for consistency.
+//   - Org primary_color is reserved for small badges/avatars only
+//     (handled inside OrgAwareHeader).
+const HEADING_GOLD = "#c4973a";
+const LABEL_GREEN = "#8dc63f";
+
 export function OrgLanding() {
   const org = useOrg();
-  const accent = org?.primary_color ?? "#2d6b35";
 
   return (
     <div style={{ backgroundColor: "#0a1a0d" }}>
@@ -35,7 +44,7 @@ export function OrgLanding() {
           <p
             className="font-semibold uppercase tracking-wider mb-3"
             style={{
-              color: "#c4973a",
+              color: LABEL_GREEN,
               fontSize: "11px",
               letterSpacing: "0.18em",
             }}
@@ -50,7 +59,7 @@ export function OrgLanding() {
             }}
           >
             Welcome,{" "}
-            <span style={{ color: accent }}>{org?.name ?? "client"}</span>
+            <span style={{ color: HEADING_GOLD }}>{org?.name ?? "client"}</span>
           </h1>
           <p
             className="text-base sm:text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed"
@@ -79,11 +88,11 @@ export function OrgLanding() {
               className="inline-flex items-center justify-center gap-2.5 px-8 py-4 text-base font-semibold rounded-xl border transition-colors w-full sm:w-auto"
               style={{
                 backgroundColor: "transparent",
-                borderColor: accent,
+                borderColor: HEADING_GOLD,
                 color: "#ffffff",
               }}
             >
-              <Sparkles className="w-5 h-5" style={{ color: accent }} />
+              <Sparkles className="w-5 h-5" style={{ color: HEADING_GOLD }} />
               AI Test Advisor
             </Link>
           </div>
@@ -98,7 +107,7 @@ export function OrgLanding() {
         <div className="max-w-3xl mx-auto text-center">
           <p
             className="text-sm uppercase tracking-wider font-semibold mb-2"
-            style={{ color: accent, letterSpacing: "0.18em" }}
+            style={{ color: LABEL_GREEN, letterSpacing: "0.18em" }}
           >
             Powered by AvoVita Wellness
           </p>
