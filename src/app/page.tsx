@@ -9,7 +9,7 @@ export default function HomePage() {
         className="absolute top-0 left-0 right-0 z-20"
         style={{ backgroundColor: "transparent" }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2.5">
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center border"
@@ -43,7 +43,7 @@ export default function HomePage() {
 
       {/* ─── Hero (full viewport) ───────────────────────────────────────── */}
       <section
-        className="relative flex items-center justify-center px-6 pt-40 pb-4 md:pt-48 md:pb-6"
+        className="relative flex items-center justify-center px-4 sm:px-6 pt-40 pb-4 md:pt-48 md:pb-6"
         style={{ backgroundColor: "#0a1a0d" }}
       >
         {/* Soft radial glow */}
@@ -106,7 +106,7 @@ export default function HomePage() {
       </section>
 
       {/* ─── How It Works ───────────────────────────────────────────────── */}
-      <section className="px-6 pt-12 pb-24" style={{ backgroundColor: "#0a1a0d" }}>
+      <section className="px-4 sm:px-6 pt-12 pb-24" style={{ backgroundColor: "#0a1a0d" }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2
@@ -190,7 +190,7 @@ export default function HomePage() {
       </section>
 
       {/* ─── CTA band ──────────────────────────────────────────────────── */}
-      <section className="px-6 py-20" style={{ backgroundColor: "#0f2614" }}>
+      <section className="px-4 sm:px-6 py-20" style={{ backgroundColor: "#0f2614" }}>
         <div className="max-w-3xl mx-auto text-center">
           <h2
             className="font-heading text-3xl md:text-4xl font-semibold mb-4"
@@ -217,7 +217,7 @@ export default function HomePage() {
 
       {/* ─── Footer ────────────────────────────────────────────────────── */}
       <footer
-        className="px-6 py-10 text-center text-xs border-t"
+        className="px-4 sm:px-6 py-10 text-center text-xs border-t"
         style={{
           backgroundColor: "#0a1a0d",
           borderColor: "#1a3d22",

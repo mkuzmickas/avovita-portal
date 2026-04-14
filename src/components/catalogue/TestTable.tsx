@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, Clock, ShoppingCart, Check, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { formatPublicStability } from "./TestCard";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
 interface TestTableProps {
@@ -258,7 +259,7 @@ function TestTableRow({
                     />
                     <DetailField
                       label="Stability"
-                      value={test.stability_notes}
+                      value={formatPublicStability(test.stability_notes)}
                     />
                   </div>
 

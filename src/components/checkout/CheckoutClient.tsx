@@ -266,7 +266,7 @@ export function CheckoutClient({
         className="border-b"
         style={{ backgroundColor: "#0f2614", borderColor: "#1a3d22" }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
           <Link href="/tests" className="flex items-center gap-2.5">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center border"

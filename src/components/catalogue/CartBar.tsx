@@ -46,7 +46,7 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
           className="border-b"
           style={{ borderColor: "#8dc63f", backgroundColor: "#1a3d22" }}
         >
-          <div className="max-w-7xl mx-auto px-6 py-2 flex items-center gap-2">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-2">
             <Tag className="w-4 h-4 shrink-0" style={{ color: "#8dc63f" }} />
             <p
               className="text-xs sm:text-sm font-semibold"
@@ -59,7 +59,7 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border shrink-0"

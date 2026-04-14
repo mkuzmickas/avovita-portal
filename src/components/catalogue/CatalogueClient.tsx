@@ -96,7 +96,7 @@ export function CatalogueClient({
         className="border-b"
         style={{ backgroundColor: "#0f2614", borderColor: "#1a3d22" }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2.5">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center border"
@@ -131,7 +131,7 @@ export function CatalogueClient({
       </header>
 
       {/* Page title */}
-      <div className="max-w-7xl mx-auto px-6 pt-10 pb-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-6">
         <h1
           className="font-heading text-4xl md:text-5xl font-semibold mb-2"
           style={{
@@ -147,7 +147,7 @@ export function CatalogueClient({
 
         {/* Discount promo banner */}
         <div
-          className="mt-4 inline-flex items-center gap-2 rounded-lg border px-4 py-2"
+          className="mt-4 inline-flex items-start gap-2 rounded-lg border px-4 py-2 max-w-full"
           style={{
             backgroundColor: "#1a3d22",
             borderColor: "#c4973a",
@@ -164,7 +164,7 @@ export function CatalogueClient({
 
         {/* AI Test Finder card */}
         <div
-          className="mt-5 rounded-xl border px-6 py-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-6"
+          className="mt-5 rounded-xl border px-4 sm:px-6 py-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-6"
           style={{
             backgroundColor: "rgba(196,151,58,0.08)",
             borderColor: "#c4973a",
@@ -211,7 +211,7 @@ export function CatalogueClient({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 space-y-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
         {/* ─── SECTION 1: Featured ────────────────────────────────────── */}
         <section>
           <SectionHeading title="Featured Tests" hint="(scroll down for full catalogue)" />
@@ -463,7 +463,7 @@ function CarouselArrow({
         color: "#c4973a",
         opacity: disabled ? 0.3 : 1,
         cursor: disabled ? "default" : "pointer",
-        [direction === "left" ? "left" : "right"]: "-12px",
+        [direction === "left" ? "left" : "right"]: "4px",
       }}
     >
       <Icon className="w-5 h-5" />

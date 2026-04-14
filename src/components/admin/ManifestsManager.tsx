@@ -45,6 +45,13 @@ export function ManifestsManager({ initialManifests }: ManifestsManagerProps) {
   const [manifests, setManifests] = useState<ManifestWithCount[]>(initialManifests);
   const [tab, setTab] = useState<"open" | "closed">("open");
 
+  // Keep local state in sync when the server component re-fetches after
+  // router.refresh(). Without this, useState's initial value sticks and
+  // newly-created manifests never appear in the list.
+  useEffect(() => {
+    setManifests(initialManifests);
+  }, [initialManifests]);
+
   // Create form state
   const defaultDate = useMemo(() => nextWednesdayISO(), []);
   const [shipDate, setShipDate] = useState<string>(defaultDate);
@@ -70,6 +77,11 @@ export function ManifestsManager({ initialManifests }: ManifestsManagerProps) {
       return;
     }
     setCreating(true);
+    console.log("[manifests:create] submitting", {
+      name: name.trim(),
+      ship_date: shipDate,
+      notes: notes.trim() || null,
+    });
     try {
       const res = await fetch("/api/admin/manifests", {
         method: "POST",
@@ -80,20 +92,34 @@ export function ManifestsManager({ initialManifests }: ManifestsManagerProps) {
           notes: notes.trim() || null,
         }),
       });
-      const data = await res.json();
+      console.log("[manifests:create] response status", res.status);
+      const data = await res.json().catch((e) => {
+        console.error("[manifests:create] failed to parse response", e);
+        return {} as { error?: string; id?: string };
+      });
+      console.log("[manifests:create] response body", data);
+
       if (!res.ok) {
-        setError(data.error ?? "Failed to create manifest");
+        setError(
+          data.error ?? `Failed to create manifest (HTTP ${res.status})`
+        );
         return;
       }
-      router.refresh();
-      // Reset form
+      // Reset form first so success is visible even if router.refresh()
+      // takes a moment
       const next = nextWednesdayISO();
       setShipDate(next);
       setName(`Shipment — ${formatDateLong(next)}`);
       setNameDirty(false);
       setNotes("");
-    } catch {
-      setError("Network error. Please try again.");
+      router.refresh();
+    } catch (err) {
+      console.error("[manifests:create] network error", err);
+      setError(
+        err instanceof Error
+          ? `Network error: ${err.message}`
+          : "Network error. Please try again."
+      );
     } finally {
       setCreating(false);
     }

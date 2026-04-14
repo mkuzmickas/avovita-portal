@@ -70,6 +70,11 @@
 html {
   color-scheme: dark;
   background-color: var(--bg-primary);
+  /* Defensive: stop any stray fixed-width element from creating a
+     horizontal scrollbar on mobile. Per-component layouts still need to
+     wrap properly, but this prevents one bad child from breaking the
+     whole page. */
+  overflow-x: hidden;
 }
 
 body {
@@ -80,6 +85,7 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {

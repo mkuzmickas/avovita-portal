@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     const service = createServiceRoleClient();
+    console.log("[manifests:create:server] inserting", { name, shipDate });
     const { data, error } = await service
       .from("manifests")
       .insert({ name, ship_date: shipDate, notes, status: "open" })
@@ -51,12 +52,17 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error || !data) {
+      console.error("[manifests:create:server] insert failed", error);
       return NextResponse.json(
         { error: `Failed to create manifest: ${error?.message ?? "unknown"}` },
         { status: 500 }
       );
     }
 
+    console.log(
+      "[manifests:create:server] created",
+      (data as { id: string }).id
+    );
     return NextResponse.json({ id: (data as { id: string }).id });
   } catch (err) {
     console.error("[manifests:create]", err);
