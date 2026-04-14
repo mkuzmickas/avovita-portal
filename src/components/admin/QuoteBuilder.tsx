@@ -56,9 +56,11 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
   const [lines, setLines] = useState<QuoteLineWithTest[]>(initialLines);
 
   // Form fields (kept in local state, persisted via Save)
-  const [firstName, setFirstName] = useState(quote.client_first_name);
-  const [lastName, setLastName] = useState(quote.client_last_name);
-  const [email, setEmail] = useState(quote.client_email);
+  // Fresh drafts may have null name/email fields — normalise to empty
+  // strings so controlled inputs don't warn and the dirty-check stays sane.
+  const [firstName, setFirstName] = useState(quote.client_first_name ?? "");
+  const [lastName, setLastName] = useState(quote.client_last_name ?? "");
+  const [email, setEmail] = useState(quote.client_email ?? "");
   const [personCount, setPersonCount] = useState(quote.person_count);
   const [collectionCity, setCollectionCity] = useState(
     quote.collection_city ?? ""
@@ -76,9 +78,9 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
   const [success, setSuccess] = useState<string | null>(null);
 
   const dirty =
-    firstName !== quote.client_first_name ||
-    lastName !== quote.client_last_name ||
-    email !== quote.client_email ||
+    firstName !== (quote.client_first_name ?? "") ||
+    lastName !== (quote.client_last_name ?? "") ||
+    email !== (quote.client_email ?? "") ||
     personCount !== quote.person_count ||
     collectionCity !== (quote.collection_city ?? "") ||
     notes !== (quote.notes ?? "") ||

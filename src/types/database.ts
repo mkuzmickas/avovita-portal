@@ -187,9 +187,9 @@ export interface Expense {
 export interface Quote {
   id: string;
   quote_number: string;
-  client_first_name: string;
-  client_last_name: string;
-  client_email: string;
+  client_first_name: string | null;
+  client_last_name: string | null;
+  client_email: string | null;
   person_count: number;
   collection_city: string | null;
   notes: string | null;
