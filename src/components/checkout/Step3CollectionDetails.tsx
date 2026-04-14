@@ -874,7 +874,36 @@ function DobDropdowns({
   value: string;
   onChange: (next: string) => void;
 }) {
-  const parts = parseIsoDob(value);
+  // Local state so partial selections (e.g. only Day chosen) stay visible
+  // even though the parent only stores fully-valid ISO dates. Without this
+  // local cache, an incomplete pick emits "" upward and the placeholder
+  // re-appears on the next render, looking like the dropdown didn't work.
+  const [parts, setParts] = useState(() => parseIsoDob(value));
+
+  // Re-sync from the parent value when it is either fully empty or a
+  // complete date — typically prefill on mount or restore after navigating
+  // back to this step. We deliberately ignore parent updates while the
+  // user is mid-entry (parent has "" but local has partial parts).
+  useEffect(() => {
+    const incoming = parseIsoDob(value);
+    const parentComplete = !!(incoming.y && incoming.m && incoming.d);
+    const parentEmpty = value === "";
+    if (parentComplete || parentEmpty) {
+      setParts((prev) => {
+        if (
+          prev.y === incoming.y &&
+          prev.m === incoming.m &&
+          prev.d === incoming.d
+        ) {
+          return prev;
+        }
+        // Don't clobber in-progress local edits with parent's "" (partial)
+        if (parentEmpty && (prev.y || prev.m || prev.d)) return prev;
+        return incoming;
+      });
+    }
+  }, [value]);
+
   const currentYear = new Date().getFullYear();
   const years: string[] = [];
   for (let y = currentYear; y >= 1924; y--) years.push(String(y));
@@ -883,6 +912,7 @@ function DobDropdowns({
     next: Partial<{ y: string; m: string; d: string }>
   ) => {
     const merged = { ...parts, ...next };
+    setParts(merged);
     onChange(combineIsoDob(merged.y, merged.m, merged.d));
   };
 
