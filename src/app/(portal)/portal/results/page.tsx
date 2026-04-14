@@ -1,24 +1,32 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { formatDate } from "@/lib/utils";
-import { FileText, Clock, CheckCircle, Mail } from "lucide-react";
+import {
+  FileText,
+  Clock,
+  CheckCircle,
+  Mail,
+  User,
+  UserCheck,
+} from "lucide-react";
 import { ViewResultButton } from "@/components/ViewResultButton";
 import { ResendConfirmationButton } from "@/components/portal/ResendConfirmationButton";
+import { MyRecordsUpload } from "@/components/portal/MyRecordsUpload";
+import { DeleteMyRecordButton } from "@/components/portal/DeleteMyRecordButton";
 
 export const dynamic = "force-dynamic";
 
+type ResultSource = "order" | "manual_upload" | "patient_upload";
+
 type ResultRow = {
   id: string;
-  order_id: string;
+  order_id: string | null;
   storage_path: string;
   file_name: string;
   result_status: "partial" | "final";
   uploaded_at: string;
   viewed_at: string | null;
-};
-
-type OrderTestRow = {
-  test: { name: string; lab: { name: string } | null } | null;
+  source: ResultSource;
 };
 
 export default async function ResultsPage() {
@@ -64,13 +72,15 @@ export default async function ResultsPage() {
     );
   }
 
-  // Fetch all results for this account's orders (order-level, not order_line)
+  // Fetch every result row for this account (RLS limits it to the
+  // current user's profiles). Includes source so we can render the three
+  // variants differently.
   const { data: resultsRaw } = await supabase
     .from("results")
     .select(
       `
       id, order_id, storage_path, file_name, result_status,
-      uploaded_at, viewed_at
+      uploaded_at, viewed_at, source
     `
     )
     .order("uploaded_at", { ascending: false });
@@ -80,11 +90,13 @@ export default async function ResultsPage() {
     (r) => !r.storage_path.startsWith("__")
   );
 
-  // Fetch the tests for each order so we can display them
-  const orderIds = [...new Set(results.map((r) => r.order_id))];
-
-  let orderTestsMap = new Map<string, Array<{ name: string; lab: string }>>();
-
+  // Tests per order — only needed for source='order' rows
+  const orderIds = [
+    ...new Set(
+      results.filter((r) => r.source === "order" && r.order_id).map((r) => r.order_id as string)
+    ),
+  ];
+  const orderTestsMap = new Map<string, Array<{ name: string; lab: string }>>();
   if (orderIds.length > 0) {
     const { data: orderLinesRaw } = await supabase
       .from("order_lines")
@@ -93,7 +105,10 @@ export default async function ResultsPage() {
 
     type OlRow = {
       order_id: string;
-      test: { name: string; lab: { name: string } | { name: string }[] | null } | null;
+      test: {
+        name: string;
+        lab: { name: string } | { name: string }[] | null;
+      } | null;
     };
     const lines = (orderLinesRaw ?? []) as unknown as OlRow[];
 
@@ -122,9 +137,11 @@ export default async function ResultsPage() {
           My <span style={{ color: "#c4973a" }}>Results</span>
         </h1>
         <p className="mt-1" style={{ color: "#e8d5a3" }}>
-          Your lab results are delivered securely here.
+          All your lab results — from AvoVita orders and your own uploads.
         </p>
       </div>
+
+      <MyRecordsUpload />
 
       {results.length === 0 ? (
         <div
@@ -138,125 +155,189 @@ export default async function ResultsPage() {
           <p style={{ color: "#e8d5a3" }}>No results available yet.</p>
           <p className="text-sm mt-2" style={{ color: "#6ab04c" }}>
             Results will appear here once your specimens have been processed
-            by the laboratory.
+            by the laboratory, or once you upload your own records above.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {results.map((result) => {
-            const tests = orderTestsMap.get(result.order_id) ?? [];
-            const isNew = !result.viewed_at;
-            const isPartial = result.result_status === "partial";
-
-            return (
-              <div
+          {results.map((result) =>
+            result.source === "order" ? (
+              <OrderResultCard
                 key={result.id}
-                className="rounded-xl border overflow-hidden"
-                style={{
-                  backgroundColor: "#1a3d22",
-                  borderColor: isNew ? "#c4973a" : "#2d6b35",
-                }}
-              >
-                <div className="px-5 sm:px-6 py-4 flex items-start gap-4">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
-                    style={{
-                      backgroundColor: "#0f2614",
-                      borderColor: isNew ? "#c4973a" : "#2d6b35",
-                    }}
-                  >
-                    <FileText
-                      className="w-5 h-5"
-                      style={{
-                        color: isNew ? "#c4973a" : "#8dc63f",
-                      }}
-                    />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    {/* Status + date row */}
-                    <div className="flex items-center gap-2 flex-wrap mb-2">
-                      {isNew && (
-                        <span
-                          className="text-xs font-medium px-1.5 py-0.5 rounded-full border"
-                          style={{
-                            backgroundColor: "rgba(196, 151, 58, 0.125)",
-                            color: "#c4973a",
-                            borderColor: "#c4973a",
-                          }}
-                        >
-                          New
-                        </span>
-                      )}
-                      <span
-                        className="flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full border"
-                        style={
-                          isPartial
-                            ? {
-                                backgroundColor:
-                                  "rgba(196, 151, 58, 0.125)",
-                                color: "#c4973a",
-                                borderColor: "#c4973a",
-                              }
-                            : {
-                                backgroundColor:
-                                  "rgba(141, 198, 63, 0.125)",
-                                color: "#8dc63f",
-                                borderColor: "#8dc63f",
-                              }
-                        }
-                      >
-                        {isPartial ? (
-                          <>
-                            <Clock className="w-3 h-3" />
-                            Partial — more results may follow
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-3 h-3" />
-                            Final
-                          </>
-                        )}
-                      </span>
-                    </div>
-
-                    {/* Tests list */}
-                    <ul className="space-y-0.5 mb-2">
-                      {tests.map((t, i) => (
-                        <li
-                          key={i}
-                          className="text-sm"
-                          style={{ color: "#ffffff" }}
-                        >
-                          {t.name}
-                          {t.lab && (
-                            <span
-                              className="text-xs ml-1.5"
-                              style={{ color: "#6ab04c" }}
-                            >
-                              · {t.lab}
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-
-                    <p className="text-xs" style={{ color: "#6ab04c" }}>
-                      Uploaded {formatDate(result.uploaded_at)}
-                    </p>
-                  </div>
-
-                  <ViewResultButton
-                    resultId={result.id}
-                    storagePath={result.storage_path}
-                    isNew={isNew}
-                  />
-                </div>
-              </div>
-            );
-          })}
+                result={result}
+                tests={orderTestsMap.get(result.order_id ?? "") ?? []}
+              />
+            ) : (
+              <UploadedResultCard key={result.id} result={result} />
+            )
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Order-attached result ─────────────────────────────────────────────
+
+function OrderResultCard({
+  result,
+  tests,
+}: {
+  result: ResultRow;
+  tests: Array<{ name: string; lab: string }>;
+}) {
+  const isNew = !result.viewed_at;
+  const isPartial = result.result_status === "partial";
+
+  return (
+    <div
+      className="rounded-xl border overflow-hidden"
+      style={{
+        backgroundColor: "#1a3d22",
+        borderColor: isNew ? "#c4973a" : "#2d6b35",
+      }}
+    >
+      <div className="px-5 sm:px-6 py-4 flex items-start gap-4">
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
+          style={{
+            backgroundColor: "#0f2614",
+            borderColor: isNew ? "#c4973a" : "#2d6b35",
+          }}
+        >
+          <FileText
+            className="w-5 h-5"
+            style={{ color: isNew ? "#c4973a" : "#8dc63f" }}
+          />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            {isNew && (
+              <Badge color="#c4973a" text="New" />
+            )}
+            <Badge
+              color={isPartial ? "#c4973a" : "#8dc63f"}
+              icon={
+                isPartial ? (
+                  <Clock className="w-3 h-3" />
+                ) : (
+                  <CheckCircle className="w-3 h-3" />
+                )
+              }
+              text={isPartial ? "Partial — more results may follow" : "Final"}
+            />
+          </div>
+
+          <ul className="space-y-0.5 mb-2">
+            {tests.map((t, i) => (
+              <li key={i} className="text-sm" style={{ color: "#ffffff" }}>
+                {t.name}
+                {t.lab && (
+                  <span className="text-xs ml-1.5" style={{ color: "#6ab04c" }}>
+                    · {t.lab}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          <p className="text-xs" style={{ color: "#6ab04c" }}>
+            Uploaded {formatDate(result.uploaded_at)}
+          </p>
+        </div>
+
+        <ViewResultButton
+          resultId={result.id}
+          storagePath={result.storage_path}
+          isNew={isNew}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Manual admin upload or patient self-upload ────────────────────────
+
+function UploadedResultCard({ result }: { result: ResultRow }) {
+  const isPatientUpload = result.source === "patient_upload";
+  return (
+    <div
+      className="rounded-xl border overflow-hidden"
+      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+    >
+      <div className="px-5 sm:px-6 py-4 flex items-start gap-4">
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
+          style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+        >
+          <FileText className="w-5 h-5" style={{ color: "#8dc63f" }} />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            {isPatientUpload ? (
+              <Badge
+                color="#6ab04c"
+                icon={<User className="w-3 h-3" />}
+                text="Uploaded by you"
+              />
+            ) : (
+              <Badge
+                color="#c4973a"
+                icon={<UserCheck className="w-3 h-3" />}
+                text="Added by AvoVita"
+              />
+            )}
+          </div>
+
+          <p
+            className="text-sm break-words"
+            style={{ color: "#ffffff", overflowWrap: "anywhere" }}
+          >
+            {result.file_name}
+          </p>
+
+          <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
+            Uploaded {formatDate(result.uploaded_at)}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <ViewResultButton
+            resultId={result.id}
+            storagePath={result.storage_path}
+            isNew={false}
+          />
+          {isPatientUpload && <DeleteMyRecordButton resultId={result.id} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Small reusable badge ──────────────────────────────────────────────
+
+function Badge({
+  color,
+  icon,
+  text,
+}: {
+  color: string;
+  icon?: React.ReactNode;
+  text: string;
+}) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full border"
+      style={{
+        backgroundColor: `${color}1f`,
+        color,
+        borderColor: color,
+      }}
+    >
+      {icon}
+      {text}
+    </span>
   );
 }

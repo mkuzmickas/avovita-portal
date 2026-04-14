@@ -254,14 +254,28 @@ function PatientRow({
                 >
                   Profiles on this account
                 </h3>
-                <Link
-                  href={`/admin/orders?patient_id=${patient.id}`}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shrink-0"
-                  style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
-                >
-                  View Orders
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <Link
+                    href={`/admin/patients/${patient.id}`}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
+                    style={{
+                      backgroundColor: "transparent",
+                      borderColor: "#c4973a",
+                      color: "#c4973a",
+                    }}
+                  >
+                    Open Profile
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link
+                    href={`/admin/orders?patient_id=${patient.id}`}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                    style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                  >
+                    View Orders
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
               </div>
 
               {patient.profiles.length === 0 ? (
