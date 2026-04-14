@@ -289,14 +289,10 @@ export async function POST(request: NextRequest) {
     }
     void accountHolder; // We collect email at success-page time for guests
 
-    // ─── Handle test promo code ────────────────────────────────────
-    // AVOVITA-TEST applies a 100% coupon. Only works when the
-    // NEXT_PUBLIC_ENABLE_TEST_MODE env var is "true".
-    const testModeEnabled =
-      process.env.NEXT_PUBLIC_ENABLE_TEST_MODE === "true";
+    // ─── Handle promo code ─────────────────────────────────────────
+    // AVOVITA-TEST applies a one-time 100% off coupon.
     const promoCode = body.promo_code?.trim().toUpperCase();
-    const applyTestDiscount =
-      testModeEnabled && promoCode === "AVOVITA-TEST";
+    const applyTestDiscount = promoCode === "AVOVITA-TEST";
 
     let discounts:
       | Array<{ coupon: string }>

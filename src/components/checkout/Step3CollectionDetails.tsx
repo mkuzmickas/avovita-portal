@@ -600,12 +600,9 @@ function PersonSection({
           >
             Date of Birth{reqMark}
           </label>
-          <input
-            type="date"
+          <DobDropdowns
             value={person.date_of_birth}
-            onChange={(e) => onChange({ date_of_birth: e.target.value })}
-            className="mf-input"
-            style={{ colorScheme: "dark" }}
+            onChange={(v) => onChange({ date_of_birth: v })}
           />
         </div>
         <div>
@@ -831,5 +828,111 @@ function PersonSection({
         </div>
       )}
     </section>
+  );
+}
+
+// ─── Date of birth dropdowns (Day / Month / Year) ────────────────────────
+//
+// Replaces the native <input type="date"> with three dropdowns to keep the
+// UX consistent across browsers (mobile especially) and avoid the dd/mm
+// vs mm/dd ambiguity. Emits an ISO YYYY-MM-DD string only when all three
+// parts are filled — partial selections emit "" so the parent's existing
+// `date_of_birth.length > 0` validation still gates the Continue button.
+
+const MONTH_LABELS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function parseIsoDob(iso: string): { y: string; m: string; d: string } {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? "");
+  if (!match) return { y: "", m: "", d: "" };
+  return { y: match[1], m: match[2], d: match[3] };
+}
+
+function combineIsoDob(y: string, m: string, d: string): string {
+  if (!y || !m || !d) return "";
+  // Validate the combination is a real calendar date (e.g. reject Feb 30)
+  const yi = Number(y);
+  const mi = Number(m);
+  const di = Number(d);
+  const test = new Date(Date.UTC(yi, mi - 1, di));
+  if (
+    test.getUTCFullYear() !== yi ||
+    test.getUTCMonth() !== mi - 1 ||
+    test.getUTCDate() !== di
+  ) {
+    return "";
+  }
+  return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+function DobDropdowns({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const parts = parseIsoDob(value);
+  const currentYear = new Date().getFullYear();
+  const years: string[] = [];
+  for (let y = currentYear; y >= 1924; y--) years.push(String(y));
+
+  const update = (
+    next: Partial<{ y: string; m: string; d: string }>
+  ) => {
+    const merged = { ...parts, ...next };
+    onChange(combineIsoDob(merged.y, merged.m, merged.d));
+  };
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <select
+        aria-label="Day"
+        value={parts.d}
+        onChange={(e) => update({ d: e.target.value })}
+        className="mf-input cursor-pointer"
+      >
+        <option value="">Day</option>
+        {Array.from({ length: 31 }, (_, i) => {
+          const d = String(i + 1).padStart(2, "0");
+          return (
+            <option key={d} value={d}>
+              {i + 1}
+            </option>
+          );
+        })}
+      </select>
+      <select
+        aria-label="Month"
+        value={parts.m}
+        onChange={(e) => update({ m: e.target.value })}
+        className="mf-input cursor-pointer"
+      >
+        <option value="">Month</option>
+        {MONTH_LABELS.map((label, i) => {
+          const m = String(i + 1).padStart(2, "0");
+          return (
+            <option key={m} value={m}>
+              {label}
+            </option>
+          );
+        })}
+      </select>
+      <select
+        aria-label="Year"
+        value={parts.y}
+        onChange={(e) => update({ y: e.target.value })}
+        className="mf-input cursor-pointer"
+      >
+        <option value="">Year</option>
+        {years.map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }

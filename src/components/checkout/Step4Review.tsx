@@ -91,9 +91,6 @@ export function Step4Review({
   const [shippingRiskAcknowledged, setShippingRiskAcknowledged] =
     useState(false);
 
-  const testModeEnabled =
-    process.env.NEXT_PUBLIC_ENABLE_TEST_MODE === "true";
-
   const visitFees = useMemo(
     () => computeVisitFees(persons.length),
     [persons.length]
@@ -136,10 +133,6 @@ export function Step4Review({
 
   const handleApplyPromo = () => {
     setPromoError(null);
-    if (!testModeEnabled) {
-      setPromoError("Promo codes are not currently available.");
-      return;
-    }
     if (promoInput.trim().toUpperCase() === "AVOVITA-TEST") {
       setPromoApplied(true);
       setPromoError(null);
@@ -445,7 +438,7 @@ export function Step4Review({
       </section>
 
       {/* Promo code section */}
-      {testModeEnabled && (
+      {(
         <section
           className="rounded-lg border p-5 mb-5"
           style={{

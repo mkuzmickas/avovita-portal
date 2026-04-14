@@ -50,6 +50,10 @@ export function WaiverForm({ onComplete }: WaiverFormProps) {
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
+  // Synchronous guard against double-submission. React's `submitting`
+  // state update is async, so two clicks in quick succession can both
+  // pass the disabled check. The ref flips immediately.
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -70,11 +74,16 @@ export function WaiverForm({ onComplete }: WaiverFormProps) {
 
   const handleSubmit = async () => {
     if (!canSign) return;
+    if (inFlightRef.current) {
+      console.warn("[WaiverForm] duplicate submit blocked");
+      return;
+    }
+    inFlightRef.current = true;
     setSubmitting(true);
     setError(null);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10_000);
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
 
     try {
       const res = await fetch("/api/auth/complete-waiver", {
@@ -101,6 +110,7 @@ export function WaiverForm({ onComplete }: WaiverFormProps) {
             : "Failed to save waiver"
       );
       setSubmitting(false);
+      inFlightRef.current = false;
     } finally {
       clearTimeout(timeoutId);
     }
