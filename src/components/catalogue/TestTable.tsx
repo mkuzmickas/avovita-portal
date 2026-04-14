@@ -45,16 +45,20 @@ export function TestTable({
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: "#0f2614" }}>
-              {[
-                "Test Name",
-                "Lab",
-                "Category",
-                "Price",
-                "Turnaround",
-              ].map((label) => (
+              {(
+                [
+                  { label: "Test Name", mobile: true },
+                  { label: "Lab", mobile: false },
+                  { label: "Category", mobile: false },
+                  { label: "Price", mobile: true },
+                  { label: "Turnaround", mobile: false },
+                ] as const
+              ).map(({ label, mobile }) => (
                 <th
                   key={label}
-                  className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider"
+                  className={`px-5 py-3 text-left text-xs font-bold uppercase tracking-wider ${
+                    mobile ? "" : "hidden sm:table-cell"
+                  }`}
                   style={{
                     color: "#c4973a",
                     fontFamily: '"DM Sans", sans-serif',
@@ -198,10 +202,16 @@ function TestTableRow({
             )}
           </div>
         </td>
-        <td className="px-5 py-4" style={{ color: "#e8d5a3" }}>
+        <td
+          className="hidden sm:table-cell px-5 py-4"
+          style={{ color: "#e8d5a3" }}
+        >
           {test.lab.name}
         </td>
-        <td className="px-5 py-4" style={{ color: "#e8d5a3" }}>
+        <td
+          className="hidden sm:table-cell px-5 py-4"
+          style={{ color: "#e8d5a3" }}
+        >
           {test.category ?? "—"}
         </td>
         <td
@@ -210,7 +220,10 @@ function TestTableRow({
         >
           {hasPrice ? formatCurrency(test.price_cad as number) : "Contact us"}
         </td>
-        <td className="px-5 py-4" style={{ color: "#e8d5a3" }}>
+        <td
+          className="hidden sm:table-cell px-5 py-4"
+          style={{ color: "#e8d5a3" }}
+        >
           {test.turnaround_display ?? "—"}
         </td>
         <td className="px-5 py-4 text-right">
@@ -243,6 +256,20 @@ function TestTableRow({
             >
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-4">
+                  {test.category && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                        style={{
+                          backgroundColor: "#1a3d22",
+                          borderColor: "#c4973a",
+                          color: "#c4973a",
+                        }}
+                      >
+                        {test.category}
+                      </span>
+                    </div>
+                  )}
                   {test.description && (
                     <p
                       className="text-sm leading-relaxed"
