@@ -92,8 +92,8 @@ export function Step4Review({
     useState(false);
 
   const visitFees = useMemo(
-    () => computeVisitFees(persons.length),
-    [persons.length]
+    () => computeVisitFees(persons.length, collectionAddress.postal_code),
+    [persons.length, collectionAddress.postal_code]
   );
 
   const subtotal = assignments.reduce((s, a) => s + a.price_cad, 0);

@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
-import { computeVisitFees } from "@/lib/checkout/visit-fees";
+import { computeVisitFees, classifyPostalZone } from "@/lib/checkout/visit-fees";
+import { AddressAutocompleteInput } from "./AddressAutocompleteInput";
 import { DiscountBanner } from "./DiscountBanner";
 import type {
   CheckoutPerson,
@@ -65,8 +66,8 @@ export function Step3CollectionDetails({
   onContinue,
 }: Step3Props) {
   const visitFees = useMemo(
-    () => computeVisitFees(persons.length),
-    [persons.length]
+    () => computeVisitFees(persons.length, collectionAddress.postal_code),
+    [persons.length, collectionAddress.postal_code]
   );
 
   const updatePerson = (index: number, patch: Partial<CheckoutPerson>) => {
@@ -165,11 +166,20 @@ export function Step3CollectionDetails({
       (p.wants_own_account && isEmailValid(p.own_account_email))
   );
 
+  const postalZone = classifyPostalZone(collectionAddress.postal_code);
+  // Only treat as "unserved error" once the user has typed a full-ish
+  // postal code — showing the error while they're typing the first letter
+  // is noisy. Three chars is the full FSA prefix.
+  const postalEntered =
+    collectionAddress.postal_code.replace(/\s+/g, "").length >= 3;
+  const zoneUnserved = postalEntered && postalZone === "unserved";
+
   const canContinue =
     addressValid &&
     accountHolderValid &&
     additionalAllValid &&
-    allConsentsObtained;
+    allConsentsObtained &&
+    !zoneUnserved;
 
   const labelStyle = { color: "#e8d5a3" };
   const reqMark = <span style={{ color: "#e05252" }}> *</span>;
@@ -232,18 +242,26 @@ export function Step3CollectionDetails({
             >
               Address Line 1{reqMark}
             </label>
-            <input
-              type="text"
+            <AddressAutocompleteInput
               value={collectionAddress.address_line1}
-              onChange={(e) =>
+              onChange={(next) =>
                 onAddressChange({
                   ...collectionAddress,
-                  address_line1: e.target.value,
+                  address_line1: next,
+                })
+              }
+              onPlaceSelected={(parsed) =>
+                onAddressChange({
+                  ...collectionAddress,
+                  address_line1: parsed.address_line1 || collectionAddress.address_line1,
+                  city: parsed.city || collectionAddress.city,
+                  province: parsed.province || collectionAddress.province,
+                  postal_code:
+                    parsed.postal_code || collectionAddress.postal_code,
                 })
               }
               className="mf-input"
-              autoComplete="address-line1"
-              placeholder="123 Main St"
+              placeholder="Start typing your address…"
             />
           </div>
           <div>
@@ -336,6 +354,50 @@ export function Step3CollectionDetails({
             </div>
           </div>
         </div>
+
+        {/* Zone validation feedback */}
+        {zoneUnserved && (
+          <div
+            className="flex items-start gap-2 rounded-lg border px-4 py-3 mt-3"
+            style={{
+              backgroundColor: "rgba(224, 82, 82, 0.12)",
+              borderColor: "#e05252",
+              color: "#e05252",
+            }}
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <p className="text-sm leading-relaxed">
+              Sorry, home collection is not currently available in your area.
+              Please contact us at{" "}
+              <a
+                href="mailto:support@avovita.ca"
+                className="font-semibold underline"
+                style={{ color: "#e05252" }}
+              >
+                support@avovita.ca
+              </a>{" "}
+              to discuss options.
+            </p>
+          </div>
+        )}
+        {postalEntered && postalZone === "zone2" && (
+          <div
+            className="flex items-start gap-2 rounded-lg border px-4 py-3 mt-3"
+            style={{
+              backgroundColor: "rgba(196, 151, 58, 0.1)",
+              borderColor: "#c4973a",
+            }}
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#c4973a" }} />
+            <p className="text-sm leading-relaxed" style={{ color: "#e8d5a3" }}>
+              Outside Calgary — a{" "}
+              <strong style={{ color: "#c4973a" }}>
+                ${(visitFees.base_fee - 85).toFixed(0)} travel surcharge
+              </strong>{" "}
+              is added to your home visit fee.
+            </p>
+          </div>
+        )}
 
         {/* Hard block warning */}
         <div

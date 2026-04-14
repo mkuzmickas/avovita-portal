@@ -59,8 +59,6 @@ export interface OnboardingSummary {
   assignments: OnboardingAssignment[];
   collectionCity: string;
   collectionAddress: OnboardingCollectionAddress;
-  /** False when every test ships kit-only — no in-person FloLabs visit needed. */
-  needsCollection: boolean;
 }
 
 interface PostPurchaseOnboardingProps {
@@ -802,22 +800,20 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
               Complete Your Profile
               <ArrowRight className="w-4 h-4" />
             </a>
-            {summary.needsCollection && (
-              <a
-                href={FLO_LABS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold border transition-colors"
-                style={{
-                  backgroundColor: "transparent",
-                  borderColor: "#2d6b35",
-                  color: "#e8d5a3",
-                }}
-              >
-                <Calendar className="w-4 h-4" />
-                Book Your Collection
-              </a>
-            )}
+            <a
+              href={FLO_LABS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold border transition-colors"
+              style={{
+                backgroundColor: "transparent",
+                borderColor: "#2d6b35",
+                color: "#e8d5a3",
+              }}
+            >
+              <Calendar className="w-4 h-4" />
+              Book Your Collection
+            </a>
           </div>
         </div>
       </div>

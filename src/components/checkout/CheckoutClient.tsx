@@ -213,8 +213,11 @@ export function CheckoutClient({
   const handleStep4Back = () => setStep(3);
 
   const visitFees = useMemo(
-    () => (step === 1 ? null : computeVisitFees(personCount)),
-    [personCount, step]
+    () =>
+      step === 1
+        ? null
+        : computeVisitFees(personCount, collectionAddress.postal_code),
+    [personCount, step, collectionAddress.postal_code]
   );
 
   // Sidebar always reflects the cart, never the partial assignment state.
