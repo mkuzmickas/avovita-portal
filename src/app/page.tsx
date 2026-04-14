@@ -141,7 +141,7 @@ export default function HomePage() {
                 icon: Shield,
                 title: "Secure Results",
                 description:
-                  "Results delivered to your private patient portal. Protected under Alberta PIPA.",
+                  "Results delivered to your private client portal. Protected under Alberta PIPA.",
               },
             ].map(({ icon: Icon, title, description }, idx) => (
               <div

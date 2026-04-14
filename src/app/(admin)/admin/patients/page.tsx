@@ -112,10 +112,10 @@ export default async function AdminPatientsPage() {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            <span style={{ color: "#c4973a" }}>Patients</span>
+            <span style={{ color: "#c4973a" }}>Clients</span>
           </h1>
           <p className="mt-1" style={{ color: "#e8d5a3" }}>
-            Manage patient accounts and profiles.
+            Manage client accounts and profiles.
           </p>
         </div>
         <div className="flex items-center gap-3">

@@ -217,7 +217,7 @@ export function AdminOrdersTable({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by patient name, email, or order ID…"
+            placeholder="Search by client name, email, or order ID…"
             className="mf-input pl-10"
           />
         </div>
@@ -302,7 +302,7 @@ export function AdminOrdersTable({
                   "Order ID",
                   "Date",
                   "Appointment",
-                  "Patient",
+                  "Client",
                   "Tests",
                   "Total",
                   "Tracking",

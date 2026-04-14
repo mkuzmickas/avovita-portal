@@ -307,7 +307,7 @@ export function renderOrderConfirmationEmail(
           <tr>
             <td style="padding: 8px 32px 32px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="margin: 20px 0 12px 0; font-size: 14px; color: #6b7280;">
-                Track your order and view results in your secure patient portal:
+                Track your order and view results in your secure client portal:
               </p>
               <a href="${portalUrl}/portal/orders" target="_blank" style="display: inline-block; color: #0f2614; text-decoration: underline; font-weight: 600; font-size: 14px;">
                 Sign in to ${escapeHtml(hostName(portalUrl))}

@@ -159,10 +159,18 @@ async function findUserByEmail(
 
 /**
  * Generates an action link the user can click to (a) confirm their email and
- * (b) be signed straight into the portal. We use `magiclink` rather than
- * `signup` because the latter requires a password parameter — `magiclink`
- * works for the already-created-with-random-password account and confirms
- * the email on first click.
+ * (b) be signed straight into the portal.
+ *
+ * Important: we DON'T return Supabase's default `action_link` because that
+ * URL goes to Supabase's verify endpoint and redirects with auth tokens in
+ * the URL HASH. Hash tokens are only readable by client JS — by the time
+ * the browser sets the session, the server-rendered /portal middleware has
+ * already redirected to /login because cookies aren't set yet.
+ *
+ * Instead we build our own URL pointing at /auth/confirm with the
+ * `hashed_token` parameter. Our route runs `verifyOtp` server-side, which
+ * writes the auth cookies, THEN issues the redirect to /portal — so the
+ * middleware sees a valid session on arrival. No client-side race.
  */
 async function generateConfirmationLink(email: string): Promise<string> {
   const service = createServiceRoleClient();
@@ -173,10 +181,21 @@ async function generateConfirmationLink(email: string): Promise<string> {
       redirectTo: `${PORTAL_URL}/portal`,
     },
   });
-  if (error || !data?.properties?.action_link) {
+  const props = data?.properties as
+    | {
+        action_link?: string;
+        hashed_token?: string;
+      }
+    | undefined;
+  if (error || !props?.hashed_token) {
     throw new Error(
-      `auth.admin.generateLink failed: ${error?.message ?? "no action_link"}`
+      `auth.admin.generateLink failed: ${error?.message ?? "no hashed_token"}`
     );
   }
-  return data.properties.action_link;
+  const params = new URLSearchParams({
+    token_hash: props.hashed_token,
+    type: "magiclink",
+    next: "/portal",
+  });
+  return `${PORTAL_URL}/auth/confirm?${params.toString()}`;
 }

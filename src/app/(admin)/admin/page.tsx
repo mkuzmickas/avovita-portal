@@ -136,7 +136,7 @@ export default async function AdminDashboard() {
           icon={ClipboardList}
         />
         <MetricCard
-          label="Patients"
+          label="Clients"
           value={totalPatients ?? 0}
           icon={Users}
         />

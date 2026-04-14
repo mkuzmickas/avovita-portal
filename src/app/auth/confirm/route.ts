@@ -19,20 +19,24 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get("next") ?? "/portal";
 
   if (!token_hash || !type) {
-    return NextResponse.redirect(
-      `${origin}/login?error=confirmation_failed`
-    );
+    console.warn("[auth/confirm] missing token_hash or type", {
+      has_token: !!token_hash,
+      type,
+    });
+    return NextResponse.redirect(`${origin}/auth/link-expired`);
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({ type, token_hash });
 
   if (error) {
-    console.error("[auth/confirm] verifyOtp failed:", error);
-    return NextResponse.redirect(
-      `${origin}/login?error=confirmation_failed`
-    );
+    console.error("[auth/confirm] verifyOtp failed:", {
+      message: error.message,
+      type,
+    });
+    return NextResponse.redirect(`${origin}/auth/link-expired`);
   }
+  console.log("[auth/confirm] verifyOtp ok →", next);
 
   // Only allow same-origin redirects for `next` to prevent open-redirect
   // attacks — anything that doesn't start with "/" falls back to /portal.

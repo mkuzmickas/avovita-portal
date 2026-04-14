@@ -184,7 +184,7 @@ async function sendAdminNotificationEmail(session: Stripe.Checkout.Session) {
   <tr><td style="padding:32px;">
     <h2 style="margin:0 0 16px;font-size:22px;font-family:Georgia,serif;color:#ffffff;">New Order Received</h2>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-      <tr><td style="padding:8px 0;color:#6ab04c;font-size:13px;border-bottom:1px solid #1a3d22;">Patient</td>
+      <tr><td style="padding:8px 0;color:#6ab04c;font-size:13px;border-bottom:1px solid #1a3d22;">Client</td>
           <td style="padding:8px 0;color:#ffffff;font-size:14px;font-weight:600;text-align:right;border-bottom:1px solid #1a3d22;">${escapeHtml(patientName)}</td></tr>
       <tr><td style="padding:8px 0;color:#6ab04c;font-size:13px;border-bottom:1px solid #1a3d22;">Tests</td>
           <td style="padding:8px 0;color:#ffffff;font-size:14px;font-weight:600;text-align:right;border-bottom:1px solid #1a3d22;">${lineItemCount}</td></tr>

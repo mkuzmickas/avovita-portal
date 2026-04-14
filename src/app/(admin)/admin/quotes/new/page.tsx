@@ -81,14 +81,15 @@ export default async function NewQuotePage() {
     Date.now() + 7 * 24 * 60 * 60 * 1000
   ).toISOString();
 
-  // Draft-safe defaults. Pass null for optional text fields rather than
-  // empty strings — CHECK constraints (e.g. client_email email-format
-  // validators) reject empty strings in some schemas.
+  // Empty strings rather than null for the name/email text fields —
+  // matches the original schema which had these as NOT NULL. The
+  // builder fills them in before send, and the email-required check
+  // runs there before /api/admin/quotes/[id]/send is called.
   const insertRow = {
     quote_number: quoteNumber,
-    client_first_name: null,
-    client_last_name: null,
-    client_email: null,
+    client_first_name: "",
+    client_last_name: "",
+    client_email: "",
     person_count: 1,
     collection_city: null,
     notes: null,

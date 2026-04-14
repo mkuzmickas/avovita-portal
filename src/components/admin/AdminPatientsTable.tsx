@@ -62,14 +62,14 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by patient name or email…"
+            placeholder="Search by client name or email…"
             className="mf-input pl-10"
           />
         </div>
         <div className="flex gap-1">
           {(
             [
-              { key: "all", label: "All Patients" },
+              { key: "all", label: "All Clients" },
               { key: "complete", label: "Waiver Complete" },
               { key: "pending", label: "Waiver Pending" },
             ] as const
@@ -130,8 +130,8 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
                     }}
                   >
                     {patients.length === 0
-                      ? "No patients yet"
-                      : "No patients match your search"}
+                      ? "No clients yet"
+                      : "No clients match your search"}
                   </td>
                 </tr>
               ) : (

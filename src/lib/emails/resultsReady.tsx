@@ -24,7 +24,7 @@ export const RESULTS_READY_SUBJECT = "Your AvoVita results are ready";
 
 export function renderResultsReadyEmail(props: ResultsReadyProps): string {
   const { firstName, tests, portalUrl, introOverride } = props;
-  const introText = introOverride ?? "Sign in to your patient portal to view and download your lab results securely.";
+  const introText = introOverride ?? "Sign in to your client portal to view and download your lab results securely.";
 
   const testList = tests
     .map(
@@ -104,7 +104,7 @@ export function renderResultsReadyEmail(props: ResultsReadyProps): string {
                   🔒 Your results are private and secure
                 </p>
                 <p style="margin: 0; font-size: 12px; color: #4b5563; line-height: 1.5;">
-                  For your privacy, results are only accessible through your authenticated patient portal.
+                  For your privacy, results are only accessible through your authenticated client portal.
                   This email does not contain any health information. Links to your results expire after 1 hour
                   and require re-authentication if accessed again.
                 </p>

@@ -408,7 +408,7 @@ export function PatientResultsRepository({
                         }
                       >
                         {r.source === "patient_upload"
-                          ? "Patient uploaded"
+                          ? "Client uploaded"
                           : "Staff uploaded"}
                       </span>
                     </div>

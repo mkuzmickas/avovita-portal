@@ -173,7 +173,7 @@ export function WaiverForm({ onComplete }: WaiverFormProps) {
         <CheckboxRow
           checked={check3}
           onToggle={() => setCheck3((v) => !v)}
-          label="I consent to receiving laboratory results electronically via secure email through the AvoVita patient portal."
+          label="I consent to receiving laboratory results electronically via secure email through the AvoVita client portal."
         />
       </div>
 

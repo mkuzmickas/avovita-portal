@@ -437,7 +437,7 @@ export function Step3CollectionDetails({
       {accountHolder && (
         <PersonSection
           title="Your Information"
-          subtitle="These fields will be used to create your patient profile after checkout."
+          subtitle="These fields will be used to create your client profile after checkout."
           person={accountHolder}
           onChange={(patch) => updatePerson(0, patch)}
           isAccountHolder

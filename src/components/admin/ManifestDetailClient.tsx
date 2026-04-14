@@ -153,7 +153,7 @@ export function ManifestDetailClient({ manifest, initialOrders }: Props) {
               <tr style={{ backgroundColor: "#0f2614" }}>
                 {[
                   "Appointment",
-                  "Patient",
+                  "Client",
                   "Tests (SKU)",
                   "Fasting",
                   "Cost",

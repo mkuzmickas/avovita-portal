@@ -88,7 +88,7 @@ export function PostPurchaseOnboarding({
                     fontFamily: '"Cormorant Garamond", Georgia, serif',
                   }}
                 >
-                  Create Your <span style={{ color: "#c4973a" }}>Patient Profile</span>
+                  Create Your <span style={{ color: "#c4973a" }}>Client Profile</span>
                 </h1>
                 <p className="text-sm" style={{ color: "#e8d5a3" }}>
                   This information is required for specimen collection and

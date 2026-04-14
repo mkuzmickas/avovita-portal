@@ -2,37 +2,39 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Leaf, Loader2, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { Leaf, AlertCircle, Loader2, CheckCircle, Mail } from "lucide-react";
 
-export default function ForgotPasswordPage() {
+export default function LinkExpiredPage() {
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const send = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
-
-    const supabase = createClient();
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-      "https://portal.avovita.ca";
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      email,
-      { redirectTo: `${appUrl}/auth/update-password` }
-    );
-
-    if (resetError) {
-      setError(resetError.message);
-      setLoading(false);
+    if (!email.trim()) {
+      setError("Please enter your email address.");
       return;
     }
-
-    setSent(true);
-    setLoading(false);
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/send-magic-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Could not send the link. Please try again.");
+        return;
+      }
+      setSent(true);
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -41,7 +43,6 @@ export default function ForgotPasswordPage() {
       style={{ backgroundColor: "#0a1a0d" }}
     >
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
@@ -56,21 +57,19 @@ export default function ForgotPasswordPage() {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Reset your password
+            Link expired
           </h1>
           <p className="mt-2 text-sm" style={{ color: "#e8d5a3" }}>
-            Enter your email address and we&apos;ll send you a link to reset
-            your password.
+            Sign-in links expire after a short time for your security.
           </p>
         </div>
 
-        {/* Card */}
         <div
           className="rounded-2xl border p-6 sm:p-8"
           style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
         >
           {sent ? (
-            <div className="text-center py-4">
+            <div className="text-center py-2">
               <CheckCircle
                 className="w-12 h-12 mx-auto mb-4"
                 style={{ color: "#8dc63f" }}
@@ -84,21 +83,21 @@ export default function ForgotPasswordPage() {
               >
                 Check your email
               </h2>
-              <p className="text-sm mb-6" style={{ color: "#e8d5a3" }}>
-                We sent a password reset link to{" "}
-                <strong style={{ color: "#ffffff" }}>{email}</strong>. Click
-                the link to set a new password.
+              <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                If an account exists for{" "}
+                <strong style={{ color: "#ffffff" }}>{email}</strong>, we&apos;ve
+                sent a fresh sign-in link. Look in your inbox (and spam folder
+                — move it to your inbox before clicking).
               </p>
-              <Link
-                href="/login"
-                className="mf-btn-primary px-6 py-2.5 inline-flex"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Sign In
-              </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={send} className="space-y-4">
+              <div className="flex items-start gap-2 rounded-lg border p-3 text-xs" style={{ backgroundColor: "rgba(196,151,58,0.08)", borderColor: "#c4973a", color: "#e8d5a3" }}>
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#c4973a" }} />
+                <p>
+                  Enter your email and we&apos;ll send a brand new sign-in link.
+                </p>
+              </div>
               <div>
                 <label
                   className="block text-sm font-medium mb-1.5"
@@ -116,7 +115,6 @@ export default function ForgotPasswordPage() {
                   placeholder="you@example.com"
                 />
               </div>
-
               {error && (
                 <div
                   className="flex items-center gap-2 p-3 rounded-lg text-sm border"
@@ -130,24 +128,18 @@ export default function ForgotPasswordPage() {
                   {error}
                 </div>
               )}
-
               <button
                 type="submit"
-                disabled={loading}
+                disabled={submitting}
                 className="mf-btn-primary w-full py-2.5"
               >
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                Send Reset Email
+                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <Mail className="w-4 h-4" />
+                Email me a new link
               </button>
-
-              <p className="text-center text-sm" style={{ color: "#e8d5a3" }}>
-                Remember your password?{" "}
-                <Link
-                  href="/login"
-                  className="font-medium"
-                  style={{ color: "#c4973a" }}
-                >
-                  Sign in
+              <p className="text-center text-xs" style={{ color: "#6ab04c" }}>
+                <Link href="/login" style={{ color: "#c4973a" }}>
+                  Back to sign in
                 </Link>
               </p>
             </form>
