@@ -139,6 +139,7 @@ export function CatalogueClient({
       JSON.stringify(query)
     );
     let logged = 0;
+    let dumpedCharCodes = false;
     return allTests.filter((test) => {
       const matchesSearch =
         query === "" ||
@@ -154,6 +155,21 @@ export function CatalogueClient({
             `lengths=${test.category?.length ?? 0}/${selectedCategory?.length ?? 0}`
         );
         logged += 1;
+      }
+      // One-shot: dump char codes the first time we see an Allergy test
+      // while the URL param is active so any hidden bytes are visible.
+      if (
+        selectedCategory &&
+        test.category &&
+        test.category.toLowerCase().startsWith("allergy") &&
+        !dumpedCharCodes
+      ) {
+        console.log(
+          "[catalogue] char codes:",
+          [...selectedCategory].map((c) => c.charCodeAt(0)),
+          [...test.category].map((c) => c.charCodeAt(0))
+        );
+        dumpedCharCodes = true;
       }
       const matchesCategory =
         selectedCategory === null ||
