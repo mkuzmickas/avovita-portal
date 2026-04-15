@@ -19,6 +19,7 @@ import { computeVisitFees } from "@/lib/checkout/visit-fees";
 import type {
   CheckoutPerson,
   CollectionAddress,
+  RepresentativeBlock,
 } from "@/lib/checkout/types";
 
 interface CheckoutClientProps {
@@ -30,12 +31,25 @@ interface CheckoutClientProps {
 
 const STORAGE_KEY = "avovita-checkout-v1";
 
+export type OrderMode = "self" | "caregiver";
+
+const BLANK_REPRESENTATIVE: RepresentativeBlock = {
+  first_name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  relationship: "power_of_attorney",
+  poa_confirmed: false,
+};
+
 interface PersistedCheckoutState {
   personCount: number;
   assignments: PersonAssignmentEntry[];
   persons: CheckoutPerson[];
   collectionAddress: CollectionAddress;
   step: number;
+  orderMode?: OrderMode;
+  representative?: RepresentativeBlock;
 }
 
 function defaultPersons(count: number): CheckoutPerson[] {
@@ -75,6 +89,10 @@ export function CheckoutClient({
     useState<CollectionAddress>(defaultAddress);
   const [restored, setRestored] = useState(false);
   const [promoApplied, setPromoApplied] = useState(false);
+  const [orderMode, setOrderMode] = useState<OrderMode>("self");
+  const [representative, setRepresentative] = useState<RepresentativeBlock>(
+    BLANK_REPRESENTATIVE
+  );
 
   // Org tagging — when the user arrived via /org/[slug]/checkout the
   // server redirect drops org_slug into the query string. We persist it
@@ -127,11 +145,37 @@ export function CheckoutClient({
           if (typeof parsed.step === "number") {
             setStep(parsed.step);
           }
+          if (parsed.orderMode === "self" || parsed.orderMode === "caregiver") {
+            setOrderMode(parsed.orderMode);
+          }
+          if (parsed.representative) {
+            setRepresentative({
+              ...BLANK_REPRESENTATIVE,
+              ...parsed.representative,
+            });
+          }
         }
       }
     } catch {
       // Ignore parse errors — start fresh
     }
+
+    // Org-aware default: Always Best Care almost always orders on behalf
+    // of a resident, so pre-select the caregiver flow. Users can still
+    // flip to "Myself" if they wish. We only set this when there's no
+    // persisted value to avoid overriding a deliberate earlier choice.
+    try {
+      const orgSlug = window.localStorage.getItem("avovita-org-slug");
+      const persistedRaw = window.localStorage.getItem(STORAGE_KEY);
+      const hadPersistedMode =
+        !!persistedRaw && /"orderMode"/.test(persistedRaw);
+      if (orgSlug === "AlwaysBestCare" && !hadPersistedMode) {
+        setOrderMode("caregiver");
+      }
+    } catch {
+      /* ignore */
+    }
+
     setRestored(true);
   }, []);
 
@@ -159,6 +203,8 @@ export function CheckoutClient({
         assignments,
         collectionAddress,
         step,
+        orderMode,
+        representative,
       };
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
     } catch {
@@ -170,6 +216,8 @@ export function CheckoutClient({
     assignments,
     collectionAddress,
     step,
+    orderMode,
+    representative,
     restored,
   ]);
 
@@ -330,6 +378,8 @@ export function CheckoutClient({
                 personCount={personCount}
                 onPersonCountChange={handlePersonCountChange}
                 onContinue={handleStep1Continue}
+                orderMode={orderMode}
+                onOrderModeChange={setOrderMode}
               />
             )}
             {step === 2 && (
@@ -351,6 +401,9 @@ export function CheckoutClient({
                 onAddressChange={setCollectionAddress}
                 onBack={handleStep3Back}
                 onContinue={handleStep3Continue}
+                orderMode={orderMode}
+                representative={representative}
+                onRepresentativeChange={setRepresentative}
               />
             )}
             {step === 4 && (
@@ -362,6 +415,8 @@ export function CheckoutClient({
                 onBack={handleStep4Back}
                 promoApplied={promoApplied}
                 onPromoChange={setPromoApplied}
+                orderMode={orderMode}
+                representative={representative}
               />
             )}
           </div>

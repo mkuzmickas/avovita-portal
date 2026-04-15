@@ -26,6 +26,22 @@ export type Relationship =
   | "sibling"
   | "friend"
   | "colleague"
+  // Representative / caregiver roles — used when is_dependent = true
+  | "power_of_attorney"
+  | "parent_guardian"
+  | "healthcare_worker"
+  | "other";
+
+/**
+ * Subset of Relationship used for the representative → client dropdown
+ * in the caregiver checkout flow. Kept small on purpose; "spouse_partner"
+ * and "other" come from the general union.
+ */
+export type RepresentativeRelationship =
+  | "power_of_attorney"
+  | "parent_guardian"
+  | "spouse_partner"
+  | "healthcare_worker"
   | "other";
 export type ConsentType =
   | "general_pipa"
@@ -101,12 +117,17 @@ export interface Test {
 export interface Account {
   id: string;
   email: string | null;
+  /** Only populated on representative accounts (rep's mobile for SMS). */
+  phone: string | null;
   role: AccountRole;
   waiver_completed: boolean;
   waiver_completed_at: string | null;
   waiver_ip_address: string | null;
   waiver_signed_name: string | null;
   waiver_version: string | null;
+  /** True when the account holder is a caregiver / POA placing orders
+   *  on behalf of dependent clients rather than themselves. */
+  is_representative: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -127,6 +148,14 @@ export interface PatientProfile {
   is_minor: boolean;
   is_primary: boolean;
   relationship: Relationship | null;
+  /** True when this profile is a dependent client — someone the account
+   *  holder has authority to order testing for (not the account holder
+   *  themselves). */
+  is_dependent: boolean;
+  /** The representative's POA acknowledgement — true once the rep has
+   *  ticked the "I have legal authority" checkbox on a relevant order. */
+  poa_confirmed: boolean;
+  poa_confirmed_at: string | null;
   created_at: string;
   updated_at: string;
 }

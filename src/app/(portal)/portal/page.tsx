@@ -45,6 +45,7 @@ export default async function PortalDashboard() {
     { data: primaryProfileRaw },
     { data: profilesRaw },
     { data: ordersRaw },
+    { data: accountRaw },
   ] = await Promise.all([
     supabase
       .from("patient_profiles")
@@ -54,7 +55,7 @@ export default async function PortalDashboard() {
       .maybeSingle(),
     supabase
       .from("patient_profiles")
-      .select("id")
+      .select("id, first_name, last_name, is_dependent, relationship, date_of_birth")
       .eq("account_id", user.id),
     supabase
       .from("orders")
@@ -70,14 +71,30 @@ export default async function PortalDashboard() {
       )
       .eq("account_id", user.id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("accounts")
+      .select("is_representative")
+      .eq("id", user.id)
+      .maybeSingle(),
   ]);
 
   const primaryProfile = primaryProfileRaw as Pick<
     PatientProfile,
     "first_name" | "last_name"
   > | null;
-  const profiles = (profilesRaw ?? []) as Array<{ id: string }>;
+  const profiles = (profilesRaw ?? []) as Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    is_dependent: boolean | null;
+    relationship: string | null;
+    date_of_birth: string;
+  }>;
   const orders = (ordersRaw ?? []) as unknown as OrderRow[];
+  const account = accountRaw as { is_representative: boolean | null } | null;
+  const dependents = profiles.filter((p) => p.is_dependent);
+  const isRepresentative =
+    !!account?.is_representative && dependents.length > 0;
 
   const profileIds = profiles.map((p) => p.id);
 
@@ -117,10 +134,13 @@ export default async function PortalDashboard() {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Welcome back, <span style={{ color: "#c4973a" }}>{firstName}</span>
+            Welcome back,{" "}
+            <span style={{ color: "#c4973a" }}>{firstName}</span>
           </h1>
           <p className="mt-1 text-sm sm:text-base" style={{ color: "#e8d5a3" }}>
-            Manage your lab tests and results from your AvoVita patient portal.
+            {isRepresentative
+              ? "Manage orders, results, and collection appointments for the clients in your care."
+              : "Manage your lab tests and results from your AvoVita patient portal."}
           </p>
         </div>
       ) : (
@@ -214,11 +234,64 @@ export default async function PortalDashboard() {
           icon={ClipboardList}
         />
         <MetricCard
-          label="Profiles"
-          value={profiles.length}
+          label={isRepresentative ? "Clients in Care" : "Profiles"}
+          value={isRepresentative ? dependents.length : profiles.length}
           icon={Users}
         />
       </div>
+
+      {/* Clients in Your Care (rep variant only) */}
+      {isRepresentative && dependents.length > 0 && (
+        <div className="mb-8">
+          <h2
+            className="font-heading text-2xl font-semibold mb-4"
+            style={{
+              color: "#ffffff",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+            }}
+          >
+            Clients in Your <span style={{ color: "#c4973a" }}>Care</span>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {dependents.map((d) => (
+              <div
+                key={d.id}
+                className="rounded-xl border p-4"
+                style={{
+                  backgroundColor: "#1a3d22",
+                  borderColor: "#2d6b35",
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center border shrink-0"
+                    style={{
+                      backgroundColor: "#0f2614",
+                      borderColor: "#c4973a",
+                    }}
+                  >
+                    <Users className="w-5 h-5" style={{ color: "#c4973a" }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="font-semibold"
+                      style={{ color: "#ffffff" }}
+                    >
+                      {d.first_name} {d.last_name}
+                    </p>
+                    <p
+                      className="text-xs mt-0.5"
+                      style={{ color: "#6ab04c" }}
+                    >
+                      DOB {formatDate(d.date_of_birth)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent orders */}
       <div className="mb-6 flex items-center justify-between">

@@ -19,6 +19,8 @@ import type {
   CollectionAddress,
 } from "@/lib/checkout/types";
 import type { PersonAssignmentEntry } from "./Step2AssignTests";
+import type { OrderMode } from "./CheckoutClient";
+import type { RepresentativeBlock } from "@/lib/checkout/types";
 
 interface Step3Props {
   persons: CheckoutPerson[];
@@ -28,7 +30,21 @@ interface Step3Props {
   onAddressChange: (next: CollectionAddress) => void;
   onBack: () => void;
   onContinue: () => void;
+  orderMode: OrderMode;
+  representative: RepresentativeBlock;
+  onRepresentativeChange: (next: RepresentativeBlock) => void;
 }
+
+const REP_RELATIONSHIP_OPTIONS: Array<{
+  value: RepresentativeBlock["relationship"];
+  label: string;
+}> = [
+  { value: "power_of_attorney", label: "Power of Attorney" },
+  { value: "parent_guardian", label: "Parent / Guardian" },
+  { value: "spouse_partner", label: "Spouse / Partner" },
+  { value: "healthcare_worker", label: "Healthcare Worker" },
+  { value: "other", label: "Other" },
+];
 
 const CA_PROVINCES = [
   "AB",
@@ -62,6 +78,9 @@ export function Step3CollectionDetails({
   assignments,
   onPersonsChange,
   onAddressChange,
+  orderMode,
+  representative,
+  onRepresentativeChange,
   onBack,
   onContinue,
 }: Step3Props) {
@@ -174,11 +193,31 @@ export function Step3CollectionDetails({
     collectionAddress.postal_code.replace(/\s+/g, "").length >= 3;
   const zoneUnserved = postalEntered && postalZone === "unserved";
 
+  const isCaregiver = orderMode === "caregiver";
+  const representativeValid =
+    !isCaregiver ||
+    (representative.first_name.trim().length > 0 &&
+      representative.last_name.trim().length > 0 &&
+      isEmailValid(representative.email) &&
+      representative.phone.trim().length > 0 &&
+      representative.poa_confirmed);
+
+  // In caregiver mode, "persons" are dependents — they don't need phone
+  // (notifications go to the rep) and don't need to tick consent for
+  // others because the rep's POA checkbox covers legal authority.
+  const dependentsValid =
+    !isCaregiver ||
+    persons.every(
+      (p) =>
+        p.first_name.trim().length > 0 &&
+        p.last_name.trim().length > 0 &&
+        p.date_of_birth.length > 0 &&
+        p.biological_sex !== ""
+    );
+
   const canContinue =
     addressValid &&
-    accountHolderValid &&
-    additionalAllValid &&
-    allConsentsObtained &&
+    (isCaregiver ? representativeValid && dependentsValid : accountHolderValid && additionalAllValid && allConsentsObtained) &&
     !zoneUnserved;
 
   const labelStyle = { color: "#e8d5a3" };
@@ -434,20 +473,31 @@ export function Step3CollectionDetails({
           </p>
         </div>
       )}
+      {isCaregiver && (
+        <RepresentativeSection
+          rep={representative}
+          onChange={onRepresentativeChange}
+        />
+      )}
       {accountHolder && (
         <PersonSection
-          title="Your Information"
-          subtitle="These fields will be used to create your client profile after checkout."
+          title={isCaregiver ? "Client 1" : "Your Information"}
+          subtitle={
+            isCaregiver
+              ? "Primary client being tested. Results will be filed under this client's profile."
+              : "These fields will be used to create your client profile after checkout."
+          }
           person={accountHolder}
           onChange={(patch) => updatePerson(0, patch)}
           isAccountHolder
+          hideContactFields={isCaregiver}
           assignments={assignments.filter((a) => a.person_index === 0)}
           showRelationship={false}
           showConsent={false}
         />
       )}
 
-      {/* ─── Additional People ─────────────────────────────────── */}
+      {/* ─── Additional People ─── (or dependent clients, if caregiver) */}
       {additionalPersons.map((person) => {
         const personAssignments = assignments.filter(
           (a) => a.person_index === person.index
@@ -456,17 +506,21 @@ export function Step3CollectionDetails({
           personAssignments.length > 0
             ? ` — ${personAssignments.map((a) => a.test_name).join(", ")}`
             : "";
+        const title = isCaregiver
+          ? `Client ${person.index + 1}${testNamesPreview}`
+          : `Person ${person.index + 1}${testNamesPreview}`;
         return (
           <PersonSection
             key={person.index}
-            title={`Person ${person.index + 1}${testNamesPreview}`}
+            title={title}
             subtitle={null}
             person={person}
             onChange={(patch) => updatePerson(person.index, patch)}
             isAccountHolder={false}
+            hideContactFields={isCaregiver}
             assignments={personAssignments}
-            showRelationship
-            showConsent
+            showRelationship={!isCaregiver}
+            showConsent={!isCaregiver}
             accountHolderFirstName={accountHolder?.first_name}
           />
         );
@@ -582,6 +636,7 @@ function PersonSection({
   person,
   onChange,
   isAccountHolder,
+  hideContactFields = false,
   assignments,
   showRelationship,
   showConsent,
@@ -592,6 +647,10 @@ function PersonSection({
   person: CheckoutPerson;
   onChange: (patch: Partial<CheckoutPerson>) => void;
   isAccountHolder: boolean;
+  /** In caregiver mode, dependents don't carry their own contact info —
+   *  all notifications go to the rep. Hide the phone field (and any
+   *  own-account-email prompt) when this is true. */
+  hideContactFields?: boolean;
   assignments: PersonAssignmentEntry[];
   showRelationship: boolean;
   showConsent: boolean;
@@ -695,7 +754,7 @@ function PersonSection({
         </div>
       </div>
 
-      {!showRelationship && (
+      {!showRelationship && !hideContactFields && (
         <div className="mt-3">
           <label
             className="block text-sm font-medium mb-1.5"
@@ -1026,5 +1085,136 @@ function DobDropdowns({
         ))}
       </select>
     </div>
+  );
+}
+
+// ─── Representative (caregiver / POA) section ──────────────────────────
+
+function RepresentativeSection({
+  rep,
+  onChange,
+}: {
+  rep: RepresentativeBlock;
+  onChange: (next: RepresentativeBlock) => void;
+}) {
+  const labelStyle = { color: "#e8d5a3" };
+  const reqMark = <span style={{ color: "#e05252" }}> *</span>;
+  const update = <K extends keyof RepresentativeBlock>(
+    key: K,
+    value: RepresentativeBlock[K]
+  ) => onChange({ ...rep, [key]: value });
+
+  return (
+    <section
+      className="mb-6 pb-6 rounded-xl border p-5"
+      style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+    >
+      <h2
+        className="font-heading text-xl sm:text-2xl font-semibold mb-1"
+        style={{
+          color: "#ffffff",
+          fontFamily: '"Cormorant Garamond", Georgia, serif',
+        }}
+      >
+        Your Information{" "}
+        <span style={{ color: "#c4973a" }}>(Representative)</span>
+      </h2>
+      <p className="text-xs mb-4" style={{ color: "#e8d5a3" }}>
+        We&apos;ll send order confirmations, shipping updates and results to
+        you as the representative — not to the client&apos;s contact info.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={labelStyle}>
+            First Name{reqMark}
+          </label>
+          <input
+            type="text"
+            value={rep.first_name}
+            onChange={(e) => update("first_name", e.target.value)}
+            className="mf-input"
+            autoComplete="given-name"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={labelStyle}>
+            Last Name{reqMark}
+          </label>
+          <input
+            type="text"
+            value={rep.last_name}
+            onChange={(e) => update("last_name", e.target.value)}
+            className="mf-input"
+            autoComplete="family-name"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={labelStyle}>
+            Email{reqMark}
+          </label>
+          <input
+            type="email"
+            value={rep.email}
+            onChange={(e) => update("email", e.target.value.trim())}
+            className="mf-input"
+            autoComplete="email"
+            placeholder="you@example.com"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={labelStyle}>
+            Mobile Number{reqMark}
+          </label>
+          <input
+            type="tel"
+            value={rep.phone}
+            onChange={(e) => update("phone", e.target.value)}
+            className="mf-input"
+            autoComplete="tel"
+            placeholder="+1 (403) 555-0000"
+          />
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <label className="block text-sm font-medium mb-1.5" style={labelStyle}>
+          Your relationship to the client{reqMark}
+        </label>
+        <select
+          value={rep.relationship}
+          onChange={(e) =>
+            update(
+              "relationship",
+              e.target.value as RepresentativeBlock["relationship"]
+            )
+          }
+          className="mf-input cursor-pointer"
+        >
+          {REP_RELATIONSHIP_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <label
+        className="mt-4 flex items-start gap-2.5 cursor-pointer"
+      >
+        <input
+          type="checkbox"
+          checked={rep.poa_confirmed}
+          onChange={(e) => update("poa_confirmed", e.target.checked)}
+          className="mt-1 w-4 h-4 shrink-0"
+          style={{ accentColor: "#c4973a" }}
+        />
+        <span className="text-sm leading-relaxed" style={{ color: "#ffffff" }}>
+          I confirm that I have legal authority or written consent to authorize
+          private medical laboratory testing on behalf of the individual(s)
+          named in this order, and that all information provided is accurate.
+        </span>
+      </label>
+    </section>
   );
 }

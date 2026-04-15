@@ -283,6 +283,16 @@ export async function POST(request: NextRequest) {
       total: serverSubtotal - appliedDiscountTotal + visitFeeTotal,
       promo_code: body.promo_code?.trim().toUpperCase() || null,
       org_id: resolvedOrgId,
+      representative: body.representative
+        ? {
+            first_name: body.representative.first_name.trim(),
+            last_name: body.representative.last_name.trim(),
+            email: body.representative.email.trim().toLowerCase(),
+            phone: body.representative.phone.trim(),
+            relationship: body.representative.relationship,
+            poa_confirmed: !!body.representative.poa_confirmed,
+          }
+        : null,
     };
 
     const fullJson = JSON.stringify(orderPayload);
@@ -312,6 +322,12 @@ export async function POST(request: NextRequest) {
         data: { user },
       } = await supabase.auth.getUser();
       if (user?.email) customerEmail = user.email;
+    }
+    // Caregiver flow: pre-fill Stripe with the rep's email rather than
+    // asking them for it again at checkout (the webhook uses the same
+    // value to provision their account).
+    if (!customerEmail && body.representative?.email) {
+      customerEmail = body.representative.email.trim().toLowerCase();
     }
     void accountHolder; // We collect email at success-page time for guests
 

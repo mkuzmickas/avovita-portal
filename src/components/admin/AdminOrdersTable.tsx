@@ -402,6 +402,18 @@ export function AdminOrdersTable({
                       </td>
                       <td className="px-4 py-4" style={{ color: "#ffffff" }}>
                         <div>{patientName}</div>
+                        {order.account?.is_representative && (
+                          <span
+                            className="inline-flex items-center mt-1 mr-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+                            style={{
+                              backgroundColor: "rgba(196, 151, 58, 0.12)",
+                              color: "#c4973a",
+                              borderColor: "#c4973a",
+                            }}
+                          >
+                            Represented
+                          </span>
+                        )}
                         {order.org_name && (
                           <span
                             className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"

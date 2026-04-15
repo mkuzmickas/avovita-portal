@@ -20,6 +20,7 @@ import type {
   CheckoutPerson,
   CollectionAddress,
   CheckoutPayload,
+  RepresentativeBlock,
   TestAssignment,
 } from "@/lib/checkout/types";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
@@ -36,6 +37,8 @@ interface Step4Props {
   /** Promo state lifted to CheckoutClient so the Order Summary sidebar can react. */
   promoApplied: boolean;
   onPromoChange: (applied: boolean) => void;
+  orderMode: "self" | "caregiver";
+  representative: RepresentativeBlock;
 }
 
 const RELATIONSHIP_LABEL: Record<string, string> = {
@@ -81,6 +84,8 @@ export function Step4Review({
   onBack,
   promoApplied,
   onPromoChange,
+  orderMode,
+  representative,
 }: Step4Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -166,6 +171,7 @@ export function Step4Review({
       total,
       account_user_id: accountUserId,
       promo_code: promoApplied ? "AVOVITA-TEST" : undefined,
+      representative: orderMode === "caregiver" ? representative : null,
     };
 
     // Org affinity — set in localStorage by OrgProvider when the user

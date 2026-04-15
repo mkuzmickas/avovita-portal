@@ -1,16 +1,44 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 import { Leaf } from "lucide-react";
-import { WaiverForm } from "@/components/portal/WaiverForm";
+import { createClient } from "@/lib/supabase/server";
+import { CompleteWaiverClient } from "./CompleteWaiverClient";
 
-export default function CompleteWaiverPage() {
-  const router = useRouter();
+export const dynamic = "force-dynamic";
 
-  const handleComplete = () => {
-    router.push("/portal");
-    router.refresh();
-  };
+export default async function CompleteWaiverPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login?returnUrl=/portal/complete-waiver");
+
+  const [{ data: accountRaw }, { data: profilesRaw }] = await Promise.all([
+    supabase
+      .from("accounts")
+      .select("is_representative")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("patient_profiles")
+      .select("first_name, last_name, is_dependent, relationship")
+      .eq("account_id", user.id),
+  ]);
+
+  const account = accountRaw as { is_representative: boolean | null } | null;
+  const profiles =
+    (profilesRaw ?? []) as Array<{
+      first_name: string;
+      last_name: string;
+      is_dependent: boolean | null;
+      relationship: string | null;
+    }>;
+
+  const dependents = profiles.filter((p) => p.is_dependent);
+  const isRepresentative =
+    !!account?.is_representative && dependents.length > 0;
+  const representativeRelationship =
+    dependents.find((d) => d.relationship)?.relationship ?? null;
 
   return (
     <div
@@ -18,7 +46,6 @@ export default function CompleteWaiverPage() {
       style={{ backgroundColor: "#0a1a0d" }}
     >
       <div className="w-full max-w-2xl">
-        {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
@@ -37,12 +64,18 @@ export default function CompleteWaiverPage() {
           </span>
         </div>
 
-        {/* Card */}
         <div
           className="rounded-2xl border px-5 sm:px-8 py-6 sm:py-8"
           style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
         >
-          <WaiverForm onComplete={handleComplete} />
+          <CompleteWaiverClient
+            isRepresentative={isRepresentative}
+            dependents={dependents.map((d) => ({
+              first_name: d.first_name,
+              last_name: d.last_name,
+            }))}
+            representativeRelationship={representativeRelationship}
+          />
         </div>
 
         <p

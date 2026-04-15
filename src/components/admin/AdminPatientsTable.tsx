@@ -10,6 +10,15 @@ import type {
 } from "@/app/(admin)/admin/patients/page";
 
 type WaiverFilter = "all" | "complete" | "pending";
+type RepFilter = "all" | "reps" | "direct";
+
+const REP_RELATIONSHIP_LABEL: Record<string, string> = {
+  power_of_attorney: "Power of Attorney",
+  parent_guardian: "Parent / Guardian",
+  spouse_partner: "Spouse / Partner",
+  healthcare_worker: "Healthcare Worker",
+  other: "Representative",
+};
 
 interface AdminPatientsTableProps {
   patients: AdminPatientRow[];
@@ -18,6 +27,7 @@ interface AdminPatientsTableProps {
 export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [waiverFilter, setWaiverFilter] = useState<WaiverFilter>("all");
+  const [repFilter, setRepFilter] = useState<RepFilter>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
@@ -26,6 +36,10 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
       // Waiver filter
       if (waiverFilter === "complete" && !p.waiver_completed) return false;
       if (waiverFilter === "pending" && p.waiver_completed) return false;
+
+      // Representative filter
+      if (repFilter === "reps" && !p.is_representative) return false;
+      if (repFilter === "direct" && p.is_representative) return false;
 
       // Search
       if (!q) return true;
@@ -37,7 +51,7 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
       }
       return false;
     });
-  }, [patients, searchQuery, waiverFilter]);
+  }, [patients, searchQuery, waiverFilter, repFilter]);
 
   const toggle = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -66,7 +80,7 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
             className="mf-input pl-10"
           />
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           {(
             [
               { key: "all", label: "All Clients" },
@@ -80,6 +94,25 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
               onClick={() => setWaiverFilter(key)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
               style={filterBtnStyle(waiverFilter === key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {(
+            [
+              { key: "all", label: "All" },
+              { key: "reps", label: "Representatives" },
+              { key: "direct", label: "Direct" },
+            ] as const
+          ).map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setRepFilter(key)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+              style={filterBtnStyle(repFilter === key)}
             >
               {label}
             </button>
@@ -184,6 +217,18 @@ function PatientRow({
       >
         <td className="px-5 py-4 font-medium" style={{ color: "#ffffff" }}>
           <div>{patient.primaryName}</div>
+          {patient.is_representative && (
+            <span
+              className="inline-flex items-center mt-1 mr-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+              style={{
+                backgroundColor: "rgba(196, 151, 58, 0.12)",
+                color: "#c4973a",
+                borderColor: "#c4973a",
+              }}
+            >
+              Represented
+            </span>
+          )}
           {patient.org_name && (
             <span
               className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
@@ -339,6 +384,26 @@ function ProfileCard({ profile }: { profile: AdminPatientProfile }) {
             }}
           >
             Primary
+          </span>
+        )}
+        {profile.is_dependent && (
+          <span
+            className="text-xs px-2 py-0.5 rounded-full border"
+            style={{
+              backgroundColor: "rgba(196, 151, 58, 0.12)",
+              color: "#c4973a",
+              borderColor: "#c4973a",
+            }}
+            title={
+              profile.relationship
+                ? `Client — represented by ${REP_RELATIONSHIP_LABEL[profile.relationship] ?? profile.relationship}`
+                : "Represented client"
+            }
+          >
+            Dependent
+            {profile.relationship
+              ? ` · ${REP_RELATIONSHIP_LABEL[profile.relationship] ?? profile.relationship}`
+              : ""}
           </span>
         )}
         {profile.is_minor && (

@@ -18,7 +18,11 @@ export type AdminOrderRow = {
   org_name: string | null;
   org_color: string | null;
   created_at: string;
-  account: { id: string; email: string | null } | null;
+  account: {
+    id: string;
+    email: string | null;
+    is_representative: boolean | null;
+  } | null;
   order_lines: Array<{
     id: string;
     test: { name: string } | null;
@@ -54,7 +58,7 @@ export default async function AdminOrdersPage({
       fedex_tracking_number, shipped_at, appointment_date, manifest_id,
       org:organizations(id, name, primary_color),
       created_at,
-      account:accounts(id, email),
+      account:accounts(id, email, is_representative),
       order_lines(
         id,
         test:tests(name),

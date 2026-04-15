@@ -400,16 +400,24 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   // order email so the customer can activate with one click.
   let confirmationLink: string | null = null;
   if (isGuest) {
+    // Representative (caregiver) flow: the account is provisioned under
+    // the rep's contact info, not whichever patient email Stripe happens
+    // to hold. Rep email always wins when present.
+    const rep = payload.representative ?? null;
     const guestEmail =
-      session.customer_email ?? session.customer_details?.email;
+      rep?.email ??
+      session.customer_email ??
+      session.customer_details?.email;
     if (!guestEmail) {
       throw new Error(
-        "Guest checkout has no customer_email on Stripe session — cannot provision account"
+        "Guest checkout has no email on Stripe session or representative payload — cannot provision account"
       );
     }
     try {
       const accountResult = await createOrFindGuestAccount(guestEmail, {
         orgId: payload.org_id ?? null,
+        isRepresentative: !!rep,
+        phone: rep?.phone ?? null,
       });
       payload.account_user_id = accountResult.accountId;
       confirmationLink = accountResult.confirmationLink;

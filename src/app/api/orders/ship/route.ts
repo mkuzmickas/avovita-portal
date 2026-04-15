@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       .select(
         `
         id, account_id,
-        account:accounts(email),
+        account:accounts(email, phone, is_representative),
         order_lines(
           profile:patient_profiles(first_name, phone, is_primary, account_id)
         )
@@ -93,7 +93,11 @@ export async function POST(request: NextRequest) {
     type OrderRow = {
       id: string;
       account_id: string | null;
-      account: { email: string | null } | null;
+      account: {
+        email: string | null;
+        phone: string | null;
+        is_representative: boolean | null;
+      } | null;
       order_lines: Array<{
         profile: {
           first_name: string;
@@ -117,7 +121,9 @@ export async function POST(request: NextRequest) {
         .map((l) => l.profile)
         .find((p) => p?.is_primary);
       const firstName = primaryProfile?.first_name ?? "there";
-      const phone = primaryProfile?.phone;
+      // Representative accounts have no primary profile — SMS falls
+      // back to the rep's phone on the accounts row.
+      const phone = primaryProfile?.phone ?? order.account?.phone ?? null;
 
       // Email
       if (email) {

@@ -17,11 +17,15 @@ export type AdminPatientProfile = {
   postal_code: string | null;
   is_primary: boolean;
   is_minor: boolean;
+  is_dependent: boolean | null;
+  relationship: string | null;
 };
 
 export type AdminPatientRow = {
   id: string;
   email: string | null;
+  phone: string | null;
+  is_representative: boolean;
   created_at: string;
   waiver_completed: boolean;
   waiver_completed_at: string | null;
@@ -41,12 +45,12 @@ export default async function AdminPatientsPage() {
     .from("accounts")
     .select(
       `
-      id, email, created_at, waiver_completed, waiver_completed_at,
+      id, email, phone, is_representative, created_at, waiver_completed, waiver_completed_at,
       org:organizations(id, name, primary_color),
       profiles:patient_profiles(
         id, first_name, last_name, date_of_birth, biological_sex,
         phone, address_line1, address_line2, city, province, postal_code,
-        is_primary, is_minor
+        is_primary, is_minor, is_dependent, relationship
       )
     `
     )
@@ -56,6 +60,8 @@ export default async function AdminPatientsPage() {
   type RawAccount = {
     id: string;
     email: string | null;
+    phone: string | null;
+    is_representative: boolean | null;
     created_at: string;
     waiver_completed: boolean;
     waiver_completed_at: string | null;
@@ -87,22 +93,39 @@ export default async function AdminPatientsPage() {
   }
 
   const patients: AdminPatientRow[] = accounts.map((account) => {
+    const isRep = !!account.is_representative;
+    // Representatives have no primary profile of their own — label by
+    // the dependents they're caring for (or fall back to email).
     const primary =
       account.profiles.find((p) => p.is_primary) ?? account.profiles[0];
-    const primaryName = primary
-      ? `${primary.first_name} ${primary.last_name}`
-      : (account.email ?? "Unknown");
+    let primaryName: string;
+    if (isRep) {
+      const dependents = account.profiles.filter((p) => p.is_dependent);
+      if (dependents.length === 0) {
+        primaryName = account.email ?? "Representative";
+      } else if (dependents.length === 1) {
+        primaryName = `${dependents[0].first_name} ${dependents[0].last_name}`;
+      } else {
+        primaryName = `${dependents[0].first_name} ${dependents[0].last_name} +${dependents.length - 1}`;
+      }
+    } else {
+      primaryName = primary
+        ? `${primary.first_name} ${primary.last_name}`
+        : (account.email ?? "Unknown");
+    }
     const org = Array.isArray(account.org) ? account.org[0] : account.org;
     return {
       id: account.id,
       email: account.email,
+      phone: account.phone,
+      is_representative: isRep,
       created_at: account.created_at,
       waiver_completed: account.waiver_completed,
       waiver_completed_at: account.waiver_completed_at,
       profiles: account.profiles,
       ordersCount: orderCountMap.get(account.id) ?? 0,
       primaryName,
-      primaryPhone: primary?.phone ?? null,
+      primaryPhone: primary?.phone ?? account.phone ?? null,
       org_id: org?.id ?? null,
       org_name: org?.name ?? null,
       org_color: org?.primary_color ?? null,

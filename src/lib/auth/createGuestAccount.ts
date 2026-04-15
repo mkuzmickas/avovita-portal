@@ -38,6 +38,12 @@ export interface GuestAccountResult {
 export interface GuestAccountOptions {
   /** White-label org the account was created via. Tagged on accounts.org_id. */
   orgId?: string | null;
+  /** Set true when this is a caregiver / POA creating an account to order
+   *  on behalf of dependent clients. */
+  isRepresentative?: boolean;
+  /** Rep's mobile number — stored on accounts.phone so SMS notifications
+   *  reach them (dependent profiles have no phone of their own). */
+  phone?: string | null;
 }
 
 export async function createOrFindGuestAccount(
@@ -51,6 +57,8 @@ export async function createOrFindGuestAccount(
 
   const service = createServiceRoleClient();
   const orgId = options.orgId ?? null;
+  const isRepresentative = options.isRepresentative === true;
+  const phone = options.phone?.trim() || null;
 
   // Try to find an existing auth user for this email
   const existing = await findUserByEmail(normEmail);
@@ -59,24 +67,36 @@ export async function createOrFindGuestAccount(
     // If the existing account has no org tag yet but this checkout has
     // one, backfill — first-touch wins. Don't overwrite an already-set
     // org (avoids one partner clobbering another's attribution).
-    if (orgId) {
+    // Same logic for is_representative + phone — never downgrade a
+    // representative to a regular account, and don't overwrite a phone
+    // the user might have set themselves later.
+    if (orgId || isRepresentative || phone) {
       try {
         const { data: existingAcc } = await service
           .from("accounts")
-          .select("org_id")
+          .select("org_id, is_representative, phone")
           .eq("id", existing.id)
           .maybeSingle();
-        const currentOrg = (existingAcc as { org_id: string | null } | null)
-          ?.org_id;
-        if (!currentOrg) {
+        const current = existingAcc as {
+          org_id: string | null;
+          is_representative: boolean | null;
+          phone: string | null;
+        } | null;
+        const patch: Record<string, unknown> = {};
+        if (orgId && !current?.org_id) patch.org_id = orgId;
+        if (isRepresentative && !current?.is_representative) {
+          patch.is_representative = true;
+        }
+        if (phone && !current?.phone) patch.phone = phone;
+        if (Object.keys(patch).length > 0) {
           await service
             .from("accounts")
-            .update({ org_id: orgId })
+            .update(patch)
             .eq("id", existing.id);
         }
       } catch (err) {
         console.warn(
-          "[createGuestAccount] org backfill failed (non-fatal):",
+          "[createGuestAccount] backfill failed (non-fatal):",
           err
         );
       }
@@ -125,9 +145,11 @@ export async function createOrFindGuestAccount(
       {
         id: accountId,
         email: normEmail,
+        phone,
         role: "patient",
         waiver_completed: false,
         org_id: orgId,
+        is_representative: isRepresentative,
       },
       { onConflict: "id" }
     );

@@ -29,11 +29,11 @@ export default async function AdminPatientDetailPage({
     .from("accounts")
     .select(
       `
-      id, email, created_at, waiver_completed, waiver_completed_at,
+      id, email, phone, is_representative, created_at, waiver_completed, waiver_completed_at,
       profiles:patient_profiles(
         id, first_name, last_name, date_of_birth, biological_sex,
         phone, address_line1, address_line2, city, province, postal_code,
-        is_primary, is_minor
+        is_primary, is_minor, is_dependent, relationship
       )
     `
     )
@@ -44,6 +44,8 @@ export default async function AdminPatientDetailPage({
   type RawAccount = {
     id: string;
     email: string | null;
+    phone: string | null;
+    is_representative: boolean | null;
     created_at: string;
     waiver_completed: boolean;
     waiver_completed_at: string | null;
@@ -52,11 +54,33 @@ export default async function AdminPatientDetailPage({
   const account = accountRaw as RawAccount | null;
   if (!account) notFound();
 
+  const isRep = !!account.is_representative;
+  const dependents = account.profiles.filter((p) => p.is_dependent);
   const primary =
     account.profiles.find((p) => p.is_primary) ?? account.profiles[0] ?? null;
-  const primaryName = primary
-    ? `${primary.first_name} ${primary.last_name}`
-    : (account.email ?? "Unknown");
+  const repRelationship =
+    dependents.find((d) => d.relationship)?.relationship ?? null;
+  const repRelationshipLabel = repRelationship
+    ? ({
+        power_of_attorney: "Power of Attorney",
+        parent_guardian: "Parent / Guardian",
+        spouse_partner: "Spouse / Partner",
+        healthcare_worker: "Healthcare Worker",
+        other: "Representative",
+      } as Record<string, string>)[repRelationship] ?? repRelationship
+    : null;
+  let primaryName: string;
+  if (isRep) {
+    if (dependents.length === 0) primaryName = account.email ?? "Representative";
+    else if (dependents.length === 1)
+      primaryName = `${dependents[0].first_name} ${dependents[0].last_name}`;
+    else
+      primaryName = `${dependents[0].first_name} ${dependents[0].last_name} +${dependents.length - 1}`;
+  } else {
+    primaryName = primary
+      ? `${primary.first_name} ${primary.last_name}`
+      : (account.email ?? "Unknown");
+  }
 
   const profileIds = account.profiles.map((p) => p.id);
   const profileLabelById = new Map<string, string>(
@@ -125,10 +149,22 @@ export default async function AdminPatientDetailPage({
               {account.email}
             </span>
           )}
-          {primary?.phone && (
+          {(primary?.phone || account.phone) && (
             <span className="inline-flex items-center gap-1.5">
               <Phone className="w-3.5 h-3.5" style={{ color: "#c4973a" }} />
-              {primary.phone}
+              {primary?.phone ?? account.phone}
+            </span>
+          )}
+          {isRep && (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+              style={{
+                backgroundColor: "rgba(196, 151, 58, 0.12)",
+                color: "#c4973a",
+                borderColor: "#c4973a",
+              }}
+            >
+              Representative account
             </span>
           )}
           <span className="inline-flex items-center gap-1.5" style={{ color: "#6ab04c" }}>
@@ -137,6 +173,59 @@ export default async function AdminPatientDetailPage({
           </span>
         </div>
       </div>
+
+      {/* Representative details */}
+      {isRep && (
+        <section
+          className="mb-6 rounded-xl border p-5"
+          style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+        >
+          <h2
+            className="font-heading text-xl font-semibold mb-3"
+            style={{
+              color: "#ffffff",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+            }}
+          >
+            Representative <span style={{ color: "#c4973a" }}>details</span>
+          </h2>
+          <dl
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm"
+            style={{ color: "#e8d5a3" }}
+          >
+            <div>
+              <dt className="text-xs" style={{ color: "#6ab04c" }}>
+                Email
+              </dt>
+              <dd>{account.email ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs" style={{ color: "#6ab04c" }}>
+                Phone
+              </dt>
+              <dd>{account.phone ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs" style={{ color: "#6ab04c" }}>
+                Relationship to clients
+              </dt>
+              <dd>{repRelationshipLabel ?? "—"}</dd>
+            </div>
+            <div className="sm:col-span-3">
+              <dt className="text-xs" style={{ color: "#6ab04c" }}>
+                Signing on behalf of
+              </dt>
+              <dd>
+                {dependents.length === 0
+                  ? "—"
+                  : dependents
+                      .map((d) => `${d.first_name} ${d.last_name}`)
+                      .join(", ")}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      )}
 
       {/* Profiles on account */}
       <section

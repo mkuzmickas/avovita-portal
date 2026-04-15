@@ -56,6 +56,25 @@ export interface OrderMetadataPayload {
   promo_code?: string | null;
   /** Tagged organization (white-label partner) the order was placed via. */
   org_id?: string | null;
+  /**
+   * Representative (caregiver / POA) block, mirrored from CheckoutPayload.
+   * When present, every person in `persons[]` is a dependent client and
+   * the account gets provisioned under the rep's contact info instead of
+   * the first person's.
+   */
+  representative?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    relationship:
+      | "power_of_attorney"
+      | "parent_guardian"
+      | "spouse_partner"
+      | "healthcare_worker"
+      | "other";
+    poa_confirmed: boolean;
+  } | null;
 }
 
 /**
@@ -152,6 +171,17 @@ export async function materialiseOrder(
       continue;
     }
 
+    // Caregiver flow: every person is a dependent. Use the rep's
+    // relationship as the client-to-rep relationship, stamp poa
+    // acknowledgement, and clear is_primary (the account has no
+    // non-dependent patient profile — notifications fall back to
+    // accounts.email + accounts.phone).
+    const rep = payload.representative ?? null;
+    const isDependent = !!rep;
+    const profileRelationship = rep
+      ? rep.relationship
+      : person.relationship;
+
     const { data: insertedRaw, error: profileErr } = await supabase
       .from("patient_profiles")
       .insert({
@@ -160,15 +190,19 @@ export async function materialiseOrder(
         last_name: person.last_name,
         date_of_birth: person.date_of_birth,
         biological_sex: person.biological_sex,
-        phone: person.phone ?? null,
+        phone: isDependent ? null : (person.phone ?? null),
         address_line1: payload.collection_address.address_line1,
         address_line2: payload.collection_address.address_line2 || null,
         city: payload.collection_address.city,
         province: payload.collection_address.province,
         postal_code: payload.collection_address.postal_code,
         is_minor: false,
-        is_primary: person.is_account_holder,
-        relationship: person.relationship,
+        is_primary: isDependent ? false : person.is_account_holder,
+        relationship: profileRelationship,
+        is_dependent: isDependent,
+        poa_confirmed: isDependent ? !!rep.poa_confirmed : false,
+        poa_confirmed_at:
+          isDependent && rep.poa_confirmed ? new Date().toISOString() : null,
       })
       .select("id")
       .single();

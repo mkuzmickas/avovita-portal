@@ -11,6 +11,29 @@ import {
 
 interface WaiverFormProps {
   onComplete: () => void;
+  /** True when the signed-in account holder is a caregiver / POA signing
+   *  on behalf of dependent clients. */
+  isRepresentative?: boolean;
+  /** Dependent clients the representative is signing for. */
+  dependents?: Array<{ first_name: string; last_name: string }>;
+  /** Rep's relationship to the dependents (e.g. power_of_attorney). */
+  representativeRelationship?: string | null;
+}
+
+const REP_RELATIONSHIP_LABEL: Record<string, string> = {
+  power_of_attorney: "Power of Attorney",
+  parent_guardian: "Parent / Guardian",
+  spouse_partner: "Spouse / Partner",
+  healthcare_worker: "Healthcare Worker",
+  other: "Authorized Representative",
+};
+
+function joinNames(people: Array<{ first_name: string; last_name: string }>) {
+  const full = people.map((p) => `${p.first_name} ${p.last_name}`.trim());
+  if (full.length === 0) return "";
+  if (full.length === 1) return full[0];
+  if (full.length === 2) return `${full[0]} and ${full[1]}`;
+  return `${full.slice(0, -1).join(", ")}, and ${full[full.length - 1]}`;
 }
 
 const WAIVER_TEXT = `AVOVITA WELLNESS CLIENT CONSENT, RELEASE OF LIABILITY, AND INDEMNIFICATION AGREEMENT
@@ -41,7 +64,18 @@ GOVERNING LAW
 
 This agreement shall be governed by the laws of the Province of Alberta. Any dispute arising hereunder shall be subject to the exclusive jurisdiction of the courts of Alberta.`;
 
-export function WaiverForm({ onComplete }: WaiverFormProps) {
+export function WaiverForm({
+  onComplete,
+  isRepresentative = false,
+  dependents = [],
+  representativeRelationship = null,
+}: WaiverFormProps) {
+  const clientNames = joinNames(dependents);
+  const relationshipLabel = representativeRelationship
+    ? (REP_RELATIONSHIP_LABEL[representativeRelationship] ??
+      "Authorized Representative")
+    : "Authorized Representative";
+  const isRep = isRepresentative && dependents.length > 0;
   const [check1, setCheck1] = useState(false);
   const [check2, setCheck2] = useState(false);
   const [check3, setCheck3] = useState(false);
@@ -128,13 +162,49 @@ export function WaiverForm({ onComplete }: WaiverFormProps) {
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          Review and sign your <span style={{ color: "#c4973a" }}>waiver</span>
+          {isRep ? (
+            <>
+              Waiver for{" "}
+              <span style={{ color: "#c4973a" }}>{clientNames}</span>
+            </>
+          ) : (
+            <>
+              Review and sign your{" "}
+              <span style={{ color: "#c4973a" }}>waiver</span>
+            </>
+          )}
         </h2>
       </div>
       <p className="text-sm" style={{ color: "#e8d5a3" }}>
-        Please read the following carefully. This waiver must be completed
-        before your collection appointment.
+        {isRep
+          ? `As ${relationshipLabel}, please read the following carefully and sign on behalf of your client${dependents.length !== 1 ? "s" : ""}. This waiver must be completed before the collection appointment.`
+          : "Please read the following carefully. This waiver must be completed before your collection appointment."}
       </p>
+
+      {isRep && (
+        <div
+          className="rounded-lg border p-4 text-sm"
+          style={{
+            backgroundColor: "rgba(196, 151, 58, 0.08)",
+            borderColor: "#c4973a",
+            color: "#e8d5a3",
+          }}
+        >
+          By signing below I,{" "}
+          <span style={{ color: "#ffffff", fontWeight: 600 }}>
+            {signedName.trim() || "[your full name]"}
+          </span>
+          , am signing this waiver as{" "}
+          <span style={{ color: "#c4973a", fontWeight: 600 }}>
+            {relationshipLabel}
+          </span>{" "}
+          with legal authority to consent on behalf of{" "}
+          <span style={{ color: "#ffffff", fontWeight: 600 }}>
+            {clientNames}
+          </span>
+          .
+        </div>
+      )}
 
       {/* Scrollable waiver text */}
       <div
@@ -183,7 +253,9 @@ export function WaiverForm({ onComplete }: WaiverFormProps) {
           className="block text-sm font-medium mb-1.5"
           style={{ color: "#e8d5a3" }}
         >
-          Type your full legal name to sign{" "}
+          {isRep
+            ? "Type your (the representative's) full legal name to sign"
+            : "Type your full legal name to sign"}{" "}
           <span style={{ color: "#e05252" }}>*</span>
         </label>
         <input

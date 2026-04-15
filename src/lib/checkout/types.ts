@@ -73,4 +73,28 @@ export interface CheckoutPayload {
   promo_code?: string;
   /** White-label org slug — server resolves to org_id and tags the order. */
   org_slug?: string | null;
+  /**
+   * Representative (caregiver / POA) block. When present, `persons` are
+   * the DEPENDENT clients being tested and the account is created under
+   * the representative's contact info instead.
+   *
+   * When null/undefined, the existing "myself" flow applies — persons[0]
+   * is the account holder as before. Backwards compatible.
+   */
+  representative?: RepresentativeBlock | null;
+}
+
+export interface RepresentativeBlock {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  relationship:
+    | "power_of_attorney"
+    | "parent_guardian"
+    | "spouse_partner"
+    | "healthcare_worker"
+    | "other";
+  /** True when the rep has ticked the legal-authority checkbox. */
+  poa_confirmed: boolean;
 }
