@@ -15,7 +15,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
 
 const WAIVER_TEXT = `AVOVITA WELLNESS CLIENT CONSENT, RELEASE OF LIABILITY, AND INDEMNIFICATION AGREEMENT
 
@@ -196,7 +195,7 @@ export function CheckoutSuccessV2({
         </StepCard>
 
         {/* Optional — set password between waiver and booking */}
-        <SetPasswordCard email={email} />
+        <SetPasswordCard email={email} sessionId={sessionId} />
 
         {/* Step 2 — Booking */}
         <StepCard
@@ -717,7 +716,13 @@ function CheckboxRow({
 
 // ─── Set password card ──────────────────────────────────────────────────
 
-function SetPasswordCard({ email }: { email: string }) {
+function SetPasswordCard({
+  email,
+  sessionId,
+}: {
+  email: string;
+  sessionId: string;
+}) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -735,19 +740,18 @@ function SetPasswordCard({ email }: { email: string }) {
     setSubmitting(true);
     setError(null);
     try {
-      const supabase = createClient();
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        setError(
-          "Your account isn't signed in on this device yet. Use the sign-in link in the email we sent you to set a password."
-        );
-        return;
-      }
-      const { error: updateErr } = await supabase.auth.updateUser({
-        password,
+      const res = await fetch("/api/auth/set-initial-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: sessionId,
+          email,
+          password,
+        }),
       });
-      if (updateErr) {
-        setError(updateErr.message);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Failed to set password");
         return;
       }
       setDone(true);
