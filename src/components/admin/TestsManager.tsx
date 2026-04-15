@@ -29,6 +29,7 @@ type EditableFields = {
   description: string;
   category: string;
   price_cad: string;
+  cost_cad: string;
   specimen_type: string;
   ship_temp: string;
   stability_notes: string;
@@ -45,6 +46,7 @@ const EMPTY_FORM: EditableFields = {
   description: "",
   category: "",
   price_cad: "",
+  cost_cad: "",
   specimen_type: "",
   ship_temp: "",
   stability_notes: "",
@@ -141,6 +143,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       description: fields.description || null,
       category: fields.category || null,
       price_cad: fields.price_cad ? parseFloat(fields.price_cad) : null,
+      cost_cad: fields.cost_cad ? parseFloat(fields.cost_cad) : null,
       specimen_type: fields.specimen_type || null,
       ship_temp: fields.ship_temp || null,
       stability_notes: fields.stability_notes || null,
@@ -189,6 +192,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       description: fields.description || null,
       category: fields.category || null,
       price_cad: fields.price_cad ? parseFloat(fields.price_cad) : null,
+      cost_cad: fields.cost_cad ? parseFloat(fields.cost_cad) : null,
       specimen_type: fields.specimen_type || null,
       ship_temp: fields.ship_temp || null,
       stability_notes: fields.stability_notes || null,
@@ -454,6 +458,7 @@ function TestRow({
     description: test.description ?? "",
     category: test.category ?? "",
     price_cad: test.price_cad != null ? String(test.price_cad) : "",
+    cost_cad: test.cost_cad != null ? String(test.cost_cad) : "",
     specimen_type: test.specimen_type ?? "",
     ship_temp: test.ship_temp ?? "",
     stability_notes: test.stability_notes ?? "",
@@ -930,15 +935,26 @@ function InlineTestForm({
             )}
           </div>
         </Field>
-        <Field label="Price (CAD)">
-          <input
-            type="number"
-            step="0.01"
-            value={fields.price_cad}
-            onChange={(e) => update("price_cad", e.target.value)}
-            className="mf-input"
-          />
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Price (CAD)">
+            <input
+              type="number"
+              step="0.01"
+              value={fields.price_cad}
+              onChange={(e) => update("price_cad", e.target.value)}
+              className="mf-input"
+            />
+          </Field>
+          <Field label="Cost (CAD)">
+            <input
+              type="number"
+              step="0.01"
+              value={fields.cost_cad}
+              onChange={(e) => update("cost_cad", e.target.value)}
+              className="mf-input"
+            />
+          </Field>
+        </div>
         <Field label="Specimen Type">
           <input
             type="text"
