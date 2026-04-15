@@ -55,30 +55,36 @@ export function CatalogueClient({
   }, []);
 
   // Deep-link support: /tests?category=<exact label> pre-selects the
-  // matching filter on load. Uses useSearchParams so the value is
-  // read through Next's router (robust against hydration timing).
-  // Falls back to case-insensitive + prefix match so an unencoded "&"
-  // in the URL (which browsers truncate as a param separator) still
-  // lands the right filter — e.g. ?category=Allergy%20 picks up
-  // "Allergy & Sensitivity".
+  // matching filter. Uses useSearchParams, reacts when searchParams
+  // OR the categories list change, and resolves to the same three-tier
+  // fallback (exact → startsWith → includes) so an unencoded "&" in the
+  // URL (browsers truncate as a param separator) still lands the right
+  // filter. A useMemo produces the resolved category; a separate effect
+  // then writes it to state so the update can't be dropped by render-
+  // phase set-state timing, and resets to null if the param is cleared.
   const searchParams = useSearchParams();
-  useEffect(() => {
+  const resolvedCategoryFromUrl = useMemo(() => {
     const rawCat = searchParams.get("category")?.trim();
-    console.log("[catalogue] ?category= param:", rawCat);
-    if (!rawCat) return;
+    if (!rawCat || categories.length === 0) return null;
     const lower = rawCat.toLowerCase();
-    const exact = categories.find((c) => c.toLowerCase() === lower);
-    const prefix =
-      exact ??
+    return (
+      categories.find((c) => c.toLowerCase() === lower) ??
       categories.find((c) => c.toLowerCase().startsWith(lower)) ??
-      categories.find((c) => c.toLowerCase().includes(lower));
-    console.log(
-      `[catalogue] category match: ${prefix ?? "none"} (from ${categories.length} options)`
+      categories.find((c) => c.toLowerCase().includes(lower)) ??
+      null
     );
-    if (prefix) setSelectedCategory(prefix);
-    // Run once on mount; categories is server-rendered and stable here.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams, categories]);
+  useEffect(() => {
+    console.log(
+      "[catalogue] resolved ?category=",
+      searchParams.get("category"),
+      "→",
+      resolvedCategoryFromUrl
+    );
+    if (resolvedCategoryFromUrl) {
+      setSelectedCategory(resolvedCategoryFromUrl);
+    }
+  }, [resolvedCategoryFromUrl, searchParams]);
 
   // Deep-link support: /tests?test=SKU or /tests?id=UUID scrolls to,
   // expands, and briefly pulses the matching test. Runs once on mount.
