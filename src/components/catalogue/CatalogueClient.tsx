@@ -53,6 +53,23 @@ export function CatalogueClient({
     });
   }, []);
 
+  // Deep-link support: /tests?category=<exact label> pre-selects the
+  // matching filter on load. Case-insensitive lookup against the
+  // server-supplied categories list so URL trailing spaces / casing
+  // quirks don't silently fail.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const rawCat = params.get("category")?.trim();
+    if (!rawCat) return;
+    const match = categories.find(
+      (c) => c.toLowerCase() === rawCat.toLowerCase()
+    );
+    if (match) setSelectedCategory(match);
+    // Run once on mount; categories is server-rendered and stable here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Deep-link support: /tests?test=SKU or /tests?id=UUID scrolls to,
   // expands, and briefly pulses the matching test. Runs once on mount.
   useEffect(() => {
