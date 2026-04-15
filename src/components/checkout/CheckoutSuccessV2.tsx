@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 const WAIVER_TEXT = `AVOVITA WELLNESS CLIENT CONSENT, RELEASE OF LIABILITY, AND INDEMNIFICATION AGREEMENT
 
@@ -251,6 +252,9 @@ export function CheckoutSuccessV2({
             </a>
           </p>
         </StepCard>
+
+        {/* One last thing — password setup (optional) */}
+        <SetPasswordCard email={email} />
 
         {/* Footer */}
         <p className="text-center text-xs mt-8" style={{ color: "#6ab04c" }}>
@@ -708,5 +712,170 @@ function CheckboxRow({
         {label}
       </span>
     </button>
+  );
+}
+
+// ─── Set password card ──────────────────────────────────────────────────
+
+function SetPasswordCard({ email }: { email: string }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const canSubmit =
+    password.length >= 8 &&
+    password === confirm &&
+    !submitting &&
+    !done;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        setError(
+          "Your account isn't signed in on this device yet. Use the sign-in link in the email we sent you to set a password."
+        );
+        return;
+      }
+      const { error: updateErr } = await supabase.auth.updateUser({
+        password,
+      });
+      if (updateErr) {
+        setError(updateErr.message);
+        return;
+      }
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to set password");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="rounded-2xl border px-5 sm:px-7 py-5 sm:py-6 mb-5"
+      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center border shrink-0"
+          style={{ backgroundColor: "#0f2614", borderColor: "#c4973a" }}
+        >
+          <Shield className="w-5 h-5" style={{ color: "#c4973a" }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: "#c4973a" }}
+          >
+            Optional
+          </p>
+          <h2
+            className="font-heading text-xl sm:text-2xl font-semibold"
+            style={{
+              color: "#ffffff",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+            }}
+          >
+            One last thing — secure your account
+          </h2>
+        </div>
+      </div>
+
+      {done ? (
+        <div
+          className="flex items-center gap-2 p-3 rounded-lg border"
+          style={{
+            backgroundColor: "rgba(141, 198, 63, 0.12)",
+            borderColor: "#8dc63f",
+          }}
+        >
+          <CheckCircle
+            className="w-5 h-5 shrink-0"
+            style={{ color: "#8dc63f" }}
+          />
+          <p className="text-sm" style={{ color: "#8dc63f" }}>
+            Password saved. You can now sign in at portal.avovita.ca with{" "}
+            <span className="font-semibold">{email}</span>.
+          </p>
+        </div>
+      ) : (
+        <>
+          <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
+            Set a password so you can sign in later without needing a magic
+            link. You can skip this — we&apos;ll always email you a sign-in
+            link when you need one.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label
+                className="block text-xs font-medium mb-1.5"
+                style={{ color: "#e8d5a3" }}
+              >
+                New password (8+ characters)
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mf-input"
+                autoComplete="new-password"
+              />
+            </div>
+            <div>
+              <label
+                className="block text-xs font-medium mb-1.5"
+                style={{ color: "#e8d5a3" }}
+              >
+                Confirm password
+              </label>
+              <input
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                className="mf-input"
+                autoComplete="new-password"
+              />
+              {confirm.length > 0 && confirm !== password && (
+                <p className="text-xs mt-1" style={{ color: "#e05252" }}>
+                  Passwords don&apos;t match
+                </p>
+              )}
+            </div>
+          </div>
+
+          {error && (
+            <div
+              className="flex items-center gap-2 p-3 rounded-lg text-sm border mt-3"
+              style={{
+                backgroundColor: "rgba(224, 82, 82, 0.12)",
+                borderColor: "#e05252",
+                color: "#e05252",
+              }}
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className="mf-btn-primary w-full py-3 mt-4"
+          >
+            {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            {submitting ? "Saving…" : "Set Password"}
+          </button>
+        </>
+      )}
+    </div>
   );
 }

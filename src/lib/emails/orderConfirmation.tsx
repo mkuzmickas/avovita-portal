@@ -247,62 +247,6 @@ export function renderOrderConfirmationEmail(
 
           ${fastingNotice}
 
-          <!-- Two things to do now — bulletproof table buttons, full-width, prominent -->
-          <tr>
-            <td style="padding: 28px 32px 8px 32px;">
-              <h3 style="margin: 0 0 24px 0; font-size: 20px; font-family: Georgia, 'Cormorant Garamond', serif; color: #111827; font-weight: 600;">
-                Two things to do now
-              </h3>
-
-              <!-- STEP 1 — Waiver -->
-              <p style="margin: 0 0 8px 0; font-size: 12px; color: #c4973a; letter-spacing: 0.18em; font-weight: 700; text-transform: uppercase;">
-                Step 1
-              </p>
-              <p style="margin: 0 0 14px 0; font-size: 14px; color: #4b5563; line-height: 1.4;">
-                Complete your waiver — required before your collection appointment.
-              </p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: separate;">
-                <tr>
-                  <td bgcolor="#c4973a" align="center" style="background-color: #c4973a; border-radius: 8px;">
-                    <a href="${waiverUrl}" target="_blank"
-                       style="display: block; padding: 18px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 17px; font-weight: 700; line-height: 1; text-align: center; text-decoration: none; color: #0a1a0d; border-radius: 8px;">
-                      Complete Your Waiver →
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- spacer -->
-          <tr>
-            <td style="padding: 0 32px;">
-              <div style="height: 32px; line-height: 32px; font-size: 1px;">&nbsp;</div>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="padding: 0 32px 28px 32px;">
-              <!-- STEP 2 — Book Collection -->
-              <p style="margin: 0 0 8px 0; font-size: 12px; color: #6fa030; letter-spacing: 0.18em; font-weight: 700; text-transform: uppercase;">
-                Step 2
-              </p>
-              <p style="margin: 0 0 14px 0; font-size: 14px; color: #4b5563; line-height: 1.4;">
-                Book your in-home collection appointment with FloLabs.
-              </p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: separate;">
-                <tr>
-                  <td bgcolor="#8dc63f" align="center" style="background-color: #8dc63f; border-radius: 8px;">
-                    <a href="${floLabsUrl}" target="_blank"
-                       style="display: block; padding: 18px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 17px; font-weight: 700; line-height: 1; text-align: center; text-decoration: none; color: #0a1a0d; border-radius: 8px;">
-                      Book Your Collection →
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
           <!-- Portal login -->
           <tr>
             <td style="padding: 8px 32px 32px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
