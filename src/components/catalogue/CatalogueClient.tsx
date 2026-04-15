@@ -53,6 +53,38 @@ export function CatalogueClient({
     });
   }, []);
 
+  // Deep-link support: /tests?test=SKU or /tests?id=UUID scrolls to,
+  // expands, and briefly pulses the matching test. Runs once on mount.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const skuParam = params.get("test")?.trim().toLowerCase();
+    const idParam = params.get("id")?.trim();
+    let match: CatalogueTest | undefined;
+    if (skuParam) {
+      match = allTests.find((t) => t.sku?.toLowerCase() === skuParam);
+    }
+    if (!match && idParam) {
+      match = allTests.find((t) => t.id === idParam);
+    }
+    if (!match) return;
+    const target = match;
+    setExpandedCardId(target.id);
+    // Wait for the expanded row to render, then scroll + pulse.
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`test-${target.id}`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("avovita-pulse-highlight");
+      setTimeout(
+        () => el.classList.remove("avovita-pulse-highlight"),
+        2400
+      );
+    }, 150);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Dev-only sanity log so we can verify in browser devtools that data is
   // actually flowing through to TestTable. Stripped from production builds.
   useEffect(() => {

@@ -43,19 +43,30 @@ export default async function CheckoutSuccessPage({
   const { data: orderRaw } = await service
     .from("orders")
     .select(
-      "id, total_cad, account_id, account:accounts(email, waiver_completed)"
+      `id, total_cad, account_id, org_id,
+       account:accounts(email, waiver_completed),
+       org:organizations(waiver_addendum, waiver_addendum_title)`
     )
     .eq("stripe_session_id", sessionId)
     .maybeSingle();
+  type OrgBlock = {
+    waiver_addendum: string | null;
+    waiver_addendum_title: string | null;
+  };
   const order = orderRaw as {
     id: string;
     total_cad: number | null;
     account_id: string | null;
+    org_id: string | null;
     account:
       | { email: string | null; waiver_completed: boolean }
       | { email: string | null; waiver_completed: boolean }[]
       | null;
+    org: OrgBlock | OrgBlock[] | null;
   } | null;
+  const orgBlock = Array.isArray(order?.org) ? order?.org[0] : order?.org;
+  const waiverAddendum = orgBlock?.waiver_addendum ?? null;
+  const waiverAddendumTitle = orgBlock?.waiver_addendum_title ?? null;
 
   const accountObj = Array.isArray(order?.account)
     ? order?.account[0]
@@ -133,6 +144,8 @@ export default async function CheckoutSuccessPage({
         representativeRelationship={rep?.relationship ?? null}
         acuityUrl={ACUITY_URL}
         initialWaiverDone={initialWaiverDone}
+        waiverAddendum={waiverAddendum}
+        waiverAddendumTitle={waiverAddendumTitle}
       />
     </>
   );

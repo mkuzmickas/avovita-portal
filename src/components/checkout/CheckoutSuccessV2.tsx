@@ -68,6 +68,9 @@ export interface CheckoutSuccessV2Props {
   acuityUrl: string;
   /** Pre-existing waiver state (e.g. logged-in user already signed). */
   initialWaiverDone: boolean;
+  /** Optional org-specific waiver addendum (shown below the standard waiver). */
+  waiverAddendum?: string | null;
+  waiverAddendumTitle?: string | null;
 }
 
 export function CheckoutSuccessV2({
@@ -81,6 +84,8 @@ export function CheckoutSuccessV2({
   representativeRelationship,
   acuityUrl,
   initialWaiverDone,
+  waiverAddendum = null,
+  waiverAddendumTitle = null,
 }: CheckoutSuccessV2Props) {
   const [waiverDone, setWaiverDone] = useState(initialWaiverDone);
   const [showWaiver, setShowWaiver] = useState(false);
@@ -270,6 +275,8 @@ export function CheckoutSuccessV2({
           isRepresentative={isRepresentative && dependents.length > 0}
           dependents={dependents}
           representativeRelationship={representativeRelationship}
+          addendum={waiverAddendum}
+          addendumTitle={waiverAddendumTitle}
           onClose={() => setShowWaiver(false)}
           onSigned={() => {
             setWaiverDone(true);
@@ -348,6 +355,8 @@ function WaiverModal({
   isRepresentative,
   dependents,
   representativeRelationship,
+  addendum,
+  addendumTitle,
   onClose,
   onSigned,
 }: {
@@ -356,12 +365,16 @@ function WaiverModal({
   isRepresentative: boolean;
   dependents: Array<{ first_name: string; last_name: string }>;
   representativeRelationship: string | null;
+  addendum: string | null;
+  addendumTitle: string | null;
   onClose: () => void;
   onSigned: () => void;
 }) {
   const [check1, setCheck1] = useState(false);
   const [check2, setCheck2] = useState(false);
   const [check3, setCheck3] = useState(false);
+  const [checkAddendum, setCheckAddendum] = useState(false);
+  const hasAddendum = !!addendum;
   const [signedName, setSignedName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -391,7 +404,8 @@ function WaiverModal({
       "Authorized Representative")
     : "Authorized Representative";
 
-  const allChecked = check1 && check2 && check3;
+  const allChecked =
+    check1 && check2 && check3 && (!hasAddendum || checkAddendum);
   const nameValid = signedName.trim().length >= 3;
   const canSign = allChecked && nameValid;
 
@@ -571,6 +585,39 @@ function WaiverModal({
               />
             </div>
 
+            {hasAddendum && (
+              <div
+                className="rounded-xl border p-4 space-y-3"
+                style={{
+                  backgroundColor: "rgba(196, 151, 58, 0.08)",
+                  borderColor: "#c4973a",
+                }}
+              >
+                {addendumTitle && (
+                  <h3
+                    className="font-heading text-base sm:text-lg font-semibold"
+                    style={{
+                      color: "#c4973a",
+                      fontFamily: '"Cormorant Garamond", Georgia, serif',
+                    }}
+                  >
+                    {addendumTitle}
+                  </h3>
+                )}
+                <p
+                  className="text-xs leading-relaxed whitespace-pre-line"
+                  style={{ color: "#e8d5a3" }}
+                >
+                  {addendum}
+                </p>
+                <CheckboxRow
+                  checked={checkAddendum}
+                  onToggle={() => setCheckAddendum((v) => !v)}
+                  label="I have read and understood the referral service disclosure above."
+                />
+              </div>
+            )}
+
             <div>
               <label
                 className="block text-sm font-medium mb-1.5"
@@ -616,7 +663,16 @@ function WaiverModal({
                 ? "Saving…"
                 : canSign
                   ? "I Agree and Sign"
-                  : `${[check1, check2, check3].filter(Boolean).length}/3 acknowledged`}
+                  : (() => {
+                      const ticked = [
+                        check1,
+                        check2,
+                        check3,
+                        ...(hasAddendum ? [checkAddendum] : []),
+                      ].filter(Boolean).length;
+                      const total = hasAddendum ? 4 : 3;
+                      return `${ticked}/${total} acknowledged`;
+                    })()}
             </button>
           </div>
         )}
