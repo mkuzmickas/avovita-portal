@@ -39,6 +39,9 @@ export async function POST(request: NextRequest) {
       code,
       active: true,
       limit: 1,
+      // Force-expand the coupon so percent_off / amount_off are always
+      // present in the response object, regardless of SDK defaults.
+      expand: ["data.coupon"],
     });
     console.log(
       "[validate-promo] stripe response:",
@@ -98,6 +101,17 @@ export async function POST(request: NextRequest) {
     } else if (typeof promo.coupon === "string") {
       coupon = (await stripe.coupons.retrieve(
         promo.coupon
+      )) as unknown as CouponShape;
+    }
+    // Final safety net — if percent_off and amount_off are BOTH null
+    // (shouldn't happen on a valid coupon, but guard anyway), retrieve
+    // the coupon by id explicitly to populate them.
+    if (coupon && coupon.percent_off == null && coupon.amount_off == null && coupon.id) {
+      console.warn(
+        `[validate-promo] coupon ${coupon.id} returned with no discount fields — retrieving directly`
+      );
+      coupon = (await stripe.coupons.retrieve(
+        coupon.id
       )) as unknown as CouponShape;
     }
 

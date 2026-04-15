@@ -156,19 +156,24 @@ export function Step4Review({
         body: JSON.stringify({ code }),
       });
       const data = await res.json().catch(() => ({}));
+      console.log("[promo] validate-promo response:", data);
       if (!res.ok) {
         setPromoError(data.error ?? "That promo code isn't valid.");
         onPromoChange(null);
         return;
       }
-      onPromoChange({
+      const next = {
         id: data.id,
         code: data.code,
-        percent_off: data.percent_off ?? null,
-        amount_off: data.amount_off ?? null,
+        percent_off:
+          typeof data.percent_off === "number" ? data.percent_off : null,
+        amount_off:
+          typeof data.amount_off === "number" ? data.amount_off : null,
         currency: data.currency ?? null,
         name: data.name ?? null,
-      });
+      };
+      console.log("[promo] applying state:", next);
+      onPromoChange(next);
     } catch {
       setPromoError("Failed to validate promo code.");
       onPromoChange(null);
