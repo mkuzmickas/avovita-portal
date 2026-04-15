@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { computeDiscount } from "@/lib/checkout/discount";
 import type { CheckoutPayload } from "@/lib/checkout/types";
 
@@ -331,48 +331,86 @@ export async function POST(request: NextRequest) {
     }
     void accountHolder; // We collect email at success-page time for guests
 
-    // ─── Handle promo code ─────────────────────────────────────────
-    // The wizard validates the customer-facing code via
-    // /api/checkout/validate-promo, which resolves it to a Stripe
-    // Promotion Code id (`promo_xxx`). We re-validate that id here so
-    // the client can't tamper with the discount, then attach it to
-    // the session via `discounts: [{ promotion_code: id }]`.
-    let discounts:
-      | Array<{ promotion_code: string }>
-      | undefined;
+    // ─── Handle promo code (DB-applied, no Stripe coupon needed) ──
+    // The promo is validated via /api/checkout/validate-promo against
+    // the Supabase promo_codes table. We re-look up the row server-
+    // side here so the client can't tamper with the discount, then
+    // apply it by reducing each Stripe line_item's unit_amount
+    // directly — exactly how the multi-test discount works above.
+    // Stripe never sees the promo_code / coupon / promotion_code id:
+    // no more "No such promotion code" errors when a DB row's
+    // stripe_promo_id points at a test-mode / stale id.
+    const rawPromoCode: string =
+      typeof body.promo_code === "string" ? body.promo_code.trim() : "";
+    if (rawPromoCode) {
+      const { data: promoRow } = await createServiceRoleClient()
+        .from("promo_codes")
+        .select("percent_off, amount_off, active, expires_at, org_id")
+        .ilike("code", rawPromoCode)
+        .maybeSingle();
+      type PromoRow = {
+        percent_off: number | null;
+        amount_off: number | null;
+        active: boolean;
+        expires_at: string | null;
+        org_id: string | null;
+      };
+      const row = promoRow as PromoRow | null;
+      const isExpired =
+        !!row?.expires_at && new Date(row.expires_at) <= new Date();
+      const orgOk =
+        !row?.org_id || (resolvedOrgId !== null && resolvedOrgId === row.org_id);
+      if (row?.active && !isExpired && orgOk) {
+        const percentOff = row.percent_off ?? 0;
+        const amountOffDollars = row.amount_off != null ? Number(row.amount_off) : 0;
 
-    const promotionCodeId: string | null =
-      typeof body.promotion_code_id === "string" && body.promotion_code_id.trim()
-        ? body.promotion_code_id.trim()
-        : null;
+        const preDiscountCents = lineItems.reduce(
+          (s, li) => s + li.price_data.unit_amount,
+          0
+        );
+        let remainingDiscountCents = percentOff > 0
+          ? Math.round(preDiscountCents * (percentOff / 100))
+          : Math.round(amountOffDollars * 100);
+        remainingDiscountCents = Math.min(
+          remainingDiscountCents,
+          preDiscountCents
+        );
 
-    if (promotionCodeId) {
-      // The DB-backed /api/checkout/validate-promo is the source of
-      // truth for whether this code is valid — we already ran that
-      // lookup when the user clicked Apply. Don't second-guess it here
-      // with a Stripe-side retrieve: that was returning "Promo code
-      // could not be verified" for legitimately-applied codes
-      // (test/live mode drift, SDK shape quirks, etc.) and flashing
-      // the error alongside the already-green "Promo applied" state.
-      //
-      // Stripe still performs the final validity check at
-      // sessions.create below — if the promotion_code id is wrong or
-      // inactive on Stripe's side, that call throws and we return its
-      // real error verbatim.
-      discounts = [{ promotion_code: promotionCodeId }];
+        // Walk line items and subtract until the discount is exhausted.
+        for (const li of lineItems) {
+          if (remainingDiscountCents <= 0) break;
+          const take = Math.min(li.price_data.unit_amount, remainingDiscountCents);
+          li.price_data.unit_amount -= take;
+          remainingDiscountCents -= take;
+          if (take > 0) {
+            const suffix = ` · Promo ${rawPromoCode.toUpperCase()} −$${(take / 100).toFixed(2)}`;
+            li.price_data.product_data.description =
+              (li.price_data.product_data.description ?? "") + suffix;
+          }
+        }
+      }
     }
+
+    // If the promo zeroed the total, Stripe's payment mode still wants
+    // a payment method by default and would reject the session — set
+    // payment_method_collection: "if_required" so the customer can
+    // breeze through without entering a card for a $0 order.
+    const sessionTotalCents = lineItems.reduce(
+      (s, li) => s + li.price_data.unit_amount,
+      0
+    );
+    const isFreeCheckout = sessionTotalCents === 0;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "cad",
       line_items: lineItems,
-      ...(discounts ? { discounts } : {}),
       success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/checkout`,
       customer_email: customerEmail,
       metadata,
-      ...(discounts
-        ? {}
+      ...(isFreeCheckout
+        ? { payment_method_collection: "if_required" as const }
         : {
             payment_intent_data: {
               metadata: {
