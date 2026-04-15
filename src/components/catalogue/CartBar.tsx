@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ShoppingBag, ArrowRight, Tag } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/components/cart/CartContext";
+import { useOrg } from "@/components/org/OrgContext";
 import { computeDiscount } from "@/lib/checkout/discount";
 import type { CatalogueCartItem } from "./types";
 
@@ -18,6 +19,10 @@ interface CartBarProps {
 export function CartBar({ cart: cartProp }: CartBarProps) {
   const ctx = useCart();
   const cart = cartProp ?? ctx.cart;
+  const org = useOrg();
+  const checkoutHref = org
+    ? `/checkout?org_slug=${encodeURIComponent(org.slug)}`
+    : "/checkout";
 
   if (cart.length === 0) return null;
 
@@ -100,7 +105,7 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
         <div className="flex-1" />
 
         <Link
-          href="/checkout"
+          href={checkoutHref}
           className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-colors"
           style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
         >

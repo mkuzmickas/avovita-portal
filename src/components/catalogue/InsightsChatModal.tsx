@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X, Send, Sparkles, Loader2, ShoppingCart, Check, ExternalLink } from "lucide-react";
+import { X, Send, Sparkles, Loader2, ShoppingCart, Check, ExternalLink, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/components/cart/CartContext";
+import { useOrg } from "@/components/org/OrgContext";
 import { formatCurrency } from "@/lib/utils";
 
 interface InsightsChatModalProps {
@@ -39,6 +41,11 @@ export function InsightsChatModal({
 }: InsightsChatModalProps) {
   const supabase = useMemo(() => createClient(), []);
   const { cart, addItem } = useCart();
+  const org = useOrg();
+  const checkoutHref = org
+    ? `/checkout?org_slug=${encodeURIComponent(org.slug)}`
+    : "/checkout";
+  const cartItemCount = cart.reduce((s, c) => s + c.quantity, 0);
 
   const [messages, setMessages] = useState<ChatMessage[]>([INTRO_MESSAGE]);
   const [input, setInput] = useState("");
@@ -276,6 +283,28 @@ export function InsightsChatModal({
                 Send
               </button>
             </div>
+            {cartItemCount > 0 && (
+              <div
+                className="border-t px-4 py-3 flex items-center justify-between gap-3"
+                style={{ borderColor: "#2d6b35", backgroundColor: "#0f2614" }}
+              >
+                <p className="text-xs" style={{ color: "#e8d5a3" }}>
+                  <span className="font-semibold" style={{ color: "#c4973a" }}>
+                    {cartItemCount}
+                  </span>{" "}
+                  test{cartItemCount !== 1 ? "s" : ""} in cart
+                </p>
+                <Link
+                  href={checkoutHref}
+                  onClick={onClose}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                  style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                >
+                  Continue to Checkout
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            )}
             <p className="px-5 pb-3 text-xs" style={{ color: "#6ab04c" }}>
               Educational only — not a diagnosis. Discuss results with a healthcare provider of your choice.
             </p>

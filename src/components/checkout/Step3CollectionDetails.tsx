@@ -220,6 +220,44 @@ export function Step3CollectionDetails({
     (isCaregiver ? representativeValid && dependentsValid : accountHolderValid && additionalAllValid && allConsentsObtained) &&
     !zoneUnserved;
 
+  // Compute a human-readable list of what's still missing so the
+  // greyed-out Continue button isn't a mystery.
+  const missingFields: string[] = [];
+  if (!addressValid) missingFields.push("collection address");
+  if (zoneUnserved) missingFields.push("a serviced postal code");
+  if (isCaregiver) {
+    if (!representativeValid) {
+      const repMissing: string[] = [];
+      if (!representative.first_name.trim()) repMissing.push("first name");
+      if (!representative.last_name.trim()) repMissing.push("last name");
+      if (!isEmailValid(representative.email)) repMissing.push("email");
+      if (!representative.phone.trim()) repMissing.push("mobile number");
+      if (!representative.poa_confirmed)
+        repMissing.push("POA acknowledgement");
+      missingFields.push(`representative ${repMissing.join(", ")}`);
+    }
+    if (!dependentsValid) {
+      missingFields.push("client first/last name, DOB, biological sex");
+    }
+  } else {
+    if (!accountHolderValid) {
+      const ahMissing: string[] = [];
+      if (!accountHolder?.first_name.trim()) ahMissing.push("first name");
+      if (!accountHolder?.last_name.trim()) ahMissing.push("last name");
+      if (!accountHolder?.date_of_birth) ahMissing.push("date of birth");
+      if (!accountHolder?.biological_sex) ahMissing.push("biological sex");
+      if (!accountHolder?.phone || !accountHolder.phone.trim())
+        ahMissing.push("mobile number");
+      missingFields.push(`your ${ahMissing.join(", ")}`);
+    }
+    if (!additionalAllValid) {
+      missingFields.push("each additional person's name, DOB, sex, relationship");
+    }
+    if (!allConsentsObtained && additionalPersons.length > 0) {
+      missingFields.push("consent for additional people");
+    }
+  }
+
   const labelStyle = { color: "#e8d5a3" };
   const reqMark = <span style={{ color: "#e05252" }}> *</span>;
 
@@ -600,6 +638,28 @@ export function Step3CollectionDetails({
               All additional people must consent to sharing your account
               before you can proceed. If individual accounts are required,
               please place separate orders.
+            </span>
+          </div>
+        )}
+
+        {!canContinue && missingFields.length > 0 && (
+          <div
+            className="flex items-start gap-2 rounded-lg border px-4 py-3 mb-4 text-sm"
+            style={{
+              backgroundColor: "rgba(196, 151, 58, 0.10)",
+              borderColor: "#c4973a",
+              color: "#e8d5a3",
+            }}
+          >
+            <AlertCircle
+              className="w-4 h-4 shrink-0 mt-0.5"
+              style={{ color: "#c4973a" }}
+            />
+            <span>
+              <span className="font-semibold" style={{ color: "#c4973a" }}>
+                To continue:
+              </span>{" "}
+              please complete {missingFields.join("; ")}.
             </span>
           </div>
         )}

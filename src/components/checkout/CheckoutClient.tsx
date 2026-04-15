@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Leaf } from "lucide-react";
 import { useCart } from "@/components/cart/CartContext";
+import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
 import { CheckoutProgress } from "./CheckoutProgress";
 import { CheckoutCartSummary } from "./CheckoutCartSummary";
 import { Step1People } from "./Step1People";
@@ -119,10 +119,32 @@ export function CheckoutClient({
       if (raw) {
         const parsed = JSON.parse(raw) as PersistedCheckoutState;
         if (parsed && typeof parsed === "object") {
-          if (parsed.personCount) setPersonCount(parsed.personCount);
-          if (Array.isArray(parsed.persons) && parsed.persons.length > 0) {
-            setPersons(parsed.persons);
-          }
+          const restoredCount =
+            typeof parsed.personCount === "number" && parsed.personCount > 0
+              ? parsed.personCount
+              : 1;
+          setPersonCount(restoredCount);
+          // Always align persons[] length with personCount on restore.
+          // A mismatch (e.g. legacy persisted state with an extra empty
+          // person) caused additionalAllValid to fail silently, leaving
+          // the Continue button greyed with no visible field to fix.
+          const restoredPersons =
+            Array.isArray(parsed.persons) && parsed.persons.length > 0
+              ? parsed.persons
+              : defaultPersons(restoredCount);
+          const aligned = defaultPersons(restoredCount).map((blank, i) => {
+            const prior = restoredPersons[i];
+            if (!prior) return blank;
+            return {
+              ...blank,
+              ...prior,
+              index: i,
+              is_account_holder: i === 0,
+              relationship:
+                i === 0 ? "account_holder" : (prior.relationship ?? null),
+            };
+          });
+          setPersons(aligned);
           if (Array.isArray(parsed.assignments)) {
             // Dedupe by test_id — older versions of the wizard allowed
             // multiple assignments per test, but the new rule is one
@@ -327,32 +349,11 @@ export function CheckoutClient({
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0a1a0d" }}>
-      {/* Header */}
-      <header
-        className="border-b"
-        style={{ backgroundColor: "#0f2614", borderColor: "#1a3d22" }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
-          <Link href="/tests" className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center border"
-              style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
-            >
-              <Leaf className="w-4 h-4" style={{ color: "#8dc63f" }} />
-            </div>
-            <span
-              className="font-heading text-xl font-semibold"
-              style={{
-                color: "#ffffff",
-                fontFamily: '"Cormorant Garamond", Georgia, serif',
-              }}
-            >
-              AvoVita
-            </span>
-          </Link>
+      <OrgAwareHeader
+        rightSlot={
           <Link
             href="/tests"
-            className="text-xs font-medium px-3 py-1.5 rounded-lg border"
+            className="text-xs font-medium px-3 py-1.5 rounded-lg border whitespace-nowrap"
             style={{
               color: "#e8d5a3",
               borderColor: "#2d6b35",
@@ -361,8 +362,8 @@ export function CheckoutClient({
           >
             ← Back to catalogue
           </Link>
-        </div>
-      </header>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <CheckoutProgress
