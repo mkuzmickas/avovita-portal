@@ -48,10 +48,34 @@ function isTimeoutLocal<T>(v: T | { __timeout: true }): v is { __timeout: true }
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log(
+      `[sign-waiver] handler entered — method=${request.method} ` +
+        `referer="${request.headers.get("referer") ?? ""}" ` +
+        `purpose="${request.headers.get("purpose") ?? ""}" ` +
+        `nextRouter="${request.headers.get("next-router-prefetch") ?? ""}"`
+    );
+    if (request.method !== "POST") {
+      return NextResponse.json(
+        { error: "Method not allowed" },
+        { status: 405 }
+      );
+    }
+
     const body = await request.json();
     const sessionId: string | undefined = body.session_id;
     const signedName: string | undefined = body.signed_name;
     const email: string | undefined = body.email?.toLowerCase().trim();
+
+    // Explicit submit guard — see /api/auth/complete-waiver for rationale.
+    if (body.submit_intent !== true) {
+      console.warn(
+        "[sign-waiver] refusing implicit invocation — missing submit_intent"
+      );
+      return NextResponse.json(
+        { error: "Missing explicit submit_intent" },
+        { status: 400 }
+      );
+    }
 
     if (!sessionId || !signedName || !email) {
       return NextResponse.json(

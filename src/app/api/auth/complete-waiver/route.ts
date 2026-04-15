@@ -61,7 +61,21 @@ export async function POST(request: NextRequest) {
     console.log(`[complete-waiver] +${Date.now() - t0}ms — ${label}`);
 
   try {
-    log("handler entered");
+    // Diagnostic: capture *who* invoked this so we can prove whether
+    // any non-explicit caller is hitting it.
+    log(
+      `handler entered — method=${request.method} ` +
+        `referer="${request.headers.get("referer") ?? ""}" ` +
+        `ua="${request.headers.get("user-agent")?.slice(0, 80) ?? ""}" ` +
+        `purpose="${request.headers.get("purpose") ?? ""}" ` +
+        `nextRouter="${request.headers.get("next-router-prefetch") ?? ""}"`
+    );
+    if (request.method !== "POST") {
+      return NextResponse.json(
+        { error: "Method not allowed" },
+        { status: 405 }
+      );
+    }
 
     const supabaseUser = await createClient();
     log("client created");
@@ -87,6 +101,18 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const signedName: string | undefined = body.signed_name;
+    // Explicit submit guard. The waiver may only be saved when the
+    // user clicked the Submit button on the WaiverForm — every legit
+    // caller sends `submit_intent: true` along with the signed name.
+    // Anything else (prefetcher, stray request, accidental call) is
+    // rejected before we touch the database.
+    if (body.submit_intent !== true) {
+      log("missing submit_intent → 400 (refusing implicit invocation)");
+      return NextResponse.json(
+        { error: "Missing explicit submit_intent" },
+        { status: 400 }
+      );
+    }
     if (!signedName || signedName.trim().length < 3) {
       log("invalid signed_name → 400");
       return NextResponse.json(

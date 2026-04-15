@@ -123,7 +123,10 @@ export function WaiverForm({
       const res = await fetch("/api/auth/complete-waiver", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signed_name: signedName.trim() }),
+        body: JSON.stringify({
+          signed_name: signedName.trim(),
+          submit_intent: true,
+        }),
         signal: controller.signal,
       });
 

@@ -374,6 +374,7 @@ function WaiverModal({
           session_id: sessionId,
           signed_name: signedName.trim(),
           email,
+          submit_intent: true,
         }),
       });
       if (!res.ok) {
