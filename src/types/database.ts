@@ -239,6 +239,11 @@ export interface Quote {
   discount_cad: number;
   visit_fee_cad: number;
   total_cad: number;
+  /** Admin-entered additional discount; `value` is a dollar amount when
+   *  type=amount or a percentage (0-100) of the post-multi-test subtotal
+   *  when type=percent. */
+  manual_discount_value: number;
+  manual_discount_type: "amount" | "percent";
   sent_at: string | null;
   expires_at: string | null;
   created_by: string | null;

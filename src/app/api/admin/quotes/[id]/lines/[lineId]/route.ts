@@ -52,13 +52,24 @@ export async function DELETE(
 
     // Recompute totals
     const [{ data: quoteRaw }, { data: linesRaw }] = await Promise.all([
-      service.from("quotes").select("person_count").eq("id", quoteId).maybeSingle(),
+      service
+        .from("quotes")
+        .select("person_count, manual_discount_value, manual_discount_type")
+        .eq("id", quoteId)
+        .maybeSingle(),
       service.from("quote_lines").select("unit_price_cad").eq("quote_id", quoteId),
     ]);
-    const quote = quoteRaw as { person_count: number } | null;
+    const quote = quoteRaw as {
+      person_count: number;
+      manual_discount_value: number | null;
+      manual_discount_type: "amount" | "percent" | null;
+    } | null;
     const lines = (linesRaw ?? []) as unknown as { unit_price_cad: number }[];
     if (quote) {
-      const totals = computeQuoteTotals(lines, quote.person_count);
+      const totals = computeQuoteTotals(lines, quote.person_count, {
+        value: quote.manual_discount_value ?? 0,
+        type: quote.manual_discount_type ?? "amount",
+      });
       await service.from("quotes").update(totals).eq("id", quoteId);
     }
 

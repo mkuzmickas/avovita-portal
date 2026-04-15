@@ -16,7 +16,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { computeQuoteTotals } from "@/lib/quotes/totals";
+import { computeQuoteTotals, resolveManualDiscount } from "@/lib/quotes/totals";
 import type { Quote } from "@/types/database";
 import type {
   QuoteLineWithTest,
@@ -67,6 +67,12 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
   );
   const [notes, setNotes] = useState(quote.notes ?? "");
   const [expiresAt, setExpiresAt] = useState(isoDay(quote.expires_at));
+  const [manualDiscountValue, setManualDiscountValue] = useState<string>(
+    quote.manual_discount_value ? String(quote.manual_discount_value) : ""
+  );
+  const [manualDiscountType, setManualDiscountType] = useState<
+    "amount" | "percent"
+  >(quote.manual_discount_type ?? "amount");
 
   // Test search + person picker
   const [search, setSearch] = useState("");
@@ -77,6 +83,7 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const manualDiscountNum = Number(manualDiscountValue) || 0;
   const dirty =
     firstName !== (quote.client_first_name ?? "") ||
     lastName !== (quote.client_last_name ?? "") ||
@@ -84,12 +91,28 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
     personCount !== quote.person_count ||
     collectionCity !== (quote.collection_city ?? "") ||
     notes !== (quote.notes ?? "") ||
-    expiresAt !== isoDay(quote.expires_at);
+    expiresAt !== isoDay(quote.expires_at) ||
+    manualDiscountNum !== (quote.manual_discount_value ?? 0) ||
+    manualDiscountType !== (quote.manual_discount_type ?? "amount");
 
-  // Live totals from current lines + personCount (server is source of truth on save)
+  // Live totals from current lines + personCount + manual discount
   const liveTotals = useMemo(
-    () => computeQuoteTotals(lines, personCount),
-    [lines, personCount]
+    () =>
+      computeQuoteTotals(lines, personCount, {
+        value: manualDiscountNum,
+        type: manualDiscountType,
+      }),
+    [lines, personCount, manualDiscountNum, manualDiscountType]
+  );
+  const liveManualDiscount = useMemo(
+    () =>
+      resolveManualDiscount(
+        liveTotals.subtotal_cad,
+        liveTotals.discount_cad,
+        liveTotals.visit_fee_cad,
+        { value: manualDiscountNum, type: manualDiscountType }
+      ),
+    [liveTotals, manualDiscountNum, manualDiscountType]
   );
 
   const filteredCatalogue = useMemo(() => {
@@ -172,6 +195,8 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
           expires_at: expiresAt
             ? new Date(`${expiresAt}T00:00:00`).toISOString()
             : undefined,
+          manual_discount_value: manualDiscountNum,
+          manual_discount_type: manualDiscountType,
         }),
       });
       const data = await res.json();
@@ -191,6 +216,8 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
         expires_at: expiresAt
           ? new Date(`${expiresAt}T00:00:00`).toISOString()
           : prev.expires_at,
+        manual_discount_value: manualDiscountNum,
+        manual_discount_type: manualDiscountType,
         ...liveTotals,
       }));
       flash("Draft saved");
@@ -569,15 +596,22 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                 />
                 {liveTotals.discount_cad > 0 && (
                   <SummaryRow
-                    label="Multi-test discount"
+                    label={`Multi-test discount (${lines.length} tests × $20)`}
                     value={`−${formatCurrency(liveTotals.discount_cad)}`}
-                    accent="#8dc63f"
+                    accent="#c4973a"
                   />
                 )}
                 <SummaryRow
                   label={`Home visit fee (${personCount} ${personCount === 1 ? "person" : "people"})`}
                   value={formatCurrency(liveTotals.visit_fee_cad)}
                 />
+                {liveManualDiscount > 0 && (
+                  <SummaryRow
+                    label="Additional discount"
+                    value={`−${formatCurrency(liveManualDiscount)}`}
+                    accent="#c4973a"
+                  />
+                )}
                 <tr>
                   <td
                     className="pt-3 border-t font-bold text-base"
@@ -594,6 +628,52 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                 </tr>
               </tbody>
             </table>
+
+            {/* Additional discount input */}
+            <div
+              className="rounded-lg border p-3 mt-2"
+              style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+            >
+              <label
+                className="block text-xs font-medium mb-1.5"
+                style={{ color: "#e8d5a3" }}
+              >
+                Additional Discount
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={manualDiscountValue}
+                  onChange={(e) => setManualDiscountValue(e.target.value)}
+                  placeholder="0"
+                  className="mf-input flex-1"
+                />
+                <div
+                  className="flex rounded-lg border overflow-hidden shrink-0"
+                  style={{ borderColor: "#2d6b35" }}
+                >
+                  {(["amount", "percent"] as const).map((t) => {
+                    const active = manualDiscountType === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setManualDiscountType(t)}
+                        className="px-3 text-sm font-semibold transition-colors"
+                        style={{
+                          backgroundColor: active ? "#c4973a" : "transparent",
+                          color: active ? "#0a1a0d" : "#e8d5a3",
+                        }}
+                      >
+                        {t === "amount" ? "$" : "%"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-2 pt-3">
               <button

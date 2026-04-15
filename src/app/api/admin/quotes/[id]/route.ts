@@ -76,6 +76,15 @@ export async function PATCH(
     ) {
       update.status = body.status;
     }
+    if ("manual_discount_value" in body) {
+      update.manual_discount_value = Math.max(0, Number(body.manual_discount_value) || 0);
+    }
+    if (
+      typeof body.manual_discount_type === "string" &&
+      ["amount", "percent"].includes(body.manual_discount_type)
+    ) {
+      update.manual_discount_type = body.manual_discount_type;
+    }
 
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
@@ -83,14 +92,42 @@ export async function PATCH(
 
     const service = createServiceRoleClient();
 
-    // If person_count is changing, recompute totals from existing lines
-    if ("person_count" in update) {
+    // If person_count OR the manual discount changed, recompute totals
+    // from existing lines so total_cad stays in sync with the UI.
+    const totalsAffected =
+      "person_count" in update ||
+      "manual_discount_value" in update ||
+      "manual_discount_type" in update;
+    if (totalsAffected) {
+      const { data: quoteRaw } = await service
+        .from("quotes")
+        .select("person_count, manual_discount_value, manual_discount_type")
+        .eq("id", id)
+        .maybeSingle();
+      const current = (quoteRaw ?? {}) as {
+        person_count: number | null;
+        manual_discount_value: number | null;
+        manual_discount_type: "amount" | "percent" | null;
+      };
       const { data: linesRaw } = await service
         .from("quote_lines")
         .select("unit_price_cad")
         .eq("quote_id", id);
       const lines = (linesRaw ?? []) as unknown as { unit_price_cad: number }[];
-      const totals = computeQuoteTotals(lines, update.person_count as number);
+      const personCount =
+        (update.person_count as number | undefined) ?? current.person_count ?? 1;
+      const manualVal =
+        (update.manual_discount_value as number | undefined) ??
+        current.manual_discount_value ??
+        0;
+      const manualType =
+        (update.manual_discount_type as "amount" | "percent" | undefined) ??
+        current.manual_discount_type ??
+        "amount";
+      const totals = computeQuoteTotals(lines, personCount, {
+        value: manualVal,
+        type: manualType,
+      });
       Object.assign(update, totals);
     }
 
