@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Clock, ShoppingCart, Check, ChevronDown, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { PanelIncludes } from "./PanelIncludes";
@@ -73,7 +74,8 @@ export function TestCard({
           )}
         </div>
 
-        {/* Test name */}
+        {/* Test name — links to /tests?test=SKU (or ?id= fallback) so the
+            catalogue detail view scrolls/expands to this test. */}
         <h3
           className="font-heading font-semibold leading-tight mb-3 break-words"
           style={{
@@ -83,7 +85,18 @@ export function TestCard({
             overflowWrap: "anywhere",
           }}
         >
-          {test.name}
+          <Link
+            href={
+              test.sku
+                ? `/tests?test=${encodeURIComponent(test.sku)}`
+                : `/tests?id=${test.id}`
+            }
+            onClick={(e) => e.stopPropagation()}
+            className="test-card-title-link cursor-pointer"
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            {test.name}
+          </Link>
         </h3>
 
         {/* Price */}

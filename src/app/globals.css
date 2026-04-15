@@ -261,3 +261,15 @@ input:-webkit-autofill:focus {
   animation: avovitaPulseHighlight 2.2s ease-out;
   border-radius: 12px;
 }
+
+/* Featured carousel test-title subtle hover link */
+.test-card-title-link {
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+  text-underline-offset: 3px;
+}
+.test-card-title-link:hover {
+  color: #c4973a !important;
+  text-decoration: underline;
+  text-decoration-color: #c4973a;
+  text-decoration-thickness: 1px;
+}
