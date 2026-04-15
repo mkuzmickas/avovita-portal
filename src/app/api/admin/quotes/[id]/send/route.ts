@@ -15,7 +15,7 @@ export const runtime = "nodejs";
  * and stamps sent_at.
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -41,6 +41,34 @@ export async function POST(
 
     const { id } = await params;
     const service = createServiceRoleClient();
+
+    // Body overrides — the admin builder posts the live form values
+    // so we don't race the save-then-send sequence. If any of these
+    // are present we persist them to the quote row before reading it
+    // back for the email.
+    let inlineUpdate: Record<string, string> | null = null;
+    try {
+      const body = await request.json();
+      const patch: Record<string, string> = {};
+      if (typeof body?.client_email === "string" && body.client_email.trim()) {
+        patch.client_email = body.client_email.trim();
+      }
+      if (
+        typeof body?.client_first_name === "string" &&
+        body.client_first_name.trim()
+      ) {
+        patch.client_first_name = body.client_first_name.trim();
+      }
+      if (typeof body?.client_last_name === "string") {
+        patch.client_last_name = body.client_last_name.trim();
+      }
+      if (Object.keys(patch).length > 0) inlineUpdate = patch;
+    } catch {
+      /* no body — proceed with DB values */
+    }
+    if (inlineUpdate) {
+      await service.from("quotes").update(inlineUpdate).eq("id", id);
+    }
 
     const { data: quoteRaw } = await service
       .from("quotes")

@@ -253,15 +253,16 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
 
   const sendEmail = async () => {
     setError(null);
-    if (dirty) {
-      // Save edits first so the email reflects current state
-      await saveDraft();
-    }
-    if (!firstName.trim()) {
+    // Read current form state up front so we never race the DB round-
+    // trip when reading client_email back from the quotes table.
+    const currentEmail = email.trim();
+    const currentFirstName = firstName.trim();
+    const currentLastName = lastName.trim();
+    if (!currentFirstName) {
       setError("Client first name is required to send the quote");
       return;
     }
-    if (!email.trim()) {
+    if (!currentEmail) {
       setError("Client email is required to send the quote");
       return;
     }
@@ -271,16 +272,36 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
     }
     setSending(true);
     try {
+      // Save first so totals + notes + expiry are up-to-date. Fire this
+      // but continue regardless — the send endpoint receives the live
+      // email/name values in the request body and persists them itself,
+      // so stale DB values can't produce a false "no client email".
+      if (dirty) {
+        await saveDraft();
+      }
       const res = await fetch(`/api/admin/quotes/${quote.id}/send`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_email: currentEmail,
+          client_first_name: currentFirstName,
+          client_last_name: currentLastName,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Failed to send quote");
         return;
       }
-      setQuote((prev) => ({ ...prev, status: "sent", sent_at: data.sent_at }));
-      flash(`Quote emailed to ${email}`);
+      setQuote((prev) => ({
+        ...prev,
+        client_email: currentEmail,
+        client_first_name: currentFirstName,
+        client_last_name: currentLastName,
+        status: "sent",
+        sent_at: data.sent_at,
+      }));
+      flash(`Quote emailed to ${currentEmail}`);
       router.refresh();
     } finally {
       setSending(false);
