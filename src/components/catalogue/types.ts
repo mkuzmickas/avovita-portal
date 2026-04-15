@@ -17,6 +17,13 @@ export type CatalogueTest = {
   sku: string | null;
   requisition_url: string | null;
   lab: { id: string; name: string };
+  /** For panels: list of included tests (name + code). null for single tests. */
+  panel_tests: PanelTestEntry[] | null;
+};
+
+export type PanelTestEntry = {
+  name: string;
+  code: string;
 };
 
 export type CatalogueCartItem = {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Clock, ShoppingCart, Check, ChevronDown, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { PanelIncludes } from "./PanelIncludes";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
 interface TestCardProps {
@@ -124,6 +125,11 @@ export function TestCard({
           </div>
         )}
 
+        {/* Included panel tests (collapsible) */}
+        {test.panel_tests && test.panel_tests.length > 0 && (
+          <PanelIncludes panelTests={test.panel_tests} variant="card" />
+        )}
+
         {/* Turnaround */}
         {test.turnaround_display && (
           <div
@@ -165,6 +171,10 @@ export function TestCard({
                 value={formatPublicStability(test.stability_notes)}
               />
             </div>
+
+            {test.panel_tests && test.panel_tests.length > 0 && (
+              <PanelIncludes panelTests={test.panel_tests} variant="detail" />
+            )}
 
             {test.requisition_url && (
               <a

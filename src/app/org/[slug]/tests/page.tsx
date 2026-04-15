@@ -45,7 +45,7 @@ async function CatalogueData() {
       `
       id, name, slug, description, category, price_cad,
       turnaround_display, specimen_type, ship_temp, stability_notes,
-      featured, sku, requisition_url,
+      featured, sku, requisition_url, panel_tests,
       lab:labs(id, name)
       `
     )

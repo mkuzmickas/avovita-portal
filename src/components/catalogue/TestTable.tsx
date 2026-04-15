@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, Clock, ShoppingCart, Check, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { formatPublicStability } from "./TestCard";
+import { PanelIncludes } from "./PanelIncludes";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
 interface TestTableProps {
@@ -320,6 +321,13 @@ function TestTableRow({
                       <Download className="w-4 h-4" />
                       Download Requisition Form
                     </a>
+                  )}
+
+                  {test.panel_tests && test.panel_tests.length > 0 && (
+                    <PanelIncludes
+                      panelTests={test.panel_tests}
+                      variant="detail"
+                    />
                   )}
                 </div>
 

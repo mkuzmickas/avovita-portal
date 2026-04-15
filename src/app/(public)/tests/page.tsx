@@ -48,6 +48,7 @@ async function CatalogueData() {
       featured,
       sku,
       requisition_url,
+      panel_tests,
       lab:labs(id, name)
       `
     )
