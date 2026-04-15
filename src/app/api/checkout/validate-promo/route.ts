@@ -53,17 +53,21 @@ export async function POST(request: NextRequest) {
         2
       )
     );
-    const promo = list.data[0] as
-      | (typeof list.data[0] & {
-          coupon?: {
-            valid: boolean;
-            percent_off: number | null;
-            amount_off: number | null;
-            currency: string | null;
-            name: string | null;
-          };
-        })
-      | undefined;
+    type CouponShape = {
+      id: string;
+      valid: boolean;
+      percent_off: number | null;
+      amount_off: number | null;
+      currency: string | null;
+      name: string | null;
+    };
+    type PromoShape = {
+      id: string;
+      code: string;
+      active: boolean;
+      coupon?: CouponShape | string;
+    };
+    const promo = list.data[0] as unknown as PromoShape | undefined;
     if (!promo) {
       // Retry without the active filter so the logs can distinguish
       // "doesn't exist" from "exists but inactive / wrong mode".
@@ -84,16 +88,30 @@ export async function POST(request: NextRequest) {
     // depending on SDK version). Stripe will perform the final
     // validation when the session is created, so any edge case is
     // caught there.
+    // Resolve the coupon object — Stripe's list response usually
+    // returns it expanded, but if a future SDK version downgrades it
+    // to an ID we fetch it explicitly so percent_off / amount_off are
+    // always populated for the UI's discount preview.
+    let coupon: CouponShape | null = null;
+    if (promo.coupon && typeof promo.coupon === "object") {
+      coupon = promo.coupon;
+    } else if (typeof promo.coupon === "string") {
+      coupon = (await stripe.coupons.retrieve(
+        promo.coupon
+      )) as unknown as CouponShape;
+    }
+
     console.log(
-      `[validate-promo] success — id=${promo.id} code="${promo.code}" coupon=${JSON.stringify(promo.coupon)}`
+      `[validate-promo] success — id=${promo.id} code="${promo.code}" ` +
+        `percent_off=${coupon?.percent_off} amount_off=${coupon?.amount_off}`
     );
     return NextResponse.json({
       id: promo.id,
       code: promo.code,
-      percent_off: promo.coupon?.percent_off ?? null,
-      amount_off: promo.coupon?.amount_off ?? null,
-      currency: promo.coupon?.currency ?? null,
-      name: promo.coupon?.name ?? null,
+      percent_off: coupon?.percent_off ?? null,
+      amount_off: coupon?.amount_off ?? null,
+      currency: coupon?.currency ?? null,
+      name: coupon?.name ?? null,
     });
   } catch (err) {
     console.error("[validate-promo] caught error:", err);
