@@ -19,6 +19,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const code: string | undefined = body.code?.trim();
+    console.log("[validate-promo] received body:", JSON.stringify(body));
+    console.log(
+      `[validate-promo] code after trim: "${code}" (len=${code?.length ?? 0})`
+    );
     if (!code) {
       return NextResponse.json(
         { error: "Promo code is required" },
@@ -26,14 +30,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Stripe Promotion Code lookup is case-sensitive. The dashboard
-    // accepts whatever casing was created — pass the user's value as-is
-    // (we still uppercase for the eventual metadata log).
+    // Stripe Promotion Code lookup IS case-sensitive — pass the code
+    // exactly as the user typed it (after trim only). Do NOT uppercase.
+    console.log(
+      `[validate-promo] calling stripe.promotionCodes.list({ code: "${code}", active: true, limit: 1 })`
+    );
     const list = await stripe.promotionCodes.list({
       code,
       active: true,
       limit: 1,
     });
+    console.log(
+      "[validate-promo] stripe response:",
+      JSON.stringify(
+        {
+          object: list.object,
+          has_more: list.has_more,
+          data_length: list.data.length,
+          data: list.data,
+        },
+        null,
+        2
+      )
+    );
     const promo = list.data[0] as
       | (typeof list.data[0] & {
           coupon?: {
@@ -46,8 +65,15 @@ export async function POST(request: NextRequest) {
         })
       | undefined;
     if (!promo) {
+      // Retry without the active filter so the logs can distinguish
+      // "doesn't exist" from "exists but inactive / wrong mode".
+      const anyMatch = await stripe.promotionCodes.list({ code, limit: 1 });
+      console.log(
+        `[validate-promo] no active match — fallback search (any state) returned ${anyMatch.data.length} result(s):`,
+        JSON.stringify(anyMatch.data, null, 2)
+      );
       return NextResponse.json(
-        { error: "That promo code isn't valid." },
+        { error: "Invalid or expired promo code" },
         { status: 404 }
       );
     }
@@ -67,9 +93,16 @@ export async function POST(request: NextRequest) {
       name: promo.coupon.name ?? null,
     });
   } catch (err) {
-    console.error("[validate-promo] error:", err);
+    console.error("[validate-promo] caught error:", err);
+    if (err instanceof Error) {
+      console.error("[validate-promo] err.message:", err.message);
+      console.error("[validate-promo] err.stack:", err.stack);
+    }
     return NextResponse.json(
-      { error: "Failed to validate promo code" },
+      {
+        error: "Failed to validate promo code",
+        debug: err instanceof Error ? err.message : String(err),
+      },
       { status: 500 }
     );
   }
