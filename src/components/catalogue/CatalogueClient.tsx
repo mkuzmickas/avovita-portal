@@ -130,12 +130,31 @@ export function CatalogueClient({
 
   const filteredTests = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
+    console.log(
+      "[catalogue] filter run — selectedCategory:",
+      JSON.stringify(selectedCategory),
+      "selectedLab:",
+      JSON.stringify(selectedLab),
+      "searchQuery:",
+      JSON.stringify(query)
+    );
+    let logged = 0;
     return allTests.filter((test) => {
       const matchesSearch =
         query === "" ||
         test.name.toLowerCase().includes(query) ||
         (test.sku !== null && test.sku.toLowerCase().includes(query)) ||
         (test.category !== null && test.category.toLowerCase().includes(query));
+      if (logged < 5) {
+        console.log(
+          `[catalogue] test #${logged} name=${JSON.stringify(test.name)} ` +
+            `test.category=${JSON.stringify(test.category)} ` +
+            `selectedCategory=${JSON.stringify(selectedCategory)} ` +
+            `equal=${test.category === selectedCategory} ` +
+            `lengths=${test.category?.length ?? 0}/${selectedCategory?.length ?? 0}`
+        );
+        logged += 1;
+      }
       const matchesCategory =
         selectedCategory === null || test.category === selectedCategory;
       const matchesLab = selectedLab === null || test.lab.name === selectedLab;
