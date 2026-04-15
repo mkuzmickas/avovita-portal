@@ -348,22 +348,37 @@ export async function POST(request: NextRequest) {
 
     if (promotionCodeId) {
       try {
+        // Force-expand the coupon so the SDK can't hand us a bare id
+        // and trigger a false "no longer valid" branch.
         const promo = (await stripe.promotionCodes.retrieve(
-          promotionCodeId
+          promotionCodeId,
+          { expand: ["coupon"] }
         )) as {
           active: boolean;
-          coupon?: { valid: boolean };
+          coupon?: { valid: boolean } | string;
         };
-        if (!promo.active || !promo.coupon?.valid) {
+        console.log(
+          `[stripe-checkout] promo retrieve — id=${promotionCodeId} ` +
+            `active=${promo.active} coupon=${JSON.stringify(promo.coupon)}`
+        );
+        // The `active` flag on the promotion code is sufficient. Stripe
+        // performs the final coupon validity check at session.create
+        // and returns a 400 there if anything is off — surfacing that
+        // as the user-facing error rather than guessing here.
+        if (!promo.active) {
           return NextResponse.json(
-            { error: "That promo code is no longer valid." },
+            { error: "That promo code is no longer active." },
             { status: 400 }
           );
         }
         discounts = [{ promotion_code: promotionCodeId }];
-      } catch {
+      } catch (err) {
+        console.error("[stripe-checkout] promo retrieve failed:", err);
         return NextResponse.json(
-          { error: "Promo code could not be verified." },
+          {
+            error: "Promo code could not be verified.",
+            debug: err instanceof Error ? err.message : String(err),
+          },
           { status: 400 }
         );
       }
