@@ -229,7 +229,6 @@ export function ProfileForm({
             <option value="">Select…</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
-            <option value="intersex">Intersex</option>
           </select>
         </div>
       </div>
