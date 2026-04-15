@@ -58,6 +58,12 @@ export function CatalogueClient({
   // matching filter. Keyed on `categories` so the effect re-fires
   // once the server-rendered list has populated — fixes the case
   // where the initial render had an empty categories array.
+  // Diagnostic: trace every selectedCategory state transition so we
+  // can see in DevTools whether the URL-param effect is being overridden.
+  useEffect(() => {
+    console.log("[catalogue] selectedCategory changed:", selectedCategory);
+  }, [selectedCategory]);
+
   const searchParams = useSearchParams();
   useEffect(() => {
     if (categories.length === 0) return;
