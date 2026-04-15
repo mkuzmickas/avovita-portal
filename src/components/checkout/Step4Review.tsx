@@ -104,6 +104,8 @@ export function Step4Review({
   );
 
   // Single source of truth — same function powers the right-rail summary.
+  // appliedPromo IS in the dep array so a fresh promo recomputes totals
+  // on the very next render.
   const totals = useMemo(
     () =>
       calculateTotals({
@@ -113,6 +115,12 @@ export function Step4Review({
       }),
     [assignments, visitFees.total, appliedPromo]
   );
+  // Render-time visibility — confirms appliedPromo is reaching the
+  // calculation and the resulting totals do reflect the discount.
+  if (typeof window !== "undefined") {
+    console.log("[Step4Review] render — appliedPromo:", appliedPromo);
+    console.log("[Step4Review] render — totals:", totals);
+  }
   const subtotal = totals.testsSubtotal;
   // Full discount shape (per_line / applies) for the per-line annotation.
   const discount = useMemo(

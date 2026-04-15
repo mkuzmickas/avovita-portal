@@ -71,6 +71,14 @@ export function CheckoutCartSummary({
     visitFee: visitFees?.total ?? 0,
     appliedPromo: appliedPromo ?? null,
   });
+  if (typeof window !== "undefined") {
+    console.log(
+      "[CheckoutCartSummary] render — appliedPromo:",
+      appliedPromo,
+      "totals:",
+      totals
+    );
+  }
 
   const subtotal = totals.testsSubtotal;
   const subtotalAfterDiscount = totals.subtotalAfterDiscount;

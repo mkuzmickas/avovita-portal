@@ -84,6 +84,7 @@ export function CheckoutSuccessV2({
 }: CheckoutSuccessV2Props) {
   const [waiverDone, setWaiverDone] = useState(initialWaiverDone);
   const [showWaiver, setShowWaiver] = useState(false);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
 
   return (
     <div
@@ -197,18 +198,53 @@ export function CheckoutSuccessV2({
         >
           <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
             Pick the date and time that works best for the in-home visit.
-            Booking opens in a new tab.
           </p>
-          <a
-            href={acuityUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mf-btn-primary w-full justify-center py-4 text-base sm:text-lg font-semibold"
+          <div
+            className="relative rounded-xl border overflow-hidden"
+            style={{
+              backgroundColor: "#0f2614",
+              borderColor: "#2d6b35",
+              minHeight: "700px",
+            }}
           >
-            <Calendar className="w-5 h-5" />
-            Book Your Collection Appointment
-            <ExternalLink className="w-4 h-4" />
-          </a>
+            {!iframeLoaded && (
+              <div
+                className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10"
+                style={{ backgroundColor: "#0f2614" }}
+              >
+                <Loader2
+                  className="w-6 h-6 animate-spin"
+                  style={{ color: "#c4973a" }}
+                />
+                <p className="text-xs" style={{ color: "#e8d5a3" }}>
+                  Loading scheduler…
+                </p>
+              </div>
+            )}
+            <iframe
+              src={acuityUrl}
+              title="Book your collection appointment"
+              onLoad={() => setIframeLoaded(true)}
+              className="w-full block"
+              style={{
+                height: "700px",
+                border: "none",
+                backgroundColor: "transparent",
+              }}
+              allow="payment"
+            />
+          </div>
+          <p className="text-xs mt-3 text-center" style={{ color: "#6ab04c" }}>
+            Trouble loading the scheduler?{" "}
+            <a
+              href={acuityUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#c4973a", textDecoration: "underline" }}
+            >
+              Open in a new tab <ExternalLink className="inline w-3 h-3" />
+            </a>
+          </p>
         </StepCard>
 
         {/* Footer */}
