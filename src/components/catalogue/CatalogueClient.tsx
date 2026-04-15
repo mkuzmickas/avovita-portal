@@ -55,36 +55,26 @@ export function CatalogueClient({
   }, []);
 
   // Deep-link support: /tests?category=<exact label> pre-selects the
-  // matching filter. Uses useSearchParams, reacts when searchParams
-  // OR the categories list change, and resolves to the same three-tier
-  // fallback (exact → startsWith → includes) so an unencoded "&" in the
-  // URL (browsers truncate as a param separator) still lands the right
-  // filter. A useMemo produces the resolved category; a separate effect
-  // then writes it to state so the update can't be dropped by render-
-  // phase set-state timing, and resets to null if the param is cleared.
+  // matching filter. Keyed on `categories` so the effect re-fires
+  // once the server-rendered list has populated — fixes the case
+  // where the initial render had an empty categories array.
   const searchParams = useSearchParams();
-  const resolvedCategoryFromUrl = useMemo(() => {
+  useEffect(() => {
+    if (categories.length === 0) return;
     const rawCat = searchParams.get("category")?.trim();
-    if (!rawCat || categories.length === 0) return null;
+    console.log("[catalogue] ?category= param:", rawCat);
+    if (!rawCat) return;
     const lower = rawCat.toLowerCase();
-    return (
+    const match =
       categories.find((c) => c.toLowerCase() === lower) ??
       categories.find((c) => c.toLowerCase().startsWith(lower)) ??
-      categories.find((c) => c.toLowerCase().includes(lower)) ??
-      null
-    );
-  }, [searchParams, categories]);
-  useEffect(() => {
+      categories.find((c) => c.toLowerCase().includes(lower));
     console.log(
-      "[catalogue] resolved ?category=",
-      searchParams.get("category"),
-      "→",
-      resolvedCategoryFromUrl
+      `[catalogue] category match: ${match ?? "none"} (from ${categories.length} options)`
     );
-    if (resolvedCategoryFromUrl) {
-      setSelectedCategory(resolvedCategoryFromUrl);
-    }
-  }, [resolvedCategoryFromUrl, searchParams]);
+    if (match) setSelectedCategory(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories]);
 
   // Deep-link support: /tests?test=SKU or /tests?id=UUID scrolls to,
   // expands, and briefly pulses the matching test. Runs once on mount.
