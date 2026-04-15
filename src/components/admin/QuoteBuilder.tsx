@@ -104,6 +104,31 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
       }),
     [lines, personCount, manualDiscountNum, manualDiscountType]
   );
+  // Admin-only margin: total minus the sum of wholesale cost_cad for
+  // the tests in this quote. Lines whose test has no cost are skipped
+  // and surfaced via a footnote. Never sent to the client — this sits
+  // only in the in-app Live Quote Summary.
+  const costByTestId = useMemo(() => {
+    const m = new Map<string, number | null>();
+    for (const c of catalogue) m.set(c.id, c.cost_cad);
+    return m;
+  }, [catalogue]);
+  const margin = useMemo(() => {
+    let totalCost = 0;
+    let missing = 0;
+    for (const l of lines) {
+      const c = costByTestId.get(l.test_id);
+      if (typeof c === "number") totalCost += c;
+      else missing += 1;
+    }
+    const amount = liveTotals.total_cad - totalCost;
+    const pct =
+      liveTotals.total_cad > 0
+        ? Math.round((amount / liveTotals.total_cad) * 100)
+        : 0;
+    return { amount, pct, missing, hasAnyCost: lines.length > missing };
+  }, [lines, costByTestId, liveTotals.total_cad]);
+
   const liveManualDiscount = useMemo(
     () =>
       resolveManualDiscount(
@@ -626,6 +651,32 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                     {formatCurrency(liveTotals.total_cad)}
                   </td>
                 </tr>
+                {/* Admin-only margin row — never included in the client email */}
+                {lines.length > 0 && margin.hasAnyCost && (
+                  <tr>
+                    <td
+                      className="pt-2 mt-1 border-t text-xs italic"
+                      style={{ color: "#6ab04c", borderColor: "#2d6b35" }}
+                    >
+                      Margin <span style={{ opacity: 0.7 }}>(internal)</span>
+                      {margin.missing > 0 && (
+                        <span
+                          className="ml-1"
+                          style={{ color: "#c4973a" }}
+                          title={`${margin.missing} test${margin.missing === 1 ? "" : "s"} missing cost_cad`}
+                        >
+                          * some costs unavailable
+                        </span>
+                      )}
+                    </td>
+                    <td
+                      className="pt-2 mt-1 border-t text-right text-xs italic"
+                      style={{ color: "#6ab04c", borderColor: "#2d6b35" }}
+                    >
+                      {formatCurrency(margin.amount)} ({margin.pct}%)
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
 

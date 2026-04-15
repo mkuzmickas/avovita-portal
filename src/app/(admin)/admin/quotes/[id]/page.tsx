@@ -19,6 +19,8 @@ export type CatalogueTestForQuote = {
   name: string;
   sku: string | null;
   price_cad: number;
+  /** Wholesale cost — used for the admin-only Margin line. */
+  cost_cad: number | null;
   lab_name: string;
 };
 
@@ -83,7 +85,7 @@ export default async function AdminQuoteBuilderPage({
   // Active tests with a price (only priced tests can be added to a quote)
   const { data: testsRaw } = await service
     .from("tests")
-    .select("id, name, sku, price_cad, lab:labs(name)")
+    .select("id, name, sku, price_cad, cost_cad, lab:labs(name)")
     .eq("active", true)
     .not("price_cad", "is", null)
     .order("name", { ascending: true });
@@ -93,6 +95,7 @@ export default async function AdminQuoteBuilderPage({
     name: string;
     sku: string | null;
     price_cad: number;
+    cost_cad: number | null;
     lab: { name: string } | { name: string }[] | null;
   };
   const catalogue: CatalogueTestForQuote[] = (
@@ -104,6 +107,7 @@ export default async function AdminQuoteBuilderPage({
       name: t.name,
       sku: t.sku,
       price_cad: t.price_cad,
+      cost_cad: t.cost_cad == null ? null : Number(t.cost_cad),
       lab_name: lab?.name ?? "—",
     };
   });
