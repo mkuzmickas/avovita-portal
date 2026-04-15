@@ -105,7 +105,8 @@ export function CatalogueClient({
       const matchesSearch =
         query === "" ||
         test.name.toLowerCase().includes(query) ||
-        (test.sku !== null && test.sku.toLowerCase().includes(query));
+        (test.sku !== null && test.sku.toLowerCase().includes(query)) ||
+        (test.category !== null && test.category.toLowerCase().includes(query));
       const matchesCategory =
         selectedCategory === null || test.category === selectedCategory;
       const matchesLab = selectedLab === null || test.lab.name === selectedLab;
