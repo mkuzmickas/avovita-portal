@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
 import { TestCard } from "./TestCard";
@@ -54,18 +55,27 @@ export function CatalogueClient({
   }, []);
 
   // Deep-link support: /tests?category=<exact label> pre-selects the
-  // matching filter on load. Case-insensitive lookup against the
-  // server-supplied categories list so URL trailing spaces / casing
-  // quirks don't silently fail.
+  // matching filter on load. Uses useSearchParams so the value is
+  // read through Next's router (robust against hydration timing).
+  // Falls back to case-insensitive + prefix match so an unencoded "&"
+  // in the URL (which browsers truncate as a param separator) still
+  // lands the right filter — e.g. ?category=Allergy%20 picks up
+  // "Allergy & Sensitivity".
+  const searchParams = useSearchParams();
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const rawCat = params.get("category")?.trim();
+    const rawCat = searchParams.get("category")?.trim();
+    console.log("[catalogue] ?category= param:", rawCat);
     if (!rawCat) return;
-    const match = categories.find(
-      (c) => c.toLowerCase() === rawCat.toLowerCase()
+    const lower = rawCat.toLowerCase();
+    const exact = categories.find((c) => c.toLowerCase() === lower);
+    const prefix =
+      exact ??
+      categories.find((c) => c.toLowerCase().startsWith(lower)) ??
+      categories.find((c) => c.toLowerCase().includes(lower));
+    console.log(
+      `[catalogue] category match: ${prefix ?? "none"} (from ${categories.length} options)`
     );
-    if (match) setSelectedCategory(match);
+    if (prefix) setSelectedCategory(prefix);
     // Run once on mount; categories is server-rendered and stable here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
