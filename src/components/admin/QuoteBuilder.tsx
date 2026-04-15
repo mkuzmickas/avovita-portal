@@ -113,21 +113,6 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
     for (const c of catalogue) m.set(c.id, c.cost_cad);
     return m;
   }, [catalogue]);
-  const margin = useMemo(() => {
-    let totalCost = 0;
-    let missing = 0;
-    for (const l of lines) {
-      const c = costByTestId.get(l.test_id);
-      if (typeof c === "number") totalCost += c;
-      else missing += 1;
-    }
-    const amount = liveTotals.total_cad - totalCost;
-    const pct =
-      liveTotals.total_cad > 0
-        ? Math.round((amount / liveTotals.total_cad) * 100)
-        : 0;
-    return { amount, pct, missing, hasAnyCost: lines.length > missing };
-  }, [lines, costByTestId, liveTotals.total_cad]);
 
   const liveManualDiscount = useMemo(
     () =>
@@ -139,6 +124,32 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
       ),
     [liveTotals, manualDiscountNum, manualDiscountType]
   );
+
+  const margin = useMemo(() => {
+    let totalCost = 0;
+    let missing = 0;
+    for (const l of lines) {
+      const c = costByTestId.get(l.test_id);
+      if (typeof c === "number") totalCost += c;
+      else missing += 1;
+    }
+    // Margin = test revenue − test cost − discounts. The home-visit
+    // fee is excluded because it's pass-through to FloLabs; discounts
+    // reduce the number so applying a bigger discount lowers margin.
+    const testRevenue = liveTotals.subtotal_cad;
+    const discounts = liveTotals.discount_cad + liveManualDiscount;
+    const amount = testRevenue - totalCost - discounts;
+    const netRevenue = Math.max(0, testRevenue - discounts);
+    const pct =
+      netRevenue > 0 ? Math.round((amount / netRevenue) * 100) : 0;
+    return { amount, pct, missing, hasAnyCost: lines.length > missing };
+  }, [
+    lines,
+    costByTestId,
+    liveTotals.subtotal_cad,
+    liveTotals.discount_cad,
+    liveManualDiscount,
+  ]);
 
   const filteredCatalogue = useMemo(() => {
     const q = search.trim().toLowerCase();
