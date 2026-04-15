@@ -391,16 +391,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // If the promo zeroed the total, Stripe's payment mode still wants
-    // a payment method by default and would reject the session — set
-    // payment_method_collection: "if_required" so the customer can
-    // breeze through without entering a card for a $0 order.
-    const sessionTotalCents = lineItems.reduce(
-      (s, li) => s + li.price_data.unit_amount,
-      0
-    );
-    const isFreeCheckout = sessionTotalCents === 0;
-
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "cad",
@@ -409,16 +399,12 @@ export async function POST(request: NextRequest) {
       cancel_url: `${appUrl}/checkout`,
       customer_email: customerEmail,
       metadata,
-      ...(isFreeCheckout
-        ? { payment_method_collection: "if_required" as const }
-        : {
-            payment_intent_data: {
-              metadata: {
-                version: "1",
-                account_user_id: body.account_user_id ?? "",
-              },
-            },
-          }),
+      payment_intent_data: {
+        metadata: {
+          version: "1",
+          account_user_id: body.account_user_id ?? "",
+        },
+      },
     });
 
     return NextResponse.json({ url: session.url, session_id: session.id });
