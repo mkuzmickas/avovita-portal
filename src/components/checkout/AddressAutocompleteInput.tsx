@@ -97,25 +97,43 @@ export function AddressAutocompleteInput({
         if (cancelled || !inputRef.current) return;
         const places = readPlacesNamespace();
         if (!places) {
-          setLoadError("Autocomplete unavailable — you can type your address manually.");
+          console.warn(
+            "[AddressAutocomplete] loader resolved but places namespace is missing"
+          );
+          setLoadError(
+            "Autocomplete unavailable — you can type your address manually."
+          );
           return;
         }
-        autocomplete = new places.Autocomplete(inputRef.current, {
-          types: ["address"],
-          componentRestrictions: { country: "ca" },
-          fields: ["address_components"],
-        });
-        autocomplete.addListener("place_changed", () => {
-          const place = autocomplete!.getPlace();
-          const parsed = parsePlace(place);
-          if (parsed.address_line1) onChange(parsed.address_line1);
-          onPlaceSelected(parsed);
-        });
+        try {
+          autocomplete = new places.Autocomplete(inputRef.current, {
+            types: ["address"],
+            componentRestrictions: { country: "ca" },
+            fields: ["address_components"],
+          });
+          autocomplete.addListener("place_changed", () => {
+            const place = autocomplete!.getPlace();
+            const parsed = parsePlace(place);
+            if (parsed.address_line1) onChange(parsed.address_line1);
+            onPlaceSelected(parsed);
+          });
+          console.log("[AddressAutocomplete] ready");
+        } catch (err) {
+          console.error(
+            "[AddressAutocomplete] Autocomplete() constructor threw:",
+            err
+          );
+          setLoadError(
+            "Autocomplete unavailable — you can type your address manually."
+          );
+        }
       })
       .catch((err: Error) => {
         if (cancelled) return;
-        console.warn("[AddressAutocomplete] failed to load:", err.message);
-        setLoadError("Autocomplete unavailable — you can type your address manually.");
+        console.error("[AddressAutocomplete] failed to load:", err.message);
+        setLoadError(
+          "Autocomplete unavailable — you can type your address manually."
+        );
       });
 
     return () => {
