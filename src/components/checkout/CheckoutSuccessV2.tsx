@@ -195,6 +195,9 @@ export function CheckoutSuccessV2({
           )}
         </StepCard>
 
+        {/* Optional — set password between waiver and booking */}
+        <SetPasswordCard email={email} />
+
         {/* Step 2 — Booking */}
         <StepCard
           number={2}
@@ -252,9 +255,6 @@ export function CheckoutSuccessV2({
             </a>
           </p>
         </StepCard>
-
-        {/* One last thing — password setup (optional) */}
-        <SetPasswordCard email={email} />
 
         {/* Footer */}
         <p className="text-center text-xs mt-8" style={{ color: "#6ab04c" }}>
