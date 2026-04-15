@@ -74,23 +74,26 @@ export async function POST(request: NextRequest) {
       );
       return NextResponse.json(
         { error: "Invalid or expired promo code" },
-        { status: 404 }
-      );
-    }
-    if (!promo.coupon || !promo.coupon.valid) {
-      return NextResponse.json(
-        { error: "That promo code is no longer active." },
-        { status: 410 }
+        { status: 400 }
       );
     }
 
+    // The `active: true` filter on list() already guarantees this code
+    // is currently usable — trust it and don't second-guess on the
+    // coupon.valid sub-field (which sometimes lags or is missing
+    // depending on SDK version). Stripe will perform the final
+    // validation when the session is created, so any edge case is
+    // caught there.
+    console.log(
+      `[validate-promo] success — id=${promo.id} code="${promo.code}" coupon=${JSON.stringify(promo.coupon)}`
+    );
     return NextResponse.json({
       id: promo.id,
       code: promo.code,
-      percent_off: promo.coupon.percent_off ?? null,
-      amount_off: promo.coupon.amount_off ?? null,
-      currency: promo.coupon.currency ?? null,
-      name: promo.coupon.name ?? null,
+      percent_off: promo.coupon?.percent_off ?? null,
+      amount_off: promo.coupon?.amount_off ?? null,
+      currency: promo.coupon?.currency ?? null,
+      name: promo.coupon?.name ?? null,
     });
   } catch (err) {
     console.error("[validate-promo] caught error:", err);

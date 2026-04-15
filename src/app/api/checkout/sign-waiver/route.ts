@@ -4,6 +4,31 @@ import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
+function withTimeoutLocal<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string
+): Promise<T | { __timeout: true }> {
+  return Promise.race<T | { __timeout: true }>([
+    promise.then((v) => v as T),
+    new Promise<{ __timeout: true }>((resolve) =>
+      setTimeout(() => {
+        console.warn(`[sign-waiver] ${label} timed out after ${ms}ms`);
+        resolve({ __timeout: true });
+      }, ms)
+    ),
+  ]);
+}
+
+function isTimeoutLocal<T>(v: T | { __timeout: true }): v is { __timeout: true } {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "__timeout" in (v as Record<string, unknown>) &&
+    (v as { __timeout: true }).__timeout === true
+  );
+}
+
 /**
  * POST /api/checkout/sign-waiver
  *
@@ -96,34 +121,71 @@ export async function POST(request: NextRequest) {
       null;
     const nowIso = new Date().toISOString();
 
-    const { error: updateErr } = await service
-      .from("accounts")
-      .update({
-        waiver_completed: true,
-        waiver_completed_at: nowIso,
-        waiver_ip_address: ipAddress,
-        waiver_signed_name: signedName.trim(),
-        waiver_version: "1.0",
-      })
-      .eq("id", account.id);
+    // 15s timeout + one retry after 1s. Service-role client bypasses
+    // RLS and uses a more reliable connection path than anon.
+    const runAccountsUpdate = () =>
+      withTimeoutLocal(
+        Promise.resolve(
+          service
+            .from("accounts")
+            .update({
+              waiver_completed: true,
+              waiver_completed_at: nowIso,
+              waiver_ip_address: ipAddress,
+              waiver_signed_name: signedName.trim(),
+              waiver_version: "1.0",
+            })
+            .eq("id", account.id)
+        ),
+        15_000,
+        "accounts.update"
+      );
 
-    if (updateErr) {
+    let updateRes = await runAccountsUpdate();
+    if (isTimeoutLocal(updateRes)) {
+      console.warn("[sign-waiver] accounts.update timed out — retrying once");
+      await new Promise((r) => setTimeout(r, 1000));
+      updateRes = await runAccountsUpdate();
+    }
+    if (isTimeoutLocal(updateRes)) {
       return NextResponse.json(
-        { error: `Failed to save waiver: ${updateErr.message}` },
+        { error: "Save timed out — please try again" },
+        { status: 504 }
+      );
+    }
+    if (updateRes.error) {
+      return NextResponse.json(
+        { error: `Failed to save waiver: ${updateRes.error.message}` },
         { status: 500 }
       );
     }
 
-    // Best-effort consent log
+    // Sequential, isolated consent log — never blocks the success
+    // response. Same 15s timeout so a slow connection doesn't surface
+    // as a hung user request.
     try {
-      await service.from("consents").insert({
-        account_id: account.id,
-        profile_id: null,
-        consent_type: "general_pipa",
-        consent_text_version: "1.0",
-        ip_address: ipAddress,
-        user_agent: request.headers.get("user-agent") ?? null,
-      });
+      const consentRes = await withTimeoutLocal(
+        Promise.resolve(
+          service.from("consents").insert({
+            account_id: account.id,
+            profile_id: null,
+            consent_type: "general_pipa",
+            consent_text_version: "1.0",
+            ip_address: ipAddress,
+            user_agent: request.headers.get("user-agent") ?? null,
+          })
+        ),
+        15_000,
+        "consent insert"
+      );
+      if (isTimeoutLocal(consentRes)) {
+        console.warn("[sign-waiver] consent insert timed out (non-fatal)");
+      } else if (consentRes.error) {
+        console.warn(
+          "[sign-waiver] consent insert error (non-fatal):",
+          consentRes.error.message
+        );
+      }
     } catch (err) {
       console.warn("[sign-waiver] consent log failed (non-fatal):", err);
     }

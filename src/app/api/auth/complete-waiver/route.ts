@@ -109,24 +109,38 @@ export async function POST(request: NextRequest) {
     const service = createServiceRoleClient();
     log("service client created");
 
-    const updateResult = await withTimeout(
-      Promise.resolve(
-        service
-          .from("accounts")
-          .update({
-            waiver_completed: true,
-            waiver_completed_at: nowIso,
-            waiver_ip_address: ipAddress,
-            waiver_signed_name: signedName.trim(),
-            waiver_version: "1.0",
-          })
-          .eq("id", user.id)
-      ),
-      8000,
-      "accounts.update"
-    );
+    // ─── PRIMARY WRITE: accounts (with one retry) ───────────────────
+    // Service-role bypasses RLS. Run with a 15s timeout and one retry
+    // after a short backoff so a transient connection blip doesn't
+    // surface as a user-facing error.
+    const runAccountsUpdate = () =>
+      withTimeout(
+        Promise.resolve(
+          service
+            .from("accounts")
+            .update({
+              waiver_completed: true,
+              waiver_completed_at: nowIso,
+              waiver_ip_address: ipAddress,
+              waiver_signed_name: signedName.trim(),
+              waiver_version: "1.0",
+            })
+            .eq("id", user.id)
+        ),
+        15_000,
+        "accounts.update"
+      );
+
+    let updateResult = await runAccountsUpdate();
     if (isTimeoutResult(updateResult)) {
-      console.error("[complete-waiver] accounts.update hung — aborting");
+      log("accounts.update first attempt timed out — retrying once");
+      await new Promise((r) => setTimeout(r, 1000));
+      updateResult = await runAccountsUpdate();
+    }
+    if (isTimeoutResult(updateResult)) {
+      console.error(
+        "[complete-waiver] accounts.update timed out twice — aborting"
+      );
       return NextResponse.json(
         { error: "Save timed out — please refresh and try again" },
         { status: 504 }
@@ -141,10 +155,10 @@ export async function POST(request: NextRequest) {
     }
     log("accounts.update succeeded");
 
-    // ─── BEST-EFFORT: consent log ───────────────────────────────────
-    // The waiver is already saved; this insert is for compliance audit
-    // only. Wrap in its own try/catch + short timeout so it can never
-    // block the success response.
+    // ─── BEST-EFFORT: consent log (sequential, isolated) ────────────
+    // Runs AFTER the accounts.update has succeeded so a failure here
+    // can never cascade into a failed waiver save. Wrapped in its own
+    // try/catch so any error is swallowed and logged only.
     try {
       const consentResult = await withTimeout(
         Promise.resolve(
@@ -157,11 +171,11 @@ export async function POST(request: NextRequest) {
             user_agent: request.headers.get("user-agent") ?? null,
           })
         ),
-        3000,
+        15_000,
         "consent insert"
       );
       if (isTimeoutResult(consentResult)) {
-        log("consent insert timed out — non-fatal");
+        log("consent insert timed out — non-fatal, waiver already saved");
       } else if (consentResult.error) {
         log(`consent insert error (non-fatal): ${consentResult.error.message}`);
       } else {
