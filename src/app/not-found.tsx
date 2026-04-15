@@ -1,14 +1,31 @@
-import Link from "next/link";
-import { Leaf, ArrowRight } from "lucide-react";
+"use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Leaf } from "lucide-react";
+
+/**
+ * App Router `not-found.tsx` is the only safe "catch-all" — Next.js
+ * renders it only for routes that didn't match any page. A wildcard
+ * `/:path*` redirect in next.config would match legitimate routes
+ * too and break the whole site, so we redirect from this component
+ * instead.
+ */
 export default function NotFound() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const timer = setTimeout(() => router.replace("/"), 1500);
+    return () => clearTimeout(timer);
+  }, [router]);
+
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 py-12"
       style={{ backgroundColor: "#0a1a0d" }}
     >
       <div className="w-full max-w-md text-center">
-        {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
@@ -27,35 +44,15 @@ export default function NotFound() {
           </span>
         </div>
 
-        <p
-          className="text-8xl font-heading font-semibold mb-2"
-          style={{
-            color: "#c4973a",
-            fontFamily: '"Cormorant Garamond", Georgia, serif',
-          }}
-        >
-          404
+        <p className="text-sm mb-2" style={{ color: "#e8d5a3" }}>
+          Redirecting you home…
         </p>
-        <h1
-          className="font-heading text-3xl sm:text-4xl font-semibold mb-3"
-          style={{
-            color: "#ffffff",
-            fontFamily: '"Cormorant Garamond", Georgia, serif',
-          }}
+        <Link
+          href="/"
+          className="text-sm underline"
+          style={{ color: "#c4973a" }}
         >
-          Page not found
-        </h1>
-        <p
-          className="text-sm sm:text-base mb-8 max-w-sm mx-auto leading-relaxed"
-          style={{ color: "#e8d5a3" }}
-        >
-          The page you&apos;re looking for doesn&apos;t exist or has moved.
-          Let&apos;s get you back on track.
-        </p>
-
-        <Link href="/" className="mf-btn-primary px-6 py-3 inline-flex">
-          Back to home
-          <ArrowRight className="w-4 h-4" />
+          Go now
         </Link>
       </div>
     </div>
