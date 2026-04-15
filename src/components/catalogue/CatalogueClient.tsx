@@ -78,7 +78,7 @@ export function CatalogueClient({
     console.log(
       `[catalogue] category match: ${match ?? "none"} (from ${categories.length} options)`
     );
-    if (match) setSelectedCategory(match);
+    if (match) setSelectedCategory(match.trim());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories]);
 
@@ -156,7 +156,9 @@ export function CatalogueClient({
         logged += 1;
       }
       const matchesCategory =
-        selectedCategory === null || test.category === selectedCategory;
+        selectedCategory === null ||
+        (test.category !== null &&
+          test.category.trim() === selectedCategory.trim());
       const matchesLab = selectedLab === null || test.lab.name === selectedLab;
       return matchesSearch && matchesCategory && matchesLab;
     });
