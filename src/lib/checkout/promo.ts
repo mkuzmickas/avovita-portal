@@ -22,7 +22,7 @@ export function computePromoDiscount(
   return 0;
 }
 
-/** Renders a short label like "ABC-DEMO · 100% off" or "ABC-DEMO · −$20.00". */
+/** Renders a short label like "CODE · 100% off" or "CODE · −$20.00 off". */
 export function promoLabel(promo: AppliedPromo): string {
   if (promo.percent_off != null) {
     return `${promo.code} · ${promo.percent_off}% off`;

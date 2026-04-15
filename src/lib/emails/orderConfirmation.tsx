@@ -30,7 +30,7 @@ export interface OrderConfirmationProps {
   floLabsUrl?: string;
   /** Stripe session ID — used to build the waiver completion link. */
   stripeSessionId?: string;
-  /** Promo code applied at checkout (e.g. "AVOVITA-TEST"). */
+  /** Customer-facing Stripe Promotion Code applied at checkout. */
   promoCode?: string | null;
   /** Discount amount the promo took off, CAD. 0 or undefined to hide. */
   promoDiscount?: number;

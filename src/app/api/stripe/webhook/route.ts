@@ -479,13 +479,14 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   // ─── 4. Materialise + send confirmation email ──────────────────
   // Single path now — guests went through createOrFindGuestAccount above
   // so payload.account_user_id is always set by this point.
-  await materialiseOrder(supabase, orderId, payload);
+  await materialiseOrder(supabase, orderId, payload, total);
   await sendOrderConfirmationEmail(
     supabase,
     orderId,
     payload,
     session.id,
-    confirmationLink
+    confirmationLink,
+    total
   );
 
   // FloLabs requisition email — gated behind feature flag

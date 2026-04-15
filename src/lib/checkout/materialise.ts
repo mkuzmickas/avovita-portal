@@ -52,7 +52,7 @@ export interface OrderMetadataPayload {
   /** Multi-test discount total ($20 × line count, 0 if under threshold). */
   discount_cad: number;
   total: number;
-  /** Promo code applied at checkout (e.g. "AVOVITA-TEST"), if any. */
+  /** Customer-facing Stripe Promotion Code applied at checkout, if any. */
   promo_code?: string | null;
   /** Tagged organization (white-label partner) the order was placed via. */
   org_id?: string | null;
@@ -113,7 +113,11 @@ export function reassembleMetadata(
 export async function materialiseOrder(
   supabase: ServiceClient,
   orderId: string,
-  payload: OrderMetadataPayload
+  payload: OrderMetadataPayload,
+  /** Authoritative amount the customer was charged, in CAD. When
+   *  provided, used to compute the promo discount as
+   *  payload.total − totalPaidCad. */
+  totalPaidCad?: number
 ): Promise<{ profileIdByPersonIndex: Map<number, string> }> {
   const accountId = payload.account_user_id;
   if (!accountId) {
@@ -285,7 +289,8 @@ export async function sendOrderConfirmationEmail(
    * Pass null/undefined for already-confirmed customers (logged-in flow
    * or returning guests).
    */
-  confirmationLink?: string | null
+  confirmationLink?: string | null,
+  totalPaidCad?: number
 ): Promise<void> {
   try {
     const accountId = payload.account_user_id;
@@ -338,10 +343,13 @@ export async function sendOrderConfirmationEmail(
     const orderIdShort = orderId.slice(0, 8).toUpperCase();
 
     const promoCode = payload.promo_code ?? null;
-    // AVOVITA-TEST is the only supported coupon today and applies 100% off
-    // (handled in the Stripe checkout route). When set, the entire payload
-    // total is the discount amount.
-    const promoDiscount = promoCode ? payload.total : 0;
+    // Real promo discount = the gap between the pre-promo total in the
+    // payload and the actual amount Stripe charged. Falls back to 0 when
+    // the caller didn't supply totalPaidCad.
+    const promoDiscount =
+      promoCode && typeof totalPaidCad === "number"
+        ? Math.max(0, payload.total - totalPaidCad)
+        : 0;
 
     const html = renderOrderConfirmationEmail({
       firstName,
@@ -413,7 +421,8 @@ export async function sendGuestOrderConfirmationEmail(
   orderId: string,
   payload: OrderMetadataPayload,
   customerEmail: string,
-  stripeSessionId?: string
+  stripeSessionId?: string,
+  totalPaidCad?: number
 ): Promise<void> {
   try {
     const accountHolder = payload.persons.find((p) => p.is_account_holder);
@@ -455,10 +464,13 @@ export async function sendGuestOrderConfirmationEmail(
     const orderIdShort = orderId.slice(0, 8).toUpperCase();
 
     const promoCode = payload.promo_code ?? null;
-    // AVOVITA-TEST is the only supported coupon today and applies 100% off
-    // (handled in the Stripe checkout route). When set, the entire payload
-    // total is the discount amount.
-    const promoDiscount = promoCode ? payload.total : 0;
+    // Real promo discount = the gap between the pre-promo total in the
+    // payload and the actual amount Stripe charged. Falls back to 0 when
+    // the caller didn't supply totalPaidCad.
+    const promoDiscount =
+      promoCode && typeof totalPaidCad === "number"
+        ? Math.max(0, payload.total - totalPaidCad)
+        : 0;
 
     const html = renderOrderConfirmationEmail({
       firstName,

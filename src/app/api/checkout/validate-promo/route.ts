@@ -8,7 +8,7 @@ export const runtime = "nodejs";
  *
  * Body: { code: string }
  *
- * Validates a customer-facing Stripe Promotion Code (e.g. "ABC-DEMO").
+ * Validates any active customer-facing Stripe Promotion Code.
  * Returns the promotion code id (`promo_xxx`) — NOT the underlying
  * coupon id — so the checkout session can reference it via
  * `discounts: [{ promotion_code: id }]`. Also returns the discount

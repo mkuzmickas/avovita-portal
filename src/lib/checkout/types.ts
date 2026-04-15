@@ -69,7 +69,7 @@ export interface CheckoutPayload {
   discount_cad: number;
   total: number;
   account_user_id: string | null;
-  /** Customer-facing promo code string (e.g. "ABC-DEMO"), for receipts/logs. */
+  /** Customer-facing Stripe Promotion Code string entered by the user. */
   promo_code?: string;
   /** Stripe Promotion Code id (`promo_xxx`) returned by validate-promo. */
   promotion_code_id?: string | null;
@@ -90,7 +90,7 @@ export interface CheckoutPayload {
 export interface AppliedPromo {
   /** Stripe promotion code id (`promo_xxx`). */
   id: string;
-  /** Customer-facing string (e.g. "ABC-DEMO"). */
+  /** Customer-facing code string as entered. */
   code: string;
   /** Discount as a percentage, when the underlying coupon uses percent_off. */
   percent_off: number | null;
