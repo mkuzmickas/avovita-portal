@@ -125,23 +125,9 @@ export function CatalogueClient({
   return (
     <div className="min-h-screen pb-32" style={{ backgroundColor: "#0a1a0d" }}>
       {/* Top nav — auto-swaps to org branding when wrapped in OrgProvider */}
-      <OrgAwareHeader
-        rightSlot={
-          !isLoggedIn ? (
-            <Link
-              href="/login"
-              className="text-sm font-medium px-4 py-2 rounded-lg border transition-colors shrink-0"
-              style={{
-                color: "#e8d5a3",
-                borderColor: "#2d6b35",
-                backgroundColor: "transparent",
-              }}
-            >
-              Existing Client Login
-            </Link>
-          ) : null
-        }
-      />
+      {/* AccountIndicator inside OrgAwareHeader handles Sign In / account
+          dropdown for both logged-in and logged-out visitors. */}
+      <OrgAwareHeader />
 
       {/* Page title */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-6">

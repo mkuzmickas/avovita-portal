@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Leaf } from "lucide-react";
 import { useOrg } from "./OrgContext";
+import { AccountIndicator } from "@/components/auth/AccountIndicator";
 
 /**
  * Top header used by the homepage and the catalogue page. When an
@@ -41,7 +42,10 @@ export function OrgAwareHeader({
             <DefaultBrandMark />
           )}
         </Link>
-        {rightSlot}
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+          {rightSlot}
+          <AccountIndicator />
+        </div>
       </div>
     </header>
   );
