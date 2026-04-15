@@ -7,7 +7,7 @@ import { DiscountBanner } from "./DiscountBanner";
 import { useCart } from "@/components/cart/CartContext";
 import type { CatalogueCartItem } from "@/components/catalogue/types";
 import type { VisitFees, AppliedPromo } from "@/lib/checkout/types";
-import { computePromoDiscount } from "@/lib/checkout/promo";
+import { calculateTotals } from "@/lib/checkout/totals";
 
 interface CheckoutCartSummaryProps {
   cart: CatalogueCartItem[];
@@ -43,17 +43,40 @@ export function CheckoutCartSummary({
 }: CheckoutCartSummaryProps) {
   const { removeItem } = useCart();
   const effectiveLineCount = lineCount ?? cart.length;
+  // For the per-line discount annotation we still need the discount
+  // shape (per_line / applies). The authoritative totals come from
+  // calculateTotals — same function the Step 4 pane uses.
   const discount = computeDiscount(effectiveLineCount);
 
-  const cartSubtotal = cart.reduce(
-    (sum, item) => sum + item.price_cad * item.quantity,
-    0
+  // Build a synthetic test-line price array so calculateTotals receives
+  // the same shape regardless of caller. On Step 1 (before the user
+  // picks a person count) we fall back to the cart, with one entry per
+  // unique cart item (the multi-test discount uses .length).
+  const cartLinePrices = cart.flatMap((item) =>
+    Array.from({ length: item.quantity }, () => item.price_cad)
   );
-  const subtotal = subtotalOverride ?? cartSubtotal;
-  const subtotalAfterDiscount = subtotal - discount.total;
-  const grossTotal = subtotalAfterDiscount + (visitFees?.total ?? 0);
-  const promoDiscount = computePromoDiscount(appliedPromo, grossTotal);
-  const total = grossTotal - promoDiscount;
+  const testLinePrices =
+    typeof subtotalOverride === "number" && lineCount
+      ? Array.from({ length: lineCount }, (_, i) =>
+          // Distribute subtotalOverride across `lineCount` rows for
+          // calculation symmetry. When the caller supplies a real
+          // assignment-derived subtotal + line count, the sum matches
+          // exactly; otherwise this still preserves the per-line shape.
+          i === 0 ? subtotalOverride - 0 : 0
+        )
+      : cartLinePrices;
+
+  const totals = calculateTotals({
+    testLinePrices,
+    visitFee: visitFees?.total ?? 0,
+    appliedPromo: appliedPromo ?? null,
+  });
+
+  const subtotal = totals.testsSubtotal;
+  const subtotalAfterDiscount = totals.subtotalAfterDiscount;
+  const promoDiscount = totals.promoDiscount;
+  const grossTotal = totals.subtotalAfterDiscount + totals.visitFee;
+  const total = totals.grandTotal;
 
   return (
     <aside

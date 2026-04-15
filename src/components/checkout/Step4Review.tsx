@@ -26,7 +26,7 @@ import type {
 } from "@/lib/checkout/types";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
 import { computeDiscount } from "@/lib/checkout/discount";
-import { computePromoDiscount } from "@/lib/checkout/promo";
+import { calculateTotals } from "@/lib/checkout/totals";
 import { DiscountBanner } from "./DiscountBanner";
 import type { PersonAssignmentEntry } from "./Step2AssignTests";
 
@@ -103,16 +103,26 @@ export function Step4Review({
     [persons.length, collectionAddress.postal_code]
   );
 
-  const subtotal = assignments.reduce((s, a) => s + a.price_cad, 0);
+  // Single source of truth — same function powers the right-rail summary.
+  const totals = useMemo(
+    () =>
+      calculateTotals({
+        testLinePrices: assignments.map((a) => a.price_cad),
+        visitFee: visitFees.total,
+        appliedPromo,
+      }),
+    [assignments, visitFees.total, appliedPromo]
+  );
+  const subtotal = totals.testsSubtotal;
+  // Full discount shape (per_line / applies) for the per-line annotation.
   const discount = useMemo(
     () => computeDiscount(assignments.length),
     [assignments.length]
   );
-  const subtotalAfterDiscount = subtotal - discount.total;
-  const grossTotal = subtotalAfterDiscount + visitFees.total;
-  const promoDiscount = computePromoDiscount(appliedPromo, grossTotal);
-  const total = grossTotal - promoDiscount;
-  const promoApplied = !!appliedPromo;
+  const subtotalAfterDiscount = totals.subtotalAfterDiscount;
+  const promoDiscount = totals.promoDiscount;
+  const grossTotal = totals.subtotalAfterDiscount + totals.visitFee;
+  const total = totals.grandTotal;
 
   const assignmentsByPerson = useMemo(() => {
     const m = new Map<number, PersonAssignmentEntry[]>();
