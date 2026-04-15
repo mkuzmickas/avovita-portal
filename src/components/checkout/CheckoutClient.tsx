@@ -80,7 +80,10 @@ export function CheckoutClient({
 }: CheckoutClientProps) {
   void _accountEmail;
   const router = useRouter();
-  const { cart, hydrated } = useCart();
+  const { cart, hydrated, addItem, clearCart } = useCart();
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [appliedQuoteNumber, setAppliedQuoteNumber] = useState<string | null>(null);
 
   const [step, setStep] = useState(1);
   const [personCount, setPersonCount] = useState(1);
@@ -111,6 +114,64 @@ export function CheckoutClient({
       }
     }
   }, [searchParams]);
+
+  // Accept-quote deep link: /checkout?quote=AVO-YYYY-NNNN pre-populates
+  // the cart from the quote's lines. Validates expiry + status server-
+  // side; on failure the checkout still renders, with a friendly banner.
+  useEffect(() => {
+    if (!hydrated) return;
+    const quoteNumber = searchParams.get("quote");
+    if (!quoteNumber) return;
+    // Guard: only apply once per quote per mount.
+    if (appliedQuoteNumber === quoteNumber) return;
+
+    let cancelled = false;
+    setQuoteLoading(true);
+    setQuoteError(null);
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/quotes/${encodeURIComponent(quoteNumber)}`
+        );
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!res.ok) {
+          setQuoteError(
+            data.error ?? "This quote is no longer available."
+          );
+          return;
+        }
+        type QuoteItem = {
+          test_id: string;
+          test_name: string;
+          lab_name: string;
+          price_cad: number;
+        };
+        const items = (data.items ?? []) as QuoteItem[];
+        if (items.length === 0) {
+          setQuoteError("This quote has no tests attached.");
+          return;
+        }
+        clearCart();
+        for (const it of items) {
+          addItem({
+            test_id: it.test_id,
+            test_name: it.test_name,
+            lab_name: it.lab_name,
+            price_cad: it.price_cad,
+            quantity: 1,
+          });
+        }
+        setAppliedQuoteNumber(quoteNumber);
+      } finally {
+        if (!cancelled) setQuoteLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, searchParams]);
 
   // ─── Restore persisted state ──────────────────────────────────────────
   useEffect(() => {
@@ -245,11 +306,24 @@ export function CheckoutClient({
   ]);
 
   // ─── Cart redirect ────────────────────────────────────────────────────
+  // Don't bounce to /tests while a ?quote= deep-link is loading items or
+  // while a quote error banner is being shown — the user should see the
+  // message on /checkout, not get kicked back to the catalogue.
   useEffect(() => {
+    if (quoteLoading || quoteError) return;
+    if (searchParams.get("quote") && !appliedQuoteNumber) return;
     if (hydrated && cart.length === 0) {
       router.replace("/tests");
     }
-  }, [hydrated, cart.length, router]);
+  }, [
+    hydrated,
+    cart.length,
+    router,
+    quoteLoading,
+    quoteError,
+    searchParams,
+    appliedQuoteNumber,
+  ]);
 
   // ─── Adjust persons when count changes ────────────────────────────────
   const handlePersonCountChange = (count: number) => {
@@ -336,6 +410,51 @@ export function CheckoutClient({
   }
 
   if (cart.length === 0) {
+    if (quoteLoading) {
+      return (
+        <div
+          className="min-h-screen flex items-center justify-center"
+          style={{ backgroundColor: "#0a1a0d" }}
+        >
+          <p className="text-sm" style={{ color: "#6ab04c" }}>
+            Loading your quote…
+          </p>
+        </div>
+      );
+    }
+    if (quoteError) {
+      return (
+        <div
+          className="min-h-screen flex items-center justify-center px-4"
+          style={{ backgroundColor: "#0a1a0d" }}
+        >
+          <div
+            className="max-w-md w-full rounded-2xl border p-6 text-center"
+            style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+          >
+            <h1
+              className="font-heading text-2xl font-semibold mb-3"
+              style={{
+                color: "#ffffff",
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+              }}
+            >
+              Quote <span style={{ color: "#c4973a" }}>unavailable</span>
+            </h1>
+            <p className="text-sm mb-5" style={{ color: "#e8d5a3" }}>
+              {quoteError}
+            </p>
+            <Link
+              href="/tests"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold"
+              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            >
+              Browse our test catalogue
+            </Link>
+          </div>
+        </div>
+      );
+    }
     return (
       <div
         className="min-h-screen flex items-center justify-center"

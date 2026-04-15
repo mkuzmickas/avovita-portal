@@ -21,6 +21,8 @@ export interface QuoteEmailProps {
   expiresAt: string | null;
   notes: string | null;
   catalogueUrl: string;
+  /** One-click accept link: /checkout?quote=<quote_number>. */
+  acceptUrl: string;
 }
 
 function formatCurrency(amount: number): string {
@@ -62,6 +64,7 @@ export function renderQuoteEmail(props: QuoteEmailProps): string {
     expiresAt,
     notes,
     catalogueUrl,
+    acceptUrl,
   } = props;
 
   const linesHtml = lines
@@ -174,9 +177,13 @@ export function renderQuoteEmail(props: QuoteEmailProps): string {
           <tr>
             <td style="padding: 24px 32px; text-align: center;">
               <p style="margin: 0 0 16px 0; font-size: 14px; color: #4b5563;">
-                Ready to proceed? Browse our full catalogue and place your order online.
+                Ready to proceed? Accept this quote to go straight to checkout with your tests pre-loaded — or browse our full catalogue.
               </p>
-              <a href="${catalogueUrl}" target="_blank" style="display: inline-block; background: #c4973a; color: #0a1a0d; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 15px;">
+              <a href="${acceptUrl}" target="_blank" style="display: inline-block; background: #c4973a; color: #0a1a0d; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 15px; margin-bottom: 10px;">
+                Accept Quote &amp; Checkout
+              </a>
+              <br />
+              <a href="${catalogueUrl}" target="_blank" style="display: inline-block; background: transparent; color: #c4973a; border: 2px solid #c4973a; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 14px;">
                 Browse Our Tests
               </a>
             </td>

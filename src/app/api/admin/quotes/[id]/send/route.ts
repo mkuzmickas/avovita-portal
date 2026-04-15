@@ -123,11 +123,11 @@ export async function POST(
       };
     });
 
-    const catalogueUrl =
-      (process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca").replace(
-        /\/$/,
-        ""
-      ) + "/tests";
+    const appUrl = (
+      process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca"
+    ).replace(/\/$/, "");
+    const catalogueUrl = `${appUrl}/tests`;
+    const acceptUrl = `${appUrl}/checkout?quote=${encodeURIComponent(quote.quote_number)}`;
 
     const html = renderQuoteEmail({
       firstName: quote.client_first_name,
@@ -140,6 +140,7 @@ export async function POST(
       expiresAt: quote.expires_at,
       notes: quote.notes,
       catalogueUrl,
+      acceptUrl,
     });
 
     try {
