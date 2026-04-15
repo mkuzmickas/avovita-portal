@@ -91,82 +91,46 @@ export async function POST(request: NextRequest) {
     // depending on SDK version). Stripe will perform the final
     // validation when the session is created, so any edge case is
     // caught there.
-    // Defensive coupon lookup. The SDK may give us:
-    //   promo.coupon = { id, percent_off, amount_off, ... }   ← expanded
-    //   promo.coupon = "coupon_xxx"                            ← id only
-    //   promo.coupon = undefined / missing field               ← shape drift
-    // We try each in order and ALWAYS finish with a direct
-    // stripe.coupons.retrieve() so percent_off / amount_off are
-    // guaranteed to be populated.
+    // Step 1: pull the coupon id off the promotion code, accepting any
+    // shape Stripe might hand us.
     const rawCoupon = (promo as { coupon?: unknown }).coupon;
     console.log(
-      `[validate-promo] raw promo.coupon shape:`,
-      typeof rawCoupon,
+      "[validate-promo] raw promo.coupon:",
       JSON.stringify(rawCoupon)
     );
-
     let couponId: string | null = null;
     if (rawCoupon && typeof rawCoupon === "object") {
       couponId = (rawCoupon as { id?: string }).id ?? null;
     } else if (typeof rawCoupon === "string") {
       couponId = rawCoupon;
     }
-    console.log(`[validate-promo] resolved couponId: ${couponId}`);
+    console.log(`[validate-promo] couponId: ${couponId}`);
 
-    let percentOff: number | null = null;
-    let amountOff: number | null = null;
-    let currency: string | null = null;
-    let name: string | null = null;
-
-    // First: try whatever was already on the inline coupon object.
-    if (rawCoupon && typeof rawCoupon === "object") {
-      const inline = rawCoupon as {
-        percent_off?: number | null;
-        amount_off?: number | null;
-        currency?: string | null;
-        name?: string | null;
-      };
-      if (typeof inline.percent_off === "number") percentOff = inline.percent_off;
-      if (typeof inline.amount_off === "number") amountOff = inline.amount_off;
-      if (typeof inline.currency === "string") currency = inline.currency;
-      if (typeof inline.name === "string") name = inline.name;
+    if (!couponId) {
+      return NextResponse.json(
+        { error: "Promo code is missing its underlying coupon." },
+        { status: 400 }
+      );
     }
 
-    // Second: if either discount field is still missing, fetch the coupon
-    // directly. This is the authoritative source.
-    if ((percentOff === null && amountOff === null) && couponId) {
-      console.log(
-        `[validate-promo] inline coupon missing discount fields — calling stripe.coupons.retrieve(${couponId})`
-      );
-      const coupon = (await stripe.coupons.retrieve(couponId)) as {
-        percent_off: number | null;
-        amount_off: number | null;
-        currency: string | null;
-        name: string | null;
-      };
-      console.log(
-        `[validate-promo] retrieved coupon: percent_off=${coupon.percent_off} amount_off=${coupon.amount_off}`
-      );
-      percentOff =
-        typeof coupon.percent_off === "number" ? coupon.percent_off : null;
-      amountOff =
-        typeof coupon.amount_off === "number" ? coupon.amount_off : null;
-      currency = coupon.currency ?? currency;
-      name = coupon.name ?? name;
-    }
-
+    // Step 2: ALWAYS make an explicit retrieve call. Don't trust the
+    // inline coupon shape — go straight to the authoritative source.
+    const coupon = await stripe.coupons.retrieve(couponId);
     console.log(
-      `[validate-promo] success — promoId=${promo.id} code="${promo.code}" ` +
-        `percentOff=${percentOff} amountOff=${amountOff}`
+      "[validate-promo] raw coupon from stripe.coupons.retrieve:",
+      JSON.stringify(coupon, null, 2)
     );
+
+    // Step 3 + 4: read percent_off / amount_off straight off the
+    // retrieve response and return camelCase.
     return NextResponse.json({
       valid: true,
       promoId: promo.id,
       code: promo.code,
-      percentOff,
-      amountOff,
-      currency,
-      name,
+      percentOff: coupon.percent_off ?? 0,
+      amountOff: coupon.amount_off ?? 0,
+      currency: coupon.currency ?? null,
+      name: coupon.name ?? null,
     });
   } catch (err) {
     console.error("[validate-promo] caught error:", err);
