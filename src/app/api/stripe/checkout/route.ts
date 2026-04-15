@@ -332,23 +332,41 @@ export async function POST(request: NextRequest) {
     void accountHolder; // We collect email at success-page time for guests
 
     // ─── Handle promo code ─────────────────────────────────────────
-    // AVOVITA-TEST applies a one-time 100% off coupon.
-    const promoCode = body.promo_code?.trim().toUpperCase();
-    const applyTestDiscount = promoCode === "AVOVITA-TEST";
-
+    // The wizard validates the customer-facing code via
+    // /api/checkout/validate-promo, which resolves it to a Stripe
+    // Promotion Code id (`promo_xxx`). We re-validate that id here so
+    // the client can't tamper with the discount, then attach it to
+    // the session via `discounts: [{ promotion_code: id }]`.
     let discounts:
-      | Array<{ coupon: string }>
+      | Array<{ promotion_code: string }>
       | undefined;
 
-    if (applyTestDiscount) {
-      // Create a one-time 100% off coupon dynamically
-      const coupon = await stripe.coupons.create({
-        percent_off: 100,
-        duration: "once",
-        name: "AVOVITA-TEST (100% off)",
-        max_redemptions: 1,
-      });
-      discounts = [{ coupon: coupon.id }];
+    const promotionCodeId: string | null =
+      typeof body.promotion_code_id === "string" && body.promotion_code_id.trim()
+        ? body.promotion_code_id.trim()
+        : null;
+
+    if (promotionCodeId) {
+      try {
+        const promo = (await stripe.promotionCodes.retrieve(
+          promotionCodeId
+        )) as {
+          active: boolean;
+          coupon?: { valid: boolean };
+        };
+        if (!promo.active || !promo.coupon?.valid) {
+          return NextResponse.json(
+            { error: "That promo code is no longer valid." },
+            { status: 400 }
+          );
+        }
+        discounts = [{ promotion_code: promotionCodeId }];
+      } catch {
+        return NextResponse.json(
+          { error: "Promo code could not be verified." },
+          { status: 400 }
+        );
+      }
     }
 
     const session = await stripe.checkout.sessions.create({

@@ -69,8 +69,10 @@ export interface CheckoutPayload {
   discount_cad: number;
   total: number;
   account_user_id: string | null;
-  /** Test promo code — only honoured when NEXT_PUBLIC_ENABLE_TEST_MODE=true. */
+  /** Customer-facing promo code string (e.g. "ABC-DEMO"), for receipts/logs. */
   promo_code?: string;
+  /** Stripe Promotion Code id (`promo_xxx`) returned by validate-promo. */
+  promotion_code_id?: string | null;
   /** White-label org slug — server resolves to org_id and tags the order. */
   org_slug?: string | null;
   /**
@@ -82,6 +84,22 @@ export interface CheckoutPayload {
    * is the account holder as before. Backwards compatible.
    */
   representative?: RepresentativeBlock | null;
+}
+
+/** Resolved Stripe promotion code (returned by /api/checkout/validate-promo). */
+export interface AppliedPromo {
+  /** Stripe promotion code id (`promo_xxx`). */
+  id: string;
+  /** Customer-facing string (e.g. "ABC-DEMO"). */
+  code: string;
+  /** Discount as a percentage, when the underlying coupon uses percent_off. */
+  percent_off: number | null;
+  /** Discount as a fixed amount in the smallest currency unit. */
+  amount_off: number | null;
+  /** ISO currency for amount_off (lowercase). */
+  currency: string | null;
+  /** Optional human-readable coupon name. */
+  name: string | null;
 }
 
 export interface RepresentativeBlock {

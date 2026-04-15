@@ -22,9 +22,11 @@ import type {
   CheckoutPayload,
   RepresentativeBlock,
   TestAssignment,
+  AppliedPromo,
 } from "@/lib/checkout/types";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
 import { computeDiscount } from "@/lib/checkout/discount";
+import { computePromoDiscount } from "@/lib/checkout/promo";
 import { DiscountBanner } from "./DiscountBanner";
 import type { PersonAssignmentEntry } from "./Step2AssignTests";
 
@@ -35,8 +37,8 @@ interface Step4Props {
   accountUserId: string | null;
   onBack: () => void;
   /** Promo state lifted to CheckoutClient so the Order Summary sidebar can react. */
-  promoApplied: boolean;
-  onPromoChange: (applied: boolean) => void;
+  appliedPromo: AppliedPromo | null;
+  onPromoChange: (next: AppliedPromo | null) => void;
   orderMode: "self" | "caregiver";
   representative: RepresentativeBlock;
 }
@@ -82,7 +84,7 @@ export function Step4Review({
   assignments,
   accountUserId,
   onBack,
-  promoApplied,
+  appliedPromo,
   onPromoChange,
   orderMode,
   representative,
@@ -92,7 +94,7 @@ export function Step4Review({
   const [promoOpen, setPromoOpen] = useState(false);
   const [promoInput, setPromoInput] = useState("");
   const [promoError, setPromoError] = useState<string | null>(null);
-  const setPromoApplied = onPromoChange;
+  const [promoSubmitting, setPromoSubmitting] = useState(false);
   const [shippingRiskAcknowledged, setShippingRiskAcknowledged] =
     useState(false);
 
@@ -107,7 +109,10 @@ export function Step4Review({
     [assignments.length]
   );
   const subtotalAfterDiscount = subtotal - discount.total;
-  const total = subtotalAfterDiscount + visitFees.total;
+  const grossTotal = subtotalAfterDiscount + visitFees.total;
+  const promoDiscount = computePromoDiscount(appliedPromo, grossTotal);
+  const total = grossTotal - promoDiscount;
+  const promoApplied = !!appliedPromo;
 
   const assignmentsByPerson = useMemo(() => {
     const m = new Map<number, PersonAssignmentEntry[]>();
@@ -136,15 +141,46 @@ export function Step4Review({
     return mayoTestCount === 1; // CBC is the sole Mayo test
   }, [assignments]);
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     setPromoError(null);
-    if (promoInput.trim().toUpperCase() === "AVOVITA-TEST") {
-      setPromoApplied(true);
-      setPromoError(null);
-    } else {
-      setPromoError("Invalid promo code.");
-      setPromoApplied(false);
+    const code = promoInput.trim();
+    if (!code) {
+      setPromoError("Enter a promo code.");
+      return;
     }
+    setPromoSubmitting(true);
+    try {
+      const res = await fetch("/api/checkout/validate-promo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPromoError(data.error ?? "That promo code isn't valid.");
+        onPromoChange(null);
+        return;
+      }
+      onPromoChange({
+        id: data.id,
+        code: data.code,
+        percent_off: data.percent_off ?? null,
+        amount_off: data.amount_off ?? null,
+        currency: data.currency ?? null,
+        name: data.name ?? null,
+      });
+    } catch {
+      setPromoError("Failed to validate promo code.");
+      onPromoChange(null);
+    } finally {
+      setPromoSubmitting(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    onPromoChange(null);
+    setPromoInput("");
+    setPromoError(null);
   };
 
   const canProceed =
@@ -170,7 +206,8 @@ export function Step4Review({
       discount_cad: discount.total,
       total,
       account_user_id: accountUserId,
-      promo_code: promoApplied ? "AVOVITA-TEST" : undefined,
+      promo_code: appliedPromo?.code ?? undefined,
+      promotion_code_id: appliedPromo?.id ?? null,
       representative: orderMode === "caregiver" ? representative : null,
     };
 
@@ -421,13 +458,13 @@ export function Step4Review({
               </span>
             </div>
           )}
-          {promoApplied && (
+          {appliedPromo && promoDiscount > 0 && (
             <div
               className="flex justify-between font-medium pt-2 mt-1 border-t"
               style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
             >
-              <span>Promo code applied (AVOVITA-TEST)</span>
-              <span>−{formatCurrency(total)}</span>
+              <span>Promo code ({appliedPromo.code})</span>
+              <span>−{formatCurrency(promoDiscount)}</span>
             </div>
           )}
           <div
@@ -435,16 +472,16 @@ export function Step4Review({
             style={{ borderColor: "#2d6b35" }}
           >
             <span style={{ color: "#ffffff" }}>Grand Total</span>
-            {promoApplied ? (
+            {appliedPromo && promoDiscount > 0 ? (
               <span className="flex items-center gap-2">
                 <span
                   className="line-through text-base"
                   style={{ color: "#6ab04c" }}
                 >
-                  {formatCurrency(total)}
+                  {formatCurrency(grossTotal)}
                 </span>
                 <span style={{ color: "#8dc63f" }}>
-                  $0.00 CAD
+                  {formatCurrency(total)} CAD
                 </span>
               </span>
             ) : (
@@ -475,7 +512,7 @@ export function Step4Review({
             </h4>
           </div>
 
-          {promoApplied ? (
+          {appliedPromo ? (
             <div
               className="flex items-center gap-2 p-3 rounded-lg border"
               style={{
@@ -487,17 +524,30 @@ export function Step4Review({
                 className="w-5 h-5 shrink-0"
                 style={{ color: "#8dc63f" }}
               />
-              <div>
+              <div className="flex-1 min-w-0">
                 <p
                   className="text-sm font-semibold"
                   style={{ color: "#8dc63f" }}
                 >
-                  Promo applied — 100% discount
+                  Promo applied · {appliedPromo.code}
+                  {appliedPromo.percent_off != null
+                    ? ` — ${appliedPromo.percent_off}% off`
+                    : appliedPromo.amount_off != null
+                      ? ` — $${(appliedPromo.amount_off / 100).toFixed(2)} off`
+                      : ""}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "#6ab04c" }}>
-                  No payment will be charged. The order will process normally.
+                  Discount will be applied at payment.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={handleRemovePromo}
+                className="text-xs underline shrink-0"
+                style={{ color: "#e8d5a3" }}
+              >
+                Remove
+              </button>
             </div>
           ) : (
             <div className="flex gap-2">
@@ -514,9 +564,13 @@ export function Step4Review({
               <button
                 type="button"
                 onClick={handleApplyPromo}
+                disabled={promoSubmitting}
                 className="mf-btn-primary px-5 py-2 shrink-0"
               >
-                Apply
+                {promoSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : null}
+                {promoSubmitting ? "Checking…" : "Apply"}
               </button>
             </div>
           )}
@@ -596,8 +650,8 @@ export function Step4Review({
       )}
 
       <p className="text-xs mb-5" style={{ color: "#6ab04c" }}>
-        {promoApplied
-          ? "Test mode — $0.00 checkout. The order will be created with all notifications firing normally."
+        {appliedPromo && total <= 0
+          ? "Promo zeroes the total — Stripe will record a $0.00 order and all notifications will fire normally."
           : `Payment is processed securely by Stripe. ${
               accountUserId
                 ? "Your order will be linked to your existing account."

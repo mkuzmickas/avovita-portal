@@ -6,7 +6,8 @@ import { computeDiscount } from "@/lib/checkout/discount";
 import { DiscountBanner } from "./DiscountBanner";
 import { useCart } from "@/components/cart/CartContext";
 import type { CatalogueCartItem } from "@/components/catalogue/types";
-import type { VisitFees } from "@/lib/checkout/types";
+import type { VisitFees, AppliedPromo } from "@/lib/checkout/types";
+import { computePromoDiscount } from "@/lib/checkout/promo";
 
 interface CheckoutCartSummaryProps {
   cart: CatalogueCartItem[];
@@ -23,8 +24,8 @@ interface CheckoutCartSummaryProps {
    * computed from assignments (one billed line per assignment).
    */
   subtotalOverride?: number;
-  /** Test-mode AVOVITA-TEST promo applied — zeroes out the grand total. */
-  promoApplied?: boolean;
+  /** Resolved Stripe promotion code applied to the order, if any. */
+  appliedPromo?: AppliedPromo | null;
 }
 
 /**
@@ -38,7 +39,7 @@ export function CheckoutCartSummary({
   visitFees,
   lineCount,
   subtotalOverride,
-  promoApplied = false,
+  appliedPromo = null,
 }: CheckoutCartSummaryProps) {
   const { removeItem } = useCart();
   const effectiveLineCount = lineCount ?? cart.length;
@@ -50,7 +51,9 @@ export function CheckoutCartSummary({
   );
   const subtotal = subtotalOverride ?? cartSubtotal;
   const subtotalAfterDiscount = subtotal - discount.total;
-  const total = subtotalAfterDiscount + (visitFees?.total ?? 0);
+  const grossTotal = subtotalAfterDiscount + (visitFees?.total ?? 0);
+  const promoDiscount = computePromoDiscount(appliedPromo, grossTotal);
+  const total = grossTotal - promoDiscount;
 
   return (
     <aside
@@ -207,13 +210,13 @@ export function CheckoutCartSummary({
               </p>
             )}
 
-            {promoApplied && (
+            {appliedPromo && promoDiscount > 0 && (
               <div
                 className="flex justify-between text-sm font-medium pt-2 mt-1 border-t"
                 style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
               >
-                <span>Promo code applied (AVOVITA-TEST)</span>
-                <span>−{formatCurrency(total)}</span>
+                <span>Promo code ({appliedPromo.code})</span>
+                <span>−{formatCurrency(promoDiscount)}</span>
               </div>
             )}
 
@@ -222,15 +225,17 @@ export function CheckoutCartSummary({
               style={{ borderColor: "#2d6b35" }}
             >
               <span style={{ color: "#ffffff" }}>Total</span>
-              {promoApplied ? (
+              {appliedPromo && promoDiscount > 0 ? (
                 <span className="flex items-center gap-2">
                   <span
                     className="line-through text-sm font-medium"
                     style={{ color: "#6ab04c" }}
                   >
-                    {formatCurrency(total)}
+                    {formatCurrency(grossTotal)}
                   </span>
-                  <span style={{ color: "#8dc63f" }}>$0.00 CAD</span>
+                  <span style={{ color: "#8dc63f" }}>
+                    {formatCurrency(total)} CAD
+                  </span>
                 </span>
               ) : (
                 <span style={{ color: "#c4973a" }}>
