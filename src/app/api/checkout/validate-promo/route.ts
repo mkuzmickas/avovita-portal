@@ -91,33 +91,68 @@ export async function POST(request: NextRequest) {
     // depending on SDK version). Stripe will perform the final
     // validation when the session is created, so any edge case is
     // caught there.
-    // Always retrieve the coupon explicitly so percent_off / amount_off
-    // are guaranteed to be populated regardless of how the SDK
-    // serialised the list response. We pull the id from whichever shape
-    // came back (object or bare string).
-    const couponId =
-      promo.coupon && typeof promo.coupon === "object"
-        ? promo.coupon.id
-        : typeof promo.coupon === "string"
-          ? promo.coupon
-          : null;
+    // Defensive coupon lookup. The SDK may give us:
+    //   promo.coupon = { id, percent_off, amount_off, ... }   ← expanded
+    //   promo.coupon = "coupon_xxx"                            ← id only
+    //   promo.coupon = undefined / missing field               ← shape drift
+    // We try each in order and ALWAYS finish with a direct
+    // stripe.coupons.retrieve() so percent_off / amount_off are
+    // guaranteed to be populated.
+    const rawCoupon = (promo as { coupon?: unknown }).coupon;
+    console.log(
+      `[validate-promo] raw promo.coupon shape:`,
+      typeof rawCoupon,
+      JSON.stringify(rawCoupon)
+    );
+
+    let couponId: string | null = null;
+    if (rawCoupon && typeof rawCoupon === "object") {
+      couponId = (rawCoupon as { id?: string }).id ?? null;
+    } else if (typeof rawCoupon === "string") {
+      couponId = rawCoupon;
+    }
+    console.log(`[validate-promo] resolved couponId: ${couponId}`);
 
     let percentOff: number | null = null;
     let amountOff: number | null = null;
     let currency: string | null = null;
     let name: string | null = null;
 
-    if (couponId) {
+    // First: try whatever was already on the inline coupon object.
+    if (rawCoupon && typeof rawCoupon === "object") {
+      const inline = rawCoupon as {
+        percent_off?: number | null;
+        amount_off?: number | null;
+        currency?: string | null;
+        name?: string | null;
+      };
+      if (typeof inline.percent_off === "number") percentOff = inline.percent_off;
+      if (typeof inline.amount_off === "number") amountOff = inline.amount_off;
+      if (typeof inline.currency === "string") currency = inline.currency;
+      if (typeof inline.name === "string") name = inline.name;
+    }
+
+    // Second: if either discount field is still missing, fetch the coupon
+    // directly. This is the authoritative source.
+    if ((percentOff === null && amountOff === null) && couponId) {
+      console.log(
+        `[validate-promo] inline coupon missing discount fields — calling stripe.coupons.retrieve(${couponId})`
+      );
       const coupon = (await stripe.coupons.retrieve(couponId)) as {
         percent_off: number | null;
         amount_off: number | null;
         currency: string | null;
         name: string | null;
       };
-      percentOff = typeof coupon.percent_off === "number" ? coupon.percent_off : null;
-      amountOff = typeof coupon.amount_off === "number" ? coupon.amount_off : null;
-      currency = coupon.currency ?? null;
-      name = coupon.name ?? null;
+      console.log(
+        `[validate-promo] retrieved coupon: percent_off=${coupon.percent_off} amount_off=${coupon.amount_off}`
+      );
+      percentOff =
+        typeof coupon.percent_off === "number" ? coupon.percent_off : null;
+      amountOff =
+        typeof coupon.amount_off === "number" ? coupon.amount_off : null;
+      currency = coupon.currency ?? currency;
+      name = coupon.name ?? name;
     }
 
     console.log(
