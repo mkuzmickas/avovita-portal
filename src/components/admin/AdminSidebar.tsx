@@ -15,6 +15,7 @@ import {
   TrendingUp,
   FileText,
   Building2,
+  Tag,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -40,6 +41,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/admin/patients", label: "Clients", icon: Users, key: "patients" },
   { href: "/admin/results", label: "Upload Results", icon: Upload, key: "results" },
   { href: "/admin/tests", label: "Tests", icon: FlaskConical, key: "tests" },
+  { href: "/admin/promo-codes", label: "Promo Codes", icon: Tag, key: "promo-codes" },
 ];
 
 export function AdminSidebar({ email, pendingResultsCount }: AdminSidebarProps) {

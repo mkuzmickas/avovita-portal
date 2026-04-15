@@ -168,10 +168,14 @@ export function Step4Review({
     }
     setPromoSubmitting(true);
     try {
+      const orgSlug =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("avovita-org-slug")
+          : null;
       const res = await fetch("/api/checkout/validate-promo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, orgSlug }),
       });
       const data = await res.json().catch(() => ({}));
       console.log("[promo] validate-promo response:", data);
