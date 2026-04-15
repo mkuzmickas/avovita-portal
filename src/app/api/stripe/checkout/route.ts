@@ -347,41 +347,19 @@ export async function POST(request: NextRequest) {
         : null;
 
     if (promotionCodeId) {
-      try {
-        // Force-expand the coupon so the SDK can't hand us a bare id
-        // and trigger a false "no longer valid" branch.
-        const promo = (await stripe.promotionCodes.retrieve(
-          promotionCodeId,
-          { expand: ["coupon"] }
-        )) as {
-          active: boolean;
-          coupon?: { valid: boolean } | string;
-        };
-        console.log(
-          `[stripe-checkout] promo retrieve — id=${promotionCodeId} ` +
-            `active=${promo.active} coupon=${JSON.stringify(promo.coupon)}`
-        );
-        // The `active` flag on the promotion code is sufficient. Stripe
-        // performs the final coupon validity check at session.create
-        // and returns a 400 there if anything is off — surfacing that
-        // as the user-facing error rather than guessing here.
-        if (!promo.active) {
-          return NextResponse.json(
-            { error: "That promo code is no longer active." },
-            { status: 400 }
-          );
-        }
-        discounts = [{ promotion_code: promotionCodeId }];
-      } catch (err) {
-        console.error("[stripe-checkout] promo retrieve failed:", err);
-        return NextResponse.json(
-          {
-            error: "Promo code could not be verified.",
-            debug: err instanceof Error ? err.message : String(err),
-          },
-          { status: 400 }
-        );
-      }
+      // The DB-backed /api/checkout/validate-promo is the source of
+      // truth for whether this code is valid — we already ran that
+      // lookup when the user clicked Apply. Don't second-guess it here
+      // with a Stripe-side retrieve: that was returning "Promo code
+      // could not be verified" for legitimately-applied codes
+      // (test/live mode drift, SDK shape quirks, etc.) and flashing
+      // the error alongside the already-green "Promo applied" state.
+      //
+      // Stripe still performs the final validity check at
+      // sessions.create below — if the promotion_code id is wrong or
+      // inactive on Stripe's side, that call throws and we return its
+      // real error verbatim.
+      discounts = [{ promotion_code: promotionCodeId }];
     }
 
     const session = await stripe.checkout.sessions.create({
