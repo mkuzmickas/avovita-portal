@@ -91,41 +91,47 @@ export async function POST(request: NextRequest) {
     // depending on SDK version). Stripe will perform the final
     // validation when the session is created, so any edge case is
     // caught there.
-    // Resolve the coupon object — Stripe's list response usually
-    // returns it expanded, but if a future SDK version downgrades it
-    // to an ID we fetch it explicitly so percent_off / amount_off are
-    // always populated for the UI's discount preview.
-    let coupon: CouponShape | null = null;
-    if (promo.coupon && typeof promo.coupon === "object") {
-      coupon = promo.coupon;
-    } else if (typeof promo.coupon === "string") {
-      coupon = (await stripe.coupons.retrieve(
-        promo.coupon
-      )) as unknown as CouponShape;
-    }
-    // Final safety net — if percent_off and amount_off are BOTH null
-    // (shouldn't happen on a valid coupon, but guard anyway), retrieve
-    // the coupon by id explicitly to populate them.
-    if (coupon && coupon.percent_off == null && coupon.amount_off == null && coupon.id) {
-      console.warn(
-        `[validate-promo] coupon ${coupon.id} returned with no discount fields — retrieving directly`
-      );
-      coupon = (await stripe.coupons.retrieve(
-        coupon.id
-      )) as unknown as CouponShape;
+    // Always retrieve the coupon explicitly so percent_off / amount_off
+    // are guaranteed to be populated regardless of how the SDK
+    // serialised the list response. We pull the id from whichever shape
+    // came back (object or bare string).
+    const couponId =
+      promo.coupon && typeof promo.coupon === "object"
+        ? promo.coupon.id
+        : typeof promo.coupon === "string"
+          ? promo.coupon
+          : null;
+
+    let percentOff: number | null = null;
+    let amountOff: number | null = null;
+    let currency: string | null = null;
+    let name: string | null = null;
+
+    if (couponId) {
+      const coupon = (await stripe.coupons.retrieve(couponId)) as {
+        percent_off: number | null;
+        amount_off: number | null;
+        currency: string | null;
+        name: string | null;
+      };
+      percentOff = typeof coupon.percent_off === "number" ? coupon.percent_off : null;
+      amountOff = typeof coupon.amount_off === "number" ? coupon.amount_off : null;
+      currency = coupon.currency ?? null;
+      name = coupon.name ?? null;
     }
 
     console.log(
-      `[validate-promo] success — id=${promo.id} code="${promo.code}" ` +
-        `percent_off=${coupon?.percent_off} amount_off=${coupon?.amount_off}`
+      `[validate-promo] success — promoId=${promo.id} code="${promo.code}" ` +
+        `percentOff=${percentOff} amountOff=${amountOff}`
     );
     return NextResponse.json({
-      id: promo.id,
+      valid: true,
+      promoId: promo.id,
       code: promo.code,
-      percent_off: coupon?.percent_off ?? null,
-      amount_off: coupon?.amount_off ?? null,
-      currency: coupon?.currency ?? null,
-      name: coupon?.name ?? null,
+      percentOff,
+      amountOff,
+      currency,
+      name,
     });
   } catch (err) {
     console.error("[validate-promo] caught error:", err);

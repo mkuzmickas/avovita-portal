@@ -89,14 +89,14 @@ export interface CheckoutPayload {
 /** Resolved Stripe promotion code (returned by /api/checkout/validate-promo). */
 export interface AppliedPromo {
   /** Stripe promotion code id (`promo_xxx`). */
-  id: string;
+  promoId: string;
   /** Customer-facing code string as entered. */
   code: string;
-  /** Discount as a percentage, when the underlying coupon uses percent_off. */
-  percent_off: number | null;
-  /** Discount as a fixed amount in the smallest currency unit. */
-  amount_off: number | null;
-  /** ISO currency for amount_off (lowercase). */
+  /** Discount as a percentage (0-100), when the underlying coupon uses percent_off. */
+  percentOff: number | null;
+  /** Discount as a fixed amount in the smallest currency unit (cents). */
+  amountOff: number | null;
+  /** ISO currency for amountOff (lowercase). */
   currency: string | null;
   /** Optional human-readable coupon name. */
   name: string | null;

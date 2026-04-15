@@ -38,11 +38,11 @@ export function calculateTotals({
 
   let promoDiscount = 0;
   if (appliedPromo) {
-    if (typeof appliedPromo.percent_off === "number") {
-      promoDiscount = preDiscountTotal * (appliedPromo.percent_off / 100);
-    } else if (typeof appliedPromo.amount_off === "number") {
-      // Stripe returns amount_off in the smallest currency unit (cents).
-      promoDiscount = appliedPromo.amount_off / 100;
+    if (typeof appliedPromo.percentOff === "number") {
+      promoDiscount = preDiscountTotal * (appliedPromo.percentOff / 100);
+    } else if (typeof appliedPromo.amountOff === "number") {
+      // Stripe returns amountOff in the smallest currency unit (cents).
+      promoDiscount = appliedPromo.amountOff / 100;
     }
     promoDiscount = Math.min(promoDiscount, preDiscountTotal);
   }

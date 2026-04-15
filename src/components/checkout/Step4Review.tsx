@@ -180,13 +180,13 @@ export function Step4Review({
         onPromoChange(null);
         return;
       }
-      const next = {
-        id: data.id,
+      const next: AppliedPromo = {
+        promoId: data.promoId,
         code: data.code,
-        percent_off:
-          typeof data.percent_off === "number" ? data.percent_off : null,
-        amount_off:
-          typeof data.amount_off === "number" ? data.amount_off : null,
+        percentOff:
+          typeof data.percentOff === "number" ? data.percentOff : null,
+        amountOff:
+          typeof data.amountOff === "number" ? data.amountOff : null,
         currency: data.currency ?? null,
         name: data.name ?? null,
       };
@@ -230,7 +230,7 @@ export function Step4Review({
       total,
       account_user_id: accountUserId,
       promo_code: appliedPromo?.code ?? undefined,
-      promotion_code_id: appliedPromo?.id ?? null,
+      promotion_code_id: appliedPromo?.promoId ?? null,
       representative: orderMode === "caregiver" ? representative : null,
     };
 
@@ -553,10 +553,10 @@ export function Step4Review({
                   style={{ color: "#8dc63f" }}
                 >
                   Promo applied · {appliedPromo.code}
-                  {appliedPromo.percent_off != null
-                    ? ` — ${appliedPromo.percent_off}% off`
-                    : appliedPromo.amount_off != null
-                      ? ` — $${(appliedPromo.amount_off / 100).toFixed(2)} off`
+                  {appliedPromo.percentOff != null
+                    ? ` — ${appliedPromo.percentOff}% off`
+                    : appliedPromo.amountOff != null
+                      ? ` — $${(appliedPromo.amountOff / 100).toFixed(2)} off`
                       : ""}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "#6ab04c" }}>
