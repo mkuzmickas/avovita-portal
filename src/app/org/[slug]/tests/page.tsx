@@ -5,6 +5,7 @@ import { CatalogueClient } from "@/components/catalogue/CatalogueClient";
 import { CatalogueSkeleton } from "@/components/catalogue/Skeleton";
 import { OrgProvider } from "@/components/org/OrgContext";
 import { getOrgBySlug, ORGS_FEATURE_ENABLED } from "@/lib/org";
+import { pickPanels } from "@/lib/catalogue/panels";
 import type { CatalogueTest } from "@/components/catalogue/types";
 
 export const dynamic = "force-dynamic";
@@ -62,6 +63,7 @@ async function CatalogueData() {
     }
   );
   const featuredTests = allTests.filter((t) => t.featured);
+  const panelTests = pickPanels(allTests);
   const categories = Array.from(
     new Set(allTests.map((t) => t.category).filter((c): c is string => !!c))
   ).sort();
@@ -74,6 +76,7 @@ async function CatalogueData() {
   return (
     <CatalogueClient
       featuredTests={featuredTests}
+      panelTests={panelTests}
       allTests={allTests}
       categories={categories}
       labs={labs}

@@ -16,6 +16,7 @@ import type { CatalogueTest, CatalogueCartItem } from "./types";
 
 interface CatalogueClientProps {
   featuredTests: CatalogueTest[];
+  panelTests: CatalogueTest[];
   allTests: CatalogueTest[];
   categories: string[];
   labs: string[];
@@ -24,6 +25,7 @@ interface CatalogueClientProps {
 
 export function CatalogueClient({
   featuredTests,
+  panelTests,
   allTests,
   categories,
   labs,
@@ -301,6 +303,23 @@ export function CatalogueClient({
           )}
         </section>
 
+        {/* ─── SECTION 1b: Comprehensive Panels ──────────────────────── */}
+        {panelTests.length > 0 && (
+          <section>
+            <SectionHeading
+              title="Comprehensive Panels"
+              subtitle="Complete multi-marker panels for deeper health insight"
+            />
+            <FeaturedCarousel
+              tests={panelTests}
+              cart={cart}
+              onAdd={handleAdd}
+              expandedId={expandedCardId}
+              onToggleExpand={toggleExpanded}
+            />
+          </section>
+        )}
+
         {/* ─── SECTION 2: Full catalogue ──────────────────────────────── */}
         <section>
           <SectionHeading title="Full Test Catalogue" />
@@ -537,7 +556,15 @@ function CarouselArrow({
   );
 }
 
-function SectionHeading({ title, hint }: { title: string; hint?: string }) {
+function SectionHeading({
+  title,
+  hint,
+  subtitle,
+}: {
+  title: string;
+  hint?: string;
+  subtitle?: string;
+}) {
   return (
     <div className="mb-6">
       <div className="flex items-baseline gap-3 flex-wrap mb-2">
@@ -563,6 +590,18 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
           </span>
         )}
       </div>
+      {subtitle && (
+        <p
+          className="mb-2"
+          style={{
+            color: "#e8d5a3",
+            fontFamily: '"DM Sans", system-ui, sans-serif',
+            fontSize: "14px",
+          }}
+        >
+          {subtitle}
+        </p>
+      )}
       <div
         className="h-[3px] w-16 rounded-full"
         style={{ backgroundColor: "#c4973a" }}

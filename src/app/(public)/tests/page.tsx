@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { CatalogueClient } from "@/components/catalogue/CatalogueClient";
 import { CatalogueSkeleton } from "@/components/catalogue/Skeleton";
+import { pickPanels } from "@/lib/catalogue/panels";
 import type { CatalogueTest } from "@/components/catalogue/types";
 
 export const dynamic = "force-dynamic";
@@ -70,6 +71,7 @@ async function CatalogueData() {
   );
 
   const featuredTests = allTests.filter((t) => t.featured);
+  const panelTests = pickPanels(allTests);
 
   const categories = Array.from(
     new Set(allTests.map((t) => t.category).filter((c): c is string => !!c))
@@ -84,6 +86,7 @@ async function CatalogueData() {
   return (
     <CatalogueClient
       featuredTests={featuredTests}
+      panelTests={panelTests}
       allTests={allTests}
       categories={categories}
       labs={labs}
