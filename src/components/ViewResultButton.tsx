@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Eye, Loader2 } from "lucide-react";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
 
 interface ViewResultButtonProps {
   resultId: string;
@@ -11,9 +12,11 @@ interface ViewResultButtonProps {
 
 export function ViewResultButton({ resultId, isNew }: ViewResultButtonProps) {
   const [loading, setLoading] = useState(false);
+  const { trackEvent } = useAnalytics();
 
   const handleView = async () => {
     setLoading(true);
+    trackEvent("result_viewed", { result_id: resultId });
     try {
       const response = await fetch("/api/results/view", {
         method: "POST",

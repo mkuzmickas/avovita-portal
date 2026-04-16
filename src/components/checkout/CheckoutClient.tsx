@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,7 @@ import {
 import { Step3CollectionDetails } from "./Step3CollectionDetails";
 import { Step4Review } from "./Step4Review";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import type {
   CheckoutPerson,
   CollectionAddress,
@@ -81,6 +82,7 @@ export function CheckoutClient({
   void _accountEmail;
   const router = useRouter();
   const { cart, hydrated, addItem, clearCart } = useCart();
+  const { trackEvent } = useAnalytics();
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [appliedQuoteNumber, setAppliedQuoteNumber] = useState<string | null>(null);
@@ -305,6 +307,25 @@ export function CheckoutClient({
     restored,
   ]);
 
+  // ─── Analytics: checkout started ─────────────────────────────────────
+  const trackedStartRef = useRef(false);
+  useEffect(() => {
+    if (hydrated && restored && cart.length > 0 && !trackedStartRef.current) {
+      trackedStartRef.current = true;
+      trackEvent("checkout_started");
+    }
+  }, [hydrated, restored, cart.length, trackEvent]);
+
+  // ─── Analytics: checkout abandoned (beforeunload) ──────────────────
+  useEffect(() => {
+    if (!hydrated || !restored || cart.length === 0) return;
+    const handleUnload = () => {
+      trackEvent("checkout_abandoned", { last_step: step });
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, [hydrated, restored, cart.length, step, trackEvent]);
+
   // ─── Cart redirect ────────────────────────────────────────────────────
   // Don't bounce to /tests while a ?quote= deep-link is loading items or
   // while a quote error banner is being shown — the user should see the
@@ -350,6 +371,7 @@ export function CheckoutClient({
   const skipStep2 = personCount === 1;
 
   const handleStep1Continue = () => {
+    trackEvent("checkout_step_completed", { step: 1 });
     if (personCount === 1) {
       // Auto-assign every cart item to person 0
       setAssignments(
@@ -370,9 +392,15 @@ export function CheckoutClient({
   };
 
   const handleStep2Back = () => setStep(1);
-  const handleStep2Continue = () => setStep(3);
+  const handleStep2Continue = () => {
+    trackEvent("checkout_step_completed", { step: 2 });
+    setStep(3);
+  };
   const handleStep3Back = () => (skipStep2 ? setStep(1) : setStep(2));
-  const handleStep3Continue = () => setStep(4);
+  const handleStep3Continue = () => {
+    trackEvent("checkout_step_completed", { step: 3 });
+    setStep(4);
+  };
   const handleStep4Back = () => setStep(3);
 
   const visitFees = useMemo(

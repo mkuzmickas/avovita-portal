@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/components/cart/CartContext";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import { PasswordInput } from "@/components/PasswordInput";
 
 interface OrderSummaryShape {
@@ -47,6 +48,7 @@ export function CheckoutSuccessClient({
 }: CheckoutSuccessClientProps) {
   const router = useRouter();
   const { clearCart } = useCart();
+  const { trackEvent } = useAnalytics();
 
   const [email, setEmail] = useState(summary.prefilledEmail);
   const [password, setPassword] = useState("");
@@ -62,7 +64,12 @@ export function CheckoutSuccessClient({
       // ignore
     }
     clearCart();
-  }, [clearCart]);
+    trackEvent("checkout_step_completed", { step: 4 });
+    trackEvent("order_completed", {
+      order_id: summary.orderIdShort,
+      total: summary.total,
+    });
+  }, [clearCart, trackEvent, summary.orderIdShort, summary.total]);
 
   // Logged-in users get auto-redirected
   useEffect(() => {

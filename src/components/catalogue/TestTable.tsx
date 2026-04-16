@@ -5,6 +5,7 @@ import { ChevronDown, Clock, ShoppingCart, Check, FileText, Download } from "luc
 import { formatCurrency } from "@/lib/utils";
 import { formatPublicStability } from "./TestCard";
 import { PanelIncludes } from "./PanelIncludes";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
 interface TestTableProps {
@@ -158,8 +159,16 @@ function TestTableRow({
   onAdd,
 }: TestTableRowProps) {
   const [justAdded, setJustAdded] = useState(false);
+  const { trackEvent } = useAnalytics();
 
   const hasPrice = test.price_cad !== null;
+
+  const handleToggle = () => {
+    if (!expanded) {
+      trackEvent("test_viewed", { test_id: test.id, test_name: test.name });
+    }
+    onToggle();
+  };
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -171,6 +180,11 @@ function TestTableRow({
       lab_name: test.lab.name,
       quantity: 1,
     });
+    trackEvent("test_added_to_cart", {
+      test_id: test.id,
+      test_name: test.name,
+      price: test.price_cad,
+    });
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1500);
   };
@@ -181,7 +195,7 @@ function TestTableRow({
     <>
       <tr
         id={`test-${test.id}`}
-        onClick={onToggle}
+        onClick={handleToggle}
         className="cursor-pointer transition-colors"
         style={{ backgroundColor: rowBg, borderTop: "1px solid #1a3d22" }}
       >

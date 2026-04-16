@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/components/cart/CartContext";
 import { useOrg } from "@/components/org/OrgContext";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import { formatCurrency } from "@/lib/utils";
 
 interface InsightsChatModalProps {
@@ -42,6 +43,7 @@ export function InsightsChatModal({
   const supabase = useMemo(() => createClient(), []);
   const { cart, addItem } = useCart();
   const org = useOrg();
+  const { trackEvent } = useAnalytics();
   const checkoutHref = org
     ? `/checkout?org_slug=${encodeURIComponent(org.slug)}`
     : "/checkout";
@@ -89,6 +91,11 @@ export function InsightsChatModal({
       cancelled = true;
     };
   }, [open, supabase, testIndex.size]);
+
+  // Track open event
+  useEffect(() => {
+    if (open) trackEvent("ai_finder_opened");
+  }, [open, trackEvent]);
 
   // Lock body scroll when open
   useEffect(() => {
@@ -152,6 +159,11 @@ export function InsightsChatModal({
       price_cad: test.price_cad,
       lab_name: test.lab_name,
       quantity: 1,
+    });
+    trackEvent("ai_finder_test_added", {
+      test_id: test.id,
+      test_name: test.name,
+      price: test.price_cad,
     });
   };
 

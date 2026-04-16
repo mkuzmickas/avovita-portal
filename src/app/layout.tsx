@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { CartProvider } from "@/components/cart/CartContext";
+import { AnalyticsProvider } from "@/lib/analytics/useAnalytics";
 
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
@@ -85,7 +86,9 @@ export default function RootLayout({
         className="min-h-full flex flex-col antialiased"
         style={{ backgroundColor: "#0a1a0d", color: "#e8d5a3" }}
       >
-        <CartProvider>{children}</CartProvider>
+        <CartProvider>
+          <AnalyticsProvider>{children}</AnalyticsProvider>
+        </CartProvider>
       </body>
     </html>
   );

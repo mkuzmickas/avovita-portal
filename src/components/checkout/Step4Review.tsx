@@ -16,6 +16,7 @@ import {
   Square,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import type {
   CheckoutPerson,
   CollectionAddress,
@@ -89,6 +90,7 @@ export function Step4Review({
   orderMode,
   representative,
 }: Step4Props) {
+  const { trackEvent } = useAnalytics();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [promoOpen, setPromoOpen] = useState(false);
@@ -196,6 +198,7 @@ export function Step4Review({
       };
       console.log("[promo] applying state:", next);
       onPromoChange(next);
+      trackEvent("promo_code_applied", { code: data.code });
     } catch {
       setPromoError("Failed to validate promo code.");
       onPromoChange(null);
