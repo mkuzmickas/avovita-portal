@@ -541,11 +541,11 @@ function CarouselArrow({
       onClick={onClick}
       disabled={disabled}
       aria-label={direction === "left" ? "Previous" : "Next"}
-      className="absolute top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center border z-10 transition-opacity"
+      className="absolute top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center z-10 transition-opacity shadow-md"
       style={{
-        backgroundColor: "rgba(196,151,58,0.15)",
-        borderColor: "#c4973a",
-        color: "#c4973a",
+        backgroundColor: "#c4973a",
+        color: "#0a1a0d",
+        border: "none",
         opacity: disabled ? 0.3 : 1,
         cursor: disabled ? "default" : "pointer",
         [direction === "left" ? "left" : "right"]: "4px",
