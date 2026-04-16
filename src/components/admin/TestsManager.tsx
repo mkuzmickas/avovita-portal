@@ -10,6 +10,8 @@ import {
   AlertCircle,
   Check,
   Sparkles,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { formatCurrency, slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -183,6 +185,47 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
     setEditingId(null);
   };
 
+  const deactivateTest = async (testId: string) => {
+    const res = await fetch(`/api/admin/tests/${testId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: false }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? "Failed to deactivate test");
+    }
+    setTests((prev) =>
+      prev.map((t) => (t.id === testId ? { ...t, active: false } : t))
+    );
+    setEditingId(null);
+  };
+
+  const deleteTest = async (
+    testId: string
+  ): Promise<{ action: "deleted" | "deactivated"; message?: string }> => {
+    const res = await fetch(`/api/admin/tests/${testId}`, {
+      method: "DELETE",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error ?? "Failed to delete test");
+    }
+    if (data.action === "deleted") {
+      setTests((prev) => prev.filter((t) => t.id !== testId));
+    } else {
+      // Server fell back to deactivation because order_lines exist.
+      setTests((prev) =>
+        prev.map((t) => (t.id === testId ? { ...t, active: false } : t))
+      );
+    }
+    setEditingId(null);
+    return {
+      action: data.action as "deleted" | "deactivated",
+      message: data.message as string | undefined,
+    };
+  };
+
   const createTest = async (fields: EditableFields) => {
     const supabase = createClient();
     const slug = slugify(fields.name);
@@ -332,6 +375,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
           <InlineTestForm
             mode="create"
             labs={labs}
+            categories={categories}
             initialFields={EMPTY_FORM}
             onCancel={() => setCreating(false)}
             onSubmit={createTest}
@@ -402,12 +446,15 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
                       test={test}
                       rowBg={rowBg}
                       labs={labs}
+                      categories={categories}
                       isEditing={isEditing}
                       onEdit={() => setEditingId(test.id)}
                       onCancel={() => setEditingId(null)}
                       onToggle={toggleField}
                       onSave={(fields) => saveEdit(test.id, fields)}
                       onUpdateStock={updateStock}
+                      onDeactivate={() => deactivateTest(test.id)}
+                      onDelete={() => deleteTest(test.id)}
                     />
                   );
                 })
@@ -436,22 +483,28 @@ function TestRow({
   test,
   rowBg,
   labs,
+  categories,
   isEditing,
   onEdit,
   onCancel,
   onToggle,
   onSave,
   onUpdateStock,
+  onDeactivate,
+  onDelete,
 }: {
   test: AdminTestRow;
   rowBg: string;
   labs: AdminLabRow[];
+  categories: string[];
   isEditing: boolean;
   onEdit: () => void;
   onCancel: () => void;
   onToggle: (test: AdminTestRow, field: "active" | "featured") => void;
   onSave: (fields: EditableFields) => Promise<void>;
   onUpdateStock: (testId: string, newQty: number) => Promise<void>;
+  onDeactivate: () => Promise<void>;
+  onDelete: () => Promise<{ action: "deleted" | "deactivated"; message?: string }>;
 }) {
   const initialFields: EditableFields = {
     name: test.name,
@@ -597,11 +650,15 @@ function TestRow({
               <InlineTestForm
                 mode="edit"
                 labs={labs}
+                categories={categories}
                 initialFields={initialFields}
                 onCancel={onCancel}
                 onSubmit={onSave}
                 stockTest={test}
                 onUpdateStock={onUpdateStock}
+                onDeactivate={onDeactivate}
+                onDelete={onDelete}
+                testName={test.name}
               />
             </div>
           </td>
@@ -804,24 +861,37 @@ function ToggleSwitch({
 function InlineTestForm({
   mode,
   labs,
+  categories,
   initialFields,
   onCancel,
   onSubmit,
   stockTest,
   onUpdateStock,
+  onDeactivate,
+  onDelete,
+  testName,
 }: {
   mode: "create" | "edit";
   labs: AdminLabRow[];
+  categories: string[];
   initialFields: EditableFields;
   onCancel: () => void;
   onSubmit: (fields: EditableFields) => Promise<void>;
   stockTest?: AdminTestRow;
   onUpdateStock?: (testId: string, newQty: number) => Promise<void>;
+  onDeactivate?: () => Promise<void>;
+  onDelete?: () => Promise<{ action: "deleted" | "deactivated"; message?: string }>;
+  testName?: string;
 }) {
   const [fields, setFields] = useState<EditableFields>(initialFields);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState<
+    null | "deactivate" | "delete"
+  >(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const update = <K extends keyof EditableFields>(
     key: K,
@@ -840,6 +910,12 @@ function InlineTestForm({
     }
     if (!fields.lab_id) {
       setError("Lab is required");
+      return;
+    }
+    if (!fields.category.trim()) {
+      setError(
+        "Category is required — pick from the dropdown or choose 'Add new category'."
+      );
       return;
     }
     setSaving(true);
@@ -893,12 +969,15 @@ function InlineTestForm({
             ))}
           </select>
         </Field>
-        <Field label="Category">
-          <input
-            type="text"
+        <Field
+          label="Category"
+          required
+          helper="Pick an existing category to keep the taxonomy consistent. Use 'Add new category' only when no existing one fits."
+        >
+          <CategoryPicker
             value={fields.category}
-            onChange={(e) => update("category", e.target.value)}
-            className="mf-input"
+            categories={categories}
+            onChange={(next) => update("category", next)}
           />
         </Field>
         <Field label="SKU">
@@ -1068,7 +1147,244 @@ function InlineTestForm({
           Cancel
         </button>
       </div>
+
+      {/* Danger zone — only in edit mode, visually separated from the
+          main action row so it can't be clicked by muscle memory. */}
+      {mode === "edit" && onDeactivate && onDelete && (
+        <div
+          className="mt-6 rounded-lg border p-4"
+          style={{
+            borderColor: "#e05252",
+            backgroundColor: "rgba(224, 82, 82, 0.06)",
+          }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4" style={{ color: "#e05252" }} />
+            <h4
+              className="text-sm font-semibold uppercase tracking-wider"
+              style={{ color: "#e05252" }}
+            >
+              Danger Zone
+            </h4>
+          </div>
+
+          {!confirmingDelete ? (
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-xs" style={{ color: "#e8d5a3" }}>
+                Remove this test from the catalogue. If it has been
+                ordered, it will be deactivated instead of deleted.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingDelete(true);
+                  setDeleteError(null);
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shrink-0"
+                style={{
+                  backgroundColor: "transparent",
+                  color: "#e05252",
+                  border: "1px solid #e05252",
+                }}
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete test…
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm" style={{ color: "#ffffff" }}>
+                Are you sure you want to delete{" "}
+                <strong style={{ color: "#e05252" }}>
+                  {testName ?? "this test"}
+                </strong>
+                ? This cannot be undone. If this test has been ordered by
+                clients, consider deactivating it instead.
+              </p>
+
+              {deleteError && (
+                <div
+                  className="flex items-center gap-2 p-3 rounded-lg text-sm border"
+                  style={{
+                    backgroundColor: "rgba(224, 82, 82, 0.12)",
+                    borderColor: "#e05252",
+                    color: "#e05252",
+                  }}
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                {/* Safer default — gold primary button */}
+                <button
+                  type="button"
+                  disabled={deleteBusy !== null}
+                  onClick={async () => {
+                    setDeleteError(null);
+                    setDeleteBusy("deactivate");
+                    try {
+                      await onDeactivate();
+                    } catch (err) {
+                      setDeleteError(
+                        err instanceof Error
+                          ? err.message
+                          : "Failed to deactivate test"
+                      );
+                      setDeleteBusy(null);
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                  style={{
+                    backgroundColor: "#c4973a",
+                    color: "#0a1a0d",
+                    opacity: deleteBusy !== null ? 0.6 : 1,
+                  }}
+                >
+                  {deleteBusy === "deactivate" && (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  )}
+                  Deactivate instead (recommended)
+                </button>
+
+                {/* Destructive — red outline button */}
+                <button
+                  type="button"
+                  disabled={deleteBusy !== null}
+                  onClick={async () => {
+                    setDeleteError(null);
+                    setDeleteBusy("delete");
+                    try {
+                      const result = await onDelete();
+                      if (result.action === "deactivated" && result.message) {
+                        // Server fell back — tell the admin why.
+                        alert(result.message);
+                      }
+                    } catch (err) {
+                      setDeleteError(
+                        err instanceof Error
+                          ? err.message
+                          : "Failed to delete test"
+                      );
+                      setDeleteBusy(null);
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                  style={{
+                    backgroundColor: "transparent",
+                    color: "#e05252",
+                    border: "1px solid #e05252",
+                    opacity: deleteBusy !== null ? 0.6 : 1,
+                  }}
+                >
+                  {deleteBusy === "delete" && (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  )}
+                  <Trash2 className="w-4 h-4" />
+                  Delete permanently
+                </button>
+
+                <button
+                  type="button"
+                  disabled={deleteBusy !== null}
+                  onClick={() => {
+                    setConfirmingDelete(false);
+                    setDeleteError(null);
+                  }}
+                  className="px-4 py-2.5 rounded-lg text-sm font-semibold border transition-colors"
+                  style={{
+                    color: "#e8d5a3",
+                    borderColor: "#2d6b35",
+                    backgroundColor: "transparent",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </form>
+  );
+}
+
+/**
+ * CategoryPicker — dropdown of existing category names with a sentinel
+ * "+ Add new category…" option that swaps the select for a text input
+ * so admins can add a new category only when they explicitly opt in,
+ * keeping the existing taxonomy tight by default.
+ */
+function CategoryPicker({
+  value,
+  categories,
+  onChange,
+}: {
+  value: string;
+  categories: string[];
+  onChange: (next: string) => void;
+}) {
+  // If the current value is a category that doesn't exist in the list
+  // (e.g. a legacy free-text value on an older test), treat it as
+  // "adding new" so it remains editable and doesn't get dropped.
+  const isExisting = value === "" || categories.includes(value);
+  const [adding, setAdding] = useState(!isExisting && value !== "");
+
+  if (adding) {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="mf-input"
+          placeholder="Enter new category name"
+          autoFocus
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setAdding(false);
+            onChange("");
+          }}
+          className="text-xs font-semibold whitespace-nowrap px-3 py-2 rounded-lg border"
+          style={{
+            color: "#e8d5a3",
+            borderColor: "#2d6b35",
+            backgroundColor: "transparent",
+          }}
+        >
+          Use existing instead
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => {
+        const next = e.target.value;
+        if (next === "__NEW__") {
+          setAdding(true);
+          onChange("");
+          return;
+        }
+        onChange(next);
+      }}
+      className="mf-input cursor-pointer"
+    >
+      <option value="" disabled>
+        Select a category…
+      </option>
+      {categories.map((c) => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      ))}
+      <option value="__NEW__">+ Add new category…</option>
+    </select>
   );
 }
 
