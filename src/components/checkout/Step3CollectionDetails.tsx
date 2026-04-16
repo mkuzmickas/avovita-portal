@@ -304,11 +304,16 @@ export function Step3CollectionDetails({
         >
           Collection Address
         </h2>
-        <p className="text-xs mb-5" style={{ color: "#e8d5a3" }}>
+        <p className="text-xs mb-2" style={{ color: "#e8d5a3" }}>
           This is where your FloLabs phlebotomist will come to collect
           specimens. This may be your home, a hotel, office, or any
           Calgary-area address. All people in this order must be at this
           address at the time of collection.
+        </p>
+        <p className="text-xs mb-5" style={{ color: "#e8d5a3" }}>
+          This is where your FloLabs phlebotomist will attend for your
+          home visit. Please ensure someone will be present at this
+          address at the time of your appointment.
         </p>
 
         <div className="space-y-3">
@@ -1179,7 +1184,7 @@ function RepresentativeSection({
         <span style={{ color: "#c4973a" }}>(Representative)</span>
       </h2>
       <p className="text-xs mb-4" style={{ color: "#e8d5a3" }}>
-        We&apos;ll send order confirmations, shipping updates and results to
+        We&apos;ll send order confirmations, appointment updates and results to
         you as the representative — not to the client&apos;s contact info.
       </p>
 
