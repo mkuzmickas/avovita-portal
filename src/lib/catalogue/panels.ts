@@ -16,7 +16,7 @@ export const PANEL_SKUS = [
   "THYROID_FUNCTION_PANEL",
   "VITAMINS_MINERALS_ESSENTIAL",
   "VITAMINS_MINERALS_ADVANCED",
-  "COVID_FALLOUT_PANEL",
+  "COVID_PANEL",
 ];
 
 /** Given the full catalogue, returns the panel tests in PANEL_SKUS order. */
