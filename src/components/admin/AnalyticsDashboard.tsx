@@ -14,6 +14,9 @@ import {
   Cell,
   BarChart,
   Bar,
+  FunnelChart,
+  Funnel,
+  LabelList,
   type PieLabelRenderProps,
 } from "recharts";
 import {
@@ -307,6 +310,300 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
           : 0,
     }));
   }, [eventsByType]);
+
+  /* ── SESSION-LEVEL CONVERSION FUNNEL ─────────────────────────────── */
+
+  // Build a per-session record: which stages did each session_id hit,
+  // org_id, device, first page_view time, and test_added_to_cart count.
+  const sessionMap = useMemo(() => {
+    interface SessionInfo {
+      sid: string;
+      firstSeen: number; // ms
+      lastSeen: number; // ms
+      orgId: string | null;
+      deviceType: string | null;
+      // Stage flags
+      viewedCatalogue: boolean;
+      viewedTest: boolean;
+      addedToCart: boolean;
+      startedCheckout: boolean;
+      checkoutStartedAt: number | null;
+      maxCheckoutStep: number; // 0 = none, 1-4 steps
+      orderCompleted: boolean;
+      // Extras
+      cartCount: number;
+      orderTotal: number;
+      promoCodes: string[];
+      addedTestIds: string[];
+    }
+
+    const map = new Map<string, SessionInfo>();
+
+    const ensure = (sid: string, ts: number, orgId: string | null): SessionInfo => {
+      let s = map.get(sid);
+      if (!s) {
+        s = {
+          sid,
+          firstSeen: ts,
+          lastSeen: ts,
+          orgId,
+          deviceType: null,
+          viewedCatalogue: false,
+          viewedTest: false,
+          addedToCart: false,
+          startedCheckout: false,
+          checkoutStartedAt: null,
+          maxCheckoutStep: 0,
+          orderCompleted: false,
+          cartCount: 0,
+          orderTotal: 0,
+          promoCodes: [],
+          addedTestIds: [],
+        };
+        map.set(sid, s);
+      }
+      if (ts < s.firstSeen) s.firstSeen = ts;
+      if (ts > s.lastSeen) s.lastSeen = ts;
+      // Keep first non-null org encountered.
+      if (!s.orgId && orgId) s.orgId = orgId;
+      return s;
+    };
+
+    for (const pv of pageViews) {
+      if (!pv.session_id) continue;
+      const ts = new Date(pv.created_at).getTime();
+      const s = ensure(pv.session_id, ts, pv.org_id);
+      if (!s.deviceType && pv.device_type) s.deviceType = pv.device_type;
+      // Catalogue = /tests or /org/[slug]/tests (exclude /admin/tests).
+      if (
+        !pv.path.startsWith("/admin") &&
+        (pv.path === "/tests" || /^\/org\/[^/]+\/tests/.test(pv.path))
+      ) {
+        s.viewedCatalogue = true;
+      }
+    }
+
+    for (const ev of events) {
+      if (!ev.session_id) continue;
+      const ts = new Date(ev.created_at).getTime();
+      const s = ensure(ev.session_id, ts, ev.org_id);
+      switch (ev.event_type) {
+        case "test_viewed":
+          s.viewedTest = true;
+          break;
+        case "test_added_to_cart":
+          s.addedToCart = true;
+          s.cartCount += 1;
+          {
+            const tid = ev.event_data?.test_id;
+            if (typeof tid === "string") s.addedTestIds.push(tid);
+          }
+          break;
+        case "checkout_started":
+          s.startedCheckout = true;
+          if (s.checkoutStartedAt === null || ts < s.checkoutStartedAt) {
+            s.checkoutStartedAt = ts;
+          }
+          break;
+        case "checkout_step_completed": {
+          const step = Number(ev.event_data?.step);
+          if (Number.isFinite(step) && step > s.maxCheckoutStep) {
+            s.maxCheckoutStep = step;
+          }
+          break;
+        }
+        case "order_completed":
+          s.orderCompleted = true;
+          {
+            const t = Number(ev.event_data?.total);
+            if (Number.isFinite(t)) s.orderTotal += t;
+          }
+          break;
+        case "promo_code_applied":
+          {
+            const code = ev.event_data?.code;
+            if (typeof code === "string") s.promoCodes.push(code);
+          }
+          break;
+      }
+    }
+
+    return map;
+  }, [pageViews, events]);
+
+  const sessions = useMemo(() => [...sessionMap.values()], [sessionMap]);
+
+  // Funnel stages — each stage counts unique sessions that reached it.
+  const conversionFunnel = useMemo(() => {
+    const stages = [
+      { label: "Sessions started", count: sessions.length },
+      {
+        label: "Catalogue visited",
+        count: sessions.filter((s) => s.viewedCatalogue).length,
+      },
+      {
+        label: "Test viewed",
+        count: sessions.filter((s) => s.viewedTest).length,
+      },
+      {
+        label: "Test added to cart",
+        count: sessions.filter((s) => s.addedToCart).length,
+      },
+      {
+        label: "Checkout started",
+        count: sessions.filter((s) => s.startedCheckout).length,
+      },
+      {
+        label: "Checkout completed",
+        count: sessions.filter((s) => s.orderCompleted).length,
+      },
+    ];
+    return stages.map((s, i) => ({
+      ...s,
+      pct: stages[0].count > 0 ? (s.count / stages[0].count) * 100 : 0,
+      dropOff:
+        i > 0 && stages[i - 1].count > 0
+          ? ((stages[i - 1].count - s.count) / stages[i - 1].count) * 100
+          : 0,
+    }));
+  }, [sessions]);
+
+  // Summary conversion rates.
+  const conversionRates = useMemo(() => {
+    const total = sessions.length;
+    const catalogue = sessions.filter((s) => s.viewedCatalogue).length;
+    const cart = sessions.filter((s) => s.addedToCart).length;
+    const checkout = sessions.filter((s) => s.startedCheckout).length;
+    const completed = sessions.filter((s) => s.orderCompleted).length;
+    return {
+      overall: total > 0 ? (completed / total) * 100 : 0,
+      catalogueToCart: catalogue > 0 ? (cart / catalogue) * 100 : 0,
+      cartToCheckout: cart > 0 ? (checkout / cart) * 100 : 0,
+      checkoutCompletion: checkout > 0 ? (completed / checkout) * 100 : 0,
+    };
+  }, [sessions]);
+
+  // Incomplete sessions — started checkout but didn't complete. Latest 50.
+  const incompleteSessions = useMemo(() => {
+    const orgLookup = new Map(organizations.map((o) => [o.id, o.name]));
+    const lastStepLabel = (step: number, started: boolean): string => {
+      if (step >= 4) return "Step 4 — Review";
+      if (step === 3) return "Step 3 — Collection";
+      if (step === 2) return "Step 2 — Assign";
+      if (step === 1) return "Step 1 — People";
+      return started ? "Checkout started" : "—";
+    };
+    return sessions
+      .filter((s) => s.startedCheckout && !s.orderCompleted)
+      .sort((a, b) => b.firstSeen - a.firstSeen)
+      .slice(0, 50)
+      .map((s) => ({
+        sid: s.sid,
+        startTime: new Date(s.firstSeen).toLocaleString("en-CA", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+        orgName: s.orgId
+          ? (orgLookup.get(s.orgId) ?? "Unknown org")
+          : "AvoVita Direct",
+        lastStep: lastStepLabel(s.maxCheckoutStep, s.startedCheckout),
+        cartCount: s.cartCount,
+        timeInCheckout:
+          s.checkoutStartedAt !== null
+            ? Math.max(0, Math.round((s.lastSeen - s.checkoutStartedAt) / 1000))
+            : 0,
+        deviceType: s.deviceType ?? "unknown",
+      }));
+  }, [sessions, organizations]);
+
+  // Org conversion comparison.
+  const orgConversion = useMemo(() => {
+    const addedTestNameById = new Map<string, string>();
+    for (const e of events) {
+      if (e.event_type === "test_added_to_cart") {
+        const id = e.event_data?.test_id;
+        const name = e.event_data?.test_name;
+        if (typeof id === "string" && typeof name === "string") {
+          addedTestNameById.set(id, name);
+        }
+      }
+    }
+
+    const compute = (filter: (s: typeof sessions[number]) => boolean, name: string) => {
+      const group = sessions.filter(filter);
+      const total = group.length;
+      const completed = group.filter((s) => s.orderCompleted);
+      const revenue = completed.reduce((sum, s) => sum + s.orderTotal, 0);
+      // Most popular test = most added_to_cart across sessions in this group.
+      const testCounts = new Map<string, number>();
+      for (const s of group) {
+        for (const tid of s.addedTestIds) {
+          testCounts.set(tid, (testCounts.get(tid) ?? 0) + 1);
+        }
+      }
+      let topTestId: string | null = null;
+      let topCount = 0;
+      for (const [id, c] of testCounts) {
+        if (c > topCount) {
+          topCount = c;
+          topTestId = id;
+        }
+      }
+      const topTestName = topTestId
+        ? (addedTestNameById.get(topTestId) ?? topTestId)
+        : "—";
+      return {
+        name,
+        sessions: total,
+        orders: completed.length,
+        conversionRate: total > 0 ? (completed.length / total) * 100 : 0,
+        aov: completed.length > 0 ? revenue / completed.length : 0,
+        topTest: topTestName,
+      };
+    };
+
+    const rows = [compute((s) => !s.orgId, "AvoVita Direct")];
+    for (const org of organizations) {
+      rows.push(compute((s) => s.orgId === org.id, org.name));
+    }
+    return rows;
+  }, [sessions, organizations, events]);
+
+  // Promo code conversion.
+  const promoConversion = useMemo(() => {
+    const byCode = new Map<
+      string,
+      { applied: number; completed: number; revenue: number }
+    >();
+    for (const s of sessions) {
+      const codes = new Set(s.promoCodes); // unique per session
+      for (const code of codes) {
+        const entry = byCode.get(code) ?? {
+          applied: 0,
+          completed: 0,
+          revenue: 0,
+        };
+        entry.applied += 1;
+        if (s.orderCompleted) {
+          entry.completed += 1;
+          entry.revenue += s.orderTotal;
+        }
+        byCode.set(code, entry);
+      }
+    }
+    return [...byCode.entries()]
+      .map(([code, v]) => ({
+        code,
+        applied: v.applied,
+        completed: v.completed,
+        conversionRate: v.applied > 0 ? (v.completed / v.applied) * 100 : 0,
+        revenue: v.revenue,
+      }))
+      .sort((a, b) => b.applied - a.applied);
+  }, [sessions]);
 
   // Orders & revenue
   const orderEvents = useMemo(() => eventsByType("order_completed"), [eventsByType]);
@@ -778,6 +1075,385 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
               ))}
             </div>
           </Section>
+
+          {/* ─── CONVERSION FUNNEL (SESSION-LEVEL) ──────────────────── */}
+          <div
+            className="rounded-xl border overflow-hidden"
+            style={{ backgroundColor: BG_MID, borderColor: BORDER }}
+          >
+            <div
+              className="px-5 py-4 border-b"
+              style={{ borderColor: BORDER, backgroundColor: BG_CARD }}
+            >
+              <h2
+                className="font-heading text-xl font-semibold"
+                style={{
+                  color: "#fff",
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                }}
+              >
+                Conversion <span style={{ color: GOLD }}>Funnel</span>
+              </h2>
+              <p className="text-xs mt-1" style={{ color: CREAM }}>
+                Session-level journey from first page view through to
+                completed order. Counts are unique sessions per stage.
+              </p>
+            </div>
+
+            <div className="p-5 space-y-6">
+              {/* 1. Funnel overview chart */}
+              <Section title="Funnel Overview">
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <FunnelChart>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: BG_MID,
+                          border: `1px solid ${BORDER}`,
+                          borderRadius: 8,
+                          color: "#fff",
+                        }}
+                      />
+                      <Funnel
+                        dataKey="count"
+                        data={conversionFunnel}
+                        isAnimationActive
+                      >
+                        <LabelList
+                          position="right"
+                          fill={CREAM}
+                          stroke="none"
+                          dataKey="label"
+                          style={{ fontSize: 12, fontWeight: 600 }}
+                        />
+                        <LabelList
+                          position="center"
+                          fill={BG_DARK}
+                          stroke="none"
+                          dataKey="count"
+                          style={{ fontSize: 13, fontWeight: 700 }}
+                        />
+                        {conversionFunnel.map((_, i) => (
+                          <Cell key={i} fill={GOLD} />
+                        ))}
+                      </Funnel>
+                    </FunnelChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Stage-by-stage with drop-off indicators */}
+                <div className="mt-4 space-y-1.5">
+                  {conversionFunnel.map((stage, i) => (
+                    <div
+                      key={stage.label}
+                      className="flex items-center gap-3 text-xs"
+                    >
+                      <div
+                        className="w-44 font-medium truncate"
+                        style={{ color: CREAM }}
+                      >
+                        {stage.label}
+                      </div>
+                      <div
+                        className="flex-1 font-semibold"
+                        style={{ color: GOLD }}
+                      >
+                        {fmt(stage.count)} ({stage.pct.toFixed(1)}% of top)
+                      </div>
+                      {i > 0 && (
+                        <span
+                          className="w-24 text-right shrink-0"
+                          style={{ color: GREEN }}
+                        >
+                          {stage.dropOff > 0
+                            ? `−${stage.dropOff.toFixed(1)}% drop-off`
+                            : "—"}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Section>
+
+              {/* 2. Conversion rate cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard
+                  icon={<TrendingUp className="w-5 h-5" />}
+                  label="Overall Conversion"
+                  value={`${conversionRates.overall.toFixed(2)}%`}
+                />
+                <StatCard
+                  icon={<ShoppingCart className="w-5 h-5" />}
+                  label="Catalogue → Cart"
+                  value={`${conversionRates.catalogueToCart.toFixed(2)}%`}
+                />
+                <StatCard
+                  icon={<ShoppingCart className="w-5 h-5" />}
+                  label="Cart → Checkout"
+                  value={`${conversionRates.cartToCheckout.toFixed(2)}%`}
+                />
+                <StatCard
+                  icon={<TrendingUp className="w-5 h-5" />}
+                  label="Checkout Completion"
+                  value={`${conversionRates.checkoutCompletion.toFixed(2)}%`}
+                />
+              </div>
+
+              {/* 3. Session journey table — incomplete sessions */}
+              <Section
+                title="Incomplete Sessions (Started Checkout, Did Not Complete)"
+                action={
+                  <ExportButton
+                    onClick={() =>
+                      downloadCSV(
+                        "incomplete-sessions.csv",
+                        [
+                          "Session Start",
+                          "Source",
+                          "Last Step",
+                          "Cart Count",
+                          "Time in Checkout (s)",
+                          "Device",
+                        ],
+                        incompleteSessions.map((r) => [
+                          r.startTime,
+                          r.orgName,
+                          r.lastStep,
+                          String(r.cartCount),
+                          String(r.timeInCheckout),
+                          r.deviceType,
+                        ]),
+                      )
+                    }
+                  />
+                }
+              >
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                        <TH>Session Start</TH>
+                        <TH>Source</TH>
+                        <TH>Last Step</TH>
+                        <TH align="right">Cart</TH>
+                        <TH align="right">Time in Checkout</TH>
+                        <TH>Device</TH>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {incompleteSessions.map((r) => (
+                        <tr
+                          key={r.sid}
+                          style={{ borderBottom: `1px solid ${BORDER}` }}
+                        >
+                          <TD>{r.startTime}</TD>
+                          <TD>{r.orgName}</TD>
+                          <TD>{r.lastStep}</TD>
+                          <TD align="right">{fmt(r.cartCount)}</TD>
+                          <TD align="right">
+                            {r.timeInCheckout < 60
+                              ? `${r.timeInCheckout}s`
+                              : `${Math.round(r.timeInCheckout / 60)}m`}
+                          </TD>
+                          <TD>
+                            <span
+                              className="capitalize"
+                              style={{ color: CREAM }}
+                            >
+                              {r.deviceType}
+                            </span>
+                          </TD>
+                        </tr>
+                      ))}
+                      {incompleteSessions.length === 0 && (
+                        <tr>
+                          <TD colSpan={6}>No incomplete sessions in range</TD>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Section>
+
+              {/* 4. Org conversion comparison */}
+              <Section
+                title="Conversion by Traffic Source"
+                action={
+                  <ExportButton
+                    onClick={() =>
+                      downloadCSV(
+                        "org-conversion.csv",
+                        [
+                          "Source",
+                          "Sessions",
+                          "Orders",
+                          "Conversion Rate",
+                          "Avg Order Value",
+                          "Top Test",
+                        ],
+                        orgConversion.map((r) => [
+                          r.name,
+                          String(r.sessions),
+                          String(r.orders),
+                          `${r.conversionRate.toFixed(2)}%`,
+                          fmtCurrency(r.aov),
+                          r.topTest,
+                        ]),
+                      )
+                    }
+                  />
+                }
+              >
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                        <TH>Source</TH>
+                        <TH align="right">Sessions</TH>
+                        <TH align="right">Orders</TH>
+                        <TH align="right">Conversion</TH>
+                        <TH align="right">Avg Order Value</TH>
+                        <TH>Top Test</TH>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orgConversion.map((r, i) => (
+                        <tr
+                          key={r.name}
+                          style={{ borderBottom: `1px solid ${BORDER}` }}
+                        >
+                          <TD>
+                            <span
+                              className="font-semibold"
+                              style={{ color: i === 0 ? GOLD : "#fff" }}
+                            >
+                              {r.name}
+                            </span>
+                          </TD>
+                          <TD align="right">{fmt(r.sessions)}</TD>
+                          <TD align="right">{fmt(r.orders)}</TD>
+                          <TD align="right">
+                            <span
+                              style={{
+                                color:
+                                  r.conversionRate > 5
+                                    ? GREEN
+                                    : r.conversionRate > 0
+                                      ? GOLD
+                                      : CREAM,
+                              }}
+                            >
+                              {r.conversionRate.toFixed(2)}%
+                            </span>
+                          </TD>
+                          <TD align="right">{fmtCurrency(r.aov)}</TD>
+                          <TD>{r.topTest}</TD>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Section>
+
+              {/* 5. Promo code conversion */}
+              <Section
+                title="Promo Code Conversion"
+                action={
+                  <ExportButton
+                    onClick={() =>
+                      downloadCSV(
+                        "promo-conversion.csv",
+                        [
+                          "Code",
+                          "Applied",
+                          "Completed",
+                          "Conversion Rate",
+                          "Revenue",
+                        ],
+                        promoConversion.map((r) => [
+                          r.code,
+                          String(r.applied),
+                          String(r.completed),
+                          `${r.conversionRate.toFixed(2)}%`,
+                          r.revenue === 0 && r.completed > 0
+                            ? `${r.completed} order${r.completed !== 1 ? "s" : ""} (100% off)`
+                            : fmtCurrency(r.revenue),
+                        ]),
+                      )
+                    }
+                  />
+                }
+              >
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                        <TH>Code</TH>
+                        <TH align="right">Applied</TH>
+                        <TH align="right">Completed</TH>
+                        <TH align="right">Conversion</TH>
+                        <TH align="right">Attributed Revenue</TH>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {promoConversion.map((r) => (
+                        <tr
+                          key={r.code}
+                          style={{ borderBottom: `1px solid ${BORDER}` }}
+                        >
+                          <TD>
+                            <span
+                              className="font-mono text-xs px-2 py-0.5 rounded"
+                              style={{ backgroundColor: BG_DARK, color: GOLD }}
+                            >
+                              {r.code}
+                            </span>
+                          </TD>
+                          <TD align="right">{fmt(r.applied)}</TD>
+                          <TD align="right">{fmt(r.completed)}</TD>
+                          <TD align="right">
+                            <span
+                              style={{
+                                color:
+                                  r.conversionRate > 20
+                                    ? GREEN
+                                    : r.conversionRate > 0
+                                      ? GOLD
+                                      : CREAM,
+                              }}
+                            >
+                              {r.conversionRate.toFixed(2)}%
+                            </span>
+                          </TD>
+                          <TD align="right">
+                            {r.revenue === 0 && r.completed > 0 ? (
+                              <span style={{ color: CREAM }}>
+                                {fmt(r.completed)} order
+                                {r.completed !== 1 ? "s" : ""}
+                                <span
+                                  className="text-xs ml-1"
+                                  style={{ color: GREEN }}
+                                >
+                                  (100% off)
+                                </span>
+                              </span>
+                            ) : (
+                              fmtCurrency(r.revenue)
+                            )}
+                          </TD>
+                        </tr>
+                      ))}
+                      {promoConversion.length === 0 && (
+                        <tr>
+                          <TD colSpan={5}>No promo codes applied in range</TD>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Section>
+            </div>
+          </div>
 
           {/* ─── ORDERS & REVENUE ────────────────────────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
