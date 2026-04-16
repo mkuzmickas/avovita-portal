@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, AlertTriangle } from "lucide-react";
 import type { PanelTestEntry } from "./types";
 
 interface PanelIncludesProps {
@@ -20,6 +20,12 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
   const [open, setOpen] = useState(false);
 
   if (!panelTests || panelTests.length === 0) return null;
+
+  // Any panel that includes Potassium requires Wednesday-morning
+  // collection so specimens ship same-day to the laboratory.
+  const needsWednesday = panelTests.some((t) =>
+    t.name.toLowerCase().includes("potassium"),
+  );
 
   if (variant === "card") {
     return (
@@ -46,16 +52,19 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
           />
         </button>
         {open && (
-          <ul
-            className="px-3 pb-3 pt-1 space-y-1 text-xs"
-            style={{ color: "#ffffff" }}
-          >
-            {panelTests.map((t, i) => (
-              <li key={`${t.code}-${i}`} className="leading-relaxed">
-                {t.name}
-              </li>
-            ))}
-          </ul>
+          <div className="px-3 pb-3 pt-1">
+            <ul
+              className="space-y-1 text-xs mb-0"
+              style={{ color: "#ffffff" }}
+            >
+              {panelTests.map((t, i) => (
+                <li key={`${t.code}-${i}`} className="leading-relaxed">
+                  {t.name}
+                </li>
+              ))}
+            </ul>
+            {needsWednesday && <WednesdayNotice />}
+          </div>
         )}
       </div>
     );
@@ -92,6 +101,35 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
           </li>
         ))}
       </ul>
+      {needsWednesday && <WednesdayNotice />}
+    </div>
+  );
+}
+
+// ─── Wednesday collection notice ────────────────────────────────────
+
+function WednesdayNotice() {
+  return (
+    <div
+      className="flex items-start gap-2 mt-3 rounded-lg border px-3 py-2 text-xs"
+      style={{
+        backgroundColor: "rgba(196, 151, 58, 0.08)",
+        borderColor: "#c4973a",
+        color: "#e8d5a3",
+      }}
+    >
+      <AlertTriangle
+        className="w-3.5 h-3.5 shrink-0 mt-0.5"
+        style={{ color: "#c4973a" }}
+      />
+      <p>
+        <strong style={{ color: "#c4973a" }}>
+          Wednesday morning collection required.
+        </strong>{" "}
+        This panel contains Potassium, which must ship same-day to the
+        laboratory. Your FloLabs appointment must be booked on a Wednesday
+        morning.
+      </p>
     </div>
   );
 }
