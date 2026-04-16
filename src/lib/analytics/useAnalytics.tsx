@@ -58,6 +58,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const org = useOrg();
   const orgIdRef = useRef<string | null>(org?.id ?? null);
   const accountIdRef = useRef<string | null>(null);
+  const isAdminRef = useRef(false);
   const lastTrackedPath = useRef<string | null>(null);
 
   // Keep org ref fresh
@@ -65,13 +66,21 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     orgIdRef.current = org?.id ?? null;
   }, [org?.id]);
 
-  // Resolve account_id once (lazy)
+  // Resolve account_id and role once (lazy). If the user is an admin
+  // we permanently suppress all tracking from this browser tab.
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      if (!cancelled && data.user) {
-        accountIdRef.current = data.user.id;
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (cancelled || !data.user) return;
+      accountIdRef.current = data.user.id;
+      const { data: acc } = await supabase
+        .from("accounts")
+        .select("role")
+        .eq("id", data.user.id)
+        .single();
+      if (!cancelled && acc && (acc as { role: string }).role === "admin") {
+        isAdminRef.current = true;
       }
     });
     return () => {
@@ -82,6 +91,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   // Track page views on path change
   useEffect(() => {
     if (!pathname) return;
+    if (isAdminRef.current) return;
     // Avoid duplicate tracking of the same path (e.g. re-renders)
     if (lastTrackedPath.current === pathname) return;
     lastTrackedPath.current = pathname;
@@ -107,6 +117,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 
   const trackEvent = useCallback(
     (eventType: string, eventData?: Record<string, unknown>) => {
+      if (isAdminRef.current) return;
       const payload = {
         event_type: eventType,
         event_data: eventData,

@@ -27,6 +27,19 @@ export async function POST(request: Request) {
     }
 
     const supabase = createServiceRoleClient();
+
+    // Hard-exclude admin accounts — never record their activity.
+    if (account_id) {
+      const { data: acc } = await supabase
+        .from("accounts")
+        .select("role")
+        .eq("id", account_id)
+        .single();
+      if (acc && (acc as { role: string }).role === "admin") {
+        return NextResponse.json({ ok: true });
+      }
+    }
+
     await supabase.from("page_views").insert({
       path,
       referrer: referrer || null,

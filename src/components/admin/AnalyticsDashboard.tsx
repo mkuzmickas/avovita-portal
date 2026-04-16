@@ -57,6 +57,7 @@ interface PageView {
 interface AnalyticsEvent {
   event_type: string;
   event_data: Record<string, unknown> | null;
+  account_id: string | null;
   org_id: string | null;
   session_id: string | null;
   created_at: string;
@@ -151,7 +152,7 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
         ? new Date(customEnd + "T23:59:59").toISOString()
         : new Date().toISOString();
 
-    const [pvRes, evRes] = await Promise.all([
+    const [pvRes, evRes, adminRes] = await Promise.all([
       supabase
         .from("page_views")
         .select("path, account_id, org_id, session_id, device_type, created_at")
@@ -161,15 +162,30 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
         .limit(50000),
       supabase
         .from("analytics_events")
-        .select("event_type, event_data, org_id, session_id, created_at")
+        .select("event_type, event_data, account_id, org_id, session_id, created_at")
         .gte("created_at", start)
         .lte("created_at", end)
         .order("created_at", { ascending: true })
         .limit(50000),
+      supabase
+        .from("accounts")
+        .select("id")
+        .eq("role", "admin"),
     ]);
 
-    setPageViews((pvRes.data ?? []) as unknown as PageView[]);
-    setEvents((evRes.data ?? []) as unknown as AnalyticsEvent[]);
+    // Permanently exclude admin accounts from all dashboard data.
+    const adminIds = new Set(
+      ((adminRes.data ?? []) as { id: string }[]).map((a) => a.id),
+    );
+    const pvFiltered = ((pvRes.data ?? []) as unknown as PageView[]).filter(
+      (pv) => !pv.account_id || !adminIds.has(pv.account_id),
+    );
+    const evFiltered = ((evRes.data ?? []) as unknown as AnalyticsEvent[]).filter(
+      (ev) => !ev.account_id || !adminIds.has(ev.account_id),
+    );
+
+    setPageViews(pvFiltered);
+    setEvents(evFiltered);
     setLoading(false);
   }, [supabase, range, customStart, customEnd]);
 
