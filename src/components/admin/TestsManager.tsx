@@ -553,14 +553,31 @@ function TestRow({
         <td
           className="px-4 py-4 text-xs whitespace-nowrap"
           style={{ color: "#e8d5a3" }}
+          title={test.ship_temp ?? ""}
         >
           {test.ship_temp ?? "—"}
         </td>
         <td
           className="px-4 py-4 text-xs"
           style={{ color: "#e8d5a3" }}
+          title={test.stability_notes ?? ""}
         >
-          {extractDuration(test.stability_notes)}
+          <div className="flex items-center gap-1">
+            <span>{extractDuration(test.stability_notes)}</span>
+            {test.stability_notes && (
+              <span
+                className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0"
+                style={{
+                  backgroundColor: "rgba(196,151,58,0.2)",
+                  color: "#c4973a",
+                  border: "1px solid #c4973a",
+                }}
+                aria-label="Hover for full stability notes"
+              >
+                i
+              </span>
+            )}
+          </div>
         </td>
         <td
           className="px-5 py-4 whitespace-nowrap"
@@ -1043,12 +1060,9 @@ function InlineTestForm({
           />
         </Field>
         <Field label="Ship Temperature">
-          <input
-            type="text"
+          <ShipTempSelect
             value={fields.ship_temp}
-            onChange={(e) => update("ship_temp", e.target.value)}
-            className="mf-input"
-            placeholder="e.g. Frozen"
+            onChange={(next) => update("ship_temp", next)}
           />
         </Field>
         <div className="grid grid-cols-2 gap-3">
@@ -1307,6 +1321,42 @@ function InlineTestForm({
         </div>
       )}
     </form>
+  );
+}
+
+/**
+ * ShipTempSelect — canonical shipping temperatures. We preserve any
+ * legacy non-canonical value as a selectable "(legacy)" option so
+ * older tests don't silently lose their data, but new selections
+ * must be one of the three canonical values.
+ */
+const SHIP_TEMP_OPTIONS = ["Ambient", "Refrigerated", "Frozen"] as const;
+
+function ShipTempSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const isLegacy =
+    value !== "" && !SHIP_TEMP_OPTIONS.includes(value as (typeof SHIP_TEMP_OPTIONS)[number]);
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="mf-input cursor-pointer"
+    >
+      <option value="">— Select —</option>
+      {SHIP_TEMP_OPTIONS.map((t) => (
+        <option key={t} value={t}>
+          {t}
+        </option>
+      ))}
+      {isLegacy && (
+        <option value={value}>{value} (legacy)</option>
+      )}
+    </select>
   );
 }
 
