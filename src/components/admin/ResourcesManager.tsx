@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   Search,
   Plus,
@@ -8,6 +8,7 @@ import {
   X,
   Loader2,
   AlertCircle,
+  Mail,
   Check,
   Trash2,
   AlertTriangle,
@@ -452,6 +453,7 @@ function ResourceRow({
                 onDeactivate={onDeactivate}
                 onDelete={onDelete}
                 resTitle={res.title}
+                resourceId={res.id}
               />
             </div>
           </td>
@@ -494,6 +496,7 @@ function InlineResourceForm({
   onDeactivate,
   onDelete,
   resTitle,
+  resourceId,
 }: {
   mode: "create" | "edit";
   initialFields: EditableFields;
@@ -505,6 +508,7 @@ function InlineResourceForm({
     message?: string;
   }>;
   resTitle?: string;
+  resourceId?: string;
 }) {
   const [fields, setFields] = useState<EditableFields>(initialFields);
   const [saving, setSaving] = useState(false);
@@ -812,6 +816,11 @@ function InlineResourceForm({
         </button>
       </div>
 
+      {/* Purchases list */}
+      {mode === "edit" && resourceId && (
+        <ResourcePurchases resourceId={resourceId} />
+      )}
+
       {/* Danger zone */}
       {mode === "edit" && onDeactivate && onDelete && (
         <div
@@ -967,6 +976,150 @@ function InlineResourceForm({
         </div>
       )}
     </form>
+  );
+}
+
+// ─── Purchases list ───────────────────────────────────────────────────────────
+
+interface Purchase {
+  id: string;
+  email: string;
+  download_count: number;
+  max_downloads: number;
+  expires_at: string;
+  created_at: string;
+}
+
+function ResourcePurchases({ resourceId }: { resourceId: string }) {
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [resending, setResending] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/resources/${resourceId}/purchases`);
+      if (res.ok) {
+        const data = await res.json();
+        setPurchases(data as Purchase[]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [resourceId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleResend = async (purchaseId: string) => {
+    setResending(purchaseId);
+    try {
+      const res = await fetch(
+        `/api/admin/resources/purchases/${purchaseId}/resend`,
+        { method: "POST" },
+      );
+      if (res.ok) {
+        alert("Download email resent successfully.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(`Failed to resend: ${data.error ?? "Unknown error"}`);
+      }
+    } finally {
+      setResending(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="py-4 text-center">
+        <Loader2
+          className="w-5 h-5 animate-spin mx-auto"
+          style={{ color: "#c4973a" }}
+        />
+      </div>
+    );
+  }
+
+  if (purchases.length === 0) return null;
+
+  return (
+    <div
+      className="mt-6 rounded-lg border p-4"
+      style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+    >
+      <h4
+        className="text-sm font-semibold uppercase tracking-wider mb-3"
+        style={{ color: "#c4973a" }}
+      >
+        Purchases ({purchases.length})
+      </h4>
+      <div className="space-y-2">
+        {purchases.map((p) => {
+          const isExpired = new Date(p.expires_at) < new Date();
+          const isMaxed = p.download_count >= p.max_downloads;
+          return (
+            <div
+              key={p.id}
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs rounded-lg border p-3"
+              style={{
+                backgroundColor: "#0a1a0d",
+                borderColor: "#2d6b35",
+              }}
+            >
+              <div className="min-w-0">
+                <p className="font-medium" style={{ color: "#ffffff" }}>
+                  {p.email}
+                </p>
+                <p style={{ color: "#6ab04c" }}>
+                  {p.download_count}/{p.max_downloads} downloads · Expires{" "}
+                  {new Date(p.expires_at).toLocaleDateString("en-CA", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                  {isExpired && (
+                    <span
+                      className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
+                      style={{ backgroundColor: "#e05252", color: "#fff" }}
+                    >
+                      Expired
+                    </span>
+                  )}
+                  {isMaxed && !isExpired && (
+                    <span
+                      className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
+                      style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                    >
+                      Max reached
+                    </span>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={resending === p.id}
+                onClick={() => handleResend(p.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border shrink-0"
+                style={{
+                  color: "#c4973a",
+                  borderColor: "#2d6b35",
+                  backgroundColor: "transparent",
+                  opacity: resending === p.id ? 0.5 : 1,
+                }}
+              >
+                {resending === p.id ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Mail className="w-3 h-3" />
+                )}
+                Resend email
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

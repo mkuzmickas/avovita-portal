@@ -8,6 +8,7 @@ import {
 } from "@/lib/checkout/materialise";
 import { createOrFindGuestAccount } from "@/lib/auth/createGuestAccount";
 import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
+import { fulfillResourcePurchase } from "@/lib/resources/fulfillment";
 import { twilioClient, TWILIO_FROM } from "@/lib/twilio";
 import { resend } from "@/lib/resend";
 import { logNotification } from "@/lib/notifications";
@@ -913,9 +914,9 @@ async function handleCheckoutCompleteV2(
       );
     }
 
-    // TODO (Phase R3): Call fulfillResourcePurchase() for each resource line
-    // to create resource_purchases rows with download tokens and send the
-    // download email. For now, just log intent.
+    // Phase R3: Fulfill each paid resource — create purchase row + send
+    // download email. Each call is wrapped in try/catch so a failure on
+    // one resource doesn't break the others or the overall webhook.
     for (const item of resItems) {
       if (item.line_type !== "resource") continue;
       const buyerEmail =
@@ -923,11 +924,24 @@ async function handleCheckoutCompleteV2(
         session.customer_email ??
         session.customer_details?.email ??
         "";
-      console.log(
-        `[stripe-webhook-v2] TODO: Call fulfillResourcePurchase(` +
-          `resourceId=${item.resource_id}, email=${buyerEmail}, ` +
-          `orderId=${orderId}, accountId=${p.account_user_id})`,
-      );
+      try {
+        const result = await fulfillResourcePurchase({
+          resourceId: item.resource_id,
+          email: buyerEmail,
+          orderId,
+          accountId: p.account_user_id ?? null,
+        });
+        console.log(
+          `[stripe-webhook-v2] Resource fulfilled: ${item.resource_id} → purchase ${result.purchaseId}`,
+        );
+      } catch (err) {
+        console.error(
+          `[stripe-webhook-v2] Failed to fulfill resource ${item.resource_id}:`,
+          err,
+        );
+        // Do not rethrow — other resources should still fulfill, and
+        // the order itself should still complete.
+      }
     }
   }
 
