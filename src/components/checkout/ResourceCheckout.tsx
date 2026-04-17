@@ -10,6 +10,7 @@ import { CheckoutCartSummary } from "./CheckoutCartSummary";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import { formatCurrency } from "@/lib/utils";
 import { cartItemName } from "@/components/catalogue/types";
+import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
 
 interface ResourceCheckoutProps {
   accountUserId: string | null;
@@ -76,20 +77,49 @@ export function ResourceCheckout({
     setError(null);
     setSubmitting(true);
     try {
-      // TODO Part 7: Create pending_order + Stripe session
-      console.log("[resource-checkout] submit", {
-        accountUserId,
-        firstName,
-        lastName,
-        email,
-        cart: cart.map((i) => ({ ...i })),
+      const subtotalResources = cart
+        .filter((i) => i.line_type === "resource")
+        .reduce((s, i) => s + i.price_cad, 0);
+
+      const pendingPayload: PendingOrderPayload = {
+        version: 2,
+        has_tests: false,
+        has_supplements: false,
+        has_resources: true,
+        cart_items: cart,
+        account_user_id: accountUserId,
+        contact_first_name: firstName.trim(),
+        contact_last_name: lastName.trim(),
+        contact_email: email.trim().toLowerCase(),
+        subtotal_tests: 0,
+        subtotal_supplements: 0,
+        subtotal_resources: subtotalResources,
+        test_discount: 0,
+        total: subtotalResources,
+      };
+
+      const poRes = await fetch("/api/checkout/create-pending-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pendingPayload),
       });
-      alert(
-        "Resource checkout not yet wired to Stripe. This will be completed in Part 7.",
-      );
+      const poData = await poRes.json();
+      if (!poRes.ok) throw new Error(poData.error ?? "Failed to create order");
+
+      const stripeRes = await fetch("/api/stripe/checkout-unified", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pending_order_id: poData.pending_order_id,
+        }),
+      });
+      const stripeData = await stripeRes.json();
+      if (!stripeRes.ok)
+        throw new Error(stripeData.error ?? "Checkout failed");
+
+      window.location.href = stripeData.url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Checkout failed");
-    } finally {
       setSubmitting(false);
     }
   };

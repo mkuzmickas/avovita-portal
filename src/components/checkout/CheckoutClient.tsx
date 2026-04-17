@@ -588,6 +588,11 @@ export function CheckoutClient({
                 onRepresentativeChange={setRepresentative}
               />
             )}
+            {/* Step 3.5 = supplement fulfillment, injected between address (3) and review (4)
+                when cart contains supplements. Non-integer step ID avoids renumbering the
+                existing test-flow step sequence (1→2→3→4), which would have rippled into
+                step navigation, progress indicators, and analytics events. Only rendered
+                when showSupplementFulfillmentStep === true. */}
             {step === 35 && showSupplementFulfillmentStep && (
               <SupplementFulfillmentStep
                 collectionAddress={collectionAddress}
