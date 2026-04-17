@@ -4,6 +4,7 @@ import { stripe } from "@/lib/stripe";
 import { reassembleMetadata } from "@/lib/checkout/materialise";
 import { CheckoutSuccessV2 } from "@/components/checkout/CheckoutSuccessV2";
 import { ClearCartOnMount } from "@/components/checkout/ClearCartOnMount";
+import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
 
 export const dynamic = "force-dynamic";
 
@@ -32,14 +33,33 @@ export default async function CheckoutSuccessPage({
   }
   if (session.payment_status !== "paid") redirect("/tests");
 
-  const payload = reassembleMetadata(
-    session.metadata as Record<string, string> | null
-  );
-  if (!payload) redirect("/tests");
-
+  const metadata = session.metadata as Record<string, string> | null;
   const service = createServiceRoleClient();
 
-  // Resolve order + account email + waiver state
+  // ─── Determine version and load payload ─────────────────────────
+  let pendingPayload: PendingOrderPayload | null = null;
+  const v1Payload = reassembleMetadata(metadata);
+
+  if (metadata?.version === "2" && metadata?.pending_order_id) {
+    const { data: poRaw } = await service
+      .from("pending_orders")
+      .select("payload")
+      .eq("id", metadata.pending_order_id)
+      .single();
+    if (poRaw) {
+      pendingPayload = (poRaw as { payload: PendingOrderPayload }).payload;
+    }
+  }
+
+  // Neither version resolved — redirect
+  if (!v1Payload && !pendingPayload) redirect("/tests");
+
+  // Cart composition (v2) or defaults (v1 = tests only)
+  const hasTests = pendingPayload?.has_tests ?? true;
+  const hasSupplements = pendingPayload?.has_supplements ?? false;
+  const hasResources = pendingPayload?.has_resources ?? false;
+
+  // ─── Resolve order + account email + waiver state ───────────────
   const { data: orderRaw } = await service
     .from("orders")
     .select(
@@ -73,13 +93,12 @@ export default async function CheckoutSuccessPage({
     : order?.account;
   const accountEmail =
     accountObj?.email ??
-    payload.representative?.email ??
+    (v1Payload?.representative?.email) ??
+    pendingPayload?.contact_email ??
     session.customer_email ??
     session.customer_details?.email ??
     "";
 
-  // If a Supabase session already exists (returning user) we can read
-  // their waiver state too.
   const supabase = await createClient();
   const {
     data: { user },
@@ -99,36 +118,67 @@ export default async function CheckoutSuccessPage({
   const orderIdShort = order
     ? order.id.slice(0, 8).toUpperCase()
     : sessionId.slice(-8).toUpperCase();
+  const payloadTotal = pendingPayload?.total ?? v1Payload?.total ?? 0;
   const total =
     order?.total_cad ??
-    (session.amount_total ?? Math.round(payload.total * 100)) / 100;
+    (session.amount_total ?? Math.round(payloadTotal * 100)) / 100;
 
-  // Resolve test names for the order summary
-  const testIds = [...new Set(payload.assignments.map((a) => a.test_id))];
-  const { data: testsRaw } = await service
-    .from("tests")
-    .select("id, name")
-    .in("id", testIds);
-  const testNameById = new Map<string, string>();
-  for (const t of (testsRaw ?? []) as Array<{ id: string; name: string }>) {
-    testNameById.set(t.id, t.name);
+  // ─── Resolve item names for summary ─────────────────────────────
+  const itemNames: string[] = [];
+
+  // Test names (from v1 or v2 payload)
+  const testAssignments =
+    pendingPayload?.test_assignments ?? v1Payload?.assignments ?? [];
+  if (testAssignments.length > 0) {
+    const testIds = [
+      ...new Set(testAssignments.map((a) => a.test_id)),
+    ];
+    const { data: testsRaw } = await service
+      .from("tests")
+      .select("id, name")
+      .in("id", testIds);
+    for (const t of (testsRaw ?? []) as Array<{
+      id: string;
+      name: string;
+    }>) {
+      if (!itemNames.includes(t.name)) itemNames.push(t.name);
+    }
   }
-  const itemNames = [
-    ...new Set(
-      payload.assignments
-        .map((a) => testNameById.get(a.test_id))
-        .filter((n): n is string => !!n)
-    ),
-  ];
 
-  const rep = payload.representative ?? null;
+  // Supplement names
+  if (pendingPayload?.has_supplements) {
+    for (const item of pendingPayload.cart_items) {
+      if (item.line_type === "supplement" && !itemNames.includes(item.name)) {
+        itemNames.push(item.name);
+      }
+    }
+  }
+
+  // Resource names
+  if (pendingPayload?.has_resources) {
+    for (const item of pendingPayload.cart_items) {
+      if (item.line_type === "resource" && !itemNames.includes(item.name)) {
+        itemNames.push(item.name);
+      }
+    }
+  }
+
+  const rep =
+    pendingPayload?.representative ?? v1Payload?.representative ?? null;
   const isRepresentative = !!rep;
+  const persons = pendingPayload?.persons ?? v1Payload?.persons ?? [];
   const dependents = isRepresentative
-    ? payload.persons.map((p) => ({
+    ? persons.map((p) => ({
         first_name: p.first_name,
         last_name: p.last_name,
       }))
     : [];
+
+  // Supplement delivery info for success page
+  const supplementFulfillment =
+    pendingPayload?.supplement_fulfillment ?? null;
+  const supplementShippingAddress =
+    pendingPayload?.supplement_shipping_address ?? null;
 
   return (
     <>
@@ -146,6 +196,12 @@ export default async function CheckoutSuccessPage({
         initialWaiverDone={initialWaiverDone}
         waiverAddendum={waiverAddendum}
         waiverAddendumTitle={waiverAddendumTitle}
+        // Composition flags for conditional sections
+        hasTests={hasTests}
+        hasSupplements={hasSupplements}
+        hasResources={hasResources}
+        supplementFulfillment={supplementFulfillment}
+        supplementShippingAddress={supplementShippingAddress}
       />
     </>
   );

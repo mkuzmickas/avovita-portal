@@ -71,6 +71,24 @@ export interface CheckoutSuccessV2Props {
   /** Optional org-specific waiver addendum (shown below the standard waiver). */
   waiverAddendum?: string | null;
   waiverAddendumTitle?: string | null;
+  // ── Composition flags (added in Phase 4) ──────────────────────
+  /** True if the order contained tests (defaults true for v1 compat). */
+  hasTests?: boolean;
+  /** True if the order contained supplements. */
+  hasSupplements?: boolean;
+  /** True if the order contained paid resources. */
+  hasResources?: boolean;
+  /** Supplement delivery method chosen at checkout. */
+  supplementFulfillment?: string | null;
+  /** Supplement shipping address (when fulfillment = 'shipping'). */
+  supplementShippingAddress?: {
+    name: string;
+    street: string;
+    city: string;
+    province: string;
+    postal: string;
+    country: string;
+  } | null;
 }
 
 export function CheckoutSuccessV2({
@@ -86,6 +104,11 @@ export function CheckoutSuccessV2({
   initialWaiverDone,
   waiverAddendum = null,
   waiverAddendumTitle = null,
+  hasTests = true,
+  hasSupplements = false,
+  hasResources = false,
+  supplementFulfillment = null,
+  supplementShippingAddress = null,
 }: CheckoutSuccessV2Props) {
   const [waiverDone, setWaiverDone] = useState(initialWaiverDone);
   const [showWaiver, setShowWaiver] = useState(false);
@@ -164,6 +187,8 @@ export function CheckoutSuccessV2({
           collection appointment.
         </p>
 
+        {/* ── Test-specific steps (waiver + booking) — only when has_tests ── */}
+        {hasTests && (<>
         {/* Step 1 — Waiver */}
         <StepCard
           number={1}
@@ -255,6 +280,96 @@ export function CheckoutSuccessV2({
           </p>
         </StepCard>
 
+        </>)}
+
+        {/* ── Supplement delivery section ─────────────────────────── */}
+        {hasSupplements && (
+          <div
+            className="rounded-2xl border overflow-hidden mt-6"
+            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          >
+            <div className="px-6 py-5">
+              <h3
+                className="font-heading text-lg font-semibold mb-2"
+                style={{
+                  color: "#ffffff",
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                }}
+              >
+                Supplement{" "}
+                <span style={{ color: "#c4973a" }}>Delivery</span>
+              </h3>
+              {supplementFulfillment === "shipping" ? (
+                <div className="text-sm" style={{ color: "#e8d5a3" }}>
+                  <p>
+                    Your supplements will be shipped to{" "}
+                    {supplementShippingAddress ? (
+                      <span style={{ color: "#ffffff" }}>
+                        {supplementShippingAddress.street},{" "}
+                        {supplementShippingAddress.city},{" "}
+                        {supplementShippingAddress.province}{" "}
+                        {supplementShippingAddress.postal}
+                      </span>
+                    ) : (
+                      "your shipping address"
+                    )}
+                    .
+                  </p>
+                  <p className="mt-1" style={{ color: "#6ab04c" }}>
+                    Tracking will be emailed when dispatched.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                  You&apos;ve indicated you&apos;ve coordinated delivery or
+                  pickup with us directly. We&apos;ll be in touch if we need
+                  anything further.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Resource download section ───────────────────────────── */}
+        {hasResources && (
+          <div
+            className="rounded-2xl border overflow-hidden mt-6"
+            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          >
+            <div className="px-6 py-5">
+              <h3
+                className="font-heading text-lg font-semibold mb-2"
+                style={{
+                  color: "#ffffff",
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                }}
+              >
+                Your{" "}
+                <span style={{ color: "#c4973a" }}>Resources</span>
+              </h3>
+              <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                Your download link(s) have been emailed to{" "}
+                <strong style={{ color: "#ffffff" }}>{email}</strong>.
+                Please check your inbox (and junk folder). Links expire
+                in 30 days.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Resources-only: back to browse button ──────────────── */}
+        {hasResources && !hasTests && !hasSupplements && (
+          <div className="text-center mt-6">
+            <a
+              href="/resources"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold"
+              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            >
+              Browse More Resources
+            </a>
+          </div>
+        )}
+
         {/* Footer */}
         <p className="text-center text-xs mt-8" style={{ color: "#6ab04c" }}>
           Questions? Contact{" "}
@@ -265,10 +380,12 @@ export function CheckoutSuccessV2({
             support@avovita.ca
           </a>
         </p>
-        <p className="text-center text-xs mt-2" style={{ color: "#6ab04c" }}>
-          We&apos;ve also emailed you a portal sign-in link — use it later to
-          view your results.
-        </p>
+        {hasTests && (
+          <p className="text-center text-xs mt-2" style={{ color: "#6ab04c" }}>
+            We&apos;ve also emailed you a portal sign-in link — use it later to
+            view your results.
+          </p>
+        )}
       </div>
 
       {showWaiver && (
