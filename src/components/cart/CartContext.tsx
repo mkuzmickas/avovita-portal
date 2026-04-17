@@ -9,16 +9,107 @@ import {
   useState,
 } from "react";
 import { AlertTriangle } from "lucide-react";
-import type { CatalogueCartItem } from "@/components/catalogue/types";
+import type {
+  CartItem,
+  CartItemTest,
+  CatalogueCartItem,
+} from "@/components/catalogue/types";
+import { cartItemId } from "@/components/catalogue/types";
+import { computeDiscount } from "@/lib/checkout/discount";
 
 const STORAGE_KEY = "avovita-cart-v1";
 
 const CBC_TEST_ID = "8e46bec5-526c-42be-909c-447235e9ecd0";
 
+// ─── Cart calculations ─────────────────────────────────────────────────
+
+export interface CartTotals {
+  testItems: CartItemTest[];
+  supplementItems: CartItem[];
+  resourceItems: CartItem[];
+  subtotal_tests: number;
+  subtotal_supplements: number;
+  subtotal_resources: number;
+  test_count: number;
+  test_discount: number;
+  cart_total: number;
+}
+
+function computeCartTotals(cart: CartItem[]): CartTotals {
+  const testItems = cart.filter(
+    (i): i is CartItemTest => i.line_type === "test",
+  );
+  const supplementItems = cart.filter((i) => i.line_type === "supplement");
+  const resourceItems = cart.filter((i) => i.line_type === "resource");
+
+  const subtotal_tests = testItems.reduce(
+    (s, i) => s + i.price_cad * i.quantity,
+    0,
+  );
+  const subtotal_supplements = supplementItems.reduce(
+    (s, i) => s + i.price_cad * i.quantity,
+    0,
+  );
+  const subtotal_resources = resourceItems.reduce(
+    (s, i) => s + i.price_cad,
+    0,
+  );
+
+  const test_count = testItems.length;
+  const discount = computeDiscount(test_count);
+  const test_discount = discount.total;
+
+  const cart_total =
+    subtotal_tests -
+    test_discount +
+    subtotal_supplements +
+    subtotal_resources;
+
+  return {
+    testItems,
+    supplementItems,
+    resourceItems,
+    subtotal_tests,
+    subtotal_supplements,
+    subtotal_resources,
+    test_count,
+    test_discount,
+    cart_total,
+  };
+}
+
+// ─── Legacy migration ──────────────────────────────────────────────────
+// Old cart items have no line_type. Backfill to 'test' on hydration.
+
+function migrateCartItems(raw: unknown[]): CartItem[] {
+  return raw.map((item) => {
+    const obj = item as Record<string, unknown>;
+    if (obj.line_type) return obj as unknown as CartItem;
+    // Legacy CatalogueCartItem → CartItemTest
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.debug("[cart] Migrated legacy cart item to line_type: 'test'");
+    }
+    return {
+      line_type: "test" as const,
+      test_id: obj.test_id as string,
+      test_name: obj.test_name as string,
+      price_cad: obj.price_cad as number,
+      lab_name: obj.lab_name as string,
+      quantity: (obj.quantity as number) ?? 1,
+    };
+  });
+}
+
+// ─── Context ───────────────────────────────────────────────────────────
+
 interface CartContextValue {
-  cart: CatalogueCartItem[];
-  addItem: (item: CatalogueCartItem) => void;
-  removeItem: (testId: string) => void;
+  cart: CartItem[];
+  totals: CartTotals;
+  addItem: (item: CartItem) => void;
+  /** @deprecated Use addItem with a full CartItem instead. */
+  addTestItem: (item: CatalogueCartItem) => void;
+  removeItem: (id: string) => void;
   clearCart: () => void;
   hydrated: boolean;
 }
@@ -27,21 +118,20 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 /**
  * Cart provider — single source of truth for the public catalogue cart.
- * Persists to localStorage so the cart survives navigation between
- * /tests, /checkout, and back. Hydration is two-phase: first render is
- * always an empty cart so server + client markup match, then a
- * useEffect reads localStorage and replaces the state.
+ * Accepts three line types: 'test', 'supplement', 'resource'.
  *
- * Special case: the CBC test (id above) requires a Wednesday-only
- * collection due to Mayo Clinic same-day shipping requirements. When a
- * caller tries to add CBC, addItem stages the item instead of
- * committing — a modal at provider level asks the user to acknowledge
- * the constraint before the item lands in the cart.
+ * Persists to localStorage. Hydration is two-phase: first render is
+ * always an empty cart so server + client markup match, then useEffect
+ * reads localStorage. Legacy items without line_type are backfilled
+ * to 'test' on hydration.
+ *
+ * Special case: the CBC test requires a Wednesday-only collection modal
+ * before the item lands in the cart (line_type='test' only).
  */
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<CatalogueCartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
-  const [pendingCbc, setPendingCbc] = useState<CatalogueCartItem | null>(null);
+  const [pendingCbc, setPendingCbc] = useState<CartItemTest | null>(null);
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -49,9 +139,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as CatalogueCartItem[];
+        const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          setCart(parsed);
+          setCart(migrateCartItems(parsed));
         }
       }
     } catch {
@@ -70,28 +160,53 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [cart, hydrated]);
 
-  const commitAdd = useCallback((item: CatalogueCartItem) => {
+  const commitAdd = useCallback((item: CartItem) => {
+    const id = cartItemId(item);
     setCart((prev) => {
-      if (prev.some((c) => c.test_id === item.test_id)) return prev;
+      if (prev.some((c) => cartItemId(c) === id)) return prev;
       return [...prev, item];
     });
   }, []);
 
   const addItem = useCallback(
-    (item: CatalogueCartItem) => {
-      if (item.test_id === CBC_TEST_ID) {
-        // If already in cart, no-op (matches commitAdd dedup behaviour)
-        if (cart.some((c) => c.test_id === CBC_TEST_ID)) return;
+    (item: CartItem) => {
+      // CBC gate — only for tests
+      if (
+        item.line_type === "test" &&
+        item.test_id === CBC_TEST_ID
+      ) {
+        if (cart.some((c) => cartItemId(c) === `test:${CBC_TEST_ID}`))
+          return;
         setPendingCbc(item);
+        return;
+      }
+      // Resources: enforce quantity = 1
+      if (item.line_type === "resource") {
+        commitAdd({ ...item, quantity: 1 });
         return;
       }
       commitAdd(item);
     },
-    [cart, commitAdd]
+    [cart, commitAdd],
   );
 
-  const removeItem = useCallback((testId: string) => {
-    setCart((prev) => prev.filter((c) => c.test_id !== testId));
+  /**
+   * @deprecated Backwards-compatible wrapper for existing catalogue pages
+   * that still pass CatalogueCartItem (which is CartItemTest).
+   */
+  const addTestItem = useCallback(
+    (item: CatalogueCartItem) => {
+      const testItem: CartItemTest = {
+        ...item,
+        line_type: "test",
+      };
+      addItem(testItem);
+    },
+    [addItem],
+  );
+
+  const removeItem = useCallback((id: string) => {
+    setCart((prev) => prev.filter((c) => cartItemId(c) !== id));
   }, []);
 
   const clearCart = useCallback(() => {
@@ -105,9 +220,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const totals = useMemo(() => computeCartTotals(cart), [cart]);
+
   const value = useMemo<CartContextValue>(
-    () => ({ cart, addItem, removeItem, clearCart, hydrated }),
-    [cart, addItem, removeItem, clearCart, hydrated]
+    () => ({
+      cart,
+      totals,
+      addItem,
+      addTestItem,
+      removeItem,
+      clearCart,
+      hydrated,
+    }),
+    [cart, totals, addItem, addTestItem, removeItem, clearCart, hydrated],
   );
 
   return (

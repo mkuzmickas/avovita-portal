@@ -8,6 +8,7 @@ import { useCart } from "@/components/cart/CartContext";
 import { useOrg } from "@/components/org/OrgContext";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import { formatCurrency } from "@/lib/utils";
+import type { CartItem } from "@/components/catalogue/types";
 
 interface InsightsChatModalProps {
   open: boolean;
@@ -152,8 +153,9 @@ export function InsightsChatModal({
 
   const handleAdd = (test: CatalogueLookupTest) => {
     if (test.price_cad == null) return;
-    if (cart.some((c) => c.test_id === test.id)) return;
+    if (cart.some((c) => c.line_type === "test" && c.test_id === test.id)) return;
     addItem({
+      line_type: "test",
       test_id: test.id,
       test_name: test.name,
       price_cad: test.price_cad,
@@ -370,7 +372,7 @@ function extractCodes(text: string): string[] {
 interface AssistantMessageProps {
   content: string;
   testIndex: Map<string, CatalogueLookupTest>;
-  cart: { test_id: string }[];
+  cart: CartItem[];
   onAdd: (test: CatalogueLookupTest) => void;
   onView: (testId: string) => void;
 }
@@ -412,7 +414,7 @@ const AssistantMessage = ({
             style={{ borderTop: "1px solid #2d6b35" }}
           >
             {referencedTests.map((t) => {
-              const inCart = cart.some((c) => c.test_id === t.id);
+              const inCart = cart.some((c) => c.line_type === "test" && c.test_id === t.id);
               const canAdd = t.price_cad != null;
               return (
                 <div

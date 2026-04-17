@@ -6,11 +6,12 @@ import { formatCurrency } from "@/lib/utils";
 import { formatPublicStability } from "./TestCard";
 import { PanelIncludes } from "./PanelIncludes";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
-import type { CatalogueTest, CatalogueCartItem } from "./types";
+import { cartItemId } from "./types";
+import type { CatalogueTest, CatalogueCartItem, CartItem } from "./types";
 
 interface TestTableProps {
   tests: CatalogueTest[];
-  cart: CatalogueCartItem[];
+  cart: CartItem[];
   onAdd: (item: CatalogueCartItem) => void;
   onClearFilters?: () => void;
   hasFiltersActive: boolean;
@@ -116,7 +117,7 @@ export function TestTable({
             ) : (
               tests.map((test, idx) => {
                 const expanded = expandedId === test.id;
-                const inCart = cart.some((c) => c.test_id === test.id);
+                const inCart = cart.some((c) => cartItemId(c) === `test:${test.id}`);
                 const rowBg = idx % 2 === 0 ? "#0a1a0d" : "#1a3d22";
 
                 return (
@@ -174,6 +175,7 @@ function TestTableRow({
     e.stopPropagation();
     if (inCart || justAdded || !hasPrice) return;
     onAdd({
+      line_type: "test" as const,
       test_id: test.id,
       test_name: test.name,
       price_cad: test.price_cad as number,

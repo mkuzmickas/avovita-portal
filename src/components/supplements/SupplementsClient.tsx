@@ -81,18 +81,15 @@ export function SupplementsClient({
     if (!enabled) return;
     const outOfStock = supp.track_inventory && supp.stock_qty === 0;
     if (outOfStock) return;
-    // TODO (Phase 4): The cart store currently only accepts CatalogueCartItem
-    // (test_id / test_name / lab_name). We need to extend it to accept
-    // line_type: 'supplement' items. For now, we map to the existing shape
-    // using supplement_id → test_id and name → test_name. This will be
-    // replaced with a proper SupplementCartItem type in Phase 4.
-    if (cart.some((c) => c.test_id === supp.id)) return;
+    if (cart.some((c) => c.line_type === "supplement" && c.supplement_id === supp.id)) return;
     addItem({
-      test_id: supp.id, // TODO Phase 4: use supplement_id
-      test_name: supp.name,
+      line_type: "supplement",
+      supplement_id: supp.id,
+      sku: supp.sku,
+      name: supp.name,
       price_cad: supp.price_cad,
-      lab_name: supp.brand ?? "Supplement",
       quantity: 1,
+      image_url: supp.image_url,
     });
   };
 
@@ -211,7 +208,7 @@ export function SupplementsClient({
               <SupplementCard
                 key={supp.id}
                 supp={supp}
-                inCart={cart.some((c) => c.test_id === supp.id)}
+                inCart={cart.some((c) => c.line_type === "supplement" && c.supplement_id === supp.id)}
                 enabled={enabled}
                 onAdd={() => handleAdd(supp)}
               />

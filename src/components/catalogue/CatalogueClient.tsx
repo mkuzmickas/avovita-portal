@@ -13,7 +13,7 @@ import { CategoryFilter } from "./CategoryFilter";
 import { CartBar } from "./CartBar";
 import { InsightsChatModal } from "./InsightsChatModal";
 import { useCart } from "@/components/cart/CartContext";
-import type { CatalogueTest, CatalogueCartItem } from "./types";
+import type { CatalogueTest, CatalogueCartItem, CartItemTest } from "./types";
 
 interface CatalogueClientProps {
   featuredTests: CatalogueTest[];
@@ -40,7 +40,7 @@ export function CatalogueClient({
   const [aiOpen, setAiOpen] = useState(false);
 
   const handleAdd = (item: CatalogueCartItem) => {
-    addItem(item);
+    addItem({ ...item, line_type: "test" });
   };
 
   const toggleExpanded = useCallback((testId: string) => {
@@ -299,7 +299,7 @@ export function CatalogueClient({
           ) : (
             <FeaturedCarousel
               tests={featuredTests}
-              cart={cart}
+              cart={cart.filter((c) => c.line_type === "test") as CartItemTest[]}
               onAdd={handleAdd}
               expandedId={expandedCardId}
               onToggleExpand={toggleExpanded}
@@ -316,7 +316,7 @@ export function CatalogueClient({
             />
             <FeaturedCarousel
               tests={panelTests}
-              cart={cart}
+              cart={cart.filter((c) => c.line_type === "test") as CartItemTest[]}
               onAdd={handleAdd}
               expandedId={expandedCardId}
               onToggleExpand={toggleExpanded}
@@ -460,7 +460,9 @@ function FeaturedCarousel({
         >
           {tests.map((test) => {
             const isExpanded = expandedId === test.id;
-            const inCart = cart.some((c) => c.test_id === test.id);
+            const inCart = cart.some(
+              (c) => c.line_type === "test" && c.test_id === test.id,
+            );
             return (
               <div
                 key={test.id}

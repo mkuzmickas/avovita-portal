@@ -5,12 +5,13 @@ import { formatCurrency } from "@/lib/utils";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { DiscountBanner } from "./DiscountBanner";
 import { useCart } from "@/components/cart/CartContext";
-import type { CatalogueCartItem } from "@/components/catalogue/types";
+import { cartItemId, cartItemName } from "@/components/catalogue/types";
+import type { CartItem } from "@/components/catalogue/types";
 import type { VisitFees, AppliedPromo } from "@/lib/checkout/types";
 import { calculateTotals } from "@/lib/checkout/totals";
 
 interface CheckoutCartSummaryProps {
-  cart: CatalogueCartItem[];
+  cart: CartItem[];
   /** Null on Step 1 (person count not chosen yet → no visit fee shown). */
   visitFees: VisitFees | null;
   /**
@@ -42,7 +43,8 @@ export function CheckoutCartSummary({
   appliedPromo = null,
 }: CheckoutCartSummaryProps) {
   const { removeItem } = useCart();
-  const effectiveLineCount = lineCount ?? cart.length;
+  const testCount = cart.filter((i) => i.line_type === "test").length;
+  const effectiveLineCount = lineCount ?? testCount;
   // For the per-line discount annotation we still need the discount
   // shape (per_line / applies). The authoritative totals come from
   // calculateTotals — same function the Step 4 pane uses.
@@ -119,9 +121,18 @@ export function CheckoutCartSummary({
 
           {/* Line items with full price + per-line discount annotation */}
           <ul className="space-y-3 mb-4">
-            {cart.map((item) => (
+            {cart.map((item) => {
+              const id = cartItemId(item);
+              const name = cartItemName(item);
+              const subtitle =
+                item.line_type === "test"
+                  ? item.lab_name
+                  : item.line_type === "supplement"
+                    ? "Supplement"
+                    : "Resource";
+              return (
               <li
-                key={item.test_id}
+                key={id}
                 className="flex flex-col gap-0.5"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -130,13 +141,13 @@ export function CheckoutCartSummary({
                       className="text-sm font-medium leading-snug"
                       style={{ color: "#ffffff" }}
                     >
-                      {item.test_name}
+                      {name}
                     </p>
                     <p
                       className="text-xs mt-0.5"
                       style={{ color: "#6ab04c" }}
                     >
-                      {item.lab_name}
+                      {subtitle}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -148,17 +159,17 @@ export function CheckoutCartSummary({
                     </p>
                     <button
                       type="button"
-                      onClick={() => removeItem(item.test_id)}
+                      onClick={() => removeItem(id)}
                       className="p-0.5 rounded transition-colors"
                       style={{ color: "#c4973a" }}
-                      aria-label={`Remove ${item.test_name}`}
+                      aria-label={`Remove ${name}`}
                       title="Remove from cart"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
-                {discount.applies && (
+                {discount.applies && item.line_type === "test" && (
                   <p
                     className="text-[11px] font-medium ml-0 sm:ml-0 text-right"
                     style={{ color: "#8dc63f" }}
@@ -167,7 +178,8 @@ export function CheckoutCartSummary({
                   </p>
                 )}
               </li>
-            ))}
+              );
+            })}
           </ul>
 
           {/* Totals block */}

@@ -5,20 +5,20 @@ import { ShoppingBag, ArrowRight, Tag } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/components/cart/CartContext";
 import { useOrg } from "@/components/org/OrgContext";
-import { computeDiscount } from "@/lib/checkout/discount";
-import type { CatalogueCartItem } from "./types";
+import type { CartItem } from "./types";
 
 interface CartBarProps {
   /**
    * Optional override — if not provided the bar reads from CartContext.
    * Kept as a prop so server-rendered pages can pass an explicit list.
    */
-  cart?: CatalogueCartItem[];
+  cart?: CartItem[];
 }
 
 export function CartBar({ cart: cartProp }: CartBarProps) {
   const ctx = useCart();
   const cart = cartProp ?? ctx.cart;
+  const { totals } = ctx;
   const org = useOrg();
   const checkoutHref = org
     ? `/checkout?org_slug=${encodeURIComponent(org.slug)}`
@@ -27,15 +27,12 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
   if (cart.length === 0) return null;
 
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = cart.reduce(
-    (sum, item) => sum + item.price_cad * item.quantity,
-    0
-  );
-
-  // Pre-checkout preview: every cart item becomes at least one order line,
-  // so cart.length is a safe lower bound for whether the discount applies.
-  const discount = computeDiscount(cart.length);
-  const totalAfterDiscount = subtotal - discount.total;
+  const subtotal =
+    totals.subtotal_tests + totals.subtotal_supplements + totals.subtotal_resources;
+  const discount = totals.test_discount > 0
+    ? { applies: true, total: totals.test_discount }
+    : { applies: false, total: 0 };
+  const totalAfterDiscount = totals.cart_total;
 
   return (
     <div

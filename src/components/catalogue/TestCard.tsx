@@ -29,6 +29,7 @@ export function TestCard({
     e.stopPropagation();
     if (inCart || justAdded || !hasPrice) return;
     onAdd({
+      line_type: "test" as const,
       test_id: test.id,
       test_name: test.name,
       price_cad: test.price_cad as number,

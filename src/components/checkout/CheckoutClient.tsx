@@ -157,6 +157,7 @@ export function CheckoutClient({
         clearCart();
         for (const it of items) {
           addItem({
+            line_type: "test" as const,
             test_id: it.test_id,
             test_name: it.test_name,
             lab_name: it.lab_name,
@@ -273,7 +274,9 @@ export function CheckoutClient({
     if (!restored || !hydrated) return;
     setAssignments((prev) => {
       const filtered = prev.filter((a) =>
-        cart.some((c) => c.test_id === a.test_id)
+        cart.some(
+          (c) => c.line_type === "test" && c.test_id === a.test_id,
+        )
       );
       return filtered.length === prev.length ? prev : filtered;
     });
@@ -373,15 +376,20 @@ export function CheckoutClient({
   const handleStep1Continue = () => {
     trackEvent("checkout_step_completed", { step: 1 });
     if (personCount === 1) {
-      // Auto-assign every cart item to person 0
+      // Auto-assign every test cart item to person 0
       setAssignments(
-        cart.map((item) => ({
-          test_id: item.test_id,
-          test_name: item.test_name,
-          lab_name: item.lab_name,
-          price_cad: item.price_cad,
-          person_index: 0,
-        }))
+        cart
+          .filter((item) => item.line_type === "test")
+          .map((item) => {
+            if (item.line_type !== "test") throw new Error("unreachable");
+            return {
+              test_id: item.test_id,
+              test_name: item.test_name,
+              lab_name: item.lab_name,
+              price_cad: item.price_cad,
+              person_index: 0,
+            };
+          })
       );
       setStep(3);
     } else {
@@ -417,8 +425,9 @@ export function CheckoutClient({
   // of truth for line count, subtotal, and discount preview on every
   // checkout step. The Step 2 step body uses the same numbers, so the
   // sidebar and step body always agree.
-  const sidebarLineCount = cart.length;
-  const sidebarSubtotal = cart.reduce(
+  const testCartItems = cart.filter((c) => c.line_type === "test");
+  const sidebarLineCount = testCartItems.length;
+  const sidebarSubtotal = testCartItems.reduce(
     (s, c) => s + c.price_cad * c.quantity,
     0
   );
@@ -533,7 +542,7 @@ export function CheckoutClient({
             )}
             {step === 2 && (
               <Step2AssignTests
-                cart={cart}
+                cart={testCartItems as import("@/components/catalogue/types").CatalogueCartItem[]}
                 personCount={personCount}
                 assignments={assignments}
                 onAssignmentsChange={setAssignments}

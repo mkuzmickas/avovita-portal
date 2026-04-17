@@ -69,15 +69,12 @@ export function ResourcesClient({ resources }: ResourcesClientProps) {
 
   const handleAddToCart = (res: PublicResource) => {
     if (!enabled) return;
-    // TODO (Phase 4): The cart store currently only accepts CatalogueCartItem
-    // (test_id / test_name / lab_name). We need to extend it to accept
-    // line_type: 'resource' items. For now we shim to the existing shape.
-    if (cart.some((c) => c.test_id === res.id)) return;
+    if (cart.some((c) => c.line_type === "resource" && c.resource_id === res.id)) return;
     addItem({
-      test_id: res.id, // TODO Phase 4: use resource_id
-      test_name: res.title,
+      line_type: "resource",
+      resource_id: res.id,
+      name: res.title,
       price_cad: res.price_cad,
-      lab_name: "Resource",
       quantity: 1,
     });
   };
@@ -177,7 +174,7 @@ export function ResourcesClient({ resources }: ResourcesClientProps) {
               <ResourceCard
                 key={res.id}
                 res={res}
-                inCart={cart.some((c) => c.test_id === res.id)}
+                inCart={cart.some((c) => c.line_type === "resource" && c.resource_id === res.id)}
                 enabled={enabled}
                 onAddToCart={() => handleAddToCart(res)}
               />
