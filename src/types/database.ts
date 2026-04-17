@@ -272,12 +272,14 @@ export interface QuoteLine {
 export interface OrderLine {
   id: string;
   order_id: string;
-  /** Discriminator: 'test' for lab tests, 'supplement' for supplements. */
-  line_type: import("./supplements").OrderLineType;
+  /** Discriminator: 'test' | 'supplement' | 'resource'. */
+  line_type: import("./supplements").OrderLineType | "resource";
   /** Set when line_type = 'test'. */
   test_id: string | null;
   /** Set when line_type = 'supplement'. */
   supplement_id: string | null;
+  /** Set when line_type = 'resource'. */
+  resource_id: string | null;
   profile_id: string;
   quantity: number;
   unit_price_cad: number;
@@ -489,6 +491,13 @@ export interface Database {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "order_lines_resource_id_fkey";
+            columns: ["resource_id"];
+            isOneToOne: false;
+            referencedRelation: "resources";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "order_lines_profile_id_fkey";
             columns: ["profile_id"];
             isOneToOne: false;
@@ -511,6 +520,37 @@ export interface Database {
         };
         Update: Partial<Omit<import("./supplements").Supplement, "id">>;
         Relationships: [];
+      };
+      resources: {
+        Row: import("./resources").Resource;
+        Insert: Omit<import("./resources").Resource, "id" | "created_at" | "updated_at" | "active" | "featured" | "download_count"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          active?: boolean;
+          featured?: boolean;
+          download_count?: number;
+        };
+        Update: Partial<Omit<import("./resources").Resource, "id">>;
+        Relationships: [];
+      };
+      resource_purchases: {
+        Row: import("./resources").ResourcePurchase;
+        Insert: Omit<import("./resources").ResourcePurchase, "id" | "created_at" | "download_count"> & {
+          id?: string;
+          created_at?: string;
+          download_count?: number;
+        };
+        Update: Partial<Omit<import("./resources").ResourcePurchase, "id">>;
+        Relationships: [
+          {
+            foreignKeyName: "resource_purchases_resource_id_fkey";
+            columns: ["resource_id"];
+            isOneToOne: false;
+            referencedRelation: "resources";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       visit_groups: {
         Row: VisitGroup;

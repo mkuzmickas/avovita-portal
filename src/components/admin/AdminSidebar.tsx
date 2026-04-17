@@ -18,6 +18,7 @@ import {
   Tag,
   BarChart3,
   Pill,
+  BookOpen,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -44,6 +45,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/admin/results", label: "Upload Results", icon: Upload, key: "results" },
   { href: "/admin/tests", label: "Tests", icon: FlaskConical, key: "tests" },
   { href: "/admin/supplements", label: "Supplements", icon: Pill, key: "supplements" },
+  { href: "/admin/resources", label: "Resources", icon: BookOpen, key: "resources" },
   { href: "/admin/promo-codes", label: "Promo Codes", icon: Tag, key: "promo-codes" },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3, key: "analytics" },
 ];
