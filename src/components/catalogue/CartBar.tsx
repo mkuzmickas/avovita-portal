@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ShoppingBag, ArrowRight, Tag } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ShoppingBag, ArrowRight, Tag, X, Pill } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/components/cart/CartContext";
 import { useOrg } from "@/components/org/OrgContext";
+import { isSupplementsEnabled } from "@/types/supplements";
 import type { CartItem } from "./types";
 
 interface CartBarProps {
@@ -20,9 +23,11 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
   const cart = cartProp ?? ctx.cart;
   const { totals } = ctx;
   const org = useOrg();
+  const router = useRouter();
   const checkoutHref = org
     ? `/checkout?org_slug=${encodeURIComponent(org.slug)}`
     : "/checkout";
+  const [showSuppsModal, setShowSuppsModal] = useState(false);
 
   if (cart.length === 0) return null;
 
@@ -101,14 +106,123 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
 
         <div className="flex-1" />
 
-        <Link
-          href={checkoutHref}
+        <button
+          type="button"
+          onClick={() => {
+            // Show "Browse supplements?" modal if:
+            // 1. Feature flag is on
+            // 2. Cart has NO supplements
+            const hasSupplement = cart.some(
+              (i) => i.line_type === "supplement",
+            );
+            if (isSupplementsEnabled() && !hasSupplement) {
+              setShowSuppsModal(true);
+              return;
+            }
+            router.push(checkoutHref);
+          }}
           className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-colors"
           style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
         >
           Proceed to Checkout
           <ArrowRight className="w-4 h-4" />
-        </Link>
+        </button>
+      </div>
+
+      {/* "Browse supplements?" modal */}
+      {showSuppsModal && (
+        <BrowseSupplementsModal
+          onBrowse={() => {
+            setShowSuppsModal(false);
+            router.push("/supplements");
+          }}
+          onContinue={() => {
+            setShowSuppsModal(false);
+            router.push(checkoutHref);
+          }}
+          onClose={() => setShowSuppsModal(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── "Browse Supplements?" pre-checkout modal ─────────────────────────
+
+function BrowseSupplementsModal({
+  onBrowse,
+  onContinue,
+  onClose,
+}: {
+  onBrowse: () => void;
+  onContinue: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6"
+      style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border p-6"
+        style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center border"
+              style={{ backgroundColor: "#0f2614", borderColor: "#c4973a" }}
+            >
+              <Pill className="w-5 h-5" style={{ color: "#c4973a" }} />
+            </div>
+            <h2
+              className="font-heading text-xl font-semibold"
+              style={{
+                color: "#ffffff",
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+              }}
+            >
+              Before you check out
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="p-1 rounded-md"
+            style={{ color: "#e8d5a3" }}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="text-sm mb-6" style={{ color: "#e8d5a3" }}>
+          Would you like to browse our supplements first? We offer a curated
+          selection of practitioner-grade supplements.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            type="button"
+            onClick={onBrowse}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-colors"
+            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+          >
+            Browse supplements
+          </button>
+          <button
+            type="button"
+            onClick={onContinue}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold border transition-colors"
+            style={{
+              backgroundColor: "transparent",
+              borderColor: "#8dc63f",
+              color: "#8dc63f",
+            }}
+          >
+            No thanks, continue to checkout
+          </button>
+        </div>
       </div>
     </div>
   );
