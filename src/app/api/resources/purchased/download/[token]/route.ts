@@ -113,7 +113,40 @@ export async function GET(
 
   const resource = resRaw as { file_path: string };
 
-  // 5. Generate signed URL (60 seconds)
+  // 5. Atomic increment via RPC — row-locked, enforces max_downloads
+  //    AND expiry at the DB level. This MUST run before generating
+  //    the signed URL so that parallel requests are serialized.
+  const { data: rpcResult, error: rpcErr } = await supabase.rpc(
+    "increment_resource_purchase_download",
+    { p_purchase_id: purchase.id },
+  );
+
+  if (rpcErr) {
+    console.error(
+      "[purchased-download] RPC increment failed:",
+      rpcErr,
+    );
+    return new NextResponse("Failed to process download.", {
+      status: 500,
+    });
+  }
+
+  const rpc = rpcResult as {
+    success: boolean;
+    new_download_count: number;
+    max_downloads: number;
+  } | null;
+
+  if (!rpc?.success) {
+    // Another concurrent request consumed the last allowed download,
+    // or the link expired between the pre-check and the RPC call.
+    return new NextResponse(
+      "This download has reached its maximum number of uses. Please contact support@avovita.ca if you need help.",
+      { status: 429 },
+    );
+  }
+
+  // 6. Generate signed URL (60 seconds) — only if RPC succeeded
   const { data: signedData, error: signErr } = await supabase.storage
     .from("resources")
     .createSignedUrl(resource.file_path, 60);
@@ -128,24 +161,17 @@ export async function GET(
     });
   }
 
-  // 6. Increment purchase download_count (database-level increment)
-  await supabase
-    .from("resource_purchases")
-    .update({ download_count: purchase.download_count + 1 })
-    .eq("id", purchase.id);
-
-  // 7. Increment resource download_count for analytics
-  const { data: resCurrent } = await supabase
-    .from("resources")
-    .select("download_count")
-    .eq("id", purchase.resource_id)
-    .single();
-  const currentResCount =
-    (resCurrent as { download_count: number } | null)?.download_count ?? 0;
-  await supabase
-    .from("resources")
-    .update({ download_count: currentResCount + 1 })
-    .eq("id", purchase.resource_id);
+  // 7. Analytics counter — fire-and-forget (non-blocking)
+  Promise.resolve(
+    supabase.rpc("increment_resource_download_count", {
+      p_resource_id: purchase.resource_id,
+    }),
+  ).catch((err: unknown) => {
+    console.error(
+      "[purchased-download] Analytics increment failed (non-fatal):",
+      err,
+    );
+  });
 
   // 8. Redirect to signed URL
   return NextResponse.redirect(signedData.signedUrl);
