@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Leaf } from "lucide-react";
 import { useOrg } from "./OrgContext";
 import { AccountIndicator } from "@/components/auth/AccountIndicator";
@@ -42,6 +43,9 @@ export function OrgAwareHeader({
             <DefaultBrandMark />
           )}
         </Link>
+        {/* Public site nav — only on AvoVita-direct pages (not org routes) */}
+        {!org && !transparent && <PublicNav />}
+
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           {rightSlot}
           <AccountIndicator />
@@ -70,6 +74,36 @@ function DefaultBrandMark() {
         AvoVita Wellness
       </span>
     </>
+  );
+}
+
+const NAV_ITEMS = [
+  { href: "/tests", label: "Lab Tests" },
+  { href: "/supplements", label: "Supplements" },
+  { href: "/resources", label: "Resources" },
+];
+
+function PublicNav() {
+  const pathname = usePathname();
+  return (
+    <nav className="hidden sm:flex items-center gap-1">
+      {NAV_ITEMS.map(({ href, label }) => {
+        const isActive = pathname === href || pathname.startsWith(href + "/");
+        return (
+          <Link
+            key={href}
+            href={href}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            style={{
+              color: isActive ? "#c4973a" : "#e8d5a3",
+              backgroundColor: isActive ? "rgba(196,151,58,0.1)" : "transparent",
+            }}
+          >
+            {label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
