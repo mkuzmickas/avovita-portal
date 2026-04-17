@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { CheckoutClient } from "@/components/checkout/CheckoutClient";
+import { CheckoutRouter } from "@/components/checkout/CheckoutRouter";
 import { OrgProvider } from "@/components/org/OrgContext";
 import { getOrgBySlug } from "@/lib/org";
 import type { Metadata } from "next";
@@ -28,7 +28,7 @@ export default async function CheckoutPage({
   const org = slug ? await getOrgBySlug(slug) : null;
 
   const client = (
-    <CheckoutClient
+    <CheckoutRouter
       accountUserId={user?.id ?? null}
       accountEmail={user?.email ?? null}
     />

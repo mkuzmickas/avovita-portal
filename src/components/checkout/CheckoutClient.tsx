@@ -15,8 +15,10 @@ import {
 } from "./Step2AssignTests";
 import { Step3CollectionDetails } from "./Step3CollectionDetails";
 import { Step4Review } from "./Step4Review";
+import { SupplementFulfillmentStep } from "./SupplementFulfillmentStep";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
+import type { SupplementFulfillment, SupplementShippingAddress } from "@/types/supplements";
 import type {
   CheckoutPerson,
   CollectionAddress,
@@ -29,6 +31,10 @@ interface CheckoutClientProps {
   accountUserId: string | null;
   /** Authenticated email, used to skip account creation if logged in. */
   accountEmail: string | null;
+  /** Show supplement fulfillment step between address and review. */
+  showSupplementFulfillmentStep?: boolean;
+  /** Show resource download notice on success page. */
+  showResourceSuccessNotice?: boolean;
 }
 
 const STORAGE_KEY = "avovita-checkout-v1";
@@ -78,8 +84,11 @@ const defaultAddress: CollectionAddress = {
 export function CheckoutClient({
   accountUserId,
   accountEmail: _accountEmail,
+  showSupplementFulfillmentStep = false,
+  showResourceSuccessNotice: _showResourceSuccessNotice = false,
 }: CheckoutClientProps) {
   void _accountEmail;
+  void _showResourceSuccessNotice;
   const router = useRouter();
   const { cart, hydrated, addItem, clearCart } = useCart();
   const { trackEvent } = useAnalytics();
@@ -99,6 +108,11 @@ export function CheckoutClient({
   const [representative, setRepresentative] = useState<RepresentativeBlock>(
     BLANK_REPRESENTATIVE
   );
+  // Supplement fulfillment state — only used when showSupplementFulfillmentStep
+  const [suppFulfillment, setSuppFulfillment] =
+    useState<SupplementFulfillment | null>(null);
+  const [suppShippingAddress, setSuppShippingAddress] =
+    useState<SupplementShippingAddress | null>(null);
 
   // Org tagging — when the user arrived via /org/[slug]/checkout the
   // server redirect drops org_slug into the query string. We persist it
@@ -407,9 +421,19 @@ export function CheckoutClient({
   const handleStep3Back = () => (skipStep2 ? setStep(1) : setStep(2));
   const handleStep3Continue = () => {
     trackEvent("checkout_step_completed", { step: 3 });
+    if (showSupplementFulfillmentStep) {
+      setStep(35); // Supplement fulfillment step
+    } else {
+      setStep(4);
+    }
+  };
+  const handleStep35Back = () => setStep(3);
+  const handleStep35Continue = () => {
+    trackEvent("checkout_step_completed", { step: 3.5 });
     setStep(4);
   };
-  const handleStep4Back = () => setStep(3);
+  const handleStep4Back = () =>
+    showSupplementFulfillmentStep ? setStep(35) : setStep(3);
 
   const visitFees = useMemo(
     () =>
@@ -562,6 +586,17 @@ export function CheckoutClient({
                 orderMode={orderMode}
                 representative={representative}
                 onRepresentativeChange={setRepresentative}
+              />
+            )}
+            {step === 35 && showSupplementFulfillmentStep && (
+              <SupplementFulfillmentStep
+                collectionAddress={collectionAddress}
+                fulfillment={suppFulfillment}
+                shippingAddress={suppShippingAddress}
+                onFulfillmentChange={setSuppFulfillment}
+                onShippingAddressChange={setSuppShippingAddress}
+                onBack={handleStep35Back}
+                onContinue={handleStep35Continue}
               />
             )}
             {step === 4 && (

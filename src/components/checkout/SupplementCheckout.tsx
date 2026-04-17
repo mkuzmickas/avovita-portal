@@ -1,0 +1,465 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { useCart } from "@/components/cart/CartContext";
+import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
+import { CheckoutCartSummary } from "./CheckoutCartSummary";
+import { SupplementFulfillmentStep } from "./SupplementFulfillmentStep";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
+import { formatCurrency } from "@/lib/utils";
+import { SUPPLEMENT_SHIPPING_FEE_CAD } from "@/types/supplements";
+import type {
+  SupplementFulfillment,
+  SupplementShippingAddress,
+} from "@/types/supplements";
+import { cartItemName } from "@/components/catalogue/types";
+
+interface SupplementCheckoutProps {
+  accountUserId: string | null;
+  accountEmail: string | null;
+  showResourceSuccessNotice?: boolean;
+}
+
+/**
+ * Simplified checkout for supplement-only carts (no tests).
+ * Steps:
+ *   1. Contact info (name, email, phone)
+ *   2. Fulfillment choice (shipping $40 / coordinated $0)
+ *   3. Review + pay
+ *
+ * No person/profile creation, no waiver, no visit fees.
+ */
+export function SupplementCheckout({
+  accountUserId,
+  accountEmail: _accountEmail,
+  showResourceSuccessNotice: _showResourceSuccessNotice,
+}: SupplementCheckoutProps) {
+  void _accountEmail;
+  void _showResourceSuccessNotice;
+  const router = useRouter();
+  const { cart, hydrated, clearCart } = useCart();
+  const { trackEvent } = useAnalytics();
+
+  const [step, setStep] = useState(1);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [fulfillment, setFulfillment] =
+    useState<SupplementFulfillment | null>(null);
+  const [shippingAddress, setShippingAddress] =
+    useState<SupplementShippingAddress | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const trackedStartRef = useRef(false);
+  useEffect(() => {
+    if (hydrated && cart.length > 0 && !trackedStartRef.current) {
+      trackedStartRef.current = true;
+      trackEvent("checkout_started");
+    }
+  }, [hydrated, cart.length, trackEvent]);
+
+  useEffect(() => {
+    if (hydrated && cart.length === 0) {
+      router.replace("/supplements");
+    }
+  }, [hydrated, cart.length, router]);
+
+  if (!hydrated || cart.length === 0) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "#0a1a0d" }}
+      >
+        <p className="text-sm" style={{ color: "#6ab04c" }}>
+          Loading…
+        </p>
+      </div>
+    );
+  }
+
+  const contactValid =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    email.trim().includes("@") &&
+    phone.trim().length >= 7;
+
+  const shippingFee =
+    fulfillment === "shipping" ? SUPPLEMENT_SHIPPING_FEE_CAD : 0;
+
+  const handleSubmit = async () => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      // TODO Part 7: Create pending_order + Stripe session
+      // For now, log intent and display placeholder
+      console.log("[supplement-checkout] submit", {
+        accountUserId,
+        firstName,
+        lastName,
+        email,
+        phone,
+        fulfillment,
+        shippingAddress,
+        shippingFee,
+        cart: cart.map((i) => ({ ...i })),
+      });
+      alert(
+        "Supplement checkout not yet wired to Stripe. This will be completed in Part 7.",
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Checkout failed",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: "#0a1a0d" }}>
+      <OrgAwareHeader
+        rightSlot={
+          <Link
+            href="/supplements"
+            className="text-xs font-medium px-3 py-1.5 rounded-lg border whitespace-nowrap"
+            style={{
+              color: "#e8d5a3",
+              borderColor: "#2d6b35",
+              backgroundColor: "transparent",
+            }}
+          >
+            ← Back to supplements
+          </Link>
+        }
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Simple step indicator */}
+        <div className="flex items-center gap-2 mb-8">
+          {["Contact", "Delivery", "Review"].map((label, i) => {
+            const stepNum = i + 1;
+            const isActive = step === stepNum;
+            const isDone = step > stepNum;
+            return (
+              <div key={label} className="flex items-center gap-2">
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                  style={{
+                    backgroundColor: isDone
+                      ? "#8dc63f"
+                      : isActive
+                        ? "#c4973a"
+                        : "#2d6b35",
+                    color: isDone || isActive ? "#0a1a0d" : "#6ab04c",
+                  }}
+                >
+                  {stepNum}
+                </div>
+                <span
+                  className="text-xs font-medium hidden sm:inline"
+                  style={{
+                    color: isActive ? "#c4973a" : "#6ab04c",
+                  }}
+                >
+                  {label}
+                </span>
+                {i < 2 && (
+                  <div
+                    className="w-8 h-px mx-1"
+                    style={{ backgroundColor: "#2d6b35" }}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+          <div>
+            {/* Step 1: Contact */}
+            {step === 1 && (
+              <div>
+                <h2
+                  className="font-heading text-2xl font-semibold mb-2"
+                  style={{
+                    color: "#ffffff",
+                    fontFamily:
+                      '"Cormorant Garamond", Georgia, serif',
+                  }}
+                >
+                  Your <span style={{ color: "#c4973a" }}>Details</span>
+                </h2>
+                <p
+                  className="text-sm mb-6"
+                  style={{ color: "#e8d5a3" }}
+                >
+                  We need your contact info for order confirmation and
+                  delivery coordination.
+                </p>
+                <div className="space-y-3 max-w-md">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label
+                        className="block text-xs font-medium mb-1"
+                        style={{ color: "#e8d5a3" }}
+                      >
+                        First Name <span style={{ color: "#e05252" }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        className="mf-input"
+                        autoComplete="given-name"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="block text-xs font-medium mb-1"
+                        style={{ color: "#e8d5a3" }}
+                      >
+                        Last Name <span style={{ color: "#e05252" }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        className="mf-input"
+                        autoComplete="family-name"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      className="block text-xs font-medium mb-1"
+                      style={{ color: "#e8d5a3" }}
+                    >
+                      Email <span style={{ color: "#e05252" }}>*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="mf-input"
+                      autoComplete="email"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className="block text-xs font-medium mb-1"
+                      style={{ color: "#e8d5a3" }}
+                    >
+                      Phone <span style={{ color: "#e05252" }}>*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="mf-input"
+                      autoComplete="tel"
+                      placeholder="For delivery coordination"
+                    />
+                  </div>
+                </div>
+                <div className="mt-8 flex justify-end">
+                  <button
+                    type="button"
+                    disabled={!contactValid}
+                    onClick={() => {
+                      trackEvent("checkout_step_completed", { step: 1 });
+                      setStep(2);
+                    }}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                    style={{
+                      backgroundColor: contactValid
+                        ? "#c4973a"
+                        : "#2d6b35",
+                      color: contactValid ? "#0a1a0d" : "#6ab04c",
+                      cursor: contactValid ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    Continue
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Fulfillment */}
+            {step === 2 && (
+              <SupplementFulfillmentStep
+                fulfillment={fulfillment}
+                shippingAddress={shippingAddress}
+                onFulfillmentChange={setFulfillment}
+                onShippingAddressChange={setShippingAddress}
+                onBack={() => setStep(1)}
+                onContinue={() => {
+                  trackEvent("checkout_step_completed", { step: 2 });
+                  setStep(3);
+                }}
+              />
+            )}
+
+            {/* Step 3: Review */}
+            {step === 3 && (
+              <div>
+                <h2
+                  className="font-heading text-2xl font-semibold mb-6"
+                  style={{
+                    color: "#ffffff",
+                    fontFamily:
+                      '"Cormorant Garamond", Georgia, serif',
+                  }}
+                >
+                  Review Your{" "}
+                  <span style={{ color: "#c4973a" }}>Order</span>
+                </h2>
+
+                {/* Items */}
+                <div
+                  className="rounded-xl border p-4 mb-4 space-y-2"
+                  style={{
+                    backgroundColor: "#1a3d22",
+                    borderColor: "#2d6b35",
+                  }}
+                >
+                  {cart.map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between text-sm"
+                    >
+                      <span style={{ color: "#ffffff" }}>
+                        {cartItemName(item)}
+                      </span>
+                      <span style={{ color: "#c4973a" }}>
+                        {formatCurrency(item.price_cad)}
+                      </span>
+                    </div>
+                  ))}
+                  {fulfillment === "shipping" && (
+                    <div className="flex justify-between text-sm pt-2 border-t" style={{ borderColor: "#2d6b35" }}>
+                      <span style={{ color: "#e8d5a3" }}>
+                        Supplement shipping
+                      </span>
+                      <span style={{ color: "#c4973a" }}>
+                        {formatCurrency(shippingFee)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Contact summary */}
+                <div
+                  className="rounded-xl border p-4 mb-4"
+                  style={{
+                    backgroundColor: "#0f2614",
+                    borderColor: "#2d6b35",
+                  }}
+                >
+                  <p className="text-xs uppercase tracking-wider font-semibold mb-2" style={{ color: "#6ab04c" }}>
+                    Contact
+                  </p>
+                  <p className="text-sm" style={{ color: "#ffffff" }}>
+                    {firstName} {lastName}
+                  </p>
+                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                    {email} · {phone}
+                  </p>
+                </div>
+
+                {/* Delivery summary */}
+                <div
+                  className="rounded-xl border p-4 mb-6"
+                  style={{
+                    backgroundColor: "#0f2614",
+                    borderColor: "#2d6b35",
+                  }}
+                >
+                  <p className="text-xs uppercase tracking-wider font-semibold mb-2" style={{ color: "#6ab04c" }}>
+                    Delivery
+                  </p>
+                  {fulfillment === "shipping" && shippingAddress ? (
+                    <div className="text-sm" style={{ color: "#e8d5a3" }}>
+                      <p style={{ color: "#ffffff" }}>Shipping to:</p>
+                      <p>{shippingAddress.street}</p>
+                      <p>
+                        {shippingAddress.city}, {shippingAddress.province}{" "}
+                        {shippingAddress.postal}
+                      </p>
+                    </div>
+                  ) : (
+                    <p
+                      className="text-sm"
+                      style={{ color: "#e8d5a3" }}
+                    >
+                      Coordinated delivery/pickup with AvoVita
+                    </p>
+                  )}
+                </div>
+
+                {error && (
+                  <div
+                    className="flex items-center gap-2 p-3 rounded-lg text-sm border mb-4"
+                    style={{
+                      backgroundColor: "rgba(224, 82, 82, 0.12)",
+                      borderColor: "#e05252",
+                      color: "#e05252",
+                    }}
+                  >
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    className="px-5 py-2.5 rounded-lg text-sm font-semibold border"
+                    style={{
+                      color: "#e8d5a3",
+                      borderColor: "#2d6b35",
+                      backgroundColor: "transparent",
+                    }}
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={handleSubmit}
+                    className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-colors"
+                    style={{
+                      backgroundColor: "#c4973a",
+                      color: "#0a1a0d",
+                      opacity: submitting ? 0.6 : 1,
+                    }}
+                  >
+                    {submitting && (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    )}
+                    Pay Now
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="order-2 lg:order-none">
+            <CheckoutCartSummary
+              cart={cart}
+              visitFees={null}
+              lineCount={0}
+              subtotalOverride={0}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
