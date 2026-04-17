@@ -21,6 +21,29 @@ export async function sendFloLabsRequisition(
   const orderIdShort = orderId.slice(0, 8).toUpperCase();
   const accountHolder = payload.persons.find((p) => p.is_account_holder);
   const lastName = accountHolder?.last_name ?? "Unknown";
+  const rep = payload.representative ?? null;
+
+  // Resolve account email for contact fallback
+  let accountEmail = "";
+  if (payload.account_user_id) {
+    try {
+      const { data: accRow } = await supabase
+        .from("accounts")
+        .select("email")
+        .eq("id", payload.account_user_id)
+        .single();
+      accountEmail =
+        (accRow as { email: string | null } | null)?.email ?? "";
+    } catch {
+      console.warn(
+        `[floLabs-requisition] Could not resolve account email for ${payload.account_user_id}`,
+      );
+    }
+  }
+
+  // Contact fallback helpers
+  const accountHolderPhone = accountHolder?.phone ?? rep?.phone ?? "";
+  const accountHolderEmail = rep?.email ?? accountEmail;
 
   // Resolve test details for the email
   const testIds = [...new Set(payload.assignments.map((a) => a.test_id))];
@@ -70,9 +93,35 @@ export async function sendFloLabsRequisition(
       ? ""
       : ` — ${person.relationship?.replace("_", " ") ?? "Additional person"}`;
 
+    // ── Contact resolution with fallback ──────────────────────────
+    const hasOwnPhone = !!person.phone;
+    const personPhone = person.phone ?? accountHolderPhone;
+    const phoneLabel = hasOwnPhone
+      ? ""
+      : rep
+        ? ' <span style="font-size:11px;color:#9ca3af;font-style:italic;">(representative contact)</span>'
+        : ' <span style="font-size:11px;color:#9ca3af;font-style:italic;">(account holder contact)</span>';
+
+    const hasOwnEmail = !!person.own_account_email;
+    const personEmail = person.own_account_email ?? accountHolderEmail;
+    const emailLabel = hasOwnEmail
+      ? ""
+      : rep
+        ? ' <span style="font-size:11px;color:#9ca3af;font-style:italic;">(representative contact)</span>'
+        : ' <span style="font-size:11px;color:#9ca3af;font-style:italic;">(account holder contact)</span>';
+
+    const phoneDisplay = personPhone
+      ? `${esc(personPhone)}${phoneLabel}`
+      : '<span style="color:#9ca3af;font-style:italic;">(not available)</span>';
+    const emailDisplay = personEmail
+      ? `${esc(personEmail)}${emailLabel}`
+      : '<span style="color:#9ca3af;font-style:italic;">(not available)</span>';
+
     return `<div style="margin-bottom:24px;">
       <h3 style="margin:0 0 4px;font-size:15px;color:#111827;">${esc(person.first_name)} ${esc(person.last_name)}${rel}</h3>
-      <p style="margin:0 0 8px;font-size:12px;color:#6b7280;">DOB: ${person.date_of_birth} · Sex: ${person.biological_sex}</p>
+      <p style="margin:0 0 4px;font-size:12px;color:#6b7280;">DOB: ${person.date_of_birth} · Sex: ${person.biological_sex}</p>
+      <p style="margin:0 0 4px;font-size:12px;color:#6b7280;">Phone: ${phoneDisplay}</p>
+      <p style="margin:0 0 8px;font-size:12px;color:#6b7280;">Email: ${emailDisplay}</p>
       <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #0f2614;">
         <tr style="background:#f9fafb;">
           <th style="padding:6px 8px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b7280;">Test</th>
