@@ -188,6 +188,14 @@ export interface Order {
   shipping_date: string | null;
   appointment_date: string | null;
   manifest_id: string | null;
+  /** True when the order contains at least one supplement line. */
+  has_supplements: boolean;
+  /** Fulfillment method for supplements: 'shipping' ($40) or 'coordinated' ($0). */
+  supplement_fulfillment: import("./supplements").SupplementFulfillment | null;
+  /** Shipping fee paid for supplement delivery. */
+  supplement_shipping_fee_cad: number;
+  /** Shipping address (JSONB) when supplement_fulfillment = 'shipping'. */
+  supplement_shipping_address: import("./supplements").SupplementShippingAddress | null;
   created_at: string;
   updated_at: string;
 }
@@ -264,7 +272,12 @@ export interface QuoteLine {
 export interface OrderLine {
   id: string;
   order_id: string;
-  test_id: string;
+  /** Discriminator: 'test' for lab tests, 'supplement' for supplements. */
+  line_type: import("./supplements").OrderLineType;
+  /** Set when line_type = 'test'. */
+  test_id: string | null;
+  /** Set when line_type = 'supplement'. */
+  supplement_id: string | null;
   profile_id: string;
   quantity: number;
   unit_price_cad: number;
@@ -427,10 +440,12 @@ export interface Database {
       };
       orders: {
         Row: Order;
-        Insert: Omit<Order, "id" | "created_at" | "updated_at"> & {
+        Insert: Omit<Order, "id" | "created_at" | "updated_at" | "has_supplements" | "supplement_shipping_fee_cad"> & {
           id?: string;
           created_at?: string;
           updated_at?: string;
+          has_supplements?: boolean;
+          supplement_shipping_fee_cad?: number;
         };
         Update: Partial<Omit<Order, "id">>;
         Relationships: [
@@ -445,9 +460,10 @@ export interface Database {
       };
       order_lines: {
         Row: OrderLine;
-        Insert: Omit<OrderLine, "id" | "created_at"> & {
+        Insert: Omit<OrderLine, "id" | "created_at" | "line_type"> & {
           id?: string;
           created_at?: string;
+          line_type?: import("./supplements").OrderLineType;
         };
         Update: Partial<Omit<OrderLine, "id">>;
         Relationships: [
@@ -466,6 +482,13 @@ export interface Database {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "order_lines_supplement_id_fkey";
+            columns: ["supplement_id"];
+            isOneToOne: false;
+            referencedRelation: "supplements";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "order_lines_profile_id_fkey";
             columns: ["profile_id"];
             isOneToOne: false;
@@ -473,6 +496,21 @@ export interface Database {
             referencedColumns: ["id"];
           }
         ];
+      };
+      supplements: {
+        Row: import("./supplements").Supplement;
+        Insert: Omit<import("./supplements").Supplement, "id" | "created_at" | "updated_at" | "active" | "featured" | "track_inventory" | "stock_qty" | "low_stock_threshold"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          active?: boolean;
+          featured?: boolean;
+          track_inventory?: boolean;
+          stock_qty?: number;
+          low_stock_threshold?: number;
+        };
+        Update: Partial<Omit<import("./supplements").Supplement, "id">>;
+        Relationships: [];
       };
       visit_groups: {
         Row: VisitGroup;
