@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
-import { TestsSupplementsToggle } from "@/components/TestsSupplementsToggle";
 import { TestCard } from "./TestCard";
 import { TestTable } from "./TestTable";
 import { SearchBar } from "./SearchBar";
@@ -201,9 +200,6 @@ export function CatalogueClient({
 
       {/* Page title */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-6">
-        <div className="mb-6">
-          <TestsSupplementsToggle active="tests" />
-        </div>
         <h1
           className="font-heading text-4xl md:text-5xl font-semibold mb-2"
           style={{

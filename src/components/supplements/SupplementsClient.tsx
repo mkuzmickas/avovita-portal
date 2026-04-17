@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import { Search, ShoppingCart, Check, Sparkles, Pill } from "lucide-react";
 import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
-import { TestsSupplementsToggle } from "@/components/TestsSupplementsToggle";
 import { useCart } from "@/components/cart/CartContext";
 import { formatCurrency } from "@/lib/utils";
 import { isSupplementsEnabled } from "@/types/supplements";
@@ -98,11 +97,6 @@ export function SupplementsClient({
       <OrgAwareHeader />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-6">
-        {/* Toggle */}
-        <div className="mb-6">
-          <TestsSupplementsToggle active="supplements" />
-        </div>
-
         <h1
           className="font-heading text-4xl md:text-5xl font-semibold mb-2"
           style={{
