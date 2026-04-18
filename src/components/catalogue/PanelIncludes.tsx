@@ -21,9 +21,9 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
 
   if (!panelTests || panelTests.length === 0) return null;
 
-  // Any panel that includes Potassium requires Wednesday-morning
+  // Any panel that includes Potassium requires Tuesday-morning
   // collection so specimens ship same-day to the laboratory.
-  const needsWednesday = panelTests.some((t) =>
+  const needsTuesday = panelTests.some((t) =>
     t.name.toLowerCase().includes("potassium"),
   );
 
@@ -63,7 +63,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
                 </li>
               ))}
             </ul>
-            {needsWednesday && <WednesdayNotice />}
+            {needsTuesday && <TuesdayNotice />}
           </div>
         )}
       </div>
@@ -101,14 +101,14 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
           </li>
         ))}
       </ul>
-      {needsWednesday && <WednesdayNotice />}
+      {needsTuesday && <TuesdayNotice />}
     </div>
   );
 }
 
-// ─── Wednesday collection notice ────────────────────────────────────
+// ─── Tuesday collection notice ──────────────────────────────────────
 
-function WednesdayNotice() {
+function TuesdayNotice() {
   return (
     <div
       className="flex items-start gap-2 mt-3 rounded-lg border px-3 py-2 text-xs"
@@ -124,10 +124,10 @@ function WednesdayNotice() {
       />
       <p>
         <strong style={{ color: "#c4973a" }}>
-          Wednesday morning collection required.
+          Tuesday morning collection required.
         </strong>{" "}
         This panel contains Potassium, which must ship same-day to the
-        laboratory. Your FloLabs appointment must be booked on a Wednesday
+        laboratory. Your FloLabs appointment must be booked on a Tuesday
         morning.
       </p>
     </div>

@@ -10,15 +10,15 @@ interface ManifestsManagerProps {
   initialManifests: ManifestWithCount[];
 }
 
-function nextWednesdayISO(): string {
+function nextTuesdayISO(): string {
   const today = new Date();
-  const day = today.getDay(); // 0=Sun, 3=Wed
-  const offset = (3 - day + 7) % 7 || 7; // always future Wednesday
-  const wed = new Date(today);
-  wed.setDate(today.getDate() + offset);
-  const y = wed.getFullYear();
-  const m = String(wed.getMonth() + 1).padStart(2, "0");
-  const d = String(wed.getDate()).padStart(2, "0");
+  const day = today.getDay(); // 0=Sun, 2=Tue
+  const offset = (2 - day + 7) % 7 || 7; // always future Tuesday
+  const tue = new Date(today);
+  tue.setDate(today.getDate() + offset);
+  const y = tue.getFullYear();
+  const m = String(tue.getMonth() + 1).padStart(2, "0");
+  const d = String(tue.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
@@ -53,7 +53,7 @@ export function ManifestsManager({ initialManifests }: ManifestsManagerProps) {
   }, [initialManifests]);
 
   // Create form state
-  const defaultDate = useMemo(() => nextWednesdayISO(), []);
+  const defaultDate = useMemo(() => nextTuesdayISO(), []);
   const [shipDate, setShipDate] = useState<string>(defaultDate);
   const [name, setName] = useState<string>(`Shipment — ${formatDateLong(defaultDate)}`);
   const [nameDirty, setNameDirty] = useState(false);
@@ -107,7 +107,7 @@ export function ManifestsManager({ initialManifests }: ManifestsManagerProps) {
       }
       // Reset form first so success is visible even if router.refresh()
       // takes a moment
-      const next = nextWednesdayISO();
+      const next = nextTuesdayISO();
       setShipDate(next);
       setName(`Shipment — ${formatDateLong(next)}`);
       setNameDirty(false);
@@ -161,7 +161,7 @@ export function ManifestsManager({ initialManifests }: ManifestsManagerProps) {
           New Manifest
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Field label="Ship Date" required helper="Ship dates are typically Wednesdays">
+          <Field label="Ship Date" required helper="Ship dates are typically Tuesdays">
             <input
               type="date"
               value={shipDate}

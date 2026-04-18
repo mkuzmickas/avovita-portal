@@ -125,7 +125,7 @@ const CartContext = createContext<CartContextValue | null>(null);
  * reads localStorage. Legacy items without line_type are backfilled
  * to 'test' on hydration.
  *
- * Special case: the CBC test requires a Wednesday-only collection modal
+ * Special case: the CBC test requires a Tuesday-only collection modal
  * before the item lands in the cart (line_type='test' only).
  */
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -307,7 +307,7 @@ function CbcAcknowledgeModal({
         </h2>
         <div className="space-y-3 text-sm" style={{ color: "#e8d5a3" }}>
           <p>
-            The Complete Blood Count (CBC) requires a Wednesday collection only,
+            The Complete Blood Count (CBC) requires a Tuesday collection only,
             as specimens must ship same-day to Mayo Clinic Laboratories to meet
             stability requirements.
           </p>
@@ -315,7 +315,7 @@ function CbcAcknowledgeModal({
           <ul className="space-y-1.5 list-none pl-0">
             <li className="flex gap-2">
               <span style={{ color: "#c4973a" }}>•</span>
-              <span>Your FloLabs appointment must be booked on a Wednesday</span>
+              <span>Your FloLabs appointment must be booked on a Tuesday</span>
             </li>
             <li className="flex gap-2">
               <span style={{ color: "#c4973a" }}>•</span>

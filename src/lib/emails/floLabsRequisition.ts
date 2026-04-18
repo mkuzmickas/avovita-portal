@@ -166,7 +166,7 @@ export async function sendFloLabsRequisition(
     <div style="margin-top:20px;padding:16px;background:#fffbeb;border-left:4px solid #c4973a;border-radius:4px;">
       <h3 style="margin:0 0 8px;font-size:14px;color:#78350f;">Shipping Notes</h3>
       <p style="margin:0;font-size:13px;color:#78350f;line-height:1.5;">
-        Please ensure all Mayo Clinic specimens are frozen and held for Wednesday shipping.
+        Please ensure all Mayo Clinic specimens are frozen and held for Tuesday shipping.
         Armin Labs specimens must ship same day as collection.
       </p>
     </div>
