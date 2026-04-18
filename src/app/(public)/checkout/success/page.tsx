@@ -43,11 +43,11 @@ export default async function CheckoutSuccessPage({
   if (metadata?.version === "2" && metadata?.pending_order_id) {
     const { data: poRaw } = await service
       .from("pending_orders")
-      .select("payload")
+      .select("cart_snapshot")
       .eq("id", metadata.pending_order_id)
       .single();
     if (poRaw) {
-      pendingPayload = (poRaw as { payload: PendingOrderPayload }).payload;
+      pendingPayload = (poRaw as { cart_snapshot: PendingOrderPayload }).cart_snapshot;
     }
   }
 

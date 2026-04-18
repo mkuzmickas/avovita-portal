@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     // Fetch the pending order
     const { data: poRaw, error: poErr } = await service
       .from("pending_orders")
-      .select("id, payload, fulfilled")
+      .select("id, cart_snapshot, fulfilled_at")
       .eq("id", pendingOrderId)
       .single();
 
@@ -46,15 +46,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const po = poRaw as { id: string; payload: PendingOrderPayload; fulfilled: boolean };
-    if (po.fulfilled) {
+    const po = poRaw as { id: string; cart_snapshot: PendingOrderPayload; fulfilled_at: string | null };
+    if (po.fulfilled_at) {
       return NextResponse.json(
         { error: "This order has already been processed" },
         { status: 400 },
       );
     }
 
-    const payload = po.payload;
+    const payload = po.cart_snapshot;
 
     // ─── Build Stripe line items ──────────────────────────────────
 

@@ -532,7 +532,7 @@ async function handleCheckoutCompleteV2(
   // ─── 1. Fetch pending order ─────────────────────────────────────
   const { data: poRaw, error: poErr } = await supabase
     .from("pending_orders")
-    .select("id, payload, fulfilled")
+    .select("id, cart_snapshot, fulfilled_at")
     .eq("id", pendingOrderId)
     .single();
 
@@ -541,16 +541,16 @@ async function handleCheckoutCompleteV2(
   }
   const po = poRaw as {
     id: string;
-    payload: PendingOrderPayload;
-    fulfilled: boolean;
+    cart_snapshot: PendingOrderPayload;
+    fulfilled_at: string | null;
   };
-  if (po.fulfilled) {
+  if (po.fulfilled_at) {
     console.log(
       `[stripe-webhook-v2] pending order ${pendingOrderId} already fulfilled, skipping`,
     );
     return;
   }
-  const p = po.payload;
+  const p = po.cart_snapshot;
 
   // ─── 2. Idempotency — skip if order already exists ──────────────
   const { data: existingOrder } = await supabase
@@ -999,7 +999,7 @@ async function handleCheckoutCompleteV2(
   // ─── 12. Mark pending order as fulfilled ─────────────────────────
   await supabase
     .from("pending_orders")
-    .update({ fulfilled: true })
+    .update({ fulfilled_at: new Date().toISOString() })
     .eq("id", pendingOrderId);
 
   console.log(

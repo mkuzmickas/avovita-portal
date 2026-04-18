@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const service = createServiceRoleClient();
     const { data, error } = await service
       .from("pending_orders")
-      .insert({ payload })
+      .insert({ cart_snapshot: payload })
       .select("id")
       .single();
 
