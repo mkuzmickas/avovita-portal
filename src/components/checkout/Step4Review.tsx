@@ -145,8 +145,25 @@ export function Step4Review({
   );
   const subtotalAfterDiscount = totals.subtotalAfterDiscount;
   const promoDiscount = totals.promoDiscount;
-  const grossTotal = totals.subtotalAfterDiscount + totals.visitFee;
-  const total = totals.grandTotal;
+
+  // Supplement + resource subtotals from the full cart (not in calculateTotals
+  // which is test-only). Same computation as CheckoutCartSummary.
+  const supplementSubtotal = cart
+    .filter((i) => i.line_type === "supplement")
+    .reduce((s, i) => s + i.price_cad * i.quantity, 0);
+  const resourceSubtotal = cart
+    .filter((i) => i.line_type === "resource")
+    .reduce((s, i) => s + i.price_cad, 0);
+  const suppShippingFee =
+    suppFulfillment === "shipping" ? SUPPLEMENT_SHIPPING_FEE_CAD : 0;
+
+  const grossTotal =
+    totals.subtotalAfterDiscount +
+    totals.visitFee +
+    supplementSubtotal +
+    resourceSubtotal +
+    suppShippingFee;
+  const total = Math.max(0, grossTotal - promoDiscount);
 
   const assignmentsByPerson = useMemo(() => {
     const m = new Map<number, PersonAssignmentEntry[]>();
@@ -591,6 +608,33 @@ export function Step4Review({
                     visitFees.additional_person_count
                 )}
               </span>
+            </div>
+          )}
+          {supplementSubtotal > 0 && (
+            <div
+              className="flex justify-between pt-2 mt-1 border-t"
+              style={{ color: "#e8d5a3", borderColor: "#2d6b35" }}
+            >
+              <span>Supplements</span>
+              <span>{formatCurrency(supplementSubtotal)}</span>
+            </div>
+          )}
+          {suppShippingFee > 0 && (
+            <div
+              className="flex justify-between"
+              style={{ color: "#e8d5a3" }}
+            >
+              <span>Supplement shipping</span>
+              <span>{formatCurrency(suppShippingFee)}</span>
+            </div>
+          )}
+          {resourceSubtotal > 0 && (
+            <div
+              className="flex justify-between"
+              style={{ color: "#e8d5a3" }}
+            >
+              <span>Resources</span>
+              <span>{formatCurrency(resourceSubtotal)}</span>
             </div>
           )}
           {appliedPromo && promoDiscount > 0 && (
