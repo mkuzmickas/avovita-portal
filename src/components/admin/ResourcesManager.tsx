@@ -18,6 +18,9 @@ import {
   Download,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { ImageUploadField } from "./ImageUploadField";
+import { resolveResourceCoverUrl } from "@/lib/storage/imageUrl";
+import { signedUploadToStorage } from "@/lib/storage/upload";
 import type { Resource } from "@/types/resources";
 
 interface ResourcesManagerProps {
@@ -355,7 +358,7 @@ function ResourceRow({
         <td className="px-4 py-3 w-12">
           {res.cover_image_url ? (
             <img
-              src={res.cover_image_url}
+              src={resolveResourceCoverUrl(res.cover_image_url) ?? ""}
               alt=""
               className="w-10 h-10 rounded-lg object-cover"
               style={{ border: "1px solid #2d6b35" }}
@@ -547,33 +550,13 @@ function InlineResourceForm({
     setUploading(true);
     setError(null);
     try {
-      // Step 1: Get signed upload URL from our API (tiny JSON request)
-      const urlResp = await fetch("/api/admin/resources/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: file.name,
-          fileSize: file.size,
-          mimeType: file.type,
-        }),
-      });
-      const urlData = await urlResp.json();
-      if (!urlResp.ok)
-        throw new Error(urlData.error ?? "Failed to prepare upload");
+      const result = await signedUploadToStorage(
+        file,
+        "/api/admin/resources/upload",
+        "application/pdf",
+      );
 
-      // Step 2: Upload PDF directly to Supabase Storage (bypasses Vercel)
-      const uploadResp = await fetch(urlData.signedUrl, {
-        method: "PUT",
-        headers: { "Content-Type": "application/pdf" },
-        body: file,
-      });
-      if (!uploadResp.ok) {
-        throw new Error(
-          `Upload to storage failed (${uploadResp.status})`,
-        );
-      }
-
-      // Step 3: Extract page count client-side (best-effort)
+      // Page count extraction client-side (best-effort)
       let pageCount: number | null = null;
       try {
         const { PDFDocument } = await import("pdf-lib");
@@ -586,31 +569,14 @@ function InlineResourceForm({
         // Non-fatal — pageCount stays null
       }
 
-      // Step 4: Confirm upload with our API
-      const confirmResp = await fetch(
-        "/api/admin/resources/upload/confirm",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            path: urlData.path,
-            filename: file.name,
-            fileSize: file.size,
-          }),
-        },
-      );
-      const confirmData = await confirmResp.json();
-      if (!confirmResp.ok)
-        throw new Error(confirmData.error ?? "Upload verification failed");
-
       setFields((prev) => ({
         ...prev,
-        file_path: confirmData.file_path,
-        file_size_bytes: file.size,
+        file_path: result.filePath,
+        file_size_bytes: result.fileSize,
         file_type: "application/pdf",
         page_count: pageCount,
       }));
-      setUploadFileName(file.name);
+      setUploadFileName(result.fileName);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -774,36 +740,12 @@ function InlineResourceForm({
       </Field>
 
       {/* Cover image */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Field label="Cover Image URL" helper="Optional thumbnail displayed on the public page">
-          <input
-            type="text"
-            value={fields.cover_image_url}
-            onChange={(e) => update("cover_image_url", e.target.value)}
-            className="mf-input"
-            placeholder="https://..."
-          />
-        </Field>
-        {fields.cover_image_url && (
-          <div>
-            <p
-              className="text-xs font-medium mb-1.5"
-              style={{ color: "#e8d5a3" }}
-            >
-              Preview
-            </p>
-            <img
-              src={fields.cover_image_url}
-              alt="Cover preview"
-              className="w-[150px] h-[150px] rounded-lg object-cover"
-              style={{ border: "1px solid #2d6b35" }}
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-          </div>
-        )}
-      </div>
+      <ImageUploadField
+        label="Cover Image (optional)"
+        value={fields.cover_image_url || null}
+        bucket="resource-covers"
+        onChange={(path) => update("cover_image_url", path ?? "")}
+      />
 
       <Field label="Description">
         <textarea

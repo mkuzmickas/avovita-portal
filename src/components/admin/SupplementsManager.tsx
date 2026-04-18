@@ -14,6 +14,8 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { ImageUploadField } from "./ImageUploadField";
+import { resolveSupplementImageUrl } from "@/lib/storage/imageUrl";
 import type { Supplement } from "@/types/supplements";
 
 interface SupplementsManagerProps {
@@ -422,7 +424,7 @@ function SupplementRow({
         <td className="px-4 py-3 w-12">
           {supp.image_url ? (
             <img
-              src={supp.image_url}
+              src={resolveSupplementImageUrl(supp.image_url) ?? ""}
               alt=""
               className="w-10 h-10 rounded-lg object-cover"
               style={{ border: "1px solid #2d6b35" }}
@@ -754,37 +756,15 @@ function InlineSupplementForm({
             {marginLive != null ? `$${marginLive.toFixed(2)}` : "—"}
           </div>
         </Field>
-        <Field label="Image URL">
-          <input
-            type="text"
-            value={fields.image_url}
-            onChange={(e) => update("image_url", e.target.value)}
-            className="mf-input"
-            placeholder="https://..."
-          />
-        </Field>
       </div>
 
-      {/* Image preview */}
-      {fields.image_url && (
-        <div>
-          <p
-            className="text-xs font-medium mb-1.5"
-            style={labelStyle}
-          >
-            Preview
-          </p>
-          <img
-            src={fields.image_url}
-            alt="Preview"
-            className="w-[150px] h-[150px] rounded-lg object-cover"
-            style={{ border: "1px solid #2d6b35" }}
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
-          />
-        </div>
-      )}
+      {/* Product image upload */}
+      <ImageUploadField
+        label="Product Image (optional)"
+        value={fields.image_url || null}
+        bucket="supplement-images"
+        onChange={(path) => update("image_url", path ?? "")}
+      />
 
       <Field label="Description">
         <textarea

@@ -6,6 +6,7 @@ import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
 import { useCart } from "@/components/cart/CartContext";
 import { formatCurrency } from "@/lib/utils";
 import { isSupplementsEnabled } from "@/types/supplements";
+import { resolveSupplementImageUrl } from "@/lib/storage/imageUrl";
 import type { Supplement } from "@/types/supplements";
 
 type PublicSupplement = Pick<
@@ -250,7 +251,7 @@ function SupplementCard({
         {supp.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={supp.image_url}
+            src={resolveSupplementImageUrl(supp.image_url) ?? ""}
             alt={supp.name}
             className="w-full h-full object-cover"
           />

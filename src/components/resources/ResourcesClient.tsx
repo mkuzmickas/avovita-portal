@@ -14,6 +14,7 @@ import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
 import { useCart } from "@/components/cart/CartContext";
 import { formatCurrency } from "@/lib/utils";
 import { isResourcesEnabled } from "@/types/resources";
+import { resolveResourceCoverUrl } from "@/lib/storage/imageUrl";
 import type { PublicResource } from "@/app/(public)/resources/page";
 
 type PriceFilter = "all" | "free" | "paid";
@@ -231,7 +232,7 @@ function ResourceCard({
         {res.cover_image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={res.cover_image_url}
+            src={resolveResourceCoverUrl(res.cover_image_url) ?? ""}
             alt={res.title}
             className="w-full h-full object-cover"
           />
