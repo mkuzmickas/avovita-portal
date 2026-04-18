@@ -68,26 +68,8 @@ export function CheckoutCartSummary({
         )
       : cartLinePrices;
 
-  const totals = calculateTotals({
-    testLinePrices,
-    visitFee: visitFees?.total ?? 0,
-    appliedPromo: appliedPromo ?? null,
-  });
-  if (typeof window !== "undefined") {
-    console.log(
-      "[CheckoutCartSummary] render — appliedPromo:",
-      appliedPromo,
-      "totals:",
-      totals
-    );
-  }
-
-  const subtotal = totals.testsSubtotal;
-  const subtotalAfterDiscount = totals.subtotalAfterDiscount;
-  const promoDiscount = totals.promoDiscount;
-
-  // Supplement + resource subtotals (not included in calculateTotals
-  // which is test-only). Computed from the full cart.
+  // Supplement + resource subtotals — computed before calculateTotals
+  // so the promo discount base includes all line types.
   const supplementSubtotal = cart
     .filter((i) => i.line_type === "supplement")
     .reduce((s, i) => s + i.price_cad * i.quantity, 0);
@@ -95,12 +77,24 @@ export function CheckoutCartSummary({
     .filter((i) => i.line_type === "resource")
     .reduce((s, i) => s + i.price_cad, 0);
 
+  const totals = calculateTotals({
+    testLinePrices,
+    visitFee: visitFees?.total ?? 0,
+    appliedPromo: appliedPromo ?? null,
+    supplementSubtotal,
+    resourceSubtotal,
+  });
+
+  const subtotal = totals.testsSubtotal;
+  const subtotalAfterDiscount = totals.subtotalAfterDiscount;
+  const promoDiscount = totals.promoDiscount;
+
   const grossTotal =
-    totals.subtotalAfterDiscount +
-    totals.visitFee +
+    subtotalAfterDiscount +
+    (visitFees?.total ?? 0) +
     supplementSubtotal +
     resourceSubtotal;
-  const total = grossTotal - promoDiscount;
+  const total = totals.grandTotal;
 
   return (
     <aside

@@ -122,32 +122,8 @@ export function Step4Review({
   // Single source of truth — same function powers the right-rail summary.
   // appliedPromo IS in the dep array so a fresh promo recomputes totals
   // on the very next render.
-  const totals = useMemo(
-    () =>
-      calculateTotals({
-        testLinePrices: assignments.map((a) => a.price_cad),
-        visitFee: visitFees.total,
-        appliedPromo,
-      }),
-    [assignments, visitFees.total, appliedPromo]
-  );
-  // Render-time visibility — confirms appliedPromo is reaching the
-  // calculation and the resulting totals do reflect the discount.
-  if (typeof window !== "undefined") {
-    console.log("[Step4Review] render — appliedPromo:", appliedPromo);
-    console.log("[Step4Review] render — totals:", totals);
-  }
-  const subtotal = totals.testsSubtotal;
-  // Full discount shape (per_line / applies) for the per-line annotation.
-  const discount = useMemo(
-    () => computeDiscount(assignments.length),
-    [assignments.length]
-  );
-  const subtotalAfterDiscount = totals.subtotalAfterDiscount;
-  const promoDiscount = totals.promoDiscount;
-
-  // Supplement + resource subtotals from the full cart (not in calculateTotals
-  // which is test-only). Same computation as CheckoutCartSummary.
+  // Supplement + resource subtotals — computed before calculateTotals
+  // so the promo discount base includes all line types.
   const supplementSubtotal = cart
     .filter((i) => i.line_type === "supplement")
     .reduce((s, i) => s + i.price_cad * i.quantity, 0);
@@ -157,13 +133,32 @@ export function Step4Review({
   const suppShippingFee =
     suppFulfillment === "shipping" ? SUPPLEMENT_SHIPPING_FEE_CAD : 0;
 
+  const totals = useMemo(
+    () =>
+      calculateTotals({
+        testLinePrices: assignments.map((a) => a.price_cad),
+        visitFee: visitFees.total,
+        appliedPromo,
+        supplementSubtotal,
+        resourceSubtotal,
+        supplementShippingFee: suppShippingFee,
+      }),
+    [assignments, visitFees.total, appliedPromo, supplementSubtotal, resourceSubtotal, suppShippingFee]
+  );
+  const subtotal = totals.testsSubtotal;
+  const discount = useMemo(
+    () => computeDiscount(assignments.length),
+    [assignments.length]
+  );
+  const subtotalAfterDiscount = totals.subtotalAfterDiscount;
+  const promoDiscount = totals.promoDiscount;
   const grossTotal =
-    totals.subtotalAfterDiscount +
-    totals.visitFee +
+    subtotalAfterDiscount +
+    visitFees.total +
     supplementSubtotal +
     resourceSubtotal +
     suppShippingFee;
-  const total = Math.max(0, grossTotal - promoDiscount);
+  const total = totals.grandTotal;
 
   const assignmentsByPerson = useMemo(() => {
     const m = new Map<number, PersonAssignmentEntry[]>();
