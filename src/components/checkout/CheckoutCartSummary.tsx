@@ -85,8 +85,22 @@ export function CheckoutCartSummary({
   const subtotal = totals.testsSubtotal;
   const subtotalAfterDiscount = totals.subtotalAfterDiscount;
   const promoDiscount = totals.promoDiscount;
-  const grossTotal = totals.subtotalAfterDiscount + totals.visitFee;
-  const total = totals.grandTotal;
+
+  // Supplement + resource subtotals (not included in calculateTotals
+  // which is test-only). Computed from the full cart.
+  const supplementSubtotal = cart
+    .filter((i) => i.line_type === "supplement")
+    .reduce((s, i) => s + i.price_cad * i.quantity, 0);
+  const resourceSubtotal = cart
+    .filter((i) => i.line_type === "resource")
+    .reduce((s, i) => s + i.price_cad, 0);
+
+  const grossTotal =
+    totals.subtotalAfterDiscount +
+    totals.visitFee +
+    supplementSubtotal +
+    resourceSubtotal;
+  const total = grossTotal - promoDiscount;
 
   return (
     <aside
@@ -251,6 +265,26 @@ export function CheckoutCartSummary({
                 Visit fee calculated after you choose how many people are
                 included.
               </p>
+            )}
+
+            {supplementSubtotal > 0 && (
+              <div
+                className="flex justify-between text-sm"
+                style={{ color: "#e8d5a3" }}
+              >
+                <span>Supplements</span>
+                <span>{formatCurrency(supplementSubtotal)}</span>
+              </div>
+            )}
+
+            {resourceSubtotal > 0 && (
+              <div
+                className="flex justify-between text-sm"
+                style={{ color: "#e8d5a3" }}
+              >
+                <span>Resources</span>
+                <span>{formatCurrency(resourceSubtotal)}</span>
+              </div>
             )}
 
             {appliedPromo && promoDiscount > 0 && (

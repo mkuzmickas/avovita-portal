@@ -615,6 +615,8 @@ export function CheckoutClient({
                 onPromoChange={setAppliedPromo}
                 orderMode={orderMode}
                 representative={representative}
+                suppFulfillment={suppFulfillment}
+                suppShippingAddress={suppShippingAddress}
               />
             )}
           </div>

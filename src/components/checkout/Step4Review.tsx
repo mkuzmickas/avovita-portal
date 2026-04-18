@@ -17,6 +17,14 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
+import { useCart } from "@/components/cart/CartContext";
+import type { CartItem } from "@/components/catalogue/types";
+import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
+import type {
+  SupplementFulfillment,
+  SupplementShippingAddress,
+} from "@/types/supplements";
+import { SUPPLEMENT_SHIPPING_FEE_CAD } from "@/types/supplements";
 import type {
   CheckoutPerson,
   CollectionAddress,
@@ -42,6 +50,9 @@ interface Step4Props {
   onPromoChange: (next: AppliedPromo | null) => void;
   orderMode: "self" | "caregiver";
   representative: RepresentativeBlock;
+  /** Supplement fulfillment state (from CheckoutClient step 3.5). */
+  suppFulfillment?: SupplementFulfillment | null;
+  suppShippingAddress?: SupplementShippingAddress | null;
 }
 
 const RELATIONSHIP_LABEL: Record<string, string> = {
@@ -89,8 +100,11 @@ export function Step4Review({
   onPromoChange,
   orderMode,
   representative,
+  suppFulfillment = null,
+  suppShippingAddress = null,
 }: Step4Props) {
   const { trackEvent } = useAnalytics();
+  const { cart } = useCart();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [promoOpen, setPromoOpen] = useState(false);
@@ -221,26 +235,6 @@ export function Step4Review({
     setSubmitting(true);
     setError(null);
 
-    const payload: CheckoutPayload = {
-      persons,
-      collection_address: collectionAddress,
-      assignments: assignments.map<TestAssignment>((a) => ({
-        test_id: a.test_id,
-        test_name: a.test_name,
-        lab_name: a.lab_name,
-        price_cad: a.price_cad,
-        assigned_to_person: a.person_index,
-      })),
-      visit_fees: visitFees,
-      subtotal,
-      discount_cad: discount.total,
-      total,
-      account_user_id: accountUserId,
-      promo_code: appliedPromo?.code ?? undefined,
-      promotion_code_id: appliedPromo?.promoId ?? null,
-      representative: orderMode === "caregiver" ? representative : null,
-    };
-
     // Org affinity — set in localStorage by OrgProvider when the user
     // visited /org/[slug]/* or by CheckoutClient when the URL had
     // ?org_slug=. Server resolves slug → org_id and tags the order.
@@ -254,18 +248,129 @@ export function Step4Review({
       /* ignore */
     }
 
+    // Detect if cart has non-test items. If so, route through
+    // checkout-unified which handles all three line types.
+    const hasSupplements = cart.some((i) => i.line_type === "supplement");
+    const hasResources = cart.some((i) => i.line_type === "resource");
+    const isMixedCart = hasSupplements || hasResources;
+
     try {
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, org_slug: orgSlug }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Checkout failed");
+      if (isMixedCart) {
+        // ── Mixed cart path: pending_order → checkout-unified ────
+        const suppShippingFee =
+          suppFulfillment === "shipping" ? SUPPLEMENT_SHIPPING_FEE_CAD : 0;
+        const subtotalSupplements = cart
+          .filter((i) => i.line_type === "supplement")
+          .reduce((s, i) => s + i.price_cad * i.quantity, 0);
+        const subtotalResources = cart
+          .filter((i) => i.line_type === "resource")
+          .reduce((s, i) => s + i.price_cad, 0);
+
+        const pendingPayload: PendingOrderPayload = {
+          version: 2,
+          has_tests: true,
+          has_supplements: hasSupplements,
+          has_resources: hasResources,
+          cart_items: cart,
+          account_user_id: accountUserId,
+          persons,
+          test_assignments: assignments.map((a) => ({
+            test_id: a.test_id,
+            person_index: a.person_index,
+            unit_price_cad: a.price_cad,
+          })),
+          collection_address: collectionAddress,
+          visit_fees: {
+            base: visitFees.base_fee,
+            additional_per_person: visitFees.additional_fee_per_person,
+            additional_count: visitFees.additional_person_count,
+            total: visitFees.total,
+          },
+          order_mode: orderMode,
+          representative:
+            orderMode === "caregiver" ? representative : null,
+          promo_code: appliedPromo?.code ?? null,
+          org_id: orgSlug ?? null, // server resolves slug → id
+          supplement_fulfillment: hasSupplements
+            ? suppFulfillment
+            : null,
+          supplement_shipping_fee_cad: hasSupplements
+            ? suppShippingFee
+            : 0,
+          supplement_shipping_address: hasSupplements
+            ? suppShippingAddress
+            : null,
+          subtotal_tests: subtotal,
+          subtotal_supplements: subtotalSupplements,
+          subtotal_resources: subtotalResources,
+          test_discount: discount.total,
+          total:
+            subtotal -
+            discount.total +
+            visitFees.total +
+            subtotalSupplements +
+            subtotalResources +
+            suppShippingFee,
+        };
+
+        // 1. Create pending order
+        const poRes = await fetch("/api/checkout/create-pending-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(pendingPayload),
+        });
+        const poData = await poRes.json();
+        if (!poRes.ok)
+          throw new Error(poData.error ?? "Failed to create order");
+
+        // 2. Create Stripe session via unified route
+        const stripeRes = await fetch("/api/stripe/checkout-unified", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pending_order_id: poData.pending_order_id,
+          }),
+        });
+        const stripeData = await stripeRes.json();
+        if (!stripeRes.ok)
+          throw new Error(stripeData.error ?? "Checkout failed");
+
+        window.location.href = stripeData.url;
+      } else {
+        // ── Pure test cart path: existing route (unchanged) ──────
+        const payload: CheckoutPayload = {
+          persons,
+          collection_address: collectionAddress,
+          assignments: assignments.map<TestAssignment>((a) => ({
+            test_id: a.test_id,
+            test_name: a.test_name,
+            lab_name: a.lab_name,
+            price_cad: a.price_cad,
+            assigned_to_person: a.person_index,
+          })),
+          visit_fees: visitFees,
+          subtotal,
+          discount_cad: discount.total,
+          total,
+          account_user_id: accountUserId,
+          promo_code: appliedPromo?.code ?? undefined,
+          promotion_code_id: appliedPromo?.promoId ?? null,
+          representative:
+            orderMode === "caregiver" ? representative : null,
+        };
+
+        const res = await fetch("/api/stripe/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, org_slug: orgSlug }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ?? "Checkout failed");
+        }
+        const { url } = await res.json();
+        window.location.href = url;
       }
-      const { url } = await res.json();
-      window.location.href = url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Checkout failed");
       setSubmitting(false);
