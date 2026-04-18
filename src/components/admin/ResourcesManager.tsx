@@ -547,23 +547,70 @@ function InlineResourceForm({
     setUploading(true);
     setError(null);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const resp = await fetch("/api/admin/resources/upload", {
+      // Step 1: Get signed upload URL from our API (tiny JSON request)
+      const urlResp = await fetch("/api/admin/resources/upload", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+        }),
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error ?? "Upload failed");
+      const urlData = await urlResp.json();
+      if (!urlResp.ok)
+        throw new Error(urlData.error ?? "Failed to prepare upload");
+
+      // Step 2: Upload PDF directly to Supabase Storage (bypasses Vercel)
+      const uploadResp = await fetch(urlData.signedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/pdf" },
+        body: file,
+      });
+      if (!uploadResp.ok) {
+        throw new Error(
+          `Upload to storage failed (${uploadResp.status})`,
+        );
+      }
+
+      // Step 3: Extract page count client-side (best-effort)
+      let pageCount: number | null = null;
+      try {
+        const { PDFDocument } = await import("pdf-lib");
+        const buf = await file.arrayBuffer();
+        const pdf = await PDFDocument.load(buf, {
+          ignoreEncryption: true,
+        });
+        pageCount = pdf.getPageCount();
+      } catch {
+        // Non-fatal — pageCount stays null
+      }
+
+      // Step 4: Confirm upload with our API
+      const confirmResp = await fetch(
+        "/api/admin/resources/upload/confirm",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: urlData.path,
+            filename: file.name,
+            fileSize: file.size,
+          }),
+        },
+      );
+      const confirmData = await confirmResp.json();
+      if (!confirmResp.ok)
+        throw new Error(confirmData.error ?? "Upload verification failed");
 
       setFields((prev) => ({
         ...prev,
-        file_path: data.file_path,
-        file_size_bytes: data.file_size_bytes,
-        file_type: data.file_type,
-        page_count: data.page_count,
+        file_path: confirmData.file_path,
+        file_size_bytes: file.size,
+        file_type: "application/pdf",
+        page_count: pageCount,
       }));
-      setUploadFileName(data.original_name ?? file.name);
+      setUploadFileName(file.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { PDFDocument } from "pdf-lib";
 
 export const runtime = "nodejs";
 
@@ -24,29 +23,41 @@ async function requireAdmin() {
 /**
  * POST /api/admin/resources/upload
  *
- * Admin-only. Uploads a PDF to the "resources" Supabase Storage bucket.
- * Returns: file_path, file_size_bytes, page_count (best-effort).
+ * Admin-only. Issues a signed upload URL for direct browser → Supabase
+ * Storage upload. No file bytes pass through Vercel — avoids the
+ * ~4.5 MB serverless function body limit.
  *
- * Multipart form field: file (required, application/pdf, max 50MB)
+ * Request body (JSON): { filename, fileSize, mimeType }
+ * Response: { signedUrl, token, path }
+ *
+ * After the browser uploads directly to signedUrl, the client calls
+ * /api/admin/resources/upload/confirm to verify and finalise.
  */
 export async function POST(request: NextRequest) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file") as File | null;
+  const body = await request.json().catch(() => ({}));
+  const { filename, fileSize, mimeType } = body as {
+    filename?: string;
+    fileSize?: number;
+    mimeType?: string;
+  };
 
-  if (!file) {
-    return NextResponse.json({ error: "No file provided" }, { status: 400 });
+  if (!filename) {
+    return NextResponse.json(
+      { error: "filename is required" },
+      { status: 400 },
+    );
   }
-  if (file.type !== "application/pdf") {
+  if (mimeType !== "application/pdf") {
     return NextResponse.json(
       { error: "Only PDF files are accepted" },
       { status: 400 },
     );
   }
-  if (file.size > MAX_FILE_SIZE) {
+  if (typeof fileSize === "number" && fileSize > MAX_FILE_SIZE) {
     return NextResponse.json(
       { error: `File exceeds ${MAX_FILE_SIZE / 1024 / 1024} MB limit` },
       { status: 400 },
@@ -54,44 +65,28 @@ export async function POST(request: NextRequest) {
   }
 
   const service = createServiceRoleClient();
-  const fileBuffer = await file.arrayBuffer();
 
-  // Generate unique storage path.
+  // Generate unique storage path
   const fileId = crypto.randomUUID();
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "pdf";
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "pdf";
   const storagePath = `${fileId}.${ext}`;
 
-  const { error: uploadError } = await service.storage
+  // Create a signed upload URL (valid for 2 minutes)
+  const { data, error } = await service.storage
     .from("resources")
-    .upload(storagePath, fileBuffer, {
-      contentType: "application/pdf",
-      upsert: false,
-    });
+    .createSignedUploadUrl(storagePath);
 
-  if (uploadError) {
-    console.error("[resources/upload] storage error:", uploadError);
+  if (error || !data) {
+    console.error("[resources/upload] signed URL error:", error);
     return NextResponse.json(
-      { error: `Upload failed: ${uploadError.message}` },
+      { error: `Failed to create upload URL: ${error?.message}` },
       { status: 500 },
     );
   }
 
-  // Best-effort page count extraction using pdf-lib.
-  let pageCount: number | null = null;
-  try {
-    const pdf = await PDFDocument.load(fileBuffer, {
-      ignoreEncryption: true,
-    });
-    pageCount = pdf.getPageCount();
-  } catch {
-    // Non-fatal — pageCount stays null.
-  }
-
   return NextResponse.json({
-    file_path: storagePath,
-    file_size_bytes: file.size,
-    file_type: "application/pdf",
-    page_count: pageCount,
-    original_name: file.name,
+    signedUrl: data.signedUrl,
+    token: data.token,
+    path: storagePath,
   });
 }
