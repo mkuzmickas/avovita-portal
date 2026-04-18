@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import { Upload, X, Loader2, ImageIcon } from "lucide-react";
-import { signedUploadToStorage } from "@/lib/storage/upload";
 import { resolveImageUrl } from "@/lib/storage/imageUrl";
 
 interface ImageUploadFieldProps {
@@ -58,16 +57,6 @@ export function ImageUploadField({
     setUploading(true);
     setError(null);
     try {
-      const result = await signedUploadToStorage(
-        file,
-        "/api/admin/images/upload",
-        file.type,
-      );
-      // The upload route needs the bucket — pass it via the body.
-      // Since signedUploadToStorage sends { filename, fileSize, mimeType },
-      // we need to augment it. Let's call the API directly instead:
-      // (This is a targeted override — the shared utility doesn't know about bucket.)
-
       // Step 1: Get signed URL with bucket
       const urlResp = await fetch("/api/admin/images/upload", {
         method: "POST",
@@ -113,11 +102,6 @@ export function ImageUploadField({
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
-
-  // We called signedUploadToStorage but then overrode it inline because
-  // the image route needs a `bucket` param. Clean up the unused import
-  // by marking it used here:
-  void signedUploadToStorage;
 
   return (
     <div>
