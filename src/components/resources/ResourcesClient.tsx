@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   Search,
   ShoppingCart,
@@ -11,6 +11,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
+import { CartBar } from "@/components/catalogue/CartBar";
 import { useCart } from "@/components/cart/CartContext";
 import { formatCurrency } from "@/lib/utils";
 import { isResourcesEnabled } from "@/types/resources";
@@ -170,7 +171,7 @@ export function ResourcesClient({ resources }: ResourcesClientProps) {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
             {filtered.map((res) => (
               <ResourceCard
                 key={res.id}
@@ -187,6 +188,9 @@ export function ResourcesClient({ resources }: ResourcesClientProps) {
           Showing {filtered.length} of {resources.length} resources
         </p>
       </div>
+
+      {/* Sticky cart bar — appears when cart has items */}
+      <CartBar />
     </div>
   );
 }
@@ -206,6 +210,21 @@ function ResourceCard({
 }) {
   const isFree = res.price_cad === 0;
   const [downloading, setDownloading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const descRef = useRef<HTMLParagraphElement>(null);
+
+  // Detect whether the description overflows the 3-line clamp
+  const checkTruncation = useCallback(() => {
+    const el = descRef.current;
+    if (el) setIsTruncated(el.scrollHeight > el.clientHeight + 1);
+  }, []);
+
+  useEffect(() => {
+    checkTruncation();
+    window.addEventListener("resize", checkTruncation);
+    return () => window.removeEventListener("resize", checkTruncation);
+  }, [checkTruncation]);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -267,18 +286,36 @@ function ResourceCard({
           {res.title}
         </h3>
         {res.description && (
-          <p
-            className="text-sm mb-3 flex-1"
-            style={{
-              color: "#e8d5a3",
-              display: "-webkit-box",
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {res.description}
-          </p>
+          <div className="mb-3 flex-1">
+            <p
+              ref={descRef}
+              className="text-sm"
+              style={{
+                color: "#e8d5a3",
+                ...(expanded
+                  ? {}
+                  : {
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical" as const,
+                      overflow: "hidden",
+                    }),
+              }}
+            >
+              {res.description}
+            </p>
+            {(isTruncated || expanded) && (
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                aria-expanded={expanded}
+                className="mt-1 text-xs font-medium"
+                style={{ color: "#8dc63f" }}
+              >
+                {expanded ? "Read less" : "Read more"}
+              </button>
+            )}
+          </div>
         )}
         {!res.description && <div className="flex-1" />}
 

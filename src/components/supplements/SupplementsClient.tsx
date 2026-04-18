@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Search, ShoppingCart, Check, Sparkles, Pill } from "lucide-react";
 import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
+import { CartBar } from "@/components/catalogue/CartBar";
 import { useCart } from "@/components/cart/CartContext";
 import { formatCurrency } from "@/lib/utils";
 import { isSupplementsEnabled } from "@/types/supplements";
@@ -218,6 +219,9 @@ export function SupplementsClient({
           Showing {filtered.length} of {supplements.length} supplements
         </p>
       </div>
+
+      {/* Sticky cart bar — appears when cart has items */}
+      <CartBar />
     </div>
   );
 }
