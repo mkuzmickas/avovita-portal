@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingBag, ArrowRight, Tag, X, Pill } from "lucide-react";
@@ -40,6 +40,7 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
   const totalAfterDiscount = totals.cart_total;
 
   return (
+    <>
     <div
       className="fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur"
       style={{
@@ -128,22 +129,26 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
-
-      {/* "Browse supplements?" modal */}
-      {showSuppsModal && (
-        <BrowseSupplementsModal
-          onBrowse={() => {
-            setShowSuppsModal(false);
-            router.push("/supplements");
-          }}
-          onContinue={() => {
-            setShowSuppsModal(false);
-            router.push(checkoutHref);
-          }}
-          onClose={() => setShowSuppsModal(false)}
-        />
-      )}
     </div>
+
+    {/* "Browse supplements?" modal — rendered as sibling of the cart
+        bar (not inside it) so the fixed-inset backdrop covers the
+        full viewport without being clipped by the cart bar's own
+        fixed positioning. */}
+    {showSuppsModal && (
+      <BrowseSupplementsModal
+        onBrowse={() => {
+          setShowSuppsModal(false);
+          router.push("/supplements");
+        }}
+        onContinue={() => {
+          setShowSuppsModal(false);
+          router.push(checkoutHref);
+        }}
+        onClose={() => setShowSuppsModal(false)}
+      />
+    )}
+    </>
   );
 }
 
@@ -158,11 +163,23 @@ function BrowseSupplementsModal({
   onContinue: () => void;
   onClose: () => void;
 }) {
+  // ESC to dismiss (same as "No thanks")
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6"
       style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Browse supplements before checkout"
     >
       <div
         className="w-full max-w-md rounded-2xl border p-6"
