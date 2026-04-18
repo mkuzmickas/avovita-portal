@@ -9,6 +9,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +21,13 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Phone validation: at least 7 digits after stripping formatting
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (phoneDigits.length < 7) {
+      setError("Please enter a valid phone number.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -34,7 +42,7 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -46,6 +54,14 @@ export default function SignupPage() {
       setError(signUpError.message);
       setLoading(false);
       return;
+    }
+
+    // Save phone to accounts row (created by the on_auth_user_created trigger)
+    if (data.user) {
+      await supabase
+        .from("accounts")
+        .update({ phone: phone.trim() })
+        .eq("id", data.user.id);
     }
 
     setSuccess(true);
@@ -152,6 +168,27 @@ export default function SignupPage() {
                 className="mf-input"
                 placeholder="you@example.com"
               />
+            </div>
+
+            <div>
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "#e8d5a3" }}
+              >
+                Phone number
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                autoComplete="tel"
+                className="mf-input"
+                placeholder="(403) 555-0123"
+              />
+              <p className="mt-1 text-xs" style={{ color: "#6ab04c" }}>
+                Required for appointment coordination and order updates
+              </p>
             </div>
 
             <div>
