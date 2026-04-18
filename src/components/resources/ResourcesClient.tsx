@@ -224,20 +224,21 @@ function ResourceCard({
       className="rounded-xl border overflow-hidden flex flex-col"
       style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
     >
-      {/* Cover image */}
+      {/* Cover image — contain with max-height so portrait covers aren't cropped */}
       <div
-        className="relative w-full aspect-[4/3] overflow-hidden"
-        style={{ backgroundColor: "#0f2614" }}
+        className="relative w-full flex items-center justify-center overflow-hidden"
+        style={{ backgroundColor: "#0f2614", minHeight: "180px", maxHeight: "320px" }}
       >
         {res.cover_image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={resolveResourceCoverUrl(res.cover_image_url) ?? ""}
             alt={res.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
+            style={{ maxHeight: "320px" }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
+          <div className="py-12 flex items-center justify-center">
             <FileText
               className="w-12 h-12"
               style={{ color: "rgba(196,151,58,0.25)" }}

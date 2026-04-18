@@ -855,7 +855,7 @@ function ToggleSwitch({
       <span
         className="relative inline-block w-9 h-5 rounded-full transition-colors shrink-0"
         style={{
-          backgroundColor: on ? "#8dc63f" : "#2d6b35",
+          backgroundColor: on ? "#8dc63f" : "#4b5563",
         }}
       >
         <span

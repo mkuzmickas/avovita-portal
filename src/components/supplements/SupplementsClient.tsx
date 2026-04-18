@@ -243,17 +243,18 @@ function SupplementCard({
       className="rounded-xl border overflow-hidden flex flex-col"
       style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
     >
-      {/* Image */}
+      {/* Image — contain with max-height so product images aren't cropped */}
       <div
-        className="relative w-full aspect-[4/3] overflow-hidden"
-        style={{ backgroundColor: "#0f2614" }}
+        className="relative w-full flex items-center justify-center overflow-hidden"
+        style={{ backgroundColor: "#0f2614", minHeight: "180px", maxHeight: "320px" }}
       >
         {supp.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={resolveSupplementImageUrl(supp.image_url) ?? ""}
             alt={supp.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
+            style={{ maxHeight: "320px" }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

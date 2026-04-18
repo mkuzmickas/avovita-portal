@@ -563,7 +563,7 @@ function ToggleSwitch({ on, onClick }: { on: boolean; onClick: () => void }) {
       aria-checked={on}
       onClick={onClick}
       className="relative w-10 h-5 rounded-full transition-colors"
-      style={{ backgroundColor: on ? "#c4973a" : "#2d6b35" }}
+      style={{ backgroundColor: on ? "#8dc63f" : "#4b5563" }}
     >
       <span
         className="absolute top-0.5 w-4 h-4 rounded-full transition-transform"
