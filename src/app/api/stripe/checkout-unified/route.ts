@@ -58,13 +58,6 @@ export async function POST(request: NextRequest) {
 
     // ─── Build Stripe line items ──────────────────────────────────
 
-    // TODO(multi-province-tax): Currently applying flat 5% GST regardless of customer jurisdiction.
-    // This under-collects for customers outside Alberta (e.g. Ontario HST 13%, BC 12%, Maritimes HST 15%).
-    // When we expand physical shipping volume, migrate to Stripe Tax (automatic) for per-province
-    // calculation. Business has acknowledged this simplification; AvoVita absorbs any tax delta
-    // until migrated.
-    const gstTaxRateId = process.env.STRIPE_GST_TAX_RATE_ID;
-
     type StripeLineItem = {
       price_data: {
         currency: string;
@@ -72,7 +65,6 @@ export async function POST(request: NextRequest) {
         unit_amount: number;
       };
       quantity: number;
-      tax_rates?: string[];
     };
     const lineItems: StripeLineItem[] = [];
 
@@ -345,13 +337,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Apply GST tax rate to all line items
-    if (gstTaxRateId) {
-      for (const li of lineItems) {
-        li.tax_rates = [gstTaxRateId];
-      }
-    }
-
     // ─── Resolve customer email for Stripe ────────────────────────
     let customerEmail: string | undefined;
     if (payload.account_user_id) {
@@ -375,6 +360,7 @@ export async function POST(request: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "cad",
+      automatic_tax: { enabled: true },
       line_items: lineItems,
       success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/checkout`,

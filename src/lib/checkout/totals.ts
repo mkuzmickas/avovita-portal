@@ -1,9 +1,6 @@
 import type { AppliedPromo } from "./types";
 import { computeDiscount } from "./discount";
 
-/** GST rate — flat 5% Alberta rate applied to all orders. */
-export const GST_RATE = 0.05;
-
 export interface TotalsInput {
   /** Sum of test prices (CAD dollars), one entry per assigned line. */
   testLinePrices: number[];
@@ -25,10 +22,7 @@ export interface Totals {
   subtotalAfterDiscount: number;
   visitFee: number;
   promoDiscount: number;
-  /** Taxable amount (post-discount, pre-tax). */
-  taxableAmount: number;
-  /** GST at 5% on the taxable amount. */
-  gst: number;
+  /** Pre-tax total shown to the user. Tax is calculated by Stripe. */
   grandTotal: number;
 }
 
@@ -38,12 +32,9 @@ export interface Totals {
  * order summary call this with the same inputs so they cannot drift
  * out of sync. All values returned are in CAD dollars.
  *
- * Tax order of operations (Canadian standard):
- *   1. Sum all line items (tests after multi-test discount + visit fee +
- *      supplements + resources + supplement shipping)
- *   2. Apply promo discount
- *   3. Calculate 5% GST on the post-discount amount
- *   4. Grand total = post-discount + GST
+ * Tax is NOT calculated here — Stripe Tax (automatic) handles tax
+ * calculation on its checkout page. The grandTotal here is the
+ * pre-tax amount that Stripe will add tax to.
  */
 export function calculateTotals({
   testLinePrices,
@@ -74,11 +65,7 @@ export function calculateTotals({
     promoDiscount = Math.min(promoDiscount, preDiscountTotal);
   }
 
-  // Tax on the post-discount amount (Canadian standard)
-  const taxableAmount = Math.max(0, preDiscountTotal - promoDiscount);
-  const gst = Math.round(taxableAmount * GST_RATE * 100) / 100;
-
-  const grandTotal = taxableAmount + gst;
+  const grandTotal = Math.max(0, preDiscountTotal - promoDiscount);
 
   return {
     testsSubtotal,
@@ -86,8 +73,6 @@ export function calculateTotals({
     subtotalAfterDiscount,
     visitFee,
     promoDiscount,
-    taxableAmount,
-    gst,
     grandTotal,
   };
 }

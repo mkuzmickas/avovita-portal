@@ -641,24 +641,21 @@ export function Step4Review({
               <span>−{formatCurrency(promoDiscount)}</span>
             </div>
           )}
-          {totals.gst > 0 && (
-            <div
-              className="flex justify-between pt-2 mt-1 border-t"
-              style={{ color: "#e8d5a3", borderColor: "#2d6b35" }}
-            >
-              <span>GST (5%)</span>
-              <span>{formatCurrency(totals.gst)}</span>
-            </div>
-          )}
           <div
             className="flex justify-between text-xl font-semibold pt-3 border-t mt-2"
             style={{ borderColor: "#2d6b35" }}
           >
-            <span style={{ color: "#ffffff" }}>Grand Total</span>
+            <span style={{ color: "#ffffff" }}>Subtotal</span>
             <span style={{ color: "#c4973a" }}>
               {formatCurrency(total)} CAD
             </span>
           </div>
+          <p
+            className="text-xs text-right mt-1"
+            style={{ color: "#6ab04c" }}
+          >
+            + applicable tax calculated at checkout
+          </p>
         </div>
       </section>
 
