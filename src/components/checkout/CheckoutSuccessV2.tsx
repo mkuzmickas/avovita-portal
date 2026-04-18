@@ -386,6 +386,9 @@ export function CheckoutSuccessV2({
             view your results.
           </p>
         )}
+        <p className="text-center text-[10px] mt-3" style={{ color: "#6ab04c" }}>
+          AvoVita Wellness Inc. · GST/HST #: 735160749RT0001
+        </p>
       </div>
 
       {showWaiver && (

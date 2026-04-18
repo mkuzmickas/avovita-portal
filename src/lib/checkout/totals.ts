@@ -1,6 +1,9 @@
 import type { AppliedPromo } from "./types";
 import { computeDiscount } from "./discount";
 
+/** GST rate — flat 5% Alberta rate applied to all orders. */
+export const GST_RATE = 0.05;
+
 export interface TotalsInput {
   /** Sum of test prices (CAD dollars), one entry per assigned line. */
   testLinePrices: number[];
@@ -22,6 +25,10 @@ export interface Totals {
   subtotalAfterDiscount: number;
   visitFee: number;
   promoDiscount: number;
+  /** Taxable amount (post-discount, pre-tax). */
+  taxableAmount: number;
+  /** GST at 5% on the taxable amount. */
+  gst: number;
   grandTotal: number;
 }
 
@@ -31,9 +38,12 @@ export interface Totals {
  * order summary call this with the same inputs so they cannot drift
  * out of sync. All values returned are in CAD dollars.
  *
- * The promo discount is calculated against the FULL cart total
- * (tests + visit fee + supplements + resources + shipping), matching
- * what checkout-unified actually applies to Stripe line items.
+ * Tax order of operations (Canadian standard):
+ *   1. Sum all line items (tests after multi-test discount + visit fee +
+ *      supplements + resources + supplement shipping)
+ *   2. Apply promo discount
+ *   3. Calculate 5% GST on the post-discount amount
+ *   4. Grand total = post-discount + GST
  */
 export function calculateTotals({
   testLinePrices,
@@ -47,8 +57,6 @@ export function calculateTotals({
   const multiTestDiscount = computeDiscount(testLinePrices.length).total;
   const subtotalAfterDiscount = Math.max(0, testsSubtotal - multiTestDiscount);
 
-  // Full pre-discount total — all line types, matching what
-  // checkout-unified applies the promo discount against.
   const preDiscountTotal =
     subtotalAfterDiscount +
     visitFee +
@@ -61,13 +69,16 @@ export function calculateTotals({
     if (typeof appliedPromo.percentOff === "number") {
       promoDiscount = preDiscountTotal * (appliedPromo.percentOff / 100);
     } else if (typeof appliedPromo.amountOff === "number") {
-      // Stripe returns amountOff in the smallest currency unit (cents).
       promoDiscount = appliedPromo.amountOff / 100;
     }
     promoDiscount = Math.min(promoDiscount, preDiscountTotal);
   }
 
-  const grandTotal = Math.max(0, preDiscountTotal - promoDiscount);
+  // Tax on the post-discount amount (Canadian standard)
+  const taxableAmount = Math.max(0, preDiscountTotal - promoDiscount);
+  const gst = Math.round(taxableAmount * GST_RATE * 100) / 100;
+
+  const grandTotal = taxableAmount + gst;
 
   return {
     testsSubtotal,
@@ -75,6 +86,8 @@ export function calculateTotals({
     subtotalAfterDiscount,
     visitFee,
     promoDiscount,
+    taxableAmount,
+    gst,
     grandTotal,
   };
 }

@@ -149,6 +149,9 @@ export async function POST(request: NextRequest) {
     const discount = computeDiscount(body.assignments.length);
 
     // ─── Build Stripe line items ──────────────────────────────────
+    // TODO(multi-province-tax): Flat 5% GST — see checkout-unified for full comment.
+    const gstTaxRateId = process.env.STRIPE_GST_TAX_RATE_ID;
+
     type StripeLineItem = {
       price_data: {
         currency: string;
@@ -156,6 +159,7 @@ export async function POST(request: NextRequest) {
         unit_amount: number;
       };
       quantity: number;
+      tax_rates?: string[];
     };
     const lineItems: StripeLineItem[] = [];
 
@@ -388,6 +392,13 @@ export async function POST(request: NextRequest) {
               (li.price_data.product_data.description ?? "") + suffix;
           }
         }
+      }
+    }
+
+    // Apply GST tax rate to all line items
+    if (gstTaxRateId) {
+      for (const li of lineItems) {
+        li.tax_rates = [gstTaxRateId];
       }
     }
 

@@ -291,28 +291,24 @@ export function CheckoutCartSummary({
               </div>
             )}
 
+            {totals.gst > 0 && (
+              <div
+                className="flex justify-between text-sm pt-2 mt-1 border-t"
+                style={{ color: "#e8d5a3", borderColor: "#2d6b35" }}
+              >
+                <span>GST (5%)</span>
+                <span>{formatCurrency(totals.gst)}</span>
+              </div>
+            )}
+
             <div
               className="flex justify-between text-base font-semibold pt-2 mt-1 border-t"
               style={{ borderColor: "#2d6b35" }}
             >
               <span style={{ color: "#ffffff" }}>Total</span>
-              {appliedPromo && promoDiscount > 0 ? (
-                <span className="flex items-center gap-2">
-                  <span
-                    className="line-through text-sm font-medium"
-                    style={{ color: "#6ab04c" }}
-                  >
-                    {formatCurrency(grossTotal)}
-                  </span>
-                  <span style={{ color: "#8dc63f" }}>
-                    {formatCurrency(total)} CAD
-                  </span>
-                </span>
-              ) : (
-                <span style={{ color: "#c4973a" }}>
-                  {formatCurrency(total)} CAD
-                </span>
-              )}
+              <span style={{ color: "#c4973a" }}>
+                {formatCurrency(total)} CAD
+              </span>
             </div>
           </div>
         </>

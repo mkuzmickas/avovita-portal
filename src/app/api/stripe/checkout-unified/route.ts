@@ -58,6 +58,13 @@ export async function POST(request: NextRequest) {
 
     // ─── Build Stripe line items ──────────────────────────────────
 
+    // TODO(multi-province-tax): Currently applying flat 5% GST regardless of customer jurisdiction.
+    // This under-collects for customers outside Alberta (e.g. Ontario HST 13%, BC 12%, Maritimes HST 15%).
+    // When we expand physical shipping volume, migrate to Stripe Tax (automatic) for per-province
+    // calculation. Business has acknowledged this simplification; AvoVita absorbs any tax delta
+    // until migrated.
+    const gstTaxRateId = process.env.STRIPE_GST_TAX_RATE_ID;
+
     type StripeLineItem = {
       price_data: {
         currency: string;
@@ -65,8 +72,11 @@ export async function POST(request: NextRequest) {
         unit_amount: number;
       };
       quantity: number;
+      tax_rates?: string[];
     };
     const lineItems: StripeLineItem[] = [];
+
+
 
     // ── Test line items ─────────────────────────────────────────
     if (payload.has_tests && payload.test_assignments) {
@@ -332,6 +342,13 @@ export async function POST(request: NextRequest) {
               (li.price_data.product_data.description ?? "") + suffix;
           }
         }
+      }
+    }
+
+    // Apply GST tax rate to all line items
+    if (gstTaxRateId) {
+      for (const li of lineItems) {
+        li.tax_rates = [gstTaxRateId];
       }
     }
 
