@@ -116,6 +116,8 @@ export interface Test {
 
 export interface Account {
   id: string;
+  first_name: string | null;
+  last_name: string | null;
   email: string | null;
   /** Only populated on representative accounts (rep's mobile for SMS). */
   phone: string | null;

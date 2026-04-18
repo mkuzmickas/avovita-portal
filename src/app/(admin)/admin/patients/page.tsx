@@ -102,7 +102,7 @@ export default async function AdminPatientsPage() {
     if (isRep) {
       const dependents = account.profiles.filter((p) => p.is_dependent);
       if (dependents.length === 0) {
-        primaryName = account.email ?? "Representative";
+        primaryName = "—";
       } else if (dependents.length === 1) {
         primaryName = `${dependents[0].first_name} ${dependents[0].last_name}`;
       } else {
@@ -111,7 +111,7 @@ export default async function AdminPatientsPage() {
     } else {
       primaryName = primary
         ? `${primary.first_name} ${primary.last_name}`
-        : (account.email ?? "Unknown");
+        : "—";
     }
     const org = Array.isArray(account.org) ? account.org[0] : account.org;
     return {

@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/PasswordInput";
 
 export default function SignupPage() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -21,6 +23,15 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!firstName.trim()) {
+      setError("First name is required.");
+      return;
+    }
+    if (!lastName.trim()) {
+      setError("Last name is required.");
+      return;
+    }
 
     // Phone validation: at least 7 digits after stripping formatting
     const phoneDigits = phone.replace(/\D/g, "");
@@ -56,11 +67,15 @@ export default function SignupPage() {
       return;
     }
 
-    // Save phone to accounts row (created by the on_auth_user_created trigger)
+    // Save name + phone to accounts row (created by the on_auth_user_created trigger)
     if (data.user) {
       await supabase
         .from("accounts")
-        .update({ phone: phone.trim() })
+        .update({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone: phone.trim(),
+        })
         .eq("id", data.user.id);
     }
 
@@ -152,6 +167,41 @@ export default function SignupPage() {
           style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1.5"
+                  style={{ color: "#e8d5a3" }}
+                >
+                  First name
+                </label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  autoComplete="given-name"
+                  className="mf-input"
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1.5"
+                  style={{ color: "#e8d5a3" }}
+                >
+                  Last name
+                </label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  autoComplete="family-name"
+                  className="mf-input"
+                />
+              </div>
+            </div>
+
             <div>
               <label
                 className="block text-sm font-medium mb-1.5"
