@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { Search, ShoppingCart, Check, Sparkles, Pill } from "lucide-react";
 import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
 import { CartBar } from "@/components/catalogue/CartBar";
@@ -199,7 +199,7 @@ export function SupplementsClient({
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
             {filtered.map((supp) => (
               <SupplementCard
                 key={supp.id}
@@ -241,6 +241,20 @@ function SupplementCard({
 }) {
   const outOfStock = supp.track_inventory && supp.stock_qty === 0;
   const buttonDisabled = !enabled || outOfStock || inCart;
+  const [expanded, setExpanded] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const descRef = useRef<HTMLParagraphElement>(null);
+
+  const checkTruncation = useCallback(() => {
+    const el = descRef.current;
+    if (el) setIsTruncated(el.scrollHeight > el.clientHeight + 1);
+  }, []);
+
+  useEffect(() => {
+    checkTruncation();
+    window.addEventListener("resize", checkTruncation);
+    return () => window.removeEventListener("resize", checkTruncation);
+  }, [checkTruncation]);
 
   return (
     <div
@@ -308,18 +322,36 @@ function SupplementCard({
           {supp.name}
         </h3>
         {supp.description && (
-          <p
-            className="text-sm mb-4 flex-1"
-            style={{
-              color: "#e8d5a3",
-              display: "-webkit-box",
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {supp.description}
-          </p>
+          <div className="mb-3 flex-1">
+            <p
+              ref={descRef}
+              className="text-sm"
+              style={{
+                color: "#e8d5a3",
+                ...(expanded
+                  ? {}
+                  : {
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical" as const,
+                      overflow: "hidden",
+                    }),
+              }}
+            >
+              {supp.description}
+            </p>
+            {(isTruncated || expanded) && (
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                aria-expanded={expanded}
+                className="mt-1 text-xs font-medium"
+                style={{ color: "#8dc63f" }}
+              >
+                {expanded ? "Read less" : "Read more"}
+              </button>
+            )}
+          </div>
         )}
         {!supp.description && <div className="flex-1" />}
 
