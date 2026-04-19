@@ -641,20 +641,29 @@ export function Step4Review({
               <span>−{formatCurrency(promoDiscount)}</span>
             </div>
           )}
+          {totals.estimatedGST > 0 && (
+            <div
+              className="flex justify-between pt-2 mt-1 border-t"
+              style={{ color: "#e8d5a3", borderColor: "#2d6b35" }}
+            >
+              <span>Estimated GST (5%)</span>
+              <span>{formatCurrency(totals.estimatedGST)}</span>
+            </div>
+          )}
           <div
             className="flex justify-between text-xl font-semibold pt-3 border-t mt-2"
             style={{ borderColor: "#2d6b35" }}
           >
-            <span style={{ color: "#ffffff" }}>Subtotal</span>
+            <span style={{ color: "#ffffff" }}>Estimated Total</span>
             <span style={{ color: "#c4973a" }}>
               {formatCurrency(total)} CAD
             </span>
           </div>
           <p
-            className="text-xs text-right mt-1"
+            className="text-xs text-right mt-1 italic"
             style={{ color: "#6ab04c" }}
           >
-            + applicable tax calculated at checkout
+            Tax estimated at Alberta rate — final amount confirmed at checkout.
           </p>
         </div>
       </section>

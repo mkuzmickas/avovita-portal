@@ -291,20 +291,30 @@ export function CheckoutCartSummary({
               </div>
             )}
 
+            {totals.estimatedGST > 0 && (
+              <div
+                className="flex justify-between text-sm pt-2 mt-1 border-t"
+                style={{ color: "#e8d5a3", borderColor: "#2d6b35" }}
+              >
+                <span>Est. GST (5%)</span>
+                <span>{formatCurrency(totals.estimatedGST)}</span>
+              </div>
+            )}
+
             <div
               className="flex justify-between text-base font-semibold pt-2 mt-1 border-t"
               style={{ borderColor: "#2d6b35" }}
             >
-              <span style={{ color: "#ffffff" }}>Subtotal</span>
+              <span style={{ color: "#ffffff" }}>Est. Total</span>
               <span style={{ color: "#c4973a" }}>
                 {formatCurrency(total)} CAD
               </span>
             </div>
             <p
-              className="text-[10px] text-right mt-1"
+              className="text-[10px] text-right mt-1 italic"
               style={{ color: "#6ab04c" }}
             >
-              + applicable tax
+              Tax estimated — final amount confirmed at checkout.
             </p>
           </div>
         </>

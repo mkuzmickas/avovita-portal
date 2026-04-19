@@ -214,6 +214,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       try {
         window.localStorage.removeItem(STORAGE_KEY);
+        window.sessionStorage.removeItem("av-supps-modal-dismissed");
       } catch {
         // ignore
       }

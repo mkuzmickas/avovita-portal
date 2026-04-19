@@ -113,10 +113,14 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
             // Show "Browse supplements?" modal if:
             // 1. Feature flag is on
             // 2. Cart has NO supplements
+            // 3. User hasn't already dismissed the modal this session
             const hasSupplement = cart.some(
               (i) => i.line_type === "supplement",
             );
-            if (isSupplementsEnabled() && !hasSupplement) {
+            const dismissed =
+              typeof window !== "undefined" &&
+              window.sessionStorage.getItem("av-supps-modal-dismissed") === "1";
+            if (isSupplementsEnabled() && !hasSupplement && !dismissed) {
               setShowSuppsModal(true);
               return;
             }
@@ -139,13 +143,18 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
       <BrowseSupplementsModal
         onBrowse={() => {
           setShowSuppsModal(false);
+          sessionStorage.setItem("av-supps-modal-dismissed", "1");
           router.push("/supplements");
         }}
         onContinue={() => {
           setShowSuppsModal(false);
+          sessionStorage.setItem("av-supps-modal-dismissed", "1");
           router.push(checkoutHref);
         }}
-        onClose={() => setShowSuppsModal(false)}
+        onClose={() => {
+          setShowSuppsModal(false);
+          sessionStorage.setItem("av-supps-modal-dismissed", "1");
+        }}
       />
     )}
     </>

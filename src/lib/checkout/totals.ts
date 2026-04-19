@@ -1,6 +1,9 @@
 import type { AppliedPromo } from "./types";
 import { computeDiscount } from "./discount";
 
+/** Estimated GST rate (Alberta). Stripe Tax computes the actual rate. */
+export const ESTIMATED_GST_RATE = 0.05;
+
 export interface TotalsInput {
   /** Sum of test prices (CAD dollars), one entry per assigned line. */
   testLinePrices: number[];
@@ -22,7 +25,11 @@ export interface Totals {
   subtotalAfterDiscount: number;
   visitFee: number;
   promoDiscount: number;
-  /** Pre-tax total shown to the user. Tax is calculated by Stripe. */
+  /** Pre-tax subtotal (post-discount). */
+  subtotalBeforeTax: number;
+  /** Estimated GST at Alberta rate — display only. Stripe Tax is authoritative. */
+  estimatedGST: number;
+  /** Estimated grand total including GST. */
   grandTotal: number;
 }
 
@@ -32,9 +39,10 @@ export interface Totals {
  * order summary call this with the same inputs so they cannot drift
  * out of sync. All values returned are in CAD dollars.
  *
- * Tax is NOT calculated here — Stripe Tax (automatic) handles tax
- * calculation on its checkout page. The grandTotal here is the
- * pre-tax amount that Stripe will add tax to.
+ * estimatedGST is a display estimate (5% Alberta rate). Stripe Tax
+ * (automatic) computes the actual tax on the Stripe checkout page.
+ * The estimate matches what most customers (Alberta) will actually
+ * pay; out-of-province customers may see a different final amount.
  */
 export function calculateTotals({
   testLinePrices,
@@ -65,7 +73,10 @@ export function calculateTotals({
     promoDiscount = Math.min(promoDiscount, preDiscountTotal);
   }
 
-  const grandTotal = Math.max(0, preDiscountTotal - promoDiscount);
+  const subtotalBeforeTax = Math.max(0, preDiscountTotal - promoDiscount);
+  const estimatedGST =
+    Math.round(subtotalBeforeTax * ESTIMATED_GST_RATE * 100) / 100;
+  const grandTotal = subtotalBeforeTax + estimatedGST;
 
   return {
     testsSubtotal,
@@ -73,6 +84,8 @@ export function calculateTotals({
     subtotalAfterDiscount,
     visitFee,
     promoDiscount,
+    subtotalBeforeTax,
+    estimatedGST,
     grandTotal,
   };
 }
