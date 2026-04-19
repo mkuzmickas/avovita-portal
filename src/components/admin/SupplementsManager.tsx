@@ -187,6 +187,35 @@ export function SupplementsManager({
 
   return (
     <>
+      {/* Header with live counter */}
+      <div className="mb-8 flex items-end justify-between gap-4">
+        <div>
+          <h1
+            className="font-heading text-3xl font-semibold"
+            style={{
+              color: "#ffffff",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+            }}
+          >
+            <span style={{ color: "#c4973a" }}>Supplements</span>
+          </h1>
+          <p className="mt-1" style={{ color: "#e8d5a3" }}>
+            Inventory management — add, edit, and track supplement stock.
+          </p>
+        </div>
+        <div
+          className="rounded-lg border px-4 py-2"
+          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        >
+          <p className="text-xs" style={{ color: "#6ab04c" }}>
+            Total Supplements
+          </p>
+          <p className="text-xl font-semibold" style={{ color: "#c4973a" }}>
+            {supplements.length}
+          </p>
+        </div>
+      </div>
+
       {/* Filter row */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
