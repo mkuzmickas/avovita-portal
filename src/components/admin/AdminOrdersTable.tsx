@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,7 +13,9 @@ import {
   AlertCircle,
   Calendar,
   Package,
+  ChevronDown,
 } from "lucide-react";
+import { OrderExpandedPanel } from "./OrderExpandedPanel";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { AdminOrderStatusUpdater } from "@/components/AdminOrderStatusUpdater";
 import type { OrderStatus } from "@/types/database";
@@ -65,6 +67,7 @@ export function AdminOrdersTable({
   const [shipSuccess, setShipSuccess] = useState<string | null>(null);
   const [showManifestPicker, setShowManifestPicker] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const updateAppointment = async (orderId: string, dateStr: string) => {
     const value = dateStr || null;
@@ -299,6 +302,7 @@ export function AdminOrdersTable({
                   />
                 </th>
                 {[
+                  "",
                   "Order ID",
                   "Date",
                   "Appointment",
@@ -325,7 +329,7 @@ export function AdminOrdersTable({
               {filteredOrders.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={10}
                     className="px-6 py-16 text-center"
                     style={{ backgroundColor: "#0a1a0d", color: "#6ab04c" }}
                   >
@@ -348,15 +352,39 @@ export function AdminOrdersTable({
                     .join(", ");
                   const isEligible = SHIPPABLE_STATUSES.includes(order.status);
                   const isChecked = selected.has(order.id);
+                  const isExpanded = expandedOrderId === order.id;
 
                   return (
+                    <React.Fragment key={order.id}>
                     <tr
-                      key={order.id}
                       style={{
                         backgroundColor: rowBg,
                         borderTop: "1px solid #1a3d22",
                       }}
                     >
+                      <td className="px-2 py-4">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedOrderId(
+                              isExpanded ? null : order.id,
+                            )
+                          }
+                          aria-expanded={isExpanded}
+                          aria-label={`${isExpanded ? "Collapse" : "Expand"} order #${order.id.slice(0, 8).toUpperCase()}`}
+                          className="p-1 rounded transition-transform"
+                          style={{ color: "#c4973a" }}
+                        >
+                          <ChevronDown
+                            className="w-4 h-4 transition-transform"
+                            style={{
+                              transform: isExpanded
+                                ? "rotate(180deg)"
+                                : "rotate(0deg)",
+                            }}
+                          />
+                        </button>
+                      </td>
                       <td className="px-3 py-4">
                         {isEligible ? (
                           <input
@@ -481,6 +509,14 @@ export function AdminOrdersTable({
                         />
                       </td>
                     </tr>
+                    {isExpanded && (
+                      <tr style={{ backgroundColor: rowBg }}>
+                        <td colSpan={10} className="p-0">
+                          <OrderExpandedPanel orderId={order.id} />
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })
               )}
