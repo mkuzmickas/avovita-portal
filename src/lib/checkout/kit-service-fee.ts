@@ -10,6 +10,8 @@ export type KitFeeResult = {
   amount: number;
   /** Display label for the fee line. */
   label: string;
+  /** Informational note shown below the fee line. */
+  note: string;
   /** Whether any self-collected kit tests are in the cart. */
   hasKitTests: boolean;
   /** Whether the order also has phlebotomist-draw tests. */
@@ -44,6 +46,7 @@ export function computeKitServiceFee(cart: CartItem[]): KitFeeResult {
     return {
       amount: 0,
       label: "",
+      note: "",
       hasKitTests: false,
       hasPhlebotomistTests,
     };
@@ -52,8 +55,8 @@ export function computeKitServiceFee(cart: CartItem[]): KitFeeResult {
   if (hasPhlebotomistTests) {
     return {
       amount: KIT_FEE_PICKUP_ONLY,
-      label:
-        "Self-Collected Kit Service (pickup only — delivered with phlebotomist visit)",
+      label: "Kit pickup",
+      note: "Your phlebotomist will bring the kit during your collection appointment.",
       hasKitTests: true,
       hasPhlebotomistTests: true,
     };
@@ -61,7 +64,8 @@ export function computeKitServiceFee(cart: CartItem[]): KitFeeResult {
 
   return {
     amount: KIT_FEE_FULL,
-    label: "Self-Collected Kit Service (delivery + pickup)",
+    label: "Kit delivery & pickup",
+    note: "Your collection kit arrives within 2–3 business days. Instructions for sample return will be included.",
     hasKitTests: true,
     hasPhlebotomistTests: false,
   };

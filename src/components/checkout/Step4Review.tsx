@@ -647,9 +647,9 @@ export function Step4Review({
               <span>{formatCurrency(kitFee.amount)}</span>
             </div>
           )}
-          {kitFee.hasKitTests && (
+          {kitFee.note && (
             <p className="text-xs italic mt-1" style={{ color: "#6ab04c" }}>
-              For stool and saliva sample tests, we arrange secure courier pickup of your completed sample.
+              {kitFee.note}
             </p>
           )}
           {appliedPromo && promoDiscount > 0 && (
