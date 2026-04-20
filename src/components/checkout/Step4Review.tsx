@@ -115,9 +115,25 @@ export function Step4Review({
   const [shippingRiskAcknowledged, setShippingRiskAcknowledged] =
     useState(false);
 
+  const kitFee = computeKitServiceFee(cart);
+
+  // Kit-only orders have no phlebotomist visit — no visit fee
   const visitFees = useMemo(
-    () => computeVisitFees(persons.length, collectionAddress.postal_code),
-    [persons.length, collectionAddress.postal_code]
+    () => {
+      if (kitFee.hasKitTests && !kitFee.hasPhlebotomistTests) {
+        // Return zero-fee structure for kit-only carts
+        return {
+          base_fee: 0,
+          additional_fee_per_person: 0,
+          additional_person_count: 0,
+          total: 0,
+          zone: "none" as const,
+          postal_code: null,
+        };
+      }
+      return computeVisitFees(persons.length, collectionAddress.postal_code);
+    },
+    [persons.length, collectionAddress.postal_code, kitFee.hasKitTests, kitFee.hasPhlebotomistTests]
   );
 
   // Single source of truth — same function powers the right-rail summary.
@@ -133,7 +149,6 @@ export function Step4Review({
     .reduce((s, i) => s + i.price_cad, 0);
   const suppShippingFee =
     suppFulfillment === "shipping" ? SUPPLEMENT_SHIPPING_FEE_CAD : 0;
-  const kitFee = computeKitServiceFee(cart);
 
   const totals = useMemo(
     () =>
@@ -268,7 +283,10 @@ export function Step4Review({
     // checkout-unified which handles all three line types.
     const hasSupplements = cart.some((i) => i.line_type === "supplement");
     const hasResources = cart.some((i) => i.line_type === "resource");
-    const isMixedCart = hasSupplements || hasResources;
+    const isKitOnlyCart = kitFee.hasKitTests && !kitFee.hasPhlebotomistTests;
+    // Route through checkout-unified if mixed OR kit-only (old route
+    // always adds visit fee server-side, which is wrong for kit-only).
+    const isMixedCart = hasSupplements || hasResources || isKitOnlyCart;
 
     try {
       if (isMixedCart) {

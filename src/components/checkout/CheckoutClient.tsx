@@ -17,6 +17,7 @@ import { Step3CollectionDetails } from "./Step3CollectionDetails";
 import { Step4Review } from "./Step4Review";
 import { SupplementFulfillmentStep } from "./SupplementFulfillmentStep";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
+import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import type { SupplementFulfillment, SupplementShippingAddress } from "@/types/supplements";
 import type {
@@ -324,6 +325,11 @@ export function CheckoutClient({
     restored,
   ]);
 
+  // ─── Cart composition for fee gating ──────────────────────────────────
+  const kitFeeInfo = computeKitServiceFee(cart);
+  // Kit-only orders have no phlebotomist visit — skip people step + visit fee
+  const isKitOnly = kitFeeInfo.hasKitTests && !kitFeeInfo.hasPhlebotomistTests;
+
   // ─── Analytics: checkout started ─────────────────────────────────────
   const trackedStartRef = useRef(false);
   useEffect(() => {
@@ -332,6 +338,29 @@ export function CheckoutClient({
       trackEvent("checkout_started");
     }
   }, [hydrated, restored, cart.length, trackEvent]);
+
+  // ─── Kit-only auto-advance: skip Step 1 (people count) ────────────
+  // For kit-only orders there's no phlebotomist visit, so person count
+  // is always 1 and we auto-assign tests to person 0.
+  useEffect(() => {
+    if (!hydrated || !restored || !isKitOnly || step !== 1) return;
+    setPersonCount(1);
+    setAssignments(
+      cart
+        .filter((item) => item.line_type === "test")
+        .map((item) => {
+          if (item.line_type !== "test") throw new Error("unreachable");
+          return {
+            test_id: item.test_id,
+            test_name: item.test_name,
+            lab_name: item.lab_name,
+            price_cad: item.price_cad,
+            person_index: 0,
+          };
+        }),
+    );
+    setStep(3);
+  }, [hydrated, restored, isKitOnly, step, cart]);
 
   // ─── Analytics: checkout abandoned (beforeunload) ──────────────────
   useEffect(() => {
@@ -437,10 +466,10 @@ export function CheckoutClient({
 
   const visitFees = useMemo(
     () =>
-      step === 1
+      step === 1 || isKitOnly
         ? null
         : computeVisitFees(personCount, collectionAddress.postal_code),
-    [personCount, step, collectionAddress.postal_code]
+    [personCount, step, collectionAddress.postal_code, isKitOnly]
   );
 
   // Sidebar always reflects the cart, never the partial assignment state.
