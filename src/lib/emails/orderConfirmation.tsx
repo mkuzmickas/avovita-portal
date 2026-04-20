@@ -25,6 +25,9 @@ export interface OrderConfirmationProps {
   visitFeeBase: number;
   visitFeeAdditional: number;
   visitFeeTotal: number;
+  /** Kit service fee (delivery + pickup or pickup only). */
+  kitServiceFee?: number;
+  kitServiceLabel?: string;
   total: number;
   portalUrl: string;
   floLabsUrl?: string;
@@ -40,6 +43,10 @@ export interface OrderConfirmationProps {
    * customers (logged-in flow or returning guests).
    */
   confirmationLink?: string | null;
+  /** True if order has phlebotomist-draw tests. */
+  hasPhlebotomistTests?: boolean;
+  /** True if order has self-collected kit tests. */
+  hasKitTests?: boolean;
 }
 
 const FLO_LABS_URL = "https://flolabsbooking.as.me/?appointmentType=84416067";
@@ -71,6 +78,10 @@ export function renderOrderConfirmationEmail(
     promoCode,
     promoDiscount = 0,
     confirmationLink,
+    hasPhlebotomistTests = true,
+    hasKitTests = false,
+    kitServiceFee = 0,
+    kitServiceLabel = "",
   } = props;
 
   const hasPromo = promoDiscount > 0;
@@ -187,6 +198,9 @@ export function renderOrderConfirmationEmail(
                   <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(subtotal)}</td>
                 </tr>
                 ${discountRowsHtml}
+                ${
+                  hasPhlebotomistTests && visitFeeTotal > 0
+                    ? `
                 <tr>
                   <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Home visit fee (base)</td>
                   <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(visitFeeBase)}</td>
@@ -195,7 +209,18 @@ export function renderOrderConfirmationEmail(
                 <tr>
                   <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Visit fee total</td>
                   <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(visitFeeTotal)}</td>
-                </tr>
+                </tr>`
+                    : ""
+                }
+                ${
+                  kitServiceFee > 0
+                    ? `
+                <tr>
+                  <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">${escapeHtml(kitServiceLabel || "Kit service")}</td>
+                  <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(kitServiceFee)}</td>
+                </tr>`
+                    : ""
+                }
                 ${
                   hasPromo
                     ? `
@@ -246,6 +271,51 @@ export function renderOrderConfirmationEmail(
           }
 
           ${fastingNotice}
+
+          ${
+            hasPhlebotomistTests
+              ? `
+          <!-- Phlebotomist visit section -->
+          <tr>
+            <td style="padding: 24px 32px 0 32px;">
+              <h3 style="margin: 0 0 10px 0; font-size: 18px; font-family: Georgia, 'Cormorant Garamond', serif; color: #111827;">
+                Your home collection visit
+              </h3>
+              <p style="margin: 0 0 8px 0; font-size: 14px; color: #4b5563; line-height: 1.5;">
+                A FloLabs phlebotomist will visit your home to collect specimens. The draw typically takes 10–20 minutes.
+              </p>
+              <a href="${floLabsUrl}" target="_blank" style="display: inline-block; background: #c4973a; color: #0a1a0d; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 14px; margin: 8px 0 16px 0;">
+                Schedule Your FloLabs Appointment
+              </a>
+            </td>
+          </tr>`
+              : ""
+          }
+
+          ${
+            hasKitTests
+              ? `
+          <!-- Kit delivery section -->
+          <tr>
+            <td style="padding: 24px 32px 0 32px;">
+              <h3 style="margin: 0 0 10px 0; font-size: 18px; font-family: Georgia, 'Cormorant Garamond', serif; color: #111827;">
+                Your collection kit
+              </h3>
+              ${
+                hasPhlebotomistTests
+                  ? '<p style="margin: 0 0 8px 0; font-size: 13px; color: #c4973a; font-weight: 600;">Your phlebotomist can deliver your collection kit during their visit — no separate delivery needed.</p>'
+                  : '<p style="margin: 0 0 8px 0; font-size: 14px; color: #4b5563; line-height: 1.5;">Your collection kit will be delivered within 2–3 business days.</p>'
+              }
+              <p style="margin: 0 0 8px 0; font-size: 14px; color: #4b5563; line-height: 1.5;">
+                <strong>Inside your package:</strong> sterile collection container, sample preservative (if required), pre-labeled return envelope, step-by-step instructions, and a return shipping label.
+              </p>
+              <p style="margin: 0 0 8px 0; font-size: 14px; color: #4b5563; line-height: 1.5;">
+                Most collections take under 5 minutes. Once complete, seal the container and drop the return envelope at any Canada Post location — or contact us to arrange courier pickup.
+              </p>
+            </td>
+          </tr>`
+              : ""
+          }
 
           <!-- Portal login -->
           <tr>

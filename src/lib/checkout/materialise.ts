@@ -310,13 +310,14 @@ export async function sendOrderConfirmationEmail(
     const testIds = [...new Set(payload.assignments.map((a) => a.test_id))];
     const { data: testsRaw } = await supabase
       .from("tests")
-      .select("id, name, turnaround_display, lab:labs(name)")
+      .select("id, name, turnaround_display, collection_method, lab:labs(name)")
       .in("id", testIds);
 
     type TestRow = {
       id: string;
       name: string;
       turnaround_display: string | null;
+      collection_method: string | null;
       lab: { name: string } | { name: string }[] | null;
     };
     const testMap = new Map<string, TestRow>();
@@ -351,6 +352,17 @@ export async function sendOrderConfirmationEmail(
         ? Math.max(0, payload.total - totalPaidCad)
         : 0;
 
+    // Determine cart composition for email sections
+    const testMethods = [...testMap.values()].map(
+      (t) => t.collection_method ?? "phlebotomist_draw",
+    );
+    const hasPhlebotomistTests = testMethods.some(
+      (m) => m === "phlebotomist_draw",
+    );
+    const hasKitTests = testMethods.some(
+      (m) => m === "self_collected_kit",
+    );
+
     const html = renderOrderConfirmationEmail({
       firstName,
       orderIdShort,
@@ -368,12 +380,15 @@ export async function sendOrderConfirmationEmail(
       promoCode,
       promoDiscount,
       confirmationLink: confirmationLink ?? null,
+      hasPhlebotomistTests,
+      hasKitTests,
     });
 
     try {
       await resend.emails.send({
         from: process.env.RESEND_FROM_ORDERS!,
         to: account.email,
+        bcc: ["jenna@avovita.ca", "mike@avovita.ca"],
         subject: orderConfirmationSubject(orderIdShort),
         html,
       });
@@ -431,13 +446,14 @@ export async function sendGuestOrderConfirmationEmail(
     const testIds = [...new Set(payload.assignments.map((a) => a.test_id))];
     const { data: testsRaw } = await supabase
       .from("tests")
-      .select("id, name, turnaround_display, lab:labs(name)")
+      .select("id, name, turnaround_display, collection_method, lab:labs(name)")
       .in("id", testIds);
 
     type TestRow = {
       id: string;
       name: string;
       turnaround_display: string | null;
+      collection_method: string | null;
       lab: { name: string } | { name: string }[] | null;
     };
     const testMap = new Map<string, TestRow>();
