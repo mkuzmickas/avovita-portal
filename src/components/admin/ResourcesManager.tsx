@@ -18,6 +18,7 @@ import {
   Download,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { CopyLinkButton } from "./CopyLinkButton";
 import { ImageUploadField } from "./ImageUploadField";
 import { resolveResourceCoverUrl } from "@/lib/storage/imageUrl";
 import { signedUploadToStorage } from "@/lib/storage/upload";
@@ -622,6 +623,12 @@ function InlineResourceForm({
       >
         {mode === "create" ? "New Resource" : "Edit Resource"}
       </h3>
+
+      {mode === "edit" && resourceId && (
+        <CopyLinkButton
+          url={`${process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca"}/resources`}
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Field label="Title" required>

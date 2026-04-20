@@ -14,6 +14,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { formatCurrency, slugify } from "@/lib/utils";
+import { CopyLinkButton } from "./CopyLinkButton";
 import { createClient } from "@/lib/supabase/client";
 import { InsightsChatModal } from "@/components/catalogue/InsightsChatModal";
 import type {
@@ -962,6 +963,12 @@ function InlineTestForm({
       >
         {mode === "create" ? "New Test" : "Edit Test"}
       </h3>
+
+      {mode === "edit" && initialFields.sku && (
+        <CopyLinkButton
+          url={`${process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca"}/tests?test=${encodeURIComponent(initialFields.sku)}`}
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Field label="Name" required>

@@ -14,6 +14,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { CopyLinkButton } from "./CopyLinkButton";
 import { ImageUploadField } from "./ImageUploadField";
 import { resolveSupplementImageUrl } from "@/lib/storage/imageUrl";
 import type { Supplement } from "@/types/supplements";
@@ -699,6 +700,12 @@ function InlineSupplementForm({
       >
         {mode === "create" ? "New Supplement" : "Edit Supplement"}
       </h3>
+
+      {mode === "edit" && initialFields.sku && (
+        <CopyLinkButton
+          url={`${process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca"}/supplements`}
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Field label="SKU" required>
