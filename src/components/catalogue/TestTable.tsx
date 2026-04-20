@@ -203,11 +203,22 @@ function TestTableRow({
 
   return (
     <>
+      {/* Highlight spacer — creates vertical breathing room above the gold frame */}
+      {highlighted && (
+        <tr aria-hidden="true">
+          <td colSpan={6} style={{ padding: 0, height: "12px", backgroundColor: "transparent" }} />
+        </tr>
+      )}
       <tr
-        id={`test-${test.id}`}
+        id={highlighted ? "avovita-deeplink-header" : undefined}
+        data-testid={`test-${test.id}`}
         onClick={handleToggle}
-        className={`cursor-pointer transition-colors${highlighted ? " avovita-deeplink-highlight" : ""}`}
-        style={{ backgroundColor: rowBg, borderTop: "1px solid #1a3d22" }}
+        className={`cursor-pointer transition-colors${highlighted ? " avovita-deeplink-row" : ""}`}
+        style={{
+          backgroundColor: highlighted ? "#24492b" : rowBg,
+          borderTop: highlighted ? "3px solid #c4973a" : "1px solid #1a3d22",
+          ...(highlighted && !expanded ? { borderBottom: "3px solid #c4973a" } : {}),
+        }}
       >
         <td className="px-5 py-4 font-medium" style={{ color: "#ffffff" }}>
           <div className="flex items-center gap-2 flex-wrap">
@@ -264,8 +275,11 @@ function TestTableRow({
 
       {/* Expanded detail panel */}
       <tr
-        style={{ backgroundColor: rowBg }}
-        className={highlighted ? "avovita-deeplink-highlight" : undefined}
+        style={{
+          backgroundColor: highlighted ? "#24492b" : rowBg,
+          ...(highlighted ? { borderBottom: "3px solid #c4973a" } : {}),
+        }}
+        className={highlighted ? "avovita-deeplink-row" : undefined}
       >
         <td colSpan={6} className="p-0">
           <div
@@ -421,6 +435,12 @@ function TestTableRow({
           </div>
         </td>
       </tr>
+      {/* Highlight spacer — creates vertical breathing room below the gold frame */}
+      {highlighted && (
+        <tr aria-hidden="true">
+          <td colSpan={6} style={{ padding: 0, height: "12px", backgroundColor: "transparent" }} />
+        </tr>
+      )}
     </>
   );
 }

@@ -108,7 +108,7 @@ export function CatalogueClient({
     // above it are skipped. Wait for the expanded row to render.
     const timer = setTimeout(() => {
       const container = document.getElementById("catalogue-list");
-      const el = container?.querySelector(`#test-${target.id}`) as HTMLElement | null;
+      const el = container?.querySelector(`[data-testid="test-${target.id}"]`) as HTMLElement | null;
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 150);

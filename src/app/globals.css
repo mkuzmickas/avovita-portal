@@ -242,30 +242,29 @@ input:-webkit-autofill:focus {
   caret-color: var(--text-primary);
 }
 
-/* Deep-link highlight — persistent gold border + glow on ?test=SKU rows.
-   Arrival pulse plays once on initial render, then settles to static glow. */
+/* Deep-link highlight — gold card frame on ?test=SKU catalogue rows.
+   Top/bottom borders applied inline on <tr>. Left/right borders on
+   first/last <td> cells. Glow via box-shadow on the header <tr>. */
 @keyframes avovitaDeeplinkPulse {
-  0% {
-    box-shadow: 0 0 0 rgba(196, 151, 58, 0);
-  }
-  30% {
-    box-shadow: 0 0 30px rgba(196, 151, 58, 0.5);
-  }
-  100% {
-    box-shadow: 0 0 20px rgba(196, 151, 58, 0.3);
-  }
+  0%   { box-shadow: 0 0 0 1px #c4973a, 0 4px 20px rgba(196,151,58,0.45); }
+  50%  { box-shadow: 0 0 0 2px #c4973a, 0 6px 40px rgba(196,151,58,0.75); }
+  100% { box-shadow: 0 0 0 1px #c4973a, 0 4px 20px rgba(196,151,58,0.45); }
 }
-.avovita-deeplink-highlight {
-  border-left: 3px solid #c4973a !important;
-  border-right: 3px solid #c4973a !important;
-  box-shadow: 0 0 20px rgba(196, 151, 58, 0.3);
-  animation: avovitaDeeplinkPulse 0.8s ease-out;
+.avovita-deeplink-row > td:first-child {
+  border-left: 3px solid #c4973a;
 }
-.avovita-deeplink-highlight:first-of-type {
-  border-top: 3px solid #c4973a !important;
+.avovita-deeplink-row > td:last-child {
+  border-right: 3px solid #c4973a;
 }
-.avovita-deeplink-highlight:last-of-type {
-  border-bottom: 3px solid #c4973a !important;
+/* Glow + pulse on the header row */
+tr#avovita-deeplink-header {
+  box-shadow: 0 0 0 1px #c4973a, 0 4px 20px rgba(196,151,58,0.45);
+  animation: avovitaDeeplinkPulse 1.2s ease-out;
+}
+@media (max-width: 768px) {
+  tr#avovita-deeplink-header {
+    box-shadow: 0 0 0 1px #c4973a, 0 2px 12px rgba(196,151,58,0.4);
+  }
 }
 
 /* Featured carousel test-title subtle hover link */
