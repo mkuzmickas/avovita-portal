@@ -262,9 +262,6 @@ export function CatalogueClient({
             <p style={{ color: "#e8d5a3", fontSize: "14px" }}>
               Describe your symptoms to our AI assistant and get personalised test recommendations from our catalogue.
             </p>
-            <p className="mt-1.5" style={{ color: "#6ab04c", fontSize: "12px" }}>
-              Requires a free AvoVita account
-            </p>
           </div>
           <button
             type="button"
