@@ -17,6 +17,8 @@ export interface TotalsInput {
   resourceSubtotal?: number;
   /** Supplement shipping fee in CAD dollars (default 0). */
   supplementShippingFee?: number;
+  /** Self-collected kit service fee in CAD dollars (default 0). */
+  kitServiceFee?: number;
 }
 
 export interface Totals {
@@ -51,6 +53,7 @@ export function calculateTotals({
   supplementSubtotal = 0,
   resourceSubtotal = 0,
   supplementShippingFee = 0,
+  kitServiceFee = 0,
 }: TotalsInput): Totals {
   const testsSubtotal = testLinePrices.reduce((s, p) => s + p, 0);
   const multiTestDiscount = computeDiscount(testLinePrices.length).total;
@@ -61,7 +64,8 @@ export function calculateTotals({
     visitFee +
     supplementSubtotal +
     resourceSubtotal +
-    supplementShippingFee;
+    supplementShippingFee +
+    kitServiceFee;
 
   let promoDiscount = 0;
   if (appliedPromo) {

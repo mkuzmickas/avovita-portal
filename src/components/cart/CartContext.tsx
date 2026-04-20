@@ -16,6 +16,7 @@ import type {
 } from "@/components/catalogue/types";
 import { cartItemId } from "@/components/catalogue/types";
 import { computeDiscount } from "@/lib/checkout/discount";
+import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
 
 const STORAGE_KEY = "avovita-cart-v1";
 
@@ -32,6 +33,10 @@ export interface CartTotals {
   subtotal_resources: number;
   test_count: number;
   test_discount: number;
+  kit_service_fee: number;
+  kit_service_label: string;
+  has_kit_tests: boolean;
+  has_phlebotomist_tests: boolean;
   cart_total: number;
 }
 
@@ -58,12 +63,14 @@ function computeCartTotals(cart: CartItem[]): CartTotals {
   const test_count = testItems.length;
   const discount = computeDiscount(test_count);
   const test_discount = discount.total;
+  const kitFee = computeKitServiceFee(cart);
 
   const cart_total =
     subtotal_tests -
     test_discount +
     subtotal_supplements +
-    subtotal_resources;
+    subtotal_resources +
+    kitFee.amount;
 
   return {
     testItems,
@@ -74,6 +81,10 @@ function computeCartTotals(cart: CartItem[]): CartTotals {
     subtotal_resources,
     test_count,
     test_discount,
+    kit_service_fee: kitFee.amount,
+    kit_service_label: kitFee.label,
+    has_kit_tests: kitFee.hasKitTests,
+    has_phlebotomist_tests: kitFee.hasPhlebotomistTests,
     cart_total,
   };
 }

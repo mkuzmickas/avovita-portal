@@ -58,6 +58,9 @@ export interface PendingOrderPayload {
   supplement_shipping_fee_cad?: number;
   supplement_shipping_address?: SupplementShippingAddress | null;
 
+  // ── Kit service fee ────────────────────────────────────────────
+  kit_service_fee?: number;
+
   // ── Computed totals (server-side authoritative) ───────────────
   subtotal_tests: number;
   subtotal_supplements: number;

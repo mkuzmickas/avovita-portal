@@ -137,17 +137,34 @@ export default async function CheckoutSuccessPage({
     ];
     const { data: testsRaw } = await service
       .from("tests")
-      .select("id, name, sku")
+      .select("id, name, sku, collection_method")
       .in("id", testIds);
     const testRows = (testsRaw ?? []) as Array<{
       id: string;
       name: string;
       sku: string | null;
+      collection_method: string | null;
     }>;
     for (const t of testRows) {
       if (!itemNames.includes(t.name)) itemNames.push(t.name);
     }
     stabilityConstrainedTests = findStabilityConstrainedTests(testRows);
+  }
+
+  // Determine if order needs FloLabs phlebotomist booking.
+  // Default true for v1 compat (all v1 orders have phlebotomist tests).
+  let hasPhlebotomistTests = hasTests;
+  let hasKitOnlyTests = false;
+  if (testAssignments.length > 0) {
+    const testIds = [...new Set(testAssignments.map((a) => a.test_id))];
+    const { data: cmRows } = await service
+      .from("tests")
+      .select("collection_method")
+      .in("id", testIds);
+    const methods = ((cmRows ?? []) as Array<{ collection_method: string | null }>)
+      .map((r) => r.collection_method ?? "phlebotomist_draw");
+    hasPhlebotomistTests = methods.some((m) => m === "phlebotomist_draw");
+    hasKitOnlyTests = !hasPhlebotomistTests;
   }
 
   // Supplement names
@@ -207,6 +224,7 @@ export default async function CheckoutSuccessPage({
         hasResources={hasResources}
         stabilityConstrainedTests={stabilityConstrainedTests}
         orderId={order?.id ?? null}
+        hasKitOnlyTests={hasKitOnlyTests}
         supplementFulfillment={supplementFulfillment}
         supplementShippingAddress={supplementShippingAddress}
       />

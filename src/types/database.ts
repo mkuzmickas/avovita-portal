@@ -110,6 +110,7 @@ export interface Test {
   stability_notes: string | null;
   active: boolean;
   featured: boolean;
+  collection_method: "phlebotomist_draw" | "self_collected_kit";
   created_at: string;
   updated_at: string;
 }

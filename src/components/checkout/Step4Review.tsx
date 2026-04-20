@@ -18,6 +18,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import { useCart } from "@/components/cart/CartContext";
+import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
 import type { CartItem } from "@/components/catalogue/types";
 import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
 import type {
@@ -132,6 +133,7 @@ export function Step4Review({
     .reduce((s, i) => s + i.price_cad, 0);
   const suppShippingFee =
     suppFulfillment === "shipping" ? SUPPLEMENT_SHIPPING_FEE_CAD : 0;
+  const kitFee = computeKitServiceFee(cart);
 
   const totals = useMemo(
     () =>
@@ -142,8 +144,10 @@ export function Step4Review({
         supplementSubtotal,
         resourceSubtotal,
         supplementShippingFee: suppShippingFee,
+        kitServiceFee: kitFee.amount,
       }),
-    [assignments, visitFees.total, appliedPromo, supplementSubtotal, resourceSubtotal, suppShippingFee]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [assignments, visitFees.total, appliedPromo, supplementSubtotal, resourceSubtotal, suppShippingFee, kitFee.amount]
   );
   const subtotal = totals.testsSubtotal;
   const discount = useMemo(
@@ -312,6 +316,7 @@ export function Step4Review({
           supplement_shipping_address: hasSupplements
             ? suppShippingAddress
             : null,
+          kit_service_fee: kitFee.amount,
           subtotal_tests: subtotal,
           subtotal_supplements: subtotalSupplements,
           subtotal_resources: subtotalResources,
@@ -322,7 +327,8 @@ export function Step4Review({
             visitFees.total +
             subtotalSupplements +
             subtotalResources +
-            suppShippingFee,
+            suppShippingFee +
+            kitFee.amount,
         };
 
         // 1. Create pending order
@@ -631,6 +637,20 @@ export function Step4Review({
               <span>Resources</span>
               <span>{formatCurrency(resourceSubtotal)}</span>
             </div>
+          )}
+          {kitFee.amount > 0 && (
+            <div
+              className="flex justify-between"
+              style={{ color: "#e8d5a3" }}
+            >
+              <span>{kitFee.label}</span>
+              <span>{formatCurrency(kitFee.amount)}</span>
+            </div>
+          )}
+          {kitFee.hasKitTests && (
+            <p className="text-xs italic mt-1" style={{ color: "#6ab04c" }}>
+              For stool and saliva sample tests, we arrange secure courier pickup of your completed sample.
+            </p>
           )}
           {appliedPromo && promoDiscount > 0 && (
             <div

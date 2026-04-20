@@ -16,6 +16,7 @@ export type CatalogueTest = {
   featured: boolean;
   sku: string | null;
   requisition_url: string | null;
+  collection_method: "phlebotomist_draw" | "self_collected_kit";
   lab: { id: string; name: string };
   /** For panels: list of included tests (name + code). null for single tests. */
   panel_tests: PanelTestEntry[] | null;
@@ -38,6 +39,7 @@ export type CartItemTest = {
   price_cad: number;
   lab_name: string;
   quantity: number;
+  collection_method?: "phlebotomist_draw" | "self_collected_kit";
 };
 
 export type CartItemSupplement = {

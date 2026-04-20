@@ -274,6 +274,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Kit service fee (self-collected kit tests — stool/saliva courier)
+    if ((payload.kit_service_fee ?? 0) > 0) {
+      lineItems.push({
+        price_data: {
+          currency: "cad",
+          product_data: {
+            name: "Self-Collected Kit Service",
+            description: "Courier delivery and/or pickup for self-collected sample kits",
+          },
+          unit_amount: Math.round((payload.kit_service_fee ?? 0) * 100),
+        },
+        quantity: 1,
+      });
+    }
+
     if (lineItems.length === 0) {
       return NextResponse.json(
         { error: "No payable items in cart" },

@@ -42,6 +42,7 @@ type EditableFields = {
   lab_id: string;
   sku: string;
   mayo_test_id: string;
+  collection_method: string;
 };
 
 const EMPTY_FORM: EditableFields = {
@@ -59,6 +60,7 @@ const EMPTY_FORM: EditableFields = {
   lab_id: "",
   sku: "",
   mayo_test_id: "",
+  collection_method: "phlebotomist_draw",
 };
 
 const MAYO_URL_BASE = "https://mayocliniclabs.com/test-catalog/overview/";
@@ -160,6 +162,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       lab_id: fields.lab_id,
       sku: fields.sku || null,
       mayo_test_id: fields.mayo_test_id || null,
+      collection_method: fields.collection_method || "phlebotomist_draw",
     };
 
     const { error } = await supabase
@@ -250,6 +253,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       lab_id: fields.lab_id,
       sku: fields.sku || null,
       mayo_test_id: fields.mayo_test_id || null,
+      collection_method: fields.collection_method || "phlebotomist_draw",
       active: true,
       featured: false,
     };
@@ -263,7 +267,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         turnaround_display, turnaround_min_days, turnaround_max_days,
         turnaround_note, specimen_type, ship_temp,
         stability_notes, active, featured, created_at, updated_at,
-        sku, mayo_test_id, cost_cad,
+        sku, mayo_test_id, cost_cad, collection_method,
         track_inventory, stock_qty, low_stock_threshold
       `
       )
@@ -524,6 +528,7 @@ function TestRow({
     lab_id: test.lab_id,
     sku: test.sku ?? "",
     mayo_test_id: test.mayo_test_id ?? "",
+    collection_method: test.collection_method ?? "phlebotomist_draw",
   };
 
   return (
@@ -1065,6 +1070,16 @@ function InlineTestForm({
             onChange={(e) => update("specimen_type", e.target.value)}
             className="mf-input"
           />
+        </Field>
+        <Field label="Collection Method" helper="Self-collected kits incur a courier fee at checkout">
+          <select
+            value={fields.collection_method}
+            onChange={(e) => update("collection_method", e.target.value)}
+            className="mf-input cursor-pointer"
+          >
+            <option value="phlebotomist_draw">Phlebotomist draw (default)</option>
+            <option value="self_collected_kit">Self-collected kit (stool/saliva)</option>
+          </select>
         </Field>
         <Field label="Ship Temperature">
           <ShipTempSelect

@@ -3,6 +3,7 @@
 import { ShoppingBag, X } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { computeDiscount } from "@/lib/checkout/discount";
+import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
 import { DiscountBanner } from "./DiscountBanner";
 import { useCart } from "@/components/cart/CartContext";
 import { cartItemId, cartItemName } from "@/components/catalogue/types";
@@ -77,12 +78,15 @@ export function CheckoutCartSummary({
     .filter((i) => i.line_type === "resource")
     .reduce((s, i) => s + i.price_cad, 0);
 
+  const kitFee = computeKitServiceFee(cart);
+
   const totals = calculateTotals({
     testLinePrices,
     visitFee: visitFees?.total ?? 0,
     appliedPromo: appliedPromo ?? null,
     supplementSubtotal,
     resourceSubtotal,
+    kitServiceFee: kitFee.amount,
   });
 
   const subtotal = totals.testsSubtotal;
@@ -278,6 +282,16 @@ export function CheckoutCartSummary({
               >
                 <span>Resources</span>
                 <span>{formatCurrency(resourceSubtotal)}</span>
+              </div>
+            )}
+
+            {kitFee.amount > 0 && (
+              <div
+                className="flex justify-between text-sm"
+                style={{ color: "#e8d5a3" }}
+              >
+                <span>Kit service</span>
+                <span>{formatCurrency(kitFee.amount)}</span>
               </div>
             )}
 

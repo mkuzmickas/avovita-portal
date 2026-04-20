@@ -83,6 +83,8 @@ export interface CheckoutSuccessV2Props {
   stabilityConstrainedTests?: string[];
   /** Order ID for analytics logging. */
   orderId?: string | null;
+  /** True when order has ONLY self-collected kit tests (no blood draw). */
+  hasKitOnlyTests?: boolean;
   /** Supplement delivery method chosen at checkout. */
   supplementFulfillment?: string | null;
   /** Supplement shipping address (when fulfillment = 'shipping'). */
@@ -111,6 +113,7 @@ export function CheckoutSuccessV2({
   waiverAddendumTitle = null,
   stabilityConstrainedTests = [],
   orderId = null,
+  hasKitOnlyTests = false,
   hasTests = true,
   hasSupplements = false,
   hasResources = false,
@@ -196,8 +199,32 @@ export function CheckoutSuccessV2({
           collection appointment.
         </p>
 
-        {/* ── Test-specific steps (waiver + booking) — only when has_tests ── */}
-        {hasTests && (<>
+        {/* ── Kit-only message (no phlebotomist booking needed) ── */}
+        {hasTests && hasKitOnlyTests && (
+          <div
+            className="rounded-2xl border overflow-hidden mb-5"
+            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          >
+            <div className="px-6 py-5">
+              <h3
+                className="font-heading text-lg font-semibold mb-2"
+                style={{
+                  color: "#ffffff",
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                }}
+              >
+                Collection <span style={{ color: "#c4973a" }}>Kit</span>
+              </h3>
+              <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                Your collection kit will be delivered within 2–3 business days.
+                Instructions for sample return will be included in the package.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Test-specific steps (waiver + booking) — only when has phlebotomist tests ── */}
+        {hasTests && !hasKitOnlyTests && (<>
         {/* Step 1 — Waiver */}
         <StepCard
           number={1}

@@ -35,6 +35,7 @@ export function TestCard({
       price_cad: test.price_cad as number,
       lab_name: test.lab.name,
       quantity: 1,
+      collection_method: test.collection_method,
     });
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1500);

@@ -189,6 +189,7 @@ function TestTableRow({
       price_cad: test.price_cad as number,
       lab_name: test.lab.name,
       quantity: 1,
+      collection_method: test.collection_method,
     });
     trackEvent("test_added_to_cart", {
       test_id: test.id,
