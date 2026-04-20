@@ -255,7 +255,7 @@ export function CheckoutCartSummary({
                   </div>
                 )}
               </>
-            ) : (
+            ) : !kitFee.hasKitTests || kitFee.hasPhlebotomistTests ? (
               <p
                 className="text-xs italic pt-1"
                 style={{ color: "#6ab04c" }}
@@ -263,7 +263,7 @@ export function CheckoutCartSummary({
                 Visit fee calculated after you choose how many people are
                 included.
               </p>
-            )}
+            ) : null}
 
             {supplementSubtotal > 0 && (
               <div

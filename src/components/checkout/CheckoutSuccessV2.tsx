@@ -195,36 +195,13 @@ export function CheckoutSuccessV2({
         </div>
 
         <p className="text-sm mb-6 text-center" style={{ color: "#e8d5a3" }}>
-          Two quick steps to finish — please complete both below before your
-          collection appointment.
+          {hasKitOnlyTests
+            ? "Two quick steps to finish — please complete both below before we send your kit."
+            : "Two quick steps to finish — please complete both below before your collection appointment."}
         </p>
 
-        {/* ── Kit-only message (no phlebotomist booking needed) ── */}
-        {hasTests && hasKitOnlyTests && (
-          <div
-            className="rounded-2xl border overflow-hidden mb-5"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
-          >
-            <div className="px-6 py-5">
-              <h3
-                className="font-heading text-lg font-semibold mb-2"
-                style={{
-                  color: "#ffffff",
-                  fontFamily: '"Cormorant Garamond", Georgia, serif',
-                }}
-              >
-                Collection <span style={{ color: "#c4973a" }}>Kit</span>
-              </h3>
-              <p className="text-sm" style={{ color: "#e8d5a3" }}>
-                Your collection kit will be delivered within 2–3 business days.
-                Instructions for sample return will be included in the package.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* ── Test-specific steps (waiver + booking) — only when has phlebotomist tests ── */}
-        {hasTests && !hasKitOnlyTests && (<>
+        {/* ── Waiver + booking/kit steps — waiver for ALL test orders ── */}
+        {hasTests && (<>
         {/* Step 1 — Waiver */}
         <StepCard
           number={1}
@@ -258,7 +235,8 @@ export function CheckoutSuccessV2({
         {/* Optional — set password between waiver and booking */}
         <SetPasswordCard email={email} sessionId={sessionId} />
 
-        {/* Step 2 — Booking */}
+        {/* Step 2 — Booking (phlebotomist orders only) OR Kit delivery (kit-only) */}
+        {!hasKitOnlyTests ? (
         <StepCard
           number={2}
           title="Book your collection appointment"
@@ -344,6 +322,29 @@ export function CheckoutSuccessV2({
             </p>
           )}
         </StepCard>
+        ) : (
+        <StepCard
+          number={2}
+          title="Kit delivery details"
+          icon={Calendar}
+          done={false}
+        >
+          <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
+            Your collection kit will be delivered within 2–3 business days.
+            Detailed instructions for sample collection and return will be
+            included in the package.
+          </p>
+          <p className="text-sm" style={{ color: "#6ab04c" }}>
+            Questions? Contact{" "}
+            <a
+              href="mailto:support@avovita.ca"
+              style={{ color: "#c4973a", textDecoration: "underline" }}
+            >
+              support@avovita.ca
+            </a>
+          </p>
+        </StepCard>
+        )}
 
         </>)}
 
