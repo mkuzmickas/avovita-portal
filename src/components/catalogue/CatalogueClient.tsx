@@ -36,6 +36,7 @@ export function CatalogueClient({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedLab, setSelectedLab] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [highlightedTestId, setHighlightedTestId] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
 
   const handleAdd = (item: CatalogueCartItem) => {
@@ -84,8 +85,9 @@ export function CatalogueClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories]);
 
-  // Deep-link support: /tests?test=SKU or /tests?id=UUID scrolls to,
-  // expands, and briefly pulses the matching test. Runs once on mount.
+  // Deep-link support: /tests?test=SKU or /tests?id=UUID scrolls to
+  // the matching row in the CATALOGUE LIST (not panel cards above it),
+  // expands it, and applies a persistent gold highlight.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -101,16 +103,14 @@ export function CatalogueClient({
     if (!match) return;
     const target = match;
     setExpandedCardId(target.id);
-    // Wait for the expanded row to render, then scroll + pulse.
+    setHighlightedTestId(target.id);
+    // Scope scroll to the catalogue list container so panel cards
+    // above it are skipped. Wait for the expanded row to render.
     const timer = setTimeout(() => {
-      const el = document.getElementById(`test-${target.id}`);
+      const container = document.getElementById("catalogue-list");
+      const el = container?.querySelector(`#test-${target.id}`) as HTMLElement | null;
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("avovita-pulse-highlight");
-      setTimeout(
-        () => el.classList.remove("avovita-pulse-highlight"),
-        2400
-      );
     }, 150);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -385,6 +385,7 @@ export function CatalogueClient({
             totalTestsInDb={allTests.length}
             expandedId={expandedCardId}
             onToggleExpand={toggleExpanded}
+            highlightedId={highlightedTestId}
           />
         </section>
       </div>

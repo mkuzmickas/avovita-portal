@@ -18,6 +18,8 @@ interface TestTableProps {
   totalTestsInDb: number;
   expandedId: string | null;
   onToggleExpand: (testId: string) => void;
+  /** Test ID to highlight with gold border (deep-link ?test=SKU). */
+  highlightedId?: string | null;
 }
 
 /**
@@ -34,6 +36,7 @@ export function TestTable({
   totalTestsInDb,
   expandedId,
   onToggleExpand,
+  highlightedId = null,
 }: TestTableProps) {
 
   const isEmpty = tests.length === 0;
@@ -41,6 +44,7 @@ export function TestTable({
 
   return (
     <div
+      id="catalogue-list"
       className="rounded-xl border overflow-hidden"
       style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
     >
@@ -119,6 +123,7 @@ export function TestTable({
                 const expanded = expandedId === test.id;
                 const inCart = cart.some((c) => cartItemId(c) === `test:${test.id}`);
                 const rowBg = idx % 2 === 0 ? "#0a1a0d" : "#1a3d22";
+                const highlighted = highlightedId === test.id;
 
                 return (
                   <TestTableRow
@@ -127,6 +132,7 @@ export function TestTable({
                     expanded={expanded}
                     inCart={inCart}
                     rowBg={rowBg}
+                    highlighted={highlighted}
                     onToggle={() => onToggleExpand(test.id)}
                     onAdd={onAdd}
                   />
@@ -147,6 +153,7 @@ interface TestTableRowProps {
   expanded: boolean;
   inCart: boolean;
   rowBg: string;
+  highlighted: boolean;
   onToggle: () => void;
   onAdd: (item: CatalogueCartItem) => void;
 }
@@ -156,6 +163,7 @@ function TestTableRow({
   expanded,
   inCart,
   rowBg,
+  highlighted,
   onToggle,
   onAdd,
 }: TestTableRowProps) {
@@ -198,7 +206,7 @@ function TestTableRow({
       <tr
         id={`test-${test.id}`}
         onClick={handleToggle}
-        className="cursor-pointer transition-colors"
+        className={`cursor-pointer transition-colors${highlighted ? " avovita-deeplink-highlight" : ""}`}
         style={{ backgroundColor: rowBg, borderTop: "1px solid #1a3d22" }}
       >
         <td className="px-5 py-4 font-medium" style={{ color: "#ffffff" }}>
@@ -255,7 +263,10 @@ function TestTableRow({
       </tr>
 
       {/* Expanded detail panel */}
-      <tr style={{ backgroundColor: rowBg }}>
+      <tr
+        style={{ backgroundColor: rowBg }}
+        className={highlighted ? "avovita-deeplink-highlight" : undefined}
+      >
         <td colSpan={6} className="p-0">
           <div
             className="overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
