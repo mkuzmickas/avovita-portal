@@ -57,6 +57,10 @@ interface OrderDetails {
   };
   lines: OrderLine[];
   visit_groups: VisitGroup[];
+  stability_disclaimer: {
+    shown: boolean;
+    acknowledged_at: string | null;
+  };
 }
 
 // Zone classification by city name
@@ -431,6 +435,32 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Stability disclaimer status */}
+      {data.stability_disclaimer.shown && (
+        <div
+          className="flex items-center gap-2 text-xs rounded-lg border p-3"
+          style={{
+            backgroundColor: "rgba(217, 169, 57, 0.08)",
+            borderColor: "#d4a84a",
+            color: "#d4a84a",
+          }}
+        >
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            Stability disclaimer shown — acknowledged{" "}
+            {data.stability_disclaimer.acknowledged_at
+              ? new Date(
+                  data.stability_disclaimer.acknowledged_at,
+                ).toLocaleString("en-CA", {
+                  timeZone: "America/Edmonton",
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })
+              : ""}
+          </span>
         </div>
       )}
 

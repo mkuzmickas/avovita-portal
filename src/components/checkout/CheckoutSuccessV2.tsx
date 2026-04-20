@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { StabilityDisclaimerModal } from "./StabilityDisclaimerModal";
 
 const WAIVER_TEXT = `AVOVITA WELLNESS CLIENT CONSENT, RELEASE OF LIABILITY, AND INDEMNIFICATION AGREEMENT
 
@@ -78,6 +79,10 @@ export interface CheckoutSuccessV2Props {
   hasSupplements?: boolean;
   /** True if the order contained paid resources. */
   hasResources?: boolean;
+  /** Names of stability-constrained tests in this order (if any). */
+  stabilityConstrainedTests?: string[];
+  /** Order ID for analytics logging. */
+  orderId?: string | null;
   /** Supplement delivery method chosen at checkout. */
   supplementFulfillment?: string | null;
   /** Supplement shipping address (when fulfillment = 'shipping'). */
@@ -104,6 +109,8 @@ export function CheckoutSuccessV2({
   initialWaiverDone,
   waiverAddendum = null,
   waiverAddendumTitle = null,
+  stabilityConstrainedTests = [],
+  orderId = null,
   hasTests = true,
   hasSupplements = false,
   hasResources = false,
@@ -113,6 +120,8 @@ export function CheckoutSuccessV2({
   const [waiverDone, setWaiverDone] = useState(initialWaiverDone);
   const [showWaiver, setShowWaiver] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
+  const hasStabilityWarning = stabilityConstrainedTests.length > 0;
+  const [stabilityAcknowledged, setStabilityAcknowledged] = useState(false);
 
   return (
     <div
@@ -229,6 +238,29 @@ export function CheckoutSuccessV2({
           icon={Calendar}
           done={false}
         >
+          {/* Stability disclaimer gate — blocks iframe until acknowledged */}
+          {hasStabilityWarning && !stabilityAcknowledged && (
+            <StabilityDisclaimerModal
+              constrainedTestNames={stabilityConstrainedTests}
+              onAcknowledge={() => {
+                setStabilityAcknowledged(true);
+                // Log acknowledgment to analytics
+                fetch("/api/analytics/event", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "stability_disclaimer_acknowledged",
+                    event_data: {
+                      order_id: orderId,
+                      constrained_skus: stabilityConstrainedTests,
+                    },
+                  }),
+                  keepalive: true,
+                }).catch(() => {});
+              }}
+            />
+          )}
+          {(!hasStabilityWarning || stabilityAcknowledged) && (<>
           <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
             Pick the date and time that works best for the in-home visit.
           </p>
@@ -278,6 +310,12 @@ export function CheckoutSuccessV2({
               Open in a new tab <ExternalLink className="inline w-3 h-3" />
             </a>
           </p>
+          </>)}
+          {hasStabilityWarning && !stabilityAcknowledged && (
+            <p className="text-sm" style={{ color: "#6ab04c" }}>
+              Please review the scheduling note above to continue.
+            </p>
+          )}
         </StepCard>
 
         </>)}

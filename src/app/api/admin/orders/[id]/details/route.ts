@@ -131,6 +131,14 @@ export async function GET(
     ? order.account[0]
     : order.account;
 
+  // Check if stability disclaimer was acknowledged for this order
+  const { data: stabilityEvent } = await service
+    .from("analytics_events")
+    .select("created_at")
+    .eq("event_type", "stability_disclaimer_acknowledged")
+    .contains("event_data", { order_id: id })
+    .maybeSingle();
+
   return NextResponse.json({
     order: {
       ...order,
@@ -138,5 +146,8 @@ export async function GET(
     },
     lines,
     visit_groups: visitGroupsRaw ?? [],
+    stability_disclaimer: stabilityEvent
+      ? { shown: true, acknowledged_at: (stabilityEvent as { created_at: string }).created_at }
+      : { shown: false, acknowledged_at: null },
   });
 }

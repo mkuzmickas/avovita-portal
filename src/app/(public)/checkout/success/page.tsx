@@ -4,6 +4,7 @@ import { stripe } from "@/lib/stripe";
 import { reassembleMetadata } from "@/lib/checkout/materialise";
 import { CheckoutSuccessV2 } from "@/components/checkout/CheckoutSuccessV2";
 import { ClearCartOnMount } from "@/components/checkout/ClearCartOnMount";
+import { findStabilityConstrainedTests } from "@/lib/checkout/stability";
 import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
 
 export const dynamic = "force-dynamic";
@@ -126,23 +127,27 @@ export default async function CheckoutSuccessPage({
   // ─── Resolve item names for summary ─────────────────────────────
   const itemNames: string[] = [];
 
-  // Test names (from v1 or v2 payload)
+  // Test names + SKUs (from v1 or v2 payload)
   const testAssignments =
     pendingPayload?.test_assignments ?? v1Payload?.assignments ?? [];
+  let stabilityConstrainedTests: string[] = [];
   if (testAssignments.length > 0) {
     const testIds = [
       ...new Set(testAssignments.map((a) => a.test_id)),
     ];
     const { data: testsRaw } = await service
       .from("tests")
-      .select("id, name")
+      .select("id, name, sku")
       .in("id", testIds);
-    for (const t of (testsRaw ?? []) as Array<{
+    const testRows = (testsRaw ?? []) as Array<{
       id: string;
       name: string;
-    }>) {
+      sku: string | null;
+    }>;
+    for (const t of testRows) {
       if (!itemNames.includes(t.name)) itemNames.push(t.name);
     }
+    stabilityConstrainedTests = findStabilityConstrainedTests(testRows);
   }
 
   // Supplement names
@@ -200,6 +205,8 @@ export default async function CheckoutSuccessPage({
         hasTests={hasTests}
         hasSupplements={hasSupplements}
         hasResources={hasResources}
+        stabilityConstrainedTests={stabilityConstrainedTests}
+        orderId={order?.id ?? null}
         supplementFulfillment={supplementFulfillment}
         supplementShippingAddress={supplementShippingAddress}
       />
