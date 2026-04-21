@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -8,6 +8,7 @@ import {
   Search,
   X,
   Plus,
+  Check,
   Trash2,
   Loader2,
   AlertCircle,
@@ -17,6 +18,15 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { computeQuoteTotals, resolveManualDiscount } from "@/lib/quotes/totals";
+import {
+  MISSING_DATA_COLOR,
+  shipTemperatureLabel,
+  stabilityColor,
+  summarizeHandling,
+  summarizeStability,
+  testsWithMissingData,
+  type StabilityItem,
+} from "@/lib/quotes/stability";
 import type { Quote } from "@/types/database";
 import type {
   QuoteLineWithTest,
@@ -76,7 +86,24 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
 
   // Test search + person picker
   const [search, setSearch] = useState("");
+  const [isListOpen, setIsListOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const [pendingPersonLabel, setPendingPersonLabel] = useState<string>("");
+
+  // Click-outside — close the dropdown when the user clicks elsewhere.
+  // Clicks on the input and on the result rows are inside the ref'd
+  // container, so they don't trigger a close.
+  useEffect(() => {
+    if (!isListOpen) return;
+    function onDocClick(e: MouseEvent) {
+      const el = searchContainerRef.current;
+      if (el && !el.contains(e.target as Node)) {
+        setIsListOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [isListOpen]);
 
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -151,6 +178,36 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
     liveManualDiscount,
   ]);
 
+  // Test ids currently in the quote — powers the "Added" indicator and
+  // toggle-add behavior on the search dropdown.
+  const addedTestIds = useMemo(
+    () => new Set(lines.map((l) => l.test_id)),
+    [lines]
+  );
+
+  const stabilityItems = useMemo<StabilityItem[]>(
+    () =>
+      lines.map((l) => ({
+        test_id: l.test_id,
+        test_name: l.test_name,
+        stability_days: l.stability_days,
+        ship_temperature: l.ship_temperature,
+      })),
+    [lines]
+  );
+  const stabilitySummary = useMemo(
+    () => summarizeStability(stabilityItems),
+    [stabilityItems]
+  );
+  const handlingSummary = useMemo(
+    () => summarizeHandling(stabilityItems),
+    [stabilityItems]
+  );
+  const missingDataNames = useMemo(
+    () => testsWithMissingData(stabilityItems),
+    [stabilityItems]
+  );
+
   const filteredCatalogue = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return [];
@@ -185,18 +242,37 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
       setError(data.error ?? "Failed to add test");
       return;
     }
-    // Optimistic add — and refresh from server for canonical totals
+    // Optimistic add — and refresh from server for canonical totals.
+    // Intentionally do NOT clear `search` or close the list: the user
+    // should be able to click additional "+" buttons from the same
+    // query without retyping. Same UX as the AI Test Finder.
     const newLine: QuoteLineWithTest = {
       id: data.id,
       test_id: test.id,
       person_label: pendingPersonLabel.trim() || null,
       unit_price_cad: test.price_cad,
       test_name: test.name,
+      test_sku: test.sku,
       lab_name: test.lab_name,
+      stability_days: test.stability_days,
+      ship_temperature: test.ship_temperature,
     };
     setLines((prev) => [...prev, newLine]);
-    setSearch("");
     router.refresh();
+  };
+
+  /**
+   * Toggle-add: if the test is already in the quote, remove the most
+   * recently added line for that test_id; otherwise add it. Keeps the
+   * search dropdown open either way.
+   */
+  const toggleTest = async (test: CatalogueTestForQuote) => {
+    const existing = [...lines].reverse().find((l) => l.test_id === test.id);
+    if (existing) {
+      await removeLine(existing.id);
+    } else {
+      await addTest(test);
+    }
   };
 
   const removeLine = async (lineId: string) => {
@@ -430,57 +506,111 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
             </div>
           )}
 
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-              style={{ color: "#6ab04c" }}
-            />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search tests by name or SKU…"
-              className="mf-input pl-10"
-            />
-          </div>
-
-          {filteredCatalogue.length > 0 && (
-            <div
-              className="rounded-lg border divide-y"
-              style={{
-                backgroundColor: "#0f2614",
-                borderColor: "#2d6b35",
-              }}
-            >
-              {filteredCatalogue.map((t) => (
+          <div ref={searchContainerRef} className="space-y-2">
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                style={{ color: "#6ab04c" }}
+              />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setIsListOpen(true);
+                }}
+                onFocus={() => setIsListOpen(true)}
+                placeholder="Search tests by name or SKU…"
+                className="mf-input pl-10 pr-9"
+              />
+              {search && (
                 <button
-                  key={t.id}
                   type="button"
-                  onClick={() => addTest(t)}
-                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#1a3d22]"
+                  onClick={() => {
+                    setSearch("");
+                    setIsListOpen(false);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded transition-colors"
+                  style={{ color: "#6ab04c" }}
+                  aria-label="Clear search"
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium" style={{ color: "#ffffff" }}>
-                      {t.name}
-                    </p>
-                    <p className="text-xs" style={{ color: "#6ab04c" }}>
-                      {t.sku ? `SKU: ${t.sku} · ` : ""}
-                      {t.lab_name}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span
-                      className="text-sm font-semibold"
-                      style={{ color: "#c4973a" }}
-                    >
-                      {formatCurrency(t.price_cad)}
-                    </span>
-                    <Plus className="w-4 h-4" style={{ color: "#c4973a" }} />
-                  </div>
+                  <X className="w-4 h-4" />
                 </button>
-              ))}
+              )}
             </div>
-          )}
+
+            {isListOpen && filteredCatalogue.length > 0 && (
+              <div
+                className="rounded-lg border divide-y"
+                style={{
+                  backgroundColor: "#0f2614",
+                  borderColor: "#2d6b35",
+                }}
+              >
+                {filteredCatalogue.map((t) => {
+                  const isAdded = addedTestIds.has(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => toggleTest(t)}
+                      aria-pressed={isAdded}
+                      className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#1a3d22]"
+                      style={{
+                        opacity: isAdded ? 0.65 : 1,
+                      }}
+                    >
+                      <div className="min-w-0">
+                        <p
+                          className="text-sm font-medium"
+                          style={{ color: "#ffffff" }}
+                        >
+                          {t.name}
+                        </p>
+                        <p className="text-xs" style={{ color: "#6ab04c" }}>
+                          {t.lab_name}
+                          {t.sku && (
+                            <>
+                              {" · "}
+                              <span>SKU: {t.sku}</span>
+                            </>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isAdded ? (
+                          <span
+                            className="text-xs font-semibold uppercase tracking-wider"
+                            style={{ color: "#8dc63f" }}
+                          >
+                            Added
+                          </span>
+                        ) : (
+                          <span
+                            className="text-sm font-semibold"
+                            style={{ color: "#c4973a" }}
+                          >
+                            {formatCurrency(t.price_cad)}
+                          </span>
+                        )}
+                        {isAdded ? (
+                          <Check
+                            className="w-4 h-4"
+                            style={{ color: "#8dc63f" }}
+                          />
+                        ) : (
+                          <Plus
+                            className="w-4 h-4"
+                            style={{ color: "#c4973a" }}
+                          />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <div>
             <p
@@ -517,6 +647,12 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                       </p>
                       <p className="text-xs" style={{ color: "#6ab04c" }}>
                         {l.lab_name}
+                        {l.test_sku && (
+                          <>
+                            {" · "}
+                            <span>SKU: {l.test_sku}</span>
+                          </>
+                        )}
                         {l.person_label && (
                           <>
                             {" · "}
@@ -524,6 +660,10 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                           </>
                         )}
                       </p>
+                      <StabilityLine
+                        stability_days={l.stability_days}
+                        ship_temperature={l.ship_temperature}
+                      />
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span
@@ -669,6 +809,12 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                     accent="#c4973a"
                   />
                 )}
+                {lines.length > 0 && (
+                  <>
+                    <StabilitySummaryRow summary={stabilitySummary} />
+                    <HandlingSummaryRow summary={handlingSummary} />
+                  </>
+                )}
                 <tr>
                   <td
                     className="pt-3 border-t font-bold text-base"
@@ -758,6 +904,33 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
               </div>
             </div>
 
+            {missingDataNames.length > 0 && (
+              <div
+                className="rounded-lg border p-3 mt-2 flex items-start gap-2 text-sm"
+                style={{
+                  backgroundColor: "rgba(249, 115, 22, 0.12)",
+                  borderColor: MISSING_DATA_COLOR,
+                  color: MISSING_DATA_COLOR,
+                }}
+                role="alert"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">
+                    This quote contains tests with missing stability or
+                    handling data.
+                  </p>
+                  <p className="mt-1" style={{ color: "#e8d5a3" }}>
+                    Please verify and update via the admin Tests page before
+                    sending this quote to the customer. Tests affected:{" "}
+                    <span style={{ color: MISSING_DATA_COLOR }}>
+                      {missingDataNames.join(", ")}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-2 pt-3">
               <button
                 type="button"
@@ -809,6 +982,143 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
         </section>
       </div>
     </>
+  );
+}
+
+function StabilityLine({
+  stability_days,
+  ship_temperature,
+}: {
+  stability_days: number | null;
+  ship_temperature: string | null;
+}) {
+  const stabilityNode =
+    stability_days == null ? (
+      <span
+        title="Check Mayo documentation and update via admin"
+        style={{ color: MISSING_DATA_COLOR }}
+      >
+        ⚠ Stability not set
+      </span>
+    ) : (
+      <span style={{ color: "#e8d5a3" }}>
+        <span
+          aria-hidden
+          className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle"
+          style={{ backgroundColor: stabilityColor(stability_days) }}
+        />
+        {stability_days} days
+        {ship_temperature && shipTemperatureLabel(ship_temperature) && (
+          <> · {shipTemperatureLabel(ship_temperature)}</>
+        )}
+      </span>
+    );
+
+  const handlingMissing = !ship_temperature;
+
+  return (
+    <p className="text-xs mt-0.5">
+      {stabilityNode}
+      {stability_days != null && handlingMissing && (
+        <>
+          {" · "}
+          <span
+            title="Check Mayo documentation and update via admin"
+            style={{ color: MISSING_DATA_COLOR }}
+          >
+            Handling not set
+          </span>
+        </>
+      )}
+      {stability_days == null && handlingMissing && (
+        <>
+          {" · "}
+          <span style={{ color: MISSING_DATA_COLOR }}>Handling not set</span>
+        </>
+      )}
+    </p>
+  );
+}
+
+function StabilitySummaryRow({
+  summary,
+}: {
+  summary: ReturnType<typeof summarizeStability>;
+}) {
+  if (summary.kind === "empty") return null;
+  if (summary.kind === "missing") {
+    const n = summary.missingNames.length;
+    return (
+      <tr>
+        <td
+          className="py-1.5 text-sm"
+          style={{ color: MISSING_DATA_COLOR }}
+        >
+          Earliest stability limit
+        </td>
+        <td
+          className="py-1.5 text-right text-sm font-semibold"
+          style={{ color: MISSING_DATA_COLOR }}
+        >
+          ⚠ {n} test{n === 1 ? "" : "s"} missing stability data — cannot
+          determine limit
+        </td>
+      </tr>
+    );
+  }
+  const color = stabilityColor(summary.minDays);
+  return (
+    <tr>
+      <td className="py-1.5 text-sm" style={{ color: "#e8d5a3" }}>
+        Earliest stability limit
+      </td>
+      <td
+        className="py-1.5 text-right text-sm font-semibold"
+        style={{ color }}
+      >
+        {summary.minDays} days ({summary.minDaysTestName})
+      </td>
+    </tr>
+  );
+}
+
+function HandlingSummaryRow({
+  summary,
+}: {
+  summary: ReturnType<typeof summarizeHandling>;
+}) {
+  if (summary.kind === "empty") return null;
+  if (summary.kind === "missing") {
+    const n = summary.missingNames.length;
+    return (
+      <tr>
+        <td
+          className="py-1.5 text-sm"
+          style={{ color: MISSING_DATA_COLOR }}
+        >
+          Handling required
+        </td>
+        <td
+          className="py-1.5 text-right text-sm font-semibold"
+          style={{ color: MISSING_DATA_COLOR }}
+        >
+          ⚠ {n} test{n === 1 ? "" : "s"} missing handling data
+        </td>
+      </tr>
+    );
+  }
+  return (
+    <tr>
+      <td className="py-1.5 text-sm" style={{ color: "#e8d5a3" }}>
+        Handling required
+      </td>
+      <td
+        className="py-1.5 text-right text-sm font-semibold"
+        style={{ color: "#ffffff" }}
+      >
+        {shipTemperatureLabel(summary.strictest)}
+      </td>
+    </tr>
   );
 }
 

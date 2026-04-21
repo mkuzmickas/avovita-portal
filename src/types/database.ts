@@ -107,7 +107,15 @@ export interface Test {
   turnaround_note: string | null;
   specimen_type: string | null;
   ship_temp: string | null;
+  ship_temperature:
+    | "ambient"
+    | "refrigerated"
+    | "frozen"
+    | "warm_37c"
+    | "cold_chain"
+    | null;
   stability_notes: string | null;
+  stability_days: number | null;
   active: boolean;
   featured: boolean;
   collection_method: "phlebotomist_draw" | "self_collected_kit";

@@ -26,8 +26,9 @@ export default async function AdminTestsPage() {
         `
         id, lab_id, name, slug, description, category, price_cad,
         turnaround_display, turnaround_min_days, turnaround_max_days,
-        turnaround_note, specimen_type, ship_temp,
-        stability_notes, active, featured, created_at, updated_at,
+        turnaround_note, specimen_type, ship_temp, ship_temperature,
+        stability_notes, stability_days,
+        active, featured, created_at, updated_at,
         track_inventory, stock_qty, low_stock_threshold,
         sku, cost_cad, mayo_test_id, collection_method,
         lab:labs(id, name)

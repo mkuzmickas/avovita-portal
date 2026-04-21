@@ -17,6 +17,12 @@ import { formatCurrency, slugify } from "@/lib/utils";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { createClient } from "@/lib/supabase/client";
 import { InsightsChatModal } from "@/components/catalogue/InsightsChatModal";
+import {
+  MISSING_DATA_COLOR,
+  SHIP_TEMPERATURE_VALUES,
+  shipTemperatureLabel,
+  stabilityColor,
+} from "@/lib/quotes/stability";
 import type {
   AdminTestRow,
   AdminLabRow,
@@ -35,7 +41,9 @@ type EditableFields = {
   cost_cad: string;
   specimen_type: string;
   ship_temp: string;
+  ship_temperature: string;
   stability_notes: string;
+  stability_days: string;
   turnaround_display: string;
   turnaround_min_days: string;
   turnaround_max_days: string;
@@ -53,7 +61,9 @@ const EMPTY_FORM: EditableFields = {
   cost_cad: "",
   specimen_type: "",
   ship_temp: "",
+  ship_temperature: "",
   stability_notes: "",
+  stability_days: "",
   turnaround_display: "",
   turnaround_min_days: "",
   turnaround_max_days: "",
@@ -71,6 +81,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
   const [labFilter, setLabFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [featuredOnly, setFeaturedOnly] = useState(false);
+  const [missingDataOnly, setMissingDataOnly] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -99,9 +110,22 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       if (categoryFilter !== "all" && t.category !== categoryFilter)
         return false;
       if (featuredOnly && !t.featured) return false;
+      if (
+        missingDataOnly &&
+        t.stability_days != null &&
+        t.ship_temperature != null
+      )
+        return false;
       return true;
     });
-  }, [tests, searchQuery, labFilter, categoryFilter, featuredOnly]);
+  }, [
+    tests,
+    searchQuery,
+    labFilter,
+    categoryFilter,
+    featuredOnly,
+    missingDataOnly,
+  ]);
 
   const updateStock = async (testId: string, newQty: number) => {
     const safeQty = Math.max(0, Math.floor(newQty));
@@ -151,7 +175,11 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       cost_cad: fields.cost_cad ? parseFloat(fields.cost_cad) : null,
       specimen_type: fields.specimen_type || null,
       ship_temp: fields.ship_temp || null,
+      ship_temperature: fields.ship_temperature || null,
       stability_notes: fields.stability_notes || null,
+      stability_days: fields.stability_days
+        ? parseInt(fields.stability_days, 10)
+        : null,
       turnaround_display: fields.turnaround_display || null,
       turnaround_min_days: fields.turnaround_min_days
         ? parseInt(fields.turnaround_min_days, 10)
@@ -242,7 +270,11 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       cost_cad: fields.cost_cad ? parseFloat(fields.cost_cad) : null,
       specimen_type: fields.specimen_type || null,
       ship_temp: fields.ship_temp || null,
+      ship_temperature: fields.ship_temperature || null,
       stability_notes: fields.stability_notes || null,
+      stability_days: fields.stability_days
+        ? parseInt(fields.stability_days, 10)
+        : null,
       turnaround_display: fields.turnaround_display || null,
       turnaround_min_days: fields.turnaround_min_days
         ? parseInt(fields.turnaround_min_days, 10)
@@ -265,8 +297,8 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         `
         id, lab_id, name, slug, description, category, price_cad,
         turnaround_display, turnaround_min_days, turnaround_max_days,
-        turnaround_note, specimen_type, ship_temp,
-        stability_notes, active, featured, created_at, updated_at,
+        turnaround_note, specimen_type, ship_temp, ship_temperature,
+        stability_notes, stability_days, active, featured, created_at, updated_at,
         sku, mayo_test_id, cost_cad, collection_method,
         track_inventory, stock_qty, low_stock_threshold
       `
@@ -351,6 +383,30 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
             Featured only
           </span>
         </label>
+        <label
+          className="flex items-center gap-2 px-3 rounded-lg border cursor-pointer shrink-0"
+          style={{
+            backgroundColor: missingDataOnly ? "#1a3d22" : "transparent",
+            borderColor: missingDataOnly ? MISSING_DATA_COLOR : "#2d6b35",
+          }}
+          title="Show only tests where stability_days or ship_temperature is NULL"
+        >
+          <input
+            type="checkbox"
+            checked={missingDataOnly}
+            onChange={(e) => setMissingDataOnly(e.target.checked)}
+            className="cursor-pointer"
+            style={{ accentColor: MISSING_DATA_COLOR }}
+          />
+          <span
+            className="text-sm font-medium"
+            style={{
+              color: missingDataOnly ? MISSING_DATA_COLOR : "#e8d5a3",
+            }}
+          >
+            Missing stability/handling
+          </span>
+        </label>
         <button
           type="button"
           onClick={() => setAiOpen(true)}
@@ -402,7 +458,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
                   "SKU",
                   "Lab",
                   "Category",
-                  "Ship Temp",
+                  "Handling",
                   "Stability",
                   "Cost",
                   "Client Price",
@@ -519,7 +575,10 @@ function TestRow({
     cost_cad: test.cost_cad != null ? String(test.cost_cad) : "",
     specimen_type: test.specimen_type ?? "",
     ship_temp: test.ship_temp ?? "",
+    ship_temperature: test.ship_temperature ?? "",
     stability_notes: test.stability_notes ?? "",
+    stability_days:
+      test.stability_days != null ? String(test.stability_days) : "",
     turnaround_display: test.turnaround_display ?? "",
     turnaround_min_days:
       test.turnaround_min_days != null ? String(test.turnaround_min_days) : "",
@@ -558,32 +617,38 @@ function TestRow({
         </td>
         <td
           className="px-4 py-4 text-xs whitespace-nowrap"
-          style={{ color: "#e8d5a3" }}
-          title={test.ship_temp ?? ""}
+          title={test.ship_temperature ?? "Handling not set"}
+          style={{
+            color:
+              test.ship_temperature == null ? MISSING_DATA_COLOR : "#e8d5a3",
+          }}
         >
-          {test.ship_temp ?? "—"}
+          {test.ship_temperature == null
+            ? "—"
+            : shipTemperatureLabel(test.ship_temperature)}
         </td>
         <td
-          className="px-4 py-4 text-xs"
-          style={{ color: "#e8d5a3" }}
+          className="px-4 py-4 text-xs whitespace-nowrap"
+          style={{
+            color:
+              test.stability_days == null ? MISSING_DATA_COLOR : "#e8d5a3",
+          }}
           title={test.stability_notes ?? ""}
         >
-          <div className="flex items-center gap-1">
-            <span>{extractDuration(test.stability_notes)}</span>
-            {test.stability_notes && (
+          {test.stability_days == null ? (
+            "—"
+          ) : (
+            <span className="inline-flex items-center gap-1.5">
               <span
-                className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0"
+                aria-hidden
+                className="inline-block w-2 h-2 rounded-full"
                 style={{
-                  backgroundColor: "rgba(196,151,58,0.2)",
-                  color: "#c4973a",
-                  border: "1px solid #c4973a",
+                  backgroundColor: stabilityColor(test.stability_days),
                 }}
-                aria-label="Hover for full stability notes"
-              >
-                i
-              </span>
-            )}
-          </div>
+              />
+              {test.stability_days} days
+            </span>
+          )}
         </td>
         <td
           className="px-5 py-4 whitespace-nowrap"
@@ -689,12 +754,6 @@ function TestRow({
       )}
     </>
   );
-}
-
-function extractDuration(notes: string | null): string {
-  if (!notes) return "—";
-  const m = notes.match(/(\d+)\s*(days?|hours?|weeks?)/i);
-  return m ? `${m[1]} ${m[2].toLowerCase()}` : "—";
 }
 
 // ─── Margin cell ────────────────────────────────────────────────────────
@@ -1081,10 +1140,32 @@ function InlineTestForm({
             <option value="self_collected_kit">Self-collected kit (stool/saliva)</option>
           </select>
         </Field>
-        <Field label="Ship Temperature">
+        <Field label="Ship Temperature (legacy, freeform)">
           <ShipTempSelect
             value={fields.ship_temp}
             onChange={(next) => update("ship_temp", next)}
+          />
+        </Field>
+        <Field
+          label="Handling"
+          helper="Temperature required during shipping. 'Warm (37°C)' is used for specialized tests like cryoglobulins."
+        >
+          <HandlingSelect
+            value={fields.ship_temperature}
+            onChange={(next) => update("ship_temperature", next)}
+          />
+        </Field>
+        <Field
+          label="Stability (days)"
+          helper="How many days from collection to lab arrival before results are compromised. Consult Mayo or lab documentation for the correct value."
+        >
+          <input
+            type="number"
+            min={0}
+            value={fields.stability_days}
+            onChange={(e) => update("stability_days", e.target.value)}
+            className="mf-input"
+            placeholder="e.g. 7"
           />
         </Field>
         <div className="grid grid-cols-2 gap-3">
@@ -1378,6 +1459,34 @@ function ShipTempSelect({
       {isLegacy && (
         <option value={value}>{value} (legacy)</option>
       )}
+    </select>
+  );
+}
+
+/**
+ * HandlingSelect — strictly enumerated ship_temperature values enforced
+ * by the DB check constraint. The blank option maps to NULL so missing
+ * data stays visibly missing (the spec forbids silent defaults).
+ */
+function HandlingSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="mf-input cursor-pointer"
+    >
+      <option value="">— Not set —</option>
+      {SHIP_TEMPERATURE_VALUES.map((v) => (
+        <option key={v} value={v}>
+          {shipTemperatureLabel(v)}
+        </option>
+      ))}
     </select>
   );
 }
