@@ -1,7 +1,7 @@
 "use client";
 
 import { useCart } from "@/components/cart/CartContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { CheckoutClient } from "./CheckoutClient";
 import { SupplementCheckout } from "./SupplementCheckout";
@@ -30,6 +30,12 @@ export function CheckoutRouter({
 }: CheckoutRouterProps) {
   const { cart, hydrated } = useCart();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // When ?quote=AVO-... is present the cart is expected to be empty on
+  // first load — CheckoutClient's deep-link effect will populate it
+  // from the quote. Suppress the empty-cart redirect in that case so
+  // that effect gets a chance to run.
+  const hasQuoteParam = searchParams.get("quote") !== null;
 
   // Cart composition — fail-safe: unknown line_types are ignored
   const hasTests = cart.some((i) => i.line_type === "test");
@@ -38,10 +44,11 @@ export function CheckoutRouter({
 
   // Empty cart redirect (fail-safe)
   useEffect(() => {
+    if (hasQuoteParam) return;
     if (hydrated && cart.length === 0) {
       router.replace("/tests");
     }
-  }, [hydrated, cart.length, router]);
+  }, [hydrated, cart.length, router, hasQuoteParam]);
 
   if (!hydrated) {
     return (
@@ -56,7 +63,7 @@ export function CheckoutRouter({
     );
   }
 
-  if (cart.length === 0) {
+  if (cart.length === 0 && !hasQuoteParam) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -66,6 +73,19 @@ export function CheckoutRouter({
           Redirecting to catalogue…
         </p>
       </div>
+    );
+  }
+
+  // ?quote= deep-link → always route to CheckoutClient so its effect
+  // can resolve the quote and populate the cart.
+  if (hasQuoteParam) {
+    return (
+      <CheckoutClient
+        accountUserId={accountUserId}
+        accountEmail={accountEmail}
+        showSupplementFulfillmentStep={hasSupplements}
+        showResourceSuccessNotice={hasResources}
+      />
     );
   }
 

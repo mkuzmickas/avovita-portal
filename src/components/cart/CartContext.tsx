@@ -181,14 +181,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = useCallback(
     (item: CartItem) => {
-      // CBC gate — only for tests
-      if (
-        item.line_type === "test" &&
-        item.test_id === CBC_TEST_ID
-      ) {
-        if (cart.some((c) => cartItemId(c) === `test:${CBC_TEST_ID}`))
-          return;
-        setPendingCbc(item);
+      // CBC gate — only for tests. Opening the modal is harmless if
+      // CBC is already in cart because commitAdd's functional setState
+      // dedups on confirm. Reading `cart` from closure here was a bug:
+      // when addItem is called immediately after clearCart() (the quote
+      // deep-link path), the closure saw the PRE-clear cart and could
+      // either skip a legitimate add or trigger a modal for an item
+      // already on its way out.
+      if (item.line_type === "test" && item.test_id === CBC_TEST_ID) {
+        setPendingCbc((prev) => prev ?? item);
         return;
       }
       // Resources: enforce quantity = 1
@@ -198,7 +199,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       commitAdd(item);
     },
-    [cart, commitAdd],
+    [commitAdd],
   );
 
   /**
