@@ -257,7 +257,12 @@ export interface Quote {
   subtotal_cad: number;
   discount_cad: number;
   visit_fee_cad: number;
+  /** Pre-tax total. Add `gst_cad` to get the grand total shown to the
+   *  customer — matches the checkout totals pattern. */
   total_cad: number;
+  /** 5% GST snapshotted at save time. NULL on legacy rows — display
+   *  derives it from total_cad until the next save persists it. */
+  gst_cad: number | null;
   /** Admin-entered additional discount; `value` is a dollar amount when
    *  type=amount or a percentage (0-100) of the post-multi-test subtotal
    *  when type=percent. */

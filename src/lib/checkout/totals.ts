@@ -1,8 +1,12 @@
 import type { AppliedPromo } from "./types";
 import { computeDiscount } from "./discount";
+import { GST_RATE, calculateGST } from "@/lib/tax/gst";
 
-/** Estimated GST rate (Alberta). Stripe Tax computes the actual rate. */
-export const ESTIMATED_GST_RATE = 0.05;
+/**
+ * @deprecated Use `GST_RATE` from `@/lib/tax/gst` directly. Re-exported
+ * here as a soft alias during migration to the single source of truth.
+ */
+export const ESTIMATED_GST_RATE = GST_RATE;
 
 export interface TotalsInput {
   /** Sum of test prices (CAD dollars), one entry per assigned line. */
@@ -78,8 +82,7 @@ export function calculateTotals({
   }
 
   const subtotalBeforeTax = Math.max(0, preDiscountTotal - promoDiscount);
-  const estimatedGST =
-    Math.round(subtotalBeforeTax * ESTIMATED_GST_RATE * 100) / 100;
+  const estimatedGST = calculateGST(subtotalBeforeTax);
   const grandTotal = subtotalBeforeTax + estimatedGST;
 
   return {

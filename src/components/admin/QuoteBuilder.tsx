@@ -17,7 +17,11 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { computeQuoteTotals, resolveManualDiscount } from "@/lib/quotes/totals";
+import {
+  computeQuoteTotals,
+  grandTotalCad,
+  resolveManualDiscount,
+} from "@/lib/quotes/totals";
 import {
   MISSING_DATA_COLOR,
   shipTemperatureLabel,
@@ -809,6 +813,10 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                     accent="#c4973a"
                   />
                 )}
+                <SummaryRow
+                  label="GST (5%)"
+                  value={formatCurrency(liveTotals.gst_cad)}
+                />
                 {lines.length > 0 && (
                   <>
                     <StabilitySummaryRow summary={stabilitySummary} />
@@ -826,7 +834,7 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                     className="pt-3 border-t text-right font-bold text-base"
                     style={{ color: "#c4973a", borderColor: "#2d6b35" }}
                   >
-                    {formatCurrency(liveTotals.total_cad)}
+                    {formatCurrency(grandTotalCad(liveTotals))}
                   </td>
                 </tr>
                 {/* Admin-only margin row — never included in the client email */}

@@ -17,7 +17,11 @@ export interface QuoteEmailProps {
   subtotal: number;
   discount: number;
   visitFee: number;
+  manualDiscount: number;
+  /** Pre-tax total. */
   total: number;
+  /** 5% GST on total — rendered on its own line before the grand total. */
+  gst: number;
   expiresAt: string | null;
   notes: string | null;
   catalogueUrl: string;
@@ -60,12 +64,16 @@ export function renderQuoteEmail(props: QuoteEmailProps): string {
     subtotal,
     discount,
     visitFee,
+    manualDiscount,
     total,
+    gst,
     expiresAt,
     notes,
     catalogueUrl,
     acceptUrl,
   } = props;
+
+  const grandTotal = Math.round((total + gst) * 100) / 100;
 
   const linesHtml = lines
     .map(
@@ -93,6 +101,16 @@ export function renderQuoteEmail(props: QuoteEmailProps): string {
         <tr>
           <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">Multi-test discount ($20 off per test)</td>
           <td style="padding: 6px 0; text-align: right; color: #6fa030; font-size: 13px; font-weight: 600;">−${formatCurrency(discount)}</td>
+        </tr>
+      `
+      : "";
+
+  const manualDiscountRow =
+    manualDiscount > 0
+      ? `
+        <tr>
+          <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">Additional discount</td>
+          <td style="padding: 6px 0; text-align: right; color: #6fa030; font-size: 13px; font-weight: 600;">−${formatCurrency(manualDiscount)}</td>
         </tr>
       `
       : "";
@@ -164,9 +182,14 @@ export function renderQuoteEmail(props: QuoteEmailProps): string {
                   <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Home visit fee (in-home collection)</td>
                   <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(visitFee)}</td>
                 </tr>
+                ${manualDiscountRow}
+                <tr>
+                  <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">GST (5%)</td>
+                  <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(gst)}</td>
+                </tr>
                 <tr>
                   <td style="padding: 12px 0; border-top: 2px solid #e5e7eb; font-size: 16px; color: #111827; font-weight: 700;">Total</td>
-                  <td style="padding: 12px 0; border-top: 2px solid #e5e7eb; text-align: right; font-size: 16px; color: #c4973a; font-weight: 700;">${formatCurrency(total)}</td>
+                  <td style="padding: 12px 0; border-top: 2px solid #e5e7eb; text-align: right; font-size: 16px; color: #c4973a; font-weight: 700;">${formatCurrency(grandTotal)}</td>
                 </tr>
               </table>
             </td>

@@ -6,6 +6,8 @@ import {
   quoteEmailSubject,
   type QuoteEmailLine,
 } from "@/lib/emails/quoteSent";
+import { calculateGST } from "@/lib/tax/gst";
+import { resolveManualDiscount } from "@/lib/quotes/totals";
 
 export const runtime = "nodejs";
 
@@ -75,7 +77,8 @@ export async function POST(
       .select(
         `
         id, quote_number, client_first_name, client_last_name, client_email,
-        subtotal_cad, discount_cad, visit_fee_cad, total_cad,
+        subtotal_cad, discount_cad, visit_fee_cad, total_cad, gst_cad,
+        manual_discount_value, manual_discount_type,
         expires_at, notes
       `
       )
@@ -92,6 +95,9 @@ export async function POST(
       discount_cad: number;
       visit_fee_cad: number;
       total_cad: number;
+      gst_cad: number | null;
+      manual_discount_value: number | null;
+      manual_discount_type: "amount" | "percent" | null;
       expires_at: string | null;
       notes: string | null;
     };
@@ -157,6 +163,22 @@ export async function POST(
     const catalogueUrl = `${appUrl}/tests`;
     const acceptUrl = `${appUrl}/checkout?quote=${encodeURIComponent(quote.quote_number)}`;
 
+    // Derive any missing tax / manual-discount fields at send time so
+    // older drafts (or anything that skipped a recompute) still email a
+    // correct GST line. The lazy-persist flag below writes the derived
+    // gst_cad back to the row so subsequent reads match the sent email.
+    const manualDiscountCad = resolveManualDiscount(
+      quote.subtotal_cad,
+      quote.discount_cad,
+      quote.visit_fee_cad,
+      {
+        value: quote.manual_discount_value ?? 0,
+        type: quote.manual_discount_type ?? "amount",
+      }
+    );
+    const gstCad =
+      quote.gst_cad != null ? quote.gst_cad : calculateGST(quote.total_cad);
+
     const html = renderQuoteEmail({
       firstName: quote.client_first_name,
       quoteNumber: quote.quote_number,
@@ -164,7 +186,9 @@ export async function POST(
       subtotal: quote.subtotal_cad,
       discount: quote.discount_cad,
       visitFee: quote.visit_fee_cad,
+      manualDiscount: manualDiscountCad,
       total: quote.total_cad,
+      gst: gstCad,
       expiresAt: quote.expires_at,
       notes: quote.notes,
       catalogueUrl,
@@ -187,10 +211,14 @@ export async function POST(
     }
 
     const nowIso = new Date().toISOString();
-    await service
-      .from("quotes")
-      .update({ status: "sent", sent_at: nowIso })
-      .eq("id", id);
+    const statusUpdate: Record<string, unknown> = {
+      status: "sent",
+      sent_at: nowIso,
+    };
+    // Lazy persist: snapshot the derived GST so future reads match the
+    // exact amount we emailed.
+    if (quote.gst_cad == null) statusUpdate.gst_cad = gstCad;
+    await service.from("quotes").update(statusUpdate).eq("id", id);
 
     // Log notification (best-effort)
     try {

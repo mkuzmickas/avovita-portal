@@ -1,11 +1,17 @@
 import { computeDiscount } from "@/lib/checkout/discount";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
+import { calculateGST } from "@/lib/tax/gst";
 
 export interface QuoteTotals {
   subtotal_cad: number;
   discount_cad: number;
   visit_fee_cad: number;
+  /** Pre-tax total. The grand total shown to the customer is
+   *  `total_cad + gst_cad`. */
   total_cad: number;
+  /** 5% GST on total_cad. Persisted so tax stays stable if the rate
+   *  ever shifts. */
+  gst_cad: number;
 }
 
 export interface QuoteLineForTotals {
@@ -64,10 +70,25 @@ export function computeQuoteTotals(
     manualDiscount
   );
   const total = Math.max(0, subtotal - discount + visitFee - manualCad);
+  const gst = calculateGST(total);
   return {
     subtotal_cad: subtotal,
     discount_cad: discount,
     visit_fee_cad: visitFee,
     total_cad: total,
+    gst_cad: gst,
   };
+}
+
+/**
+ * Grand total including GST. Use this for any customer-facing "Total"
+ * display (UI summary + emailed quote). Never persist this — persist
+ * `total_cad` and `gst_cad` separately.
+ */
+export function grandTotalCad(totals: {
+  total_cad: number;
+  gst_cad: number | null;
+}): number {
+  const gst = totals.gst_cad ?? calculateGST(totals.total_cad);
+  return Math.round((totals.total_cad + gst) * 100) / 100;
 }

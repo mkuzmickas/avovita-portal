@@ -10,6 +10,7 @@ import {
   FileText,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { calculateGST } from "@/lib/tax/gst";
 
 interface OrderLine {
   id: string;
@@ -154,8 +155,7 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
   const suppShipping = order.supplement_shipping_fee_cad ?? 0;
   const subtotalBeforeTax =
     linesSubtotal - discount + homeVisitFee + suppShipping;
-  const estimatedGST =
-    order.tax_cad ?? Math.round(subtotalBeforeTax * 0.05 * 100) / 100;
+  const estimatedGST = order.tax_cad ?? calculateGST(subtotalBeforeTax);
   const totalCharged = order.total_cad ?? subtotalBeforeTax + estimatedGST;
 
   const stripeUrl = order.stripe_payment_intent_id

@@ -43,7 +43,8 @@ export default async function AdminQuoteBuilderPage({
       `
       id, quote_number, client_first_name, client_last_name, client_email,
       person_count, collection_city, notes, status,
-      subtotal_cad, discount_cad, visit_fee_cad, total_cad,
+      subtotal_cad, discount_cad, visit_fee_cad, total_cad, gst_cad,
+      manual_discount_value, manual_discount_type,
       sent_at, expires_at, created_by, created_at, updated_at
     `
     )

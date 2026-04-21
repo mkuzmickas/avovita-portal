@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Send, Trash2, ExternalLink } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { grandTotalCad } from "@/lib/quotes/totals";
 import type { Quote, QuoteStatus } from "@/types/database";
 
 const STATUS_TABS: { key: QuoteStatus | "all"; label: string }[] = [
@@ -182,7 +183,7 @@ export function QuotesListClient({ initialQuotes }: { initialQuotes: Quote[] }) 
                         className="px-4 py-3 font-semibold whitespace-nowrap"
                         style={{ color: "#c4973a" }}
                       >
-                        {formatCurrency(q.total_cad)}
+                        {formatCurrency(grandTotalCad(q))}
                       </td>
                       <td
                         className="px-4 py-3 text-xs whitespace-nowrap"
