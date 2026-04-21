@@ -238,6 +238,22 @@ function TestTableRow({
               </span>
             )}
           </div>
+          {test.sku && (
+            <span
+              aria-label={`Test code: ${test.sku}`}
+              className="block"
+              style={{
+                fontFamily:
+                  'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+                fontSize: "11px",
+                color: "rgba(141, 198, 63, 0.6)",
+                marginTop: "2px",
+                letterSpacing: "0.5px",
+              }}
+            >
+              SKU: {test.sku}
+            </span>
+          )}
         </td>
         <td
           className="hidden sm:table-cell px-5 py-4"
@@ -322,7 +338,15 @@ function TestTableRow({
                     </p>
                   )}
 
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                    <DetailField
+                      label="SKU"
+                      value={test.sku}
+                      mono
+                      ariaLabel={
+                        test.sku ? `Test code: ${test.sku}` : undefined
+                      }
+                    />
                     <DetailField
                       label="Ship Temperature"
                       value={test.ship_temp}
@@ -449,9 +473,13 @@ function TestTableRow({
 function DetailField({
   label,
   value,
+  mono = false,
+  ariaLabel,
 }: {
   label: string;
   value: string | null;
+  mono?: boolean;
+  ariaLabel?: string;
 }) {
   return (
     <div>
@@ -461,8 +489,26 @@ function DetailField({
       >
         {label}
       </p>
-      <p className="text-sm" style={{ color: "#ffffff" }}>
-        {value ?? "—"}
+      <p
+        className="text-sm"
+        style={{
+          color: "#ffffff",
+          ...(mono
+            ? {
+                fontFamily:
+                  'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+                letterSpacing: "0.5px",
+              }
+            : {}),
+        }}
+      >
+        {value == null ? (
+          "—"
+        ) : ariaLabel ? (
+          <span aria-label={ariaLabel}>{value}</span>
+        ) : (
+          value
+        )}
       </p>
     </div>
   );
