@@ -1,76 +1,47 @@
 /**
- * Stability + handling helpers for the quote composer.
+ * Quote-composer summaries for stability + handling.
  *
- * Missing data is intentionally surfaced, never defaulted. Every helper
- * distinguishes "have value" from "NULL" so the UI can render an explicit
- * warning instead of a silent fallback.
+ * All rendering goes through `src/lib/tests/handlingDisplay.ts`. This
+ * file is only responsible for aggregating across a cart: finding the
+ * earliest stability limit, the strictest handling, and the list of
+ * tests with missing data.
  */
 
-export type ShipTemperature =
-  | "ambient"
-  | "refrigerated"
-  | "frozen"
-  | "warm_37c"
-  | "cold_chain";
+import {
+  HANDLING_STRICTNESS,
+  MISSING_DATA_COLOR,
+  formatHandling,
+  formatStability,
+  getCriticalStabilityDays,
+  isHandlingIncomplete,
+  stabilityColorForTest,
+  type HandlingType,
+} from "@/lib/tests/handlingDisplay";
 
-export const SHIP_TEMPERATURE_VALUES: ShipTemperature[] = [
-  "ambient",
-  "refrigerated",
-  "frozen",
-  "warm_37c",
-  "cold_chain",
-];
-
-const TEMPERATURE_LABEL: Record<ShipTemperature, string> = {
-  ambient: "Ambient",
-  refrigerated: "Refrigerated",
-  frozen: "Frozen",
-  warm_37c: "Warm (37°C)",
-  cold_chain: "Cold chain",
+export {
+  MISSING_DATA_COLOR,
+  formatHandling,
+  formatStability,
+  getCriticalStabilityDays,
+  isHandlingIncomplete,
+  stabilityColorForTest,
 };
-
-/**
- * Strictness ranking per spec: warm_37c > frozen > cold_chain >
- * refrigerated > ambient. Higher number = stricter.
- */
-const TEMPERATURE_STRICTNESS: Record<ShipTemperature, number> = {
-  ambient: 1,
-  refrigerated: 2,
-  cold_chain: 3,
-  frozen: 4,
-  warm_37c: 5,
-};
-
-export function shipTemperatureLabel(value: string | null): string | null {
-  if (!value) return null;
-  if ((SHIP_TEMPERATURE_VALUES as string[]).includes(value)) {
-    return TEMPERATURE_LABEL[value as ShipTemperature];
-  }
-  return value;
-}
-
-/** Red ≤ 5 days, Yellow 6–10, Green ≥ 11. */
-export function stabilityColor(days: number): string {
-  if (days <= 5) return "#dc2626";
-  if (days <= 10) return "#f59e0b";
-  return "#16a34a";
-}
-
-export const MISSING_DATA_COLOR = "#f97316";
+export type { HandlingType };
 
 export type StabilityItem = {
   test_id: string;
   test_name: string;
+  handling_type: HandlingType | null;
   stability_days: number | null;
-  ship_temperature: string | null;
+  stability_days_frozen: number | null;
 };
 
 export type StabilitySummary =
-  | {
-      kind: "empty";
-    }
+  | { kind: "empty" }
   | {
       kind: "complete";
+      /** Worst-case days across the cart (refrigerated window for
+       *  refrigerated_or_frozen tests). */
       minDays: number;
       minDaysTestName: string;
     }
@@ -81,7 +52,7 @@ export type StabilitySummary =
 
 export function summarizeStability(items: StabilityItem[]): StabilitySummary {
   if (items.length === 0) return { kind: "empty" };
-  const missing = items.filter((i) => i.stability_days == null);
+  const missing = items.filter(isHandlingIncomplete);
   if (missing.length > 0) {
     return {
       kind: "missing",
@@ -91,8 +62,8 @@ export function summarizeStability(items: StabilityItem[]): StabilitySummary {
   let min = Number.POSITIVE_INFINITY;
   let minName = "";
   for (const i of items) {
-    const d = i.stability_days as number;
-    if (d < min) {
+    const d = getCriticalStabilityDays(i);
+    if (d != null && d < min) {
       min = d;
       minName = i.test_name;
     }
@@ -102,38 +73,35 @@ export function summarizeStability(items: StabilityItem[]): StabilitySummary {
 
 export type HandlingSummary =
   | { kind: "empty" }
-  | { kind: "complete"; strictest: ShipTemperature }
+  | { kind: "complete"; strictest: HandlingType }
   | { kind: "missing"; missingNames: string[] };
 
 export function summarizeHandling(items: StabilityItem[]): HandlingSummary {
   if (items.length === 0) return { kind: "empty" };
-  const missing = items.filter((i) => !i.ship_temperature);
+  const missing = items.filter((i) => !i.handling_type);
   if (missing.length > 0) {
     return {
       kind: "missing",
       missingNames: missing.map((m) => m.test_name),
     };
   }
-  let strictest: ShipTemperature = "ambient";
+  let strictest: HandlingType = "ambient_only";
   let strictestRank = 0;
   for (const i of items) {
-    const v = i.ship_temperature as ShipTemperature;
-    const rank = TEMPERATURE_STRICTNESS[v] ?? 0;
+    const rank = HANDLING_STRICTNESS[i.handling_type as HandlingType] ?? 0;
     if (rank > strictestRank) {
       strictestRank = rank;
-      strictest = v;
+      strictest = i.handling_type as HandlingType;
     }
   }
   return { kind: "complete", strictest };
 }
 
-/** Tests in the cart that have NULL stability_days OR NULL ship_temperature. */
+/**
+ * Tests in the cart that are incomplete by the new handling definition
+ * (NULL handling_type, NULL stability_days, or refrigerated_or_frozen
+ * without a frozen value).
+ */
 export function testsWithMissingData(items: StabilityItem[]): string[] {
-  const names: string[] = [];
-  for (const i of items) {
-    if (i.stability_days == null || !i.ship_temperature) {
-      names.push(i.test_name);
-    }
-  }
-  return names;
+  return items.filter(isHandlingIncomplete).map((i) => i.test_name);
 }

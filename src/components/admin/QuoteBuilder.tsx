@@ -24,13 +24,15 @@ import {
 } from "@/lib/quotes/totals";
 import {
   MISSING_DATA_COLOR,
-  shipTemperatureLabel,
-  stabilityColor,
+  formatHandling,
+  formatStability,
+  stabilityColorForTest,
   summarizeHandling,
   summarizeStability,
   testsWithMissingData,
   type StabilityItem,
 } from "@/lib/quotes/stability";
+import type { HandlingType } from "@/lib/tests/handlingDisplay";
 import type { Quote } from "@/types/database";
 import type {
   QuoteLineWithTest,
@@ -194,8 +196,9 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
       lines.map((l) => ({
         test_id: l.test_id,
         test_name: l.test_name,
+        handling_type: l.handling_type,
         stability_days: l.stability_days,
-        ship_temperature: l.ship_temperature,
+        stability_days_frozen: l.stability_days_frozen,
       })),
     [lines]
   );
@@ -258,8 +261,9 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
       test_name: test.name,
       test_sku: test.sku,
       lab_name: test.lab_name,
+      handling_type: test.handling_type,
       stability_days: test.stability_days,
-      ship_temperature: test.ship_temperature,
+      stability_days_frozen: test.stability_days_frozen,
     };
     setLines((prev) => [...prev, newLine]);
     router.refresh();
@@ -665,8 +669,9 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                         )}
                       </p>
                       <StabilityLine
+                        handling_type={l.handling_type}
                         stability_days={l.stability_days}
-                        ship_temperature={l.ship_temperature}
+                        stability_days_frozen={l.stability_days_frozen}
                       />
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -994,40 +999,45 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
 }
 
 function StabilityLine({
+  handling_type,
   stability_days,
-  ship_temperature,
+  stability_days_frozen,
 }: {
+  handling_type: HandlingType | null;
   stability_days: number | null;
-  ship_temperature: string | null;
+  stability_days_frozen: number | null;
 }) {
-  const stabilityNode =
-    stability_days == null ? (
-      <span
-        title="Check Mayo documentation and update via admin"
-        style={{ color: MISSING_DATA_COLOR }}
-      >
-        ⚠ Stability not set
-      </span>
-    ) : (
-      <span style={{ color: "#e8d5a3" }}>
-        <span
-          aria-hidden
-          className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle"
-          style={{ backgroundColor: stabilityColor(stability_days) }}
-        />
-        {stability_days} days
-        {ship_temperature && shipTemperatureLabel(ship_temperature) && (
-          <> · {shipTemperatureLabel(ship_temperature)}</>
-        )}
-      </span>
-    );
-
-  const handlingMissing = !ship_temperature;
+  const stabilityText = formatStability({
+    handling_type,
+    stability_days,
+    stability_days_frozen,
+  });
+  const isIncomplete = stabilityText.startsWith("\u26A0");
+  const dotColor = stabilityColorForTest({ handling_type, stability_days });
+  const handlingMissing = !handling_type;
 
   return (
     <p className="text-xs mt-0.5">
-      {stabilityNode}
-      {stability_days != null && handlingMissing && (
+      {isIncomplete ? (
+        <span
+          title="Check Mayo documentation and update via admin"
+          style={{ color: MISSING_DATA_COLOR }}
+        >
+          {stabilityText}
+        </span>
+      ) : (
+        <span style={{ color: "#e8d5a3" }}>
+          {dotColor && (
+            <span
+              aria-hidden
+              className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle"
+              style={{ backgroundColor: dotColor }}
+            />
+          )}
+          {stabilityText}
+        </span>
+      )}
+      {!isIncomplete && handlingMissing && (
         <>
           {" · "}
           <span
@@ -1036,12 +1046,6 @@ function StabilityLine({
           >
             Handling not set
           </span>
-        </>
-      )}
-      {stability_days == null && handlingMissing && (
-        <>
-          {" · "}
-          <span style={{ color: MISSING_DATA_COLOR }}>Handling not set</span>
         </>
       )}
     </p>
@@ -1074,7 +1078,10 @@ function StabilitySummaryRow({
       </tr>
     );
   }
-  const color = stabilityColor(summary.minDays);
+  const color = stabilityColorForTest({
+    handling_type: "refrigerated_only",
+    stability_days: summary.minDays,
+  });
   return (
     <tr>
       <td className="py-1.5 text-sm" style={{ color: "#e8d5a3" }}>
@@ -1082,7 +1089,7 @@ function StabilitySummaryRow({
       </td>
       <td
         className="py-1.5 text-right text-sm font-semibold"
-        style={{ color }}
+        style={{ color: color ?? "#ffffff" }}
       >
         {summary.minDays} days ({summary.minDaysTestName})
       </td>
@@ -1124,7 +1131,7 @@ function HandlingSummaryRow({
         className="py-1.5 text-right text-sm font-semibold"
         style={{ color: "#ffffff" }}
       >
-        {shipTemperatureLabel(summary.strictest)}
+        {formatHandling(summary.strictest)}
       </td>
     </tr>
   );

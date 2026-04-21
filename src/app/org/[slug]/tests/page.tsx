@@ -45,7 +45,8 @@ async function CatalogueData() {
     .select(
       `
       id, name, slug, description, category, price_cad,
-      turnaround_display, specimen_type, ship_temp, stability_notes,
+      turnaround_display, specimen_type, ship_temp,
+      handling_type, stability_notes, stability_days, stability_days_frozen,
       collection_method, featured, sku, requisition_url, panel_tests,
       lab:labs(id, name)
       `

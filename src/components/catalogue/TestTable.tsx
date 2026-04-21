@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { ChevronDown, Clock, ShoppingCart, Check, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { formatPublicStability } from "./TestCard";
+import {
+  formatHandling,
+  formatStability,
+} from "@/lib/tests/handlingDisplay";
 import { PanelIncludes } from "./PanelIncludes";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import { cartItemId } from "./types";
@@ -348,12 +351,12 @@ function TestTableRow({
                       }
                     />
                     <DetailField
-                      label="Ship Temperature"
-                      value={test.ship_temp}
+                      label="Handling"
+                      value={formatHandling(test.handling_type)}
                     />
                     <DetailField
                       label="Stability"
-                      value={formatPublicStability(test.stability_notes)}
+                      value={formatStability(test)}
                     />
                   </div>
 

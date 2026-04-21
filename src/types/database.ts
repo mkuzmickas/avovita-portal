@@ -106,7 +106,12 @@ export interface Test {
   turnaround_max_days: number | null;
   turnaround_note: string | null;
   specimen_type: string | null;
+  /** @deprecated Legacy freeform field — kept read-only during the
+   *  handling_type backfill and will be dropped in a follow-up
+   *  migration. New writes should only update handling_type. */
   ship_temp: string | null;
+  /** @deprecated Replaced by handling_type. Kept as a read-only
+   *  fallback during backfill. */
   ship_temperature:
     | "ambient"
     | "refrigerated"
@@ -114,8 +119,16 @@ export interface Test {
     | "warm_37c"
     | "cold_chain"
     | null;
+  handling_type:
+    | "refrigerated_only"
+    | "frozen_only"
+    | "ambient_only"
+    | "refrigerated_or_frozen"
+    | null;
   stability_notes: string | null;
   stability_days: number | null;
+  /** Only populated when handling_type = 'refrigerated_or_frozen'. */
+  stability_days_frozen: number | null;
   active: boolean;
   featured: boolean;
   collection_method: "phlebotomist_draw" | "self_collected_kit";

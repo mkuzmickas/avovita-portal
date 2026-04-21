@@ -11,8 +11,17 @@ export type CatalogueTest = {
   price_cad: number | null;
   turnaround_display: string | null;
   specimen_type: string | null;
+  /** @deprecated Legacy freeform — use handling_type for rendering. */
   ship_temp: string | null;
   stability_notes: string | null;
+  handling_type:
+    | "refrigerated_only"
+    | "frozen_only"
+    | "ambient_only"
+    | "refrigerated_or_frozen"
+    | null;
+  stability_days: number | null;
+  stability_days_frozen: number | null;
   featured: boolean;
   sku: string | null;
   requisition_url: string | null;

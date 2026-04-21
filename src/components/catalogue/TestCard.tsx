@@ -4,6 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { Clock, ShoppingCart, Check, ChevronDown, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import {
+  formatHandling,
+  formatStability,
+} from "@/lib/tests/handlingDisplay";
 import { PanelIncludes } from "./PanelIncludes";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
@@ -180,10 +184,13 @@ export function TestCard({
             )}
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-              <DetailField label="Ship Temperature" value={test.ship_temp} />
+              <DetailField
+                label="Handling"
+                value={formatHandling(test.handling_type)}
+              />
               <DetailField
                 label="Stability"
-                value={formatPublicStability(test.stability_notes)}
+                value={formatStability(test)}
               />
             </div>
 
@@ -274,25 +281,6 @@ export function TestCard({
       </div>
     </article>
   );
-}
-
-/**
- * Strip internal lab notes (container info, submission instructions, etc.)
- * from a stability_notes value for client-facing display. Keeps everything
- * up to the first separator (` - `, `—`, `|`, `,`, ` (`) and trims.
- *
- * Examples:
- *   "Stable 120 days - SST tube"  → "Stable 120 days"
- *   "Stable 72 hours, frozen"     → "Stable 72 hours"
- *   "Stable 7 days (refrigerated)" → "Stable 7 days"
- *   "30 days frozen"              → "30 days frozen"  (no separators)
- */
-export function formatPublicStability(
-  notes: string | null
-): string | null {
-  if (!notes) return null;
-  const head = notes.split(/[-—|,(]/, 1)[0]?.trim();
-  return head || null;
 }
 
 function DetailField({
