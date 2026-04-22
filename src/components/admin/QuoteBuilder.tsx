@@ -24,15 +24,15 @@ import {
 } from "@/lib/quotes/totals";
 import {
   MISSING_DATA_COLOR,
-  formatHandling,
+  formatShipTempLong,
   formatStability,
   stabilityColorForTest,
-  summarizeHandling,
+  summarizeShipTemp,
   summarizeStability,
   testsWithMissingData,
   type StabilityItem,
 } from "@/lib/quotes/stability";
-import type { HandlingType } from "@/lib/tests/handlingDisplay";
+import type { ShipTemp } from "@/lib/tests/shipTempDisplay";
 import type { Quote } from "@/types/database";
 import type {
   QuoteLineWithTest,
@@ -196,7 +196,7 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
       lines.map((l) => ({
         test_id: l.test_id,
         test_name: l.test_name,
-        handling_type: l.handling_type,
+        ship_temp: l.ship_temp,
         stability_days: l.stability_days,
         stability_days_frozen: l.stability_days_frozen,
       })),
@@ -206,8 +206,8 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
     () => summarizeStability(stabilityItems),
     [stabilityItems]
   );
-  const handlingSummary = useMemo(
-    () => summarizeHandling(stabilityItems),
+  const shipTempSummary = useMemo(
+    () => summarizeShipTemp(stabilityItems),
     [stabilityItems]
   );
   const missingDataNames = useMemo(
@@ -261,7 +261,7 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
       test_name: test.name,
       test_sku: test.sku,
       lab_name: test.lab_name,
-      handling_type: test.handling_type,
+      ship_temp: test.ship_temp,
       stability_days: test.stability_days,
       stability_days_frozen: test.stability_days_frozen,
     };
@@ -669,7 +669,7 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                         )}
                       </p>
                       <StabilityLine
-                        handling_type={l.handling_type}
+                        ship_temp={l.ship_temp}
                         stability_days={l.stability_days}
                         stability_days_frozen={l.stability_days_frozen}
                       />
@@ -825,7 +825,7 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                 {lines.length > 0 && (
                   <>
                     <StabilitySummaryRow summary={stabilitySummary} />
-                    <HandlingSummaryRow summary={handlingSummary} />
+                    <ShipTempSummaryRow summary={shipTempSummary} />
                   </>
                 )}
                 <tr>
@@ -931,7 +931,7 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                 <div>
                   <p className="font-semibold">
                     This quote contains tests with missing stability or
-                    handling data.
+                    ship temp data.
                   </p>
                   <p className="mt-1" style={{ color: "#e8d5a3" }}>
                     Please verify and update via the admin Tests page before
@@ -999,22 +999,22 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
 }
 
 function StabilityLine({
-  handling_type,
+  ship_temp,
   stability_days,
   stability_days_frozen,
 }: {
-  handling_type: HandlingType | null;
+  ship_temp: ShipTemp | null;
   stability_days: number | null;
   stability_days_frozen: number | null;
 }) {
   const stabilityText = formatStability({
-    handling_type,
+    ship_temp,
     stability_days,
     stability_days_frozen,
   });
   const isIncomplete = stabilityText.startsWith("\u26A0");
-  const dotColor = stabilityColorForTest({ handling_type, stability_days });
-  const handlingMissing = !handling_type;
+  const dotColor = stabilityColorForTest({ ship_temp, stability_days });
+  const shipTempMissing = !ship_temp;
 
   return (
     <p className="text-xs mt-0.5">
@@ -1037,14 +1037,14 @@ function StabilityLine({
           {stabilityText}
         </span>
       )}
-      {!isIncomplete && handlingMissing && (
+      {!isIncomplete && shipTempMissing && (
         <>
           {" · "}
           <span
             title="Check Mayo documentation and update via admin"
             style={{ color: MISSING_DATA_COLOR }}
           >
-            Handling not set
+            Ship temp not set
           </span>
         </>
       )}
@@ -1079,7 +1079,7 @@ function StabilitySummaryRow({
     );
   }
   const color = stabilityColorForTest({
-    handling_type: "refrigerated_only",
+    ship_temp: "refrigerated_only",
     stability_days: summary.minDays,
   });
   return (
@@ -1097,10 +1097,10 @@ function StabilitySummaryRow({
   );
 }
 
-function HandlingSummaryRow({
+function ShipTempSummaryRow({
   summary,
 }: {
-  summary: ReturnType<typeof summarizeHandling>;
+  summary: ReturnType<typeof summarizeShipTemp>;
 }) {
   if (summary.kind === "empty") return null;
   if (summary.kind === "missing") {
@@ -1111,13 +1111,13 @@ function HandlingSummaryRow({
           className="py-1.5 text-sm"
           style={{ color: MISSING_DATA_COLOR }}
         >
-          Handling required
+          Ship temp required
         </td>
         <td
           className="py-1.5 text-right text-sm font-semibold"
           style={{ color: MISSING_DATA_COLOR }}
         >
-          ⚠ {n} test{n === 1 ? "" : "s"} missing handling data
+          ⚠ {n} test{n === 1 ? "" : "s"} missing ship temp data
         </td>
       </tr>
     );
@@ -1125,13 +1125,13 @@ function HandlingSummaryRow({
   return (
     <tr>
       <td className="py-1.5 text-sm" style={{ color: "#e8d5a3" }}>
-        Handling required
+        Ship temp required
       </td>
       <td
         className="py-1.5 text-right text-sm font-semibold"
         style={{ color: "#ffffff" }}
       >
-        {formatHandling(summary.strictest)}
+        {formatShipTempLong(summary.strictest)}
       </td>
     </tr>
   );

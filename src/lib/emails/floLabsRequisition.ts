@@ -3,10 +3,10 @@ import { resend } from "@/lib/resend";
 import type { createServiceRoleClient } from "@/lib/supabase/server";
 import type { OrderMetadataPayload } from "@/lib/checkout/materialise";
 import {
-  formatHandling,
+  formatShipTempLong,
   formatStability,
-  type HandlingType,
-} from "@/lib/tests/handlingDisplay";
+  type ShipTemp,
+} from "@/lib/tests/shipTempDisplay";
 
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
 
@@ -55,7 +55,7 @@ export async function sendFloLabsRequisition(
   const { data: testsRaw } = await supabase
     .from("tests")
     .select(
-      "id, name, specimen_type, handling_type, stability_days, stability_days_frozen, handling_instructions, turnaround_display, lab:labs(name, shipping_notes)"
+      "id, name, specimen_type, ship_temp, stability_days, stability_days_frozen, handling_instructions, turnaround_display, lab:labs(name, shipping_notes)"
     )
     .in("id", testIds);
 
@@ -63,7 +63,7 @@ export async function sendFloLabsRequisition(
     id: string;
     name: string;
     specimen_type: string | null;
-    handling_type: HandlingType | null;
+    ship_temp: ShipTemp | null;
     stability_days: number | null;
     stability_days_frozen: number | null;
     handling_instructions: string | null;
@@ -89,10 +89,10 @@ export async function sendFloLabsRequisition(
           <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(t?.name ?? "Unknown")}</td>
           <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(lab?.name ?? "")}</td>
           <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(t?.specimen_type ?? "—")}</td>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(formatHandling(t?.handling_type ?? null))}</td>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(formatShipTempLong(t?.ship_temp ?? null))}</td>
           <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(
             formatStability({
-              handling_type: t?.handling_type ?? null,
+              ship_temp: t?.ship_temp ?? null,
               stability_days: t?.stability_days ?? null,
               stability_days_frozen: t?.stability_days_frozen ?? null,
             })

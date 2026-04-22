@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { QuoteBuilder } from "@/components/admin/QuoteBuilder";
-import type { HandlingType } from "@/lib/tests/handlingDisplay";
+import type { ShipTemp } from "@/lib/tests/shipTempDisplay";
 import type { Quote } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ export type QuoteLineWithTest = {
   test_name: string;
   test_sku: string | null;
   lab_name: string;
-  handling_type: HandlingType | null;
+  ship_temp: ShipTemp | null;
   stability_days: number | null;
   stability_days_frozen: number | null;
 };
@@ -27,7 +27,7 @@ export type CatalogueTestForQuote = {
   /** Wholesale cost — used for the admin-only Margin line. */
   cost_cad: number | null;
   lab_name: string;
-  handling_type: HandlingType | null;
+  ship_temp: ShipTemp | null;
   stability_days: number | null;
   stability_days_frozen: number | null;
 };
@@ -61,7 +61,7 @@ export default async function AdminQuoteBuilderPage({
     .select(
       `
       id, test_id, person_label, unit_price_cad,
-      test:tests ( name, sku, handling_type, stability_days, stability_days_frozen, lab:labs ( name ) )
+      test:tests ( name, sku, ship_temp, stability_days, stability_days_frozen, lab:labs ( name ) )
     `
     )
     .eq("quote_id", id)
@@ -75,7 +75,7 @@ export default async function AdminQuoteBuilderPage({
     test: {
       name: string;
       sku: string | null;
-      handling_type: HandlingType | null;
+      ship_temp: ShipTemp | null;
       stability_days: number | null;
       stability_days_frozen: number | null;
       lab: { name: string } | { name: string }[] | null;
@@ -92,7 +92,7 @@ export default async function AdminQuoteBuilderPage({
         test_name: l.test?.name ?? "Test",
         test_sku: l.test?.sku ?? null,
         lab_name: lab?.name ?? "—",
-        handling_type: l.test?.handling_type ?? null,
+        ship_temp: l.test?.ship_temp ?? null,
         stability_days: l.test?.stability_days ?? null,
         stability_days_frozen: l.test?.stability_days_frozen ?? null,
       };
@@ -103,7 +103,7 @@ export default async function AdminQuoteBuilderPage({
   const { data: testsRaw } = await service
     .from("tests")
     .select(
-      "id, name, sku, price_cad, cost_cad, handling_type, stability_days, stability_days_frozen, lab:labs(name)"
+      "id, name, sku, price_cad, cost_cad, ship_temp, stability_days, stability_days_frozen, lab:labs(name)"
     )
     .eq("active", true)
     .not("price_cad", "is", null)
@@ -115,7 +115,7 @@ export default async function AdminQuoteBuilderPage({
     sku: string | null;
     price_cad: number;
     cost_cad: number | null;
-    handling_type: HandlingType | null;
+    ship_temp: ShipTemp | null;
     stability_days: number | null;
     stability_days_frozen: number | null;
     lab: { name: string } | { name: string }[] | null;
@@ -131,7 +131,7 @@ export default async function AdminQuoteBuilderPage({
       price_cad: t.price_cad,
       cost_cad: t.cost_cad == null ? null : Number(t.cost_cad),
       lab_name: lab?.name ?? "—",
-      handling_type: t.handling_type,
+      ship_temp: t.ship_temp,
       stability_days: t.stability_days,
       stability_days_frozen: t.stability_days_frozen,
     };

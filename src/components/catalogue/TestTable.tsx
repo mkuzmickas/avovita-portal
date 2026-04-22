@@ -4,9 +4,9 @@ import { useState } from "react";
 import { ChevronDown, Clock, ShoppingCart, Check, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import {
-  formatHandling,
+  formatShipTempLong,
   formatStability,
-} from "@/lib/tests/handlingDisplay";
+} from "@/lib/tests/shipTempDisplay";
 import { PanelIncludes } from "./PanelIncludes";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import { cartItemId } from "./types";
@@ -352,7 +352,7 @@ function TestTableRow({
                     />
                     <DetailField
                       label="Handling"
-                      value={formatHandling(test.handling_type)}
+                      value={formatShipTempLong(test.ship_temp)}
                     />
                     <DetailField
                       label="Stability"

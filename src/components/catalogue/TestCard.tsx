@@ -5,9 +5,9 @@ import Link from "next/link";
 import { Clock, ShoppingCart, Check, ChevronDown, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import {
-  formatHandling,
+  formatShipTempLong,
   formatStability,
-} from "@/lib/tests/handlingDisplay";
+} from "@/lib/tests/shipTempDisplay";
 import { PanelIncludes } from "./PanelIncludes";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
@@ -186,7 +186,7 @@ export function TestCard({
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <DetailField
                 label="Handling"
-                value={formatHandling(test.handling_type)}
+                value={formatShipTempLong(test.ship_temp)}
               />
               <DetailField
                 label="Stability"

@@ -1,32 +1,45 @@
 /**
- * Single source of truth for rendering a test's handling + stability to
- * users and admins. Every catalogue row, admin cell, quote-composer
- * line, and operational email formats these fields through this module
- * — no inline string building, no duplicate threshold logic.
+ * Single source of truth for rendering a test's ship_temp + stability
+ * to users and admins. Every catalogue row, admin cell, quote-composer
+ * line, and operational email formats these fields through this
+ * module — no inline string building, no duplicate threshold logic.
+ *
+ * (Renamed from handlingDisplay.ts in migration 019 — the field was
+ * mis-named handling_type originally; it's a ship-temperature
+ * requirement, so the code mirrors the DB rename.)
  */
 
-export type HandlingType =
+export type ShipTemp =
   | "refrigerated_only"
   | "frozen_only"
   | "ambient_only"
   | "refrigerated_or_frozen";
 
-export const HANDLING_TYPE_VALUES: HandlingType[] = [
+export const SHIP_TEMP_VALUES: ShipTemp[] = [
   "refrigerated_only",
   "frozen_only",
   "ambient_only",
   "refrigerated_or_frozen",
 ];
 
-export const HANDLING_TYPE_LABELS: Record<HandlingType, string> = {
+/** Full labels — customer-facing detail panes and admin edit form. */
+export const SHIP_TEMP_LABELS: Record<ShipTemp, string> = {
   refrigerated_only: "Refrigerated only",
   frozen_only: "Frozen only",
   ambient_only: "Ambient only",
   refrigerated_or_frozen: "Refrigerated or Frozen",
 };
 
+/** Compact labels — admin list cell where horizontal space is tight. */
+export const SHIP_TEMP_SHORT_LABELS: Record<ShipTemp, string> = {
+  refrigerated_only: "Refrig",
+  frozen_only: "Frozen",
+  ambient_only: "Ambient",
+  refrigerated_or_frozen: "Refrig or Frozen",
+};
+
 /**
- * Strictness ranking used when summarising the strictest handling
+ * Strictness ranking used when summarising the strictest ship_temp
  * across a cart of tests. Higher wins.
  *
  *   ambient_only            (1)  easiest — no cold chain
@@ -34,32 +47,32 @@ export const HANDLING_TYPE_LABELS: Record<HandlingType, string> = {
  *   refrigerated_only       (3)  must be refrigerated
  *   frozen_only             (4)  must be frozen — hardest
  */
-export const HANDLING_STRICTNESS: Record<HandlingType, number> = {
+export const SHIP_TEMP_STRICTNESS: Record<ShipTemp, number> = {
   ambient_only: 1,
   refrigerated_or_frozen: 2,
   refrigerated_only: 3,
   frozen_only: 4,
 };
 
-export interface HandlingFields {
-  handling_type: HandlingType | null;
+export interface ShipTempFields {
+  ship_temp: ShipTemp | null;
   stability_days: number | null;
   stability_days_frozen: number | null;
 }
 
-export const STABILITY_NOT_SET = "\u26A0 Stability not set";
-export const HANDLING_NOT_SET = "\u26A0 Handling not set";
+export const STABILITY_NOT_SET = "⚠ Stability not set";
+export const SHIP_TEMP_NOT_SET = "⚠ Ship temp not set";
 
 /**
  * Returns the customer-facing stability sentence. Every missing-data
  * path resolves to the same warning string so UI code never has to
  * branch on NULL again.
  */
-export function formatStability(test: HandlingFields): string {
-  if (!test.handling_type || test.stability_days == null) {
+export function formatStability(test: ShipTempFields): string {
+  if (!test.ship_temp || test.stability_days == null) {
     return STABILITY_NOT_SET;
   }
-  switch (test.handling_type) {
+  switch (test.ship_temp) {
     case "refrigerated_only":
       return `Stable ${test.stability_days} days refrigerated`;
     case "frozen_only":
@@ -72,9 +85,16 @@ export function formatStability(test: HandlingFields): string {
   }
 }
 
-export function formatHandling(handling_type: HandlingType | null): string {
-  if (!handling_type) return HANDLING_NOT_SET;
-  return HANDLING_TYPE_LABELS[handling_type];
+/** Full label — customer-facing detail panes + admin edit form. */
+export function formatShipTempLong(ship_temp: ShipTemp | null): string {
+  if (!ship_temp) return SHIP_TEMP_NOT_SET;
+  return SHIP_TEMP_LABELS[ship_temp];
+}
+
+/** Short label — admin list cell where "Refrigerated or Frozen" won't fit. */
+export function formatShipTempShort(ship_temp: ShipTemp | null): string {
+  if (!ship_temp) return SHIP_TEMP_NOT_SET;
+  return SHIP_TEMP_SHORT_LABELS[ship_temp];
 }
 
 /**
@@ -85,9 +105,9 @@ export function formatHandling(handling_type: HandlingType | null): string {
  * that time). Frozen transport buys the longer frozen window separately.
  */
 export function getCriticalStabilityDays(
-  test: Pick<HandlingFields, "handling_type" | "stability_days">
+  test: Pick<ShipTempFields, "ship_temp" | "stability_days">
 ): number | null {
-  if (!test.handling_type || test.stability_days == null) return null;
+  if (!test.ship_temp || test.stability_days == null) return null;
   return test.stability_days;
 }
 
@@ -97,7 +117,7 @@ export function getCriticalStabilityDays(
  * / 30 days frozen still colour red.
  */
 export function stabilityColorForTest(
-  test: Pick<HandlingFields, "handling_type" | "stability_days">
+  test: Pick<ShipTempFields, "ship_temp" | "stability_days">
 ): string | null {
   const days = getCriticalStabilityDays(test);
   if (days == null) return null;
@@ -107,14 +127,14 @@ export function stabilityColorForTest(
 }
 
 /**
- * True when a test is incomplete by the new definition — drives the
- * admin "missing data" filter and the per-row warning icon.
+ * True when a test's shipping info is incomplete — drives the admin
+ * "missing data" filter and the per-row warning icon.
  */
-export function isHandlingIncomplete(test: HandlingFields): boolean {
-  if (!test.handling_type) return true;
+export function isShippingIncomplete(test: ShipTempFields): boolean {
+  if (!test.ship_temp) return true;
   if (test.stability_days == null) return true;
   if (
-    test.handling_type === "refrigerated_or_frozen" &&
+    test.ship_temp === "refrigerated_or_frozen" &&
     test.stability_days_frozen == null
   ) {
     return true;

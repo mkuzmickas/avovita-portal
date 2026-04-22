@@ -11,10 +11,11 @@ export type CatalogueTest = {
   price_cad: number | null;
   turnaround_display: string | null;
   specimen_type: string | null;
-  /** @deprecated Legacy freeform — use handling_type for rendering. */
-  ship_temp: string | null;
+  /** @deprecated Legacy freeform — archived as ship_temp_legacy_freeform
+   *  in migration 019. Use ship_temp for rendering. */
+  ship_temp_legacy_freeform: string | null;
   handling_instructions: string | null;
-  handling_type:
+  ship_temp:
     | "refrigerated_only"
     | "frozen_only"
     | "ambient_only"

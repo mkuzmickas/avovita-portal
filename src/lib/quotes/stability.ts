@@ -1,37 +1,37 @@
 /**
- * Quote-composer summaries for stability + handling.
+ * Quote-composer summaries for ship_temp + stability.
  *
- * All rendering goes through `src/lib/tests/handlingDisplay.ts`. This
+ * All rendering goes through `src/lib/tests/shipTempDisplay.ts`. This
  * file is only responsible for aggregating across a cart: finding the
- * earliest stability limit, the strictest handling, and the list of
+ * earliest stability limit, the strictest ship_temp, and the list of
  * tests with missing data.
  */
 
 import {
-  HANDLING_STRICTNESS,
   MISSING_DATA_COLOR,
-  formatHandling,
+  SHIP_TEMP_STRICTNESS,
+  formatShipTempLong,
   formatStability,
   getCriticalStabilityDays,
-  isHandlingIncomplete,
+  isShippingIncomplete,
   stabilityColorForTest,
-  type HandlingType,
-} from "@/lib/tests/handlingDisplay";
+  type ShipTemp,
+} from "@/lib/tests/shipTempDisplay";
 
 export {
   MISSING_DATA_COLOR,
-  formatHandling,
+  formatShipTempLong,
   formatStability,
   getCriticalStabilityDays,
-  isHandlingIncomplete,
+  isShippingIncomplete,
   stabilityColorForTest,
 };
-export type { HandlingType };
+export type { ShipTemp };
 
 export type StabilityItem = {
   test_id: string;
   test_name: string;
-  handling_type: HandlingType | null;
+  ship_temp: ShipTemp | null;
   stability_days: number | null;
   stability_days_frozen: number | null;
 };
@@ -52,7 +52,7 @@ export type StabilitySummary =
 
 export function summarizeStability(items: StabilityItem[]): StabilitySummary {
   if (items.length === 0) return { kind: "empty" };
-  const missing = items.filter(isHandlingIncomplete);
+  const missing = items.filter(isShippingIncomplete);
   if (missing.length > 0) {
     return {
       kind: "missing",
@@ -71,37 +71,37 @@ export function summarizeStability(items: StabilityItem[]): StabilitySummary {
   return { kind: "complete", minDays: min, minDaysTestName: minName };
 }
 
-export type HandlingSummary =
+export type ShipTempSummary =
   | { kind: "empty" }
-  | { kind: "complete"; strictest: HandlingType }
+  | { kind: "complete"; strictest: ShipTemp }
   | { kind: "missing"; missingNames: string[] };
 
-export function summarizeHandling(items: StabilityItem[]): HandlingSummary {
+export function summarizeShipTemp(items: StabilityItem[]): ShipTempSummary {
   if (items.length === 0) return { kind: "empty" };
-  const missing = items.filter((i) => !i.handling_type);
+  const missing = items.filter((i) => !i.ship_temp);
   if (missing.length > 0) {
     return {
       kind: "missing",
       missingNames: missing.map((m) => m.test_name),
     };
   }
-  let strictest: HandlingType = "ambient_only";
+  let strictest: ShipTemp = "ambient_only";
   let strictestRank = 0;
   for (const i of items) {
-    const rank = HANDLING_STRICTNESS[i.handling_type as HandlingType] ?? 0;
+    const rank = SHIP_TEMP_STRICTNESS[i.ship_temp as ShipTemp] ?? 0;
     if (rank > strictestRank) {
       strictestRank = rank;
-      strictest = i.handling_type as HandlingType;
+      strictest = i.ship_temp as ShipTemp;
     }
   }
   return { kind: "complete", strictest };
 }
 
 /**
- * Tests in the cart that are incomplete by the new handling definition
- * (NULL handling_type, NULL stability_days, or refrigerated_or_frozen
- * without a frozen value).
+ * Tests in the cart that are incomplete by the ship_temp + stability
+ * definition (NULL ship_temp, NULL stability_days, or
+ * refrigerated_or_frozen without a frozen value).
  */
 export function testsWithMissingData(items: StabilityItem[]): string[] {
-  return items.filter(isHandlingIncomplete).map((i) => i.test_name);
+  return items.filter(isShippingIncomplete).map((i) => i.test_name);
 }

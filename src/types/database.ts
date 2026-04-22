@@ -106,20 +106,21 @@ export interface Test {
   turnaround_max_days: number | null;
   turnaround_note: string | null;
   specimen_type: string | null;
-  /** @deprecated Legacy freeform field — kept read-only during the
-   *  handling_type backfill and will be dropped in a follow-up
-   *  migration. New writes should only update handling_type. */
-  ship_temp: string | null;
-  /** @deprecated Replaced by handling_type. Kept as a read-only
-   *  fallback during backfill. */
-  ship_temperature:
+  /** @deprecated Legacy freeform field — archived in migration 019 as
+   *  a read-only reference while the manual Mayo-catalogue backfill
+   *  populates the canonical ship_temp + stability columns. Will be
+   *  dropped in a follow-up migration once backfill is complete. */
+  ship_temp_legacy_freeform: string | null;
+  /** @deprecated Intermediate enum from migration 015, archived in
+   *  migration 019. Same story as ship_temp_legacy_freeform. */
+  ship_temperature_legacy_enum:
     | "ambient"
     | "refrigerated"
     | "frozen"
     | "warm_37c"
     | "cold_chain"
     | null;
-  handling_type:
+  ship_temp:
     | "refrigerated_only"
     | "frozen_only"
     | "ambient_only"
@@ -127,7 +128,7 @@ export interface Test {
     | null;
   handling_instructions: string | null;
   stability_days: number | null;
-  /** Only populated when handling_type = 'refrigerated_or_frozen'. */
+  /** Only populated when ship_temp = 'refrigerated_or_frozen'. */
   stability_days_frozen: number | null;
   active: boolean;
   featured: boolean;

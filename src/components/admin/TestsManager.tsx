@@ -19,14 +19,14 @@ import { CopyLinkButton } from "./CopyLinkButton";
 import { createClient } from "@/lib/supabase/client";
 import { InsightsChatModal } from "@/components/catalogue/InsightsChatModal";
 import {
-  HANDLING_TYPE_LABELS,
-  HANDLING_TYPE_VALUES,
   MISSING_DATA_COLOR,
-  formatHandling,
-  isHandlingIncomplete,
+  SHIP_TEMP_LABELS,
+  SHIP_TEMP_VALUES,
+  formatShipTempShort,
+  isShippingIncomplete,
   stabilityColorForTest,
-  type HandlingType,
-} from "@/lib/tests/handlingDisplay";
+  type ShipTemp,
+} from "@/lib/tests/shipTempDisplay";
 import type {
   AdminTestRow,
   AdminLabRow,
@@ -44,7 +44,7 @@ type EditableFields = {
   price_cad: string;
   cost_cad: string;
   specimen_type: string;
-  handling_type: HandlingType | "";
+  ship_temp: ShipTemp | "";
   handling_instructions: string;
   stability_days: string;
   stability_days_frozen: string;
@@ -66,7 +66,7 @@ const EMPTY_FORM: EditableFields = {
   price_cad: "",
   cost_cad: "",
   specimen_type: "",
-  handling_type: "",
+  ship_temp: "",
   handling_instructions: "",
   stability_days: "",
   stability_days_frozen: "",
@@ -118,7 +118,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       if (categoryFilter !== "all" && t.category !== categoryFilter)
         return false;
       if (featuredOnly && !t.featured) return false;
-      if (missingDataOnly && !isHandlingIncomplete(t)) return false;
+      if (missingDataOnly && !isShippingIncomplete(t)) return false;
       return true;
     });
   }, [
@@ -149,7 +149,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
 
   const saveEdit = async (testId: string, fields: EditableFields) => {
     const supabase = createClient();
-    const handlingPayload = buildHandlingPayload(fields);
+    const shipTempPayload = buildShipTempPayload(fields);
     const payload = {
       name: fields.name,
       description: fields.description || null,
@@ -158,7 +158,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       cost_cad: fields.cost_cad ? parseFloat(fields.cost_cad) : null,
       specimen_type: fields.specimen_type || null,
       handling_instructions: fields.handling_instructions || null,
-      ...handlingPayload,
+      ...shipTempPayload,
       turnaround_display: fields.turnaround_display || null,
       turnaround_min_days: fields.turnaround_min_days
         ? parseInt(fields.turnaround_min_days, 10)
@@ -242,7 +242,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
   const createTest = async (fields: EditableFields) => {
     const supabase = createClient();
     const slug = slugify(fields.name);
-    const handlingPayload = buildHandlingPayload(fields);
+    const shipTempPayload = buildShipTempPayload(fields);
     const payload = {
       name: fields.name,
       slug,
@@ -252,7 +252,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       cost_cad: fields.cost_cad ? parseFloat(fields.cost_cad) : null,
       specimen_type: fields.specimen_type || null,
       handling_instructions: fields.handling_instructions || null,
-      ...handlingPayload,
+      ...shipTempPayload,
       turnaround_display: fields.turnaround_display || null,
       turnaround_min_days: fields.turnaround_min_days
         ? parseInt(fields.turnaround_min_days, 10)
@@ -276,7 +276,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         id, lab_id, name, slug, description, category, price_cad,
         turnaround_display, turnaround_min_days, turnaround_max_days,
         turnaround_note, specimen_type, ship_temp, ship_temperature,
-        handling_type, handling_instructions, stability_days, stability_days_frozen,
+        ship_temp, handling_instructions, stability_days, stability_days_frozen,
         active, featured, created_at, updated_at,
         sku, mayo_test_id, cost_cad, collection_method,
         track_inventory, stock_qty, low_stock_threshold
@@ -368,7 +368,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
             backgroundColor: missingDataOnly ? "#1a3d22" : "transparent",
             borderColor: missingDataOnly ? MISSING_DATA_COLOR : "#2d6b35",
           }}
-          title="Show only tests where handling_type, stability_days, or (for refrigerated-or-frozen tests) stability_days_frozen is NULL"
+          title="Show only tests where ship_temp, stability_days, or (for refrigerated-or-frozen tests) stability_days_frozen is NULL"
         >
           <input
             type="checkbox"
@@ -383,7 +383,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
               color: missingDataOnly ? MISSING_DATA_COLOR : "#e8d5a3",
             }}
           >
-            Missing stability/handling
+            Missing stability/ship temp
           </span>
         </label>
         <button
@@ -451,7 +451,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
                   "SKU",
                   "Lab",
                   "Category",
-                  "Handling",
+                  "Ship Temp",
                   "Stability",
                   "Pricing",
                   "Status",
@@ -561,7 +561,7 @@ function TestRow({
     price_cad: test.price_cad != null ? String(test.price_cad) : "",
     cost_cad: test.cost_cad != null ? String(test.cost_cad) : "",
     specimen_type: test.specimen_type ?? "",
-    handling_type: test.handling_type ?? "",
+    ship_temp: test.ship_temp ?? "",
     handling_instructions: test.handling_instructions ?? "",
     stability_days:
       test.stability_days != null ? String(test.stability_days) : "",
@@ -613,15 +613,17 @@ function TestRow({
         </td>
         <td
           className="px-3 py-4 text-xs whitespace-nowrap"
-          title={formatHandling(test.handling_type)}
+          title={
+            test.ship_temp ? SHIP_TEMP_LABELS[test.ship_temp] : "Ship temp not set"
+          }
           style={{
             color:
-              test.handling_type == null ? MISSING_DATA_COLOR : "#e8d5a3",
+              test.ship_temp == null ? MISSING_DATA_COLOR : "#e8d5a3",
           }}
         >
-          {test.handling_type == null
+          {test.ship_temp == null
             ? "—"
-            : formatHandling(test.handling_type)}
+            : formatShipTempShort(test.ship_temp)}
         </td>
         <td
           className="px-3 py-4 text-xs whitespace-nowrap"
@@ -646,7 +648,7 @@ function TestRow({
                 ) : null;
               })()}
               {test.stability_days} days
-              {test.handling_type === "refrigerated_or_frozen" &&
+              {test.ship_temp === "refrigerated_or_frozen" &&
                 test.stability_days_frozen != null && (
                   <span style={{ opacity: 0.7 }}>
                     {" / "}
@@ -1186,13 +1188,13 @@ function InlineTestForm({
           </select>
         </Field>
         <Field
-          label="Handling"
-          helper="Required temperature during shipping. If Mayo lists BOTH a refrigerated and a frozen stability, pick 'Refrigerated or Frozen' and enter both numbers below. Ignore any ambient-only entry listed alongside them."
+          label="Ship Temp"
+          helper="Required shipping temperature. If Mayo lists BOTH a refrigerated and a frozen stability, pick 'Refrigerated or Frozen' and enter both numbers below. Ignore any ambient-only entry listed alongside them."
         >
-          <HandlingTypeSelect
-            value={fields.handling_type}
+          <ShipTempSelect
+            value={fields.ship_temp}
             onChange={(next) => {
-              update("handling_type", next);
+              update("ship_temp", next);
               // Re-check: clear the frozen value whenever the new
               // selection isn't refrigerated_or_frozen so we don't
               // violate the DB check constraint on save.
@@ -1202,7 +1204,7 @@ function InlineTestForm({
             }}
           />
         </Field>
-        {fields.handling_type === "refrigerated_or_frozen" ? (
+        {fields.ship_temp === "refrigerated_or_frozen" ? (
           <div className="grid grid-cols-2 gap-3">
             <Field
               label="Refrigerated stability (days)"
@@ -1237,9 +1239,9 @@ function InlineTestForm({
           <Field
             label="Stability (days)"
             helper={
-              fields.handling_type
+              fields.ship_temp
                 ? "Days from collection to lab arrival before results are compromised. Consult Mayo or lab documentation."
-                : "Select a handling type above first."
+                : "Select a ship temp above first."
             }
           >
             <input
@@ -1249,11 +1251,11 @@ function InlineTestForm({
               onChange={(e) => update("stability_days", e.target.value)}
               className="mf-input"
               placeholder={
-                fields.handling_type
+                fields.ship_temp
                   ? "e.g. 7"
-                  : "Select handling type first"
+                  : "Select ship temp first"
               }
-              disabled={!fields.handling_type}
+              disabled={!fields.ship_temp}
             />
           </Field>
         )}
@@ -1298,7 +1300,7 @@ function InlineTestForm({
 
       <Field
         label="Handling Instructions"
-        helper="Special collection or processing instructions for FloLabs (e.g., protect from light, centrifuge within 30 min, avoid hemolysis). Do NOT restate shipping stability — that's captured by the Handling and stability fields above."
+        helper="Special collection or processing instructions for FloLabs (e.g., protect from light, centrifuge within 30 min, avoid hemolysis). Do NOT restate shipping stability — that's captured by the Ship Temp and stability fields above."
       >
         <textarea
           value={fields.handling_instructions}
@@ -1548,27 +1550,27 @@ function InlineTestForm({
 }
 
 /**
- * HandlingTypeSelect — strictly enumerated handling_type values enforced
- * by the DB check constraint + handling_type_enum. Blank maps to NULL
+ * ShipTempSelect — strictly enumerated ship_temp values enforced
+ * by the DB check constraint + ship_temp_enum. Blank maps to NULL
  * so missing data stays visibly missing.
  */
-function HandlingTypeSelect({
+function ShipTempSelect({
   value,
   onChange,
 }: {
-  value: HandlingType | "";
-  onChange: (next: HandlingType | "") => void;
+  value: ShipTemp | "";
+  onChange: (next: ShipTemp | "") => void;
 }) {
   return (
     <select
       value={value}
-      onChange={(e) => onChange(e.target.value as HandlingType | "")}
+      onChange={(e) => onChange(e.target.value as ShipTemp | "")}
       className="mf-input cursor-pointer"
     >
       <option value="">— Not set —</option>
-      {HANDLING_TYPE_VALUES.map((v) => (
+      {SHIP_TEMP_VALUES.map((v) => (
         <option key={v} value={v}>
-          {HANDLING_TYPE_LABELS[v]}
+          {SHIP_TEMP_LABELS[v]}
         </option>
       ))}
     </select>
@@ -1581,12 +1583,12 @@ function HandlingTypeSelect({
  * stability_days_frozen_logic check constraint. Throws a user-facing
  * Error on invalid input so the form surface can display it.
  */
-function buildHandlingPayload(fields: EditableFields): {
-  handling_type: HandlingType | null;
+function buildShipTempPayload(fields: EditableFields): {
+  ship_temp: ShipTemp | null;
   stability_days: number | null;
   stability_days_frozen: number | null;
 } {
-  const handling = fields.handling_type === "" ? null : fields.handling_type;
+  const shipTemp = fields.ship_temp === "" ? null : fields.ship_temp;
   const parsePositiveInt = (raw: string, label: string): number | null => {
     if (!raw) return null;
     const n = parseInt(raw, 10);
@@ -1600,25 +1602,25 @@ function buildHandlingPayload(fields: EditableFields): {
     fields.stability_days_frozen,
     "Frozen stability (days)"
   );
-  if (handling === "refrigerated_or_frozen") {
+  if (shipTemp === "refrigerated_or_frozen") {
     if (days == null || frozenDays == null) {
       throw new Error(
-        "Both refrigerated and frozen stability are required when handling is 'Refrigerated or Frozen'"
+        "Both refrigerated and frozen stability are required when ship temp is 'Refrigerated or Frozen'"
       );
     }
     return {
-      handling_type: handling,
+      ship_temp: shipTemp,
       stability_days: days,
       stability_days_frozen: frozenDays,
     };
   }
   if (frozenDays != null) {
     throw new Error(
-      "Frozen stability can only be set when handling is 'Refrigerated or Frozen'"
+      "Frozen stability can only be set when ship temp is 'Refrigerated or Frozen'"
     );
   }
   return {
-    handling_type: handling,
+    ship_temp: shipTemp,
     stability_days: days,
     stability_days_frozen: null,
   };
