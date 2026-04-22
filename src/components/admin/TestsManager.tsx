@@ -429,17 +429,20 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
       >
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          {/* table-layout: fixed makes the colgroup widths binding rather
+              than advisory — without it, nowrap cells (SKU, Status) blew
+              past their intended share. */}
+          <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: "20%" }} />
-              <col style={{ width: "8%" }} />
+              <col style={{ width: "7%" }} />
               <col style={{ width: "8%" }} />
               <col style={{ width: "12%" }} />
               <col style={{ width: "12%" }} />
               <col style={{ width: "10%" }} />
               <col style={{ width: "12%" }} />
               <col style={{ width: "8%" }} />
-              <col style={{ width: "10%" }} />
+              <col style={{ width: "11%" }} />
             </colgroup>
             <thead>
               <tr style={{ backgroundColor: "#0f2614" }}>
