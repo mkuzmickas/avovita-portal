@@ -142,22 +142,15 @@ export function CatalogueClient({
     );
     let logged = 0;
     let dumpedCharCodes = false;
-    return allTests.filter((test) => {
-      const matchesSearch =
-        query === "" ||
-        test.name.toLowerCase().includes(query) ||
-        (test.sku !== null && test.sku.toLowerCase().includes(query)) ||
-        (test.category !== null && test.category.toLowerCase().includes(query));
-      if (logged < 5) {
-        console.log(
-          `[catalogue] test #${logged} name=${JSON.stringify(test.name)} ` +
-            `test.category=${JSON.stringify(test.category)} ` +
-            `selectedCategory=${JSON.stringify(selectedCategory)} ` +
-            `equal=${test.category === selectedCategory} ` +
-            `lengths=${test.category?.length ?? 0}/${selectedCategory?.length ?? 0}`
-        );
-        logged += 1;
-      }
+
+    // Match tier per result so description-only matches rank below
+    // name / sku / category matches. Tier 1 = primary field hit,
+    // tier 2 = description-only hit. Computed once here and used by
+    // the sort below so filter + sort stay in a single pass.
+    type Scored = { test: (typeof allTests)[number]; tier: number };
+
+    const scored: Scored[] = [];
+    for (const test of allTests) {
       // One-shot: dump char codes the first time we see an Allergy test
       // while the URL param is active so any hidden bytes are visible.
       if (
@@ -173,13 +166,54 @@ export function CatalogueClient({
         );
         dumpedCharCodes = true;
       }
+      if (logged < 5) {
+        console.log(
+          `[catalogue] test #${logged} name=${JSON.stringify(test.name)} ` +
+            `test.category=${JSON.stringify(test.category)} ` +
+            `selectedCategory=${JSON.stringify(selectedCategory)} ` +
+            `equal=${test.category === selectedCategory} ` +
+            `lengths=${test.category?.length ?? 0}/${selectedCategory?.length ?? 0}`
+        );
+        logged += 1;
+      }
+
       const matchesCategory =
         selectedCategory === null ||
         (test.category !== null &&
           test.category.trim() === selectedCategory.trim());
       const matchesLab = selectedLab === null || test.lab.name === selectedLab;
-      return matchesSearch && matchesCategory && matchesLab;
-    });
+      if (!matchesCategory || !matchesLab) continue;
+
+      if (query === "") {
+        scored.push({ test, tier: 1 });
+        continue;
+      }
+
+      // Tier 1: name / sku / category hit — existing behaviour.
+      const primary =
+        test.name.toLowerCase().includes(query) ||
+        (test.sku !== null && test.sku.toLowerCase().includes(query)) ||
+        (test.category !== null && test.category.toLowerCase().includes(query));
+      if (primary) {
+        scored.push({ test, tier: 1 });
+        continue;
+      }
+      // Tier 2: description-only hit — new this pass. Catches tests
+      // like Cytokine Panel 13 when a customer searches "interleukin"
+      // but the term only appears in the long description.
+      if (
+        test.description !== null &&
+        test.description.toLowerCase().includes(query)
+      ) {
+        scored.push({ test, tier: 2 });
+      }
+    }
+
+    // Order: tier ascending, then the original alphabetical order
+    // (allTests came back from Supabase .order("name")). Sort is
+    // stable in modern runtimes so a same-tier pair keeps alphabetical.
+    scored.sort((a, b) => a.tier - b.tier);
+    return scored.map((s) => s.test);
   }, [allTests, searchQuery, selectedCategory, selectedLab]);
 
   const hasFiltersActive =
