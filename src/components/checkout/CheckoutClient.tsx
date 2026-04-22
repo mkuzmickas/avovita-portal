@@ -96,6 +96,10 @@ export function CheckoutClient({
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [appliedQuoteNumber, setAppliedQuoteNumber] = useState<string | null>(null);
+  // Admin-entered additional discount carried from an accepted quote.
+  // Resolved to CAD dollars by /api/quotes/[number]; applied here and
+  // verified server-side in /api/stripe/checkout via the same lookup.
+  const [quoteDiscountCad, setQuoteDiscountCad] = useState(0);
 
   const [step, setStep] = useState(1);
   const [personCount, setPersonCount] = useState(1);
@@ -180,6 +184,10 @@ export function CheckoutClient({
             quantity: 1,
           });
         }
+        const rawDiscount = Number(data.manual_discount_cad);
+        setQuoteDiscountCad(
+          Number.isFinite(rawDiscount) && rawDiscount > 0 ? rawDiscount : 0
+        );
         setAppliedQuoteNumber(quoteNumber);
       } finally {
         if (!cancelled) setQuoteLoading(false);
@@ -646,6 +654,8 @@ export function CheckoutClient({
                 representative={representative}
                 suppFulfillment={suppFulfillment}
                 suppShippingAddress={suppShippingAddress}
+                acceptedQuoteNumber={appliedQuoteNumber}
+                quoteDiscountCad={quoteDiscountCad}
               />
             )}
           </div>
@@ -658,6 +668,8 @@ export function CheckoutClient({
               lineCount={sidebarLineCount}
               subtotalOverride={sidebarSubtotal}
               appliedPromo={appliedPromo}
+              quoteDiscountCad={quoteDiscountCad}
+              acceptedQuoteNumber={appliedQuoteNumber}
             />
           </div>
         </div>

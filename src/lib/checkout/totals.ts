@@ -23,6 +23,10 @@ export interface TotalsInput {
   supplementShippingFee?: number;
   /** Self-collected kit service fee in CAD dollars (default 0). */
   kitServiceFee?: number;
+  /** Additional discount carried from an accepted quote (resolved CAD
+   *  dollars). Applied alongside the Stripe promo, but independently —
+   *  both can stack. */
+  quoteDiscount?: number;
 }
 
 export interface Totals {
@@ -31,6 +35,9 @@ export interface Totals {
   subtotalAfterDiscount: number;
   visitFee: number;
   promoDiscount: number;
+  /** Additional discount from an accepted quote. 0 when not a quote
+   *  acceptance flow. */
+  quoteDiscount: number;
   /** Pre-tax subtotal (post-discount). */
   subtotalBeforeTax: number;
   /** Estimated GST at Alberta rate — display only. Stripe Tax is authoritative. */
@@ -58,6 +65,7 @@ export function calculateTotals({
   resourceSubtotal = 0,
   supplementShippingFee = 0,
   kitServiceFee = 0,
+  quoteDiscount = 0,
 }: TotalsInput): Totals {
   const testsSubtotal = testLinePrices.reduce((s, p) => s + p, 0);
   const multiTestDiscount = computeDiscount(testLinePrices.length).total;
@@ -71,17 +79,26 @@ export function calculateTotals({
     supplementShippingFee +
     kitServiceFee;
 
+  // Quote discount is applied first (it's promised by the quote), then
+  // Stripe promo on top. Both clamp against running remainder so the
+  // pre-tax total can't go below zero.
+  const clampedQuoteDiscount = Math.max(
+    0,
+    Math.min(quoteDiscount, preDiscountTotal)
+  );
+  const afterQuoteDiscount = preDiscountTotal - clampedQuoteDiscount;
+
   let promoDiscount = 0;
   if (appliedPromo) {
     if (typeof appliedPromo.percentOff === "number") {
-      promoDiscount = preDiscountTotal * (appliedPromo.percentOff / 100);
+      promoDiscount = afterQuoteDiscount * (appliedPromo.percentOff / 100);
     } else if (typeof appliedPromo.amountOff === "number") {
       promoDiscount = appliedPromo.amountOff / 100;
     }
-    promoDiscount = Math.min(promoDiscount, preDiscountTotal);
+    promoDiscount = Math.min(promoDiscount, afterQuoteDiscount);
   }
 
-  const subtotalBeforeTax = Math.max(0, preDiscountTotal - promoDiscount);
+  const subtotalBeforeTax = Math.max(0, afterQuoteDiscount - promoDiscount);
   const estimatedGST = calculateGST(subtotalBeforeTax);
   const grandTotal = subtotalBeforeTax + estimatedGST;
 
@@ -91,6 +108,7 @@ export function calculateTotals({
     subtotalAfterDiscount,
     visitFee,
     promoDiscount,
+    quoteDiscount: clampedQuoteDiscount,
     subtotalBeforeTax,
     estimatedGST,
     grandTotal,

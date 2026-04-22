@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { resolveManualDiscount } from "@/lib/quotes/totals";
 
 export const runtime = "nodejs";
 
@@ -29,6 +30,8 @@ export async function GET(
       .from("quotes")
       .select(
         `id, quote_number, status, expires_at,
+         subtotal_cad, discount_cad, visit_fee_cad,
+         manual_discount_value, manual_discount_type,
          lines:quote_lines(
            test_id, unit_price_cad,
            test:tests(id, name, lab:labs(name))
@@ -42,6 +45,11 @@ export async function GET(
       quote_number: string;
       status: string;
       expires_at: string | null;
+      subtotal_cad: number;
+      discount_cad: number;
+      visit_fee_cad: number;
+      manual_discount_value: number | null;
+      manual_discount_type: "amount" | "percent" | null;
       lines: Array<{
         test_id: string;
         unit_price_cad: number;
@@ -98,10 +106,26 @@ export async function GET(
       };
     });
 
+    // Resolve the admin-entered additional discount to a dollar amount
+    // using the quote's snapshotted subtotal / visit fee / multi-test
+    // discount. Pinning to the quote (not the customer's live cart)
+    // means the discount equals what the emailed quote promised even
+    // if the cart is modified before checkout.
+    const manualDiscountCad = resolveManualDiscount(
+      Number(quote.subtotal_cad),
+      Number(quote.discount_cad),
+      Number(quote.visit_fee_cad),
+      {
+        value: Number(quote.manual_discount_value ?? 0),
+        type: quote.manual_discount_type ?? "amount",
+      }
+    );
+
     return NextResponse.json({
       valid: true,
       quote_number: quote.quote_number,
       items,
+      manual_discount_cad: manualDiscountCad,
     });
   } catch (err) {
     console.error("[quotes:lookup]", err);

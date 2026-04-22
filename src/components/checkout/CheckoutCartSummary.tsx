@@ -28,6 +28,12 @@ interface CheckoutCartSummaryProps {
   subtotalOverride?: number;
   /** Resolved Stripe promotion code applied to the order, if any. */
   appliedPromo?: AppliedPromo | null;
+  /** Quote-acceptance flow: admin-entered additional discount, CAD
+   *  dollars. 0 / undefined when not a quote acceptance. */
+  quoteDiscountCad?: number;
+  /** Quote number for the accepted quote (shown beside the discount
+   *  line). Optional. */
+  acceptedQuoteNumber?: string | null;
 }
 
 /**
@@ -42,6 +48,8 @@ export function CheckoutCartSummary({
   lineCount,
   subtotalOverride,
   appliedPromo = null,
+  quoteDiscountCad = 0,
+  acceptedQuoteNumber = null,
 }: CheckoutCartSummaryProps) {
   const { removeItem } = useCart();
   const testCount = cart.filter((i) => i.line_type === "test").length;
@@ -87,6 +95,7 @@ export function CheckoutCartSummary({
     supplementSubtotal,
     resourceSubtotal,
     kitServiceFee: kitFee.amount,
+    quoteDiscount: quoteDiscountCad,
   });
 
   const subtotal = totals.testsSubtotal;
@@ -292,6 +301,21 @@ export function CheckoutCartSummary({
               >
                 <span>Kit service</span>
                 <span>{formatCurrency(kitFee.amount)}</span>
+              </div>
+            )}
+
+            {totals.quoteDiscount > 0 && (
+              <div
+                className="flex justify-between text-sm font-medium pt-2 mt-1 border-t"
+                style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
+              >
+                <span>
+                  Additional discount
+                  {acceptedQuoteNumber
+                    ? ` (quote ${acceptedQuoteNumber})`
+                    : ""}
+                </span>
+                <span>−{formatCurrency(totals.quoteDiscount)}</span>
               </div>
             )}
 

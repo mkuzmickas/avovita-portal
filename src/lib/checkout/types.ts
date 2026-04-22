@@ -75,6 +75,10 @@ export interface CheckoutPayload {
   promotion_code_id?: string | null;
   /** White-label org slug — server resolves to org_id and tags the order. */
   org_slug?: string | null;
+  /** Quote being accepted (AVO-YYYY-NNNN). When present, the server
+   *  re-resolves the admin-entered additional discount from the quote
+   *  row and applies it to line items. */
+  quote_number?: string | null;
   /**
    * Representative (caregiver / POA) block. When present, `persons` are
    * the DEPENDENT clients being tested and the account is created under

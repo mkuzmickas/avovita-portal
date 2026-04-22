@@ -54,6 +54,11 @@ interface Step4Props {
   /** Supplement fulfillment state (from CheckoutClient step 3.5). */
   suppFulfillment?: SupplementFulfillment | null;
   suppShippingAddress?: SupplementShippingAddress | null;
+  /** Quote-acceptance flow: quote number in play and the resolved
+   *  admin-entered additional discount (CAD dollars). Null / 0 when
+   *  this isn't a quote acceptance. */
+  acceptedQuoteNumber?: string | null;
+  quoteDiscountCad?: number;
 }
 
 const RELATIONSHIP_LABEL: Record<string, string> = {
@@ -103,6 +108,8 @@ export function Step4Review({
   representative,
   suppFulfillment = null,
   suppShippingAddress = null,
+  acceptedQuoteNumber = null,
+  quoteDiscountCad = 0,
 }: Step4Props) {
   const { trackEvent } = useAnalytics();
   const { cart } = useCart();
@@ -160,9 +167,10 @@ export function Step4Review({
         resourceSubtotal,
         supplementShippingFee: suppShippingFee,
         kitServiceFee: kitFee.amount,
+        quoteDiscount: quoteDiscountCad,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [assignments, visitFees.total, appliedPromo, supplementSubtotal, resourceSubtotal, suppShippingFee, kitFee.amount]
+    [assignments, visitFees.total, appliedPromo, supplementSubtotal, resourceSubtotal, suppShippingFee, kitFee.amount, quoteDiscountCad]
   );
   const subtotal = totals.testsSubtotal;
   const discount = useMemo(
@@ -398,7 +406,11 @@ export function Step4Review({
         const res = await fetch("/api/stripe/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...payload, org_slug: orgSlug }),
+          body: JSON.stringify({
+            ...payload,
+            org_slug: orgSlug,
+            quote_number: acceptedQuoteNumber,
+          }),
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
@@ -669,6 +681,18 @@ export function Step4Review({
             <p className="text-xs italic mt-1" style={{ color: "#6ab04c" }}>
               {kitFee.note}
             </p>
+          )}
+          {totals.quoteDiscount > 0 && (
+            <div
+              className="flex justify-between font-medium pt-2 mt-1 border-t"
+              style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
+            >
+              <span>
+                Additional discount
+                {acceptedQuoteNumber ? ` (quote ${acceptedQuoteNumber})` : ""}
+              </span>
+              <span>−{formatCurrency(totals.quoteDiscount)}</span>
+            </div>
           )}
           {appliedPromo && promoDiscount > 0 && (
             <div

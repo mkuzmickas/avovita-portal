@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { computeDiscount } from "@/lib/checkout/discount";
+import { resolveManualDiscount } from "@/lib/quotes/totals";
 import type { CheckoutPayload } from "@/lib/checkout/types";
 
 /**
@@ -330,6 +331,64 @@ export async function POST(request: NextRequest) {
       customerEmail = body.representative.email.trim().toLowerCase();
     }
     void accountHolder; // We collect email at success-page time for guests
+
+    // ─── Handle accepted quote's additional discount ─────────────
+    // Server-side lookup pinned to the quote (not the cart) so the
+    // customer sees exactly what the email promised — the admin's
+    // entered discount, resolved against the quote's snapshotted
+    // subtotal / visit fee / multi-test discount.
+    const quoteNumber: string =
+      typeof body.quote_number === "string" ? body.quote_number.trim() : "";
+    if (quoteNumber) {
+      const { data: quoteRow } = await createServiceRoleClient()
+        .from("quotes")
+        .select(
+          "status, expires_at, subtotal_cad, discount_cad, visit_fee_cad, manual_discount_value, manual_discount_type"
+        )
+        .eq("quote_number", quoteNumber)
+        .maybeSingle();
+      type QuoteRow = {
+        status: string;
+        expires_at: string | null;
+        subtotal_cad: number;
+        discount_cad: number;
+        visit_fee_cad: number;
+        manual_discount_value: number | null;
+        manual_discount_type: "amount" | "percent" | null;
+      };
+      const q = quoteRow as QuoteRow | null;
+      const allowedStatus = ["draft", "sent", "accepted"];
+      const expired =
+        !!q?.expires_at && new Date(q.expires_at) <= new Date();
+      if (q && allowedStatus.includes(q.status) && !expired) {
+        const quoteDiscountCad = resolveManualDiscount(
+          Number(q.subtotal_cad),
+          Number(q.discount_cad),
+          Number(q.visit_fee_cad),
+          {
+            value: Number(q.manual_discount_value ?? 0),
+            type: q.manual_discount_type ?? "amount",
+          }
+        );
+        let remainingCents = Math.round(quoteDiscountCad * 100);
+        const preDiscountCents = lineItems.reduce(
+          (s, li) => s + li.price_data.unit_amount,
+          0
+        );
+        remainingCents = Math.min(remainingCents, preDiscountCents);
+        for (const li of lineItems) {
+          if (remainingCents <= 0) break;
+          const take = Math.min(li.price_data.unit_amount, remainingCents);
+          li.price_data.unit_amount -= take;
+          remainingCents -= take;
+          if (take > 0) {
+            const suffix = ` · Quote ${quoteNumber} −$${(take / 100).toFixed(2)}`;
+            li.price_data.product_data.description =
+              (li.price_data.product_data.description ?? "") + suffix;
+          }
+        }
+      }
+    }
 
     // ─── Handle promo code (DB-applied, no Stripe coupon needed) ──
     // The promo is validated via /api/checkout/validate-promo against
