@@ -8,6 +8,22 @@
  * pulling the full @react-email/render toolchain into the build.
  */
 
+import { PROMO_REGISTRY } from "@/lib/promo/promoCodes";
+
+/**
+ * Looks up the customer-facing label for a promo code (e.g., the
+ * FloLabs fee-waiver shows "FloLabs Fee Promo (FREEMOBILE26)" instead
+ * of the generic "Promo discount (FREEMOBILE26)"). Falls back to the
+ * generic label for unknown / legacy codes so we never break existing
+ * order confirmations.
+ */
+function promoDiscountLabel(code: string | null): string {
+  if (!code) return "Promo discount";
+  const def = PROMO_REGISTRY.find((p) => p.code === code.toUpperCase());
+  if (def) return def.displayLabel;
+  return `Promo discount (${code})`;
+}
+
 export interface OrderConfirmationTest {
   name: string;
   lab: string;
@@ -225,7 +241,7 @@ export function renderOrderConfirmationEmail(
                   hasPromo
                     ? `
                 <tr>
-                  <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">Promo discount${promoCode ? ` (${escapeHtml(promoCode)})` : ""}</td>
+                  <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">${escapeHtml(promoDiscountLabel(promoCode ?? null))}</td>
                   <td style="padding: 6px 0; text-align: right; color: #6fa030; font-size: 13px; font-weight: 600;">−${formatCurrency(promoDiscount)}</td>
                 </tr>`
                     : ""

@@ -223,33 +223,41 @@ export function Step4Review({
     }
     setPromoSubmitting(true);
     try {
-      const orgSlug =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem("avovita-org-slug")
-          : null;
+      // Pre-compute the cart context so fee-line-targeted codes (e.g.
+      // FREEMOBILE26) can reject up front when the target line isn't
+      // in the cart.
+      const preTaxCartCad =
+        totals.subtotalAfterDiscount +
+        visitFees.total +
+        supplementSubtotal +
+        resourceSubtotal +
+        suppShippingFee +
+        kitFee.amount;
       const res = await fetch("/api/checkout/validate-promo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, orgSlug }),
+        body: JSON.stringify({
+          code,
+          visitFeeCad: visitFees.total,
+          preTaxCartCad,
+        }),
       });
       const data = await res.json().catch(() => ({}));
-      console.log("[promo] validate-promo response:", data);
       if (!res.ok) {
         setPromoError(data.error ?? "That promo code isn't valid.");
         onPromoChange(null);
         return;
       }
       const next: AppliedPromo = {
-        promoId: data.promoId,
         code: data.code,
+        type: data.type,
+        displayLabel: data.displayLabel,
         percentOff:
-          typeof data.percentOff === "number" ? data.percentOff : null,
-        amountOff:
-          typeof data.amountOff === "number" ? data.amountOff : null,
-        currency: data.currency ?? null,
-        name: data.name ?? null,
+          typeof data.percentOff === "number" ? data.percentOff : undefined,
+        amountCad:
+          typeof data.amountCad === "number" ? data.amountCad : undefined,
+        notice: typeof data.notice === "string" ? data.notice : undefined,
       };
-      console.log("[promo] applying state:", next);
       onPromoChange(next);
       trackEvent("promo_code_applied", { code: data.code });
     } catch {
@@ -398,7 +406,7 @@ export function Step4Review({
           total,
           account_user_id: accountUserId,
           promo_code: appliedPromo?.code ?? undefined,
-          promotion_code_id: appliedPromo?.promoId ?? null,
+          promotion_code_id: null,
           representative:
             orderMode === "caregiver" ? representative : null,
         };
@@ -641,6 +649,19 @@ export function Step4Review({
               </span>
             </div>
           )}
+          {appliedPromo?.type === "flolabs_base_fee_waiver" && (
+            <div
+              className="flex justify-between font-medium"
+              style={{ color: "#8dc63f" }}
+            >
+              <span>{appliedPromo.displayLabel}</span>
+              <span>
+                {appliedPromo.notice
+                  ? appliedPromo.notice
+                  : `−${formatCurrency(promoDiscount)}`}
+              </span>
+            </div>
+          )}
           {supplementSubtotal > 0 && (
             <div
               className="flex justify-between pt-2 mt-1 border-t"
@@ -694,15 +715,17 @@ export function Step4Review({
               <span>−{formatCurrency(totals.quoteDiscount)}</span>
             </div>
           )}
-          {appliedPromo && promoDiscount > 0 && (
-            <div
-              className="flex justify-between font-medium pt-2 mt-1 border-t"
-              style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
-            >
-              <span>Promo code ({appliedPromo.code})</span>
-              <span>−{formatCurrency(promoDiscount)}</span>
-            </div>
-          )}
+          {appliedPromo &&
+            appliedPromo.type !== "flolabs_base_fee_waiver" &&
+            promoDiscount > 0 && (
+              <div
+                className="flex justify-between font-medium pt-2 mt-1 border-t"
+                style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
+              >
+                <span>{appliedPromo.displayLabel}</span>
+                <span>−{formatCurrency(promoDiscount)}</span>
+              </div>
+            )}
           {totals.estimatedGST > 0 && (
             <div
               className="flex justify-between pt-2 mt-1 border-t"
@@ -769,12 +792,14 @@ export function Step4Review({
                   Promo applied · {appliedPromo.code}
                   {appliedPromo.percentOff != null
                     ? ` — ${appliedPromo.percentOff}% off`
-                    : appliedPromo.amountOff != null
-                      ? ` — $${(appliedPromo.amountOff / 100).toFixed(2)} off`
-                      : ""}
+                    : appliedPromo.type === "flolabs_base_fee_waiver"
+                      ? " — FloLabs collection fee waived"
+                      : appliedPromo.amountCad != null
+                        ? ` — $${appliedPromo.amountCad.toFixed(2)} off`
+                        : ""}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "#6ab04c" }}>
-                  Discount will be applied at payment.
+                  {appliedPromo.notice ?? "Discount will be applied at payment."}
                 </p>
               </div>
               <button

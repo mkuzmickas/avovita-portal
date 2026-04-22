@@ -88,14 +88,32 @@ export function calculateTotals({
   );
   const afterQuoteDiscount = preDiscountTotal - clampedQuoteDiscount;
 
+  // Promo discount — branches on type. All paths clamp so the running
+  // total can't go negative. See src/lib/promo/promoCodes.ts for the
+  // registry and the canonical `applyPromoCode` logic.
   let promoDiscount = 0;
   if (appliedPromo) {
-    if (typeof appliedPromo.percentOff === "number") {
-      promoDiscount = afterQuoteDiscount * (appliedPromo.percentOff / 100);
-    } else if (typeof appliedPromo.amountOff === "number") {
-      promoDiscount = appliedPromo.amountOff / 100;
+    switch (appliedPromo.type) {
+      case "flolabs_base_fee_waiver": {
+        // Targets only the visit fee line, capped at the line's
+        // current charge. If a quote discount or prior mechanism has
+        // already reduced the visit fee below the target, the effective
+        // discount shrinks to match — mirrors the registry's notice.
+        const target = appliedPromo.amountCad ?? 0;
+        promoDiscount = Math.min(target, Math.max(0, visitFee));
+        break;
+      }
+      case "whole_cart_percent": {
+        promoDiscount =
+          afterQuoteDiscount * ((appliedPromo.percentOff ?? 0) / 100);
+        break;
+      }
+      case "whole_cart_amount": {
+        promoDiscount = appliedPromo.amountCad ?? 0;
+        break;
+      }
     }
-    promoDiscount = Math.min(promoDiscount, afterQuoteDiscount);
+    promoDiscount = Math.max(0, Math.min(promoDiscount, afterQuoteDiscount));
   }
 
   const subtotalBeforeTax = Math.max(0, afterQuoteDiscount - promoDiscount);

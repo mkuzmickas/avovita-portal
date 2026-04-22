@@ -319,15 +319,20 @@ export function CheckoutCartSummary({
               </div>
             )}
 
-            {appliedPromo && promoDiscount > 0 && (
-              <div
-                className="flex justify-between text-sm font-medium pt-2 mt-1 border-t"
-                style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
-              >
-                <span>Promo code ({appliedPromo.code})</span>
-                <span>−{formatCurrency(promoDiscount)}</span>
-              </div>
-            )}
+            {appliedPromo &&
+              (promoDiscount > 0 || appliedPromo.notice) && (
+                <div
+                  className="flex justify-between text-sm font-medium pt-2 mt-1 border-t"
+                  style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
+                >
+                  <span>{appliedPromo.displayLabel}</span>
+                  <span>
+                    {appliedPromo.notice
+                      ? appliedPromo.notice
+                      : `−${formatCurrency(promoDiscount)}`}
+                  </span>
+                </div>
+              )}
 
             {totals.estimatedGST > 0 && (
               <div

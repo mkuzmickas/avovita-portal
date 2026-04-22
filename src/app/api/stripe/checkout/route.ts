@@ -3,6 +3,7 @@ import { stripe } from "@/lib/stripe";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { resolveManualDiscount } from "@/lib/quotes/totals";
+import { applyPromoCode } from "@/lib/promo/promoCodes";
 import type { CheckoutPayload } from "@/lib/checkout/types";
 
 /**
@@ -390,61 +391,64 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ─── Handle promo code (DB-applied, no Stripe coupon needed) ──
-    // The promo is validated via /api/checkout/validate-promo against
-    // the Supabase promo_codes table. We re-look up the row server-
-    // side here so the client can't tamper with the discount, then
-    // apply it by reducing each Stripe line_item's unit_amount
-    // directly — exactly how the multi-test discount works above.
-    // Stripe never sees the promo_code / coupon / promotion_code id:
-    // no more "No such promotion code" errors when a DB row's
-    // stripe_promo_id points at a test-mode / stale id.
+    // ─── Handle promo code via the shared registry ────────────────
+    // Resolved fresh against src/lib/promo/promoCodes.ts so the client
+    // can't tamper with the discount amount. The registry is the one
+    // place that defines discount shape (whole-cart vs fee-line) and
+    // display label; this route just asks where to subtract from.
     const rawPromoCode: string =
       typeof body.promo_code === "string" ? body.promo_code.trim() : "";
     if (rawPromoCode) {
-      const { data: promoRow } = await createServiceRoleClient()
-        .from("promo_codes")
-        .select("percent_off, amount_off, active, expires_at, org_id")
-        .ilike("code", rawPromoCode)
-        .maybeSingle();
-      type PromoRow = {
-        percent_off: number | null;
-        amount_off: number | null;
-        active: boolean;
-        expires_at: string | null;
-        org_id: string | null;
-      };
-      const row = promoRow as PromoRow | null;
-      const isExpired =
-        !!row?.expires_at && new Date(row.expires_at) <= new Date();
-      const orgOk =
-        !row?.org_id || (resolvedOrgId !== null && resolvedOrgId === row.org_id);
-      if (row?.active && !isExpired && orgOk) {
-        const percentOff = row.percent_off ?? 0;
-        const amountOffDollars = row.amount_off != null ? Number(row.amount_off) : 0;
-
-        const preDiscountCents = lineItems.reduce(
-          (s, li) => s + li.price_data.unit_amount,
-          0
-        );
-        let remainingDiscountCents = percentOff > 0
-          ? Math.round(preDiscountCents * (percentOff / 100))
-          : Math.round(amountOffDollars * 100);
-        remainingDiscountCents = Math.min(
-          remainingDiscountCents,
-          preDiscountCents
-        );
-
-        // Walk line items and subtract until the discount is exhausted.
-        for (const li of lineItems) {
-          if (remainingDiscountCents <= 0) break;
-          const take = Math.min(li.price_data.unit_amount, remainingDiscountCents);
-          li.price_data.unit_amount -= take;
-          remainingDiscountCents -= take;
-          if (take > 0) {
-            const suffix = ` · Promo ${rawPromoCode.toUpperCase()} −$${(take / 100).toFixed(2)}`;
-            li.price_data.product_data.description =
-              (li.price_data.product_data.description ?? "") + suffix;
+      const preTaxCartDollars =
+        lineItems.reduce((s, li) => s + li.price_data.unit_amount, 0) / 100;
+      const result = applyPromoCode(rawPromoCode, {
+        visitFeeCad: visitFeeTotal,
+        preTaxCartCad: preTaxCartDollars,
+      });
+      if (result.valid) {
+        const labelSuffix = ` · ${result.display_label}`;
+        if (result.applied_to_line === "flolabs_base_fee") {
+          // Subtract exclusively from the FloLabs Home Visit Fee line —
+          // the $55/additional-person surcharges live in the same line
+          // total so the cap at line.unit_amount handles the "only
+          // waive the base" behaviour: discount is registry amount
+          // clamped to what the line actually charges.
+          const visitLine = lineItems.find(
+            (li) => li.price_data.product_data.name === "FloLabs Home Visit Fee"
+          );
+          if (visitLine) {
+            const takeCents = Math.min(
+              Math.round(result.discount_cad * 100),
+              visitLine.price_data.unit_amount
+            );
+            visitLine.price_data.unit_amount -= takeCents;
+            if (takeCents > 0) {
+              visitLine.price_data.product_data.description =
+                (visitLine.price_data.product_data.description ?? "") +
+                labelSuffix +
+                ` −$${(takeCents / 100).toFixed(2)}`;
+            }
+          }
+        } else {
+          // Whole-cart: walk every line_item subtracting until the
+          // discount is exhausted. Same mechanism as multi-test.
+          let remainingCents = Math.round(result.discount_cad * 100);
+          const preDiscountCents = lineItems.reduce(
+            (s, li) => s + li.price_data.unit_amount,
+            0
+          );
+          remainingCents = Math.min(remainingCents, preDiscountCents);
+          for (const li of lineItems) {
+            if (remainingCents <= 0) break;
+            const take = Math.min(li.price_data.unit_amount, remainingCents);
+            li.price_data.unit_amount -= take;
+            remainingCents -= take;
+            if (take > 0) {
+              li.price_data.product_data.description =
+                (li.price_data.product_data.description ?? "") +
+                labelSuffix +
+                ` −$${(take / 100).toFixed(2)}`;
+            }
           }
         }
       }

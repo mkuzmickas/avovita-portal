@@ -90,20 +90,29 @@ export interface CheckoutPayload {
   representative?: RepresentativeBlock | null;
 }
 
-/** Resolved Stripe promotion code (returned by /api/checkout/validate-promo). */
+/**
+ * Resolved promo code (returned by /api/checkout/validate-promo and
+ * mirrored in client state). Sourced from the PROMO_REGISTRY in
+ * `src/lib/promo/promoCodes.ts` — Stripe coupon/promo ids are no
+ * longer involved; the Stripe route walks line_items directly based
+ * on the `type` below.
+ */
 export interface AppliedPromo {
-  /** Stripe promotion code id (`promo_xxx`). */
-  promoId: string;
-  /** Customer-facing code string as entered. */
+  /** Canonical uppercase code. */
   code: string;
-  /** Discount as a percentage (0-100), when the underlying coupon uses percent_off. */
-  percentOff: number | null;
-  /** Discount as a fixed amount in the smallest currency unit (cents). */
-  amountOff: number | null;
-  /** ISO currency for amountOff (lowercase). */
-  currency: string | null;
-  /** Optional human-readable coupon name. */
-  name: string | null;
+  /** Discount shape — drives which line(s) the discount applies against. */
+  type:
+    | "whole_cart_percent"
+    | "whole_cart_amount"
+    | "flolabs_base_fee_waiver";
+  /** Human-readable label used for every discount line (UI + emails). */
+  displayLabel: string;
+  /** For whole_cart_percent. */
+  percentOff?: number;
+  /** For whole_cart_amount and flolabs_base_fee_waiver (CAD dollars). */
+  amountCad?: number;
+  /** Optional soft notice (e.g., "Collection fee already waived"). */
+  notice?: string;
 }
 
 export interface RepresentativeBlock {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
+import { applyPromoCode } from "@/lib/promo/promoCodes";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { computeDiscount } from "@/lib/checkout/discount";
 import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
@@ -296,57 +297,65 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ─── Promo code (same logic as existing route) ───────────────
+    // ─── Promo code — resolved via shared registry ────────────────
+    // Same mechanism as the /api/stripe/checkout route: we re-validate
+    // server-side against src/lib/promo/promoCodes.ts so the client
+    // can't tamper with the discount amount. Whole-cart codes spread
+    // across line_items; flolabs_base_fee_waiver targets the visit
+    // fee line only.
     const rawPromoCode = payload.promo_code?.trim() ?? "";
     if (rawPromoCode) {
-      const { data: promoRow } = await service
-        .from("promo_codes")
-        .select("percent_off, amount_off, active, expires_at, org_id")
-        .ilike("code", rawPromoCode)
-        .maybeSingle();
-      type PromoRow = {
-        percent_off: number | null;
-        amount_off: number | null;
-        active: boolean;
-        expires_at: string | null;
-        org_id: string | null;
-      };
-      const row = promoRow as PromoRow | null;
-      const isExpired =
-        !!row?.expires_at && new Date(row.expires_at) <= new Date();
-      const orgOk =
-        !row?.org_id ||
-        (payload.org_id !== null &&
-          payload.org_id !== undefined &&
-          payload.org_id === row.org_id);
-      if (row?.active && !isExpired && orgOk) {
-        const percentOff = row.percent_off ?? 0;
-        const amountOffDollars =
-          row.amount_off != null ? Number(row.amount_off) : 0;
-        const preDiscountCents = lineItems.reduce(
+      const visitFeeCad = payload.visit_fees?.total ?? 0;
+      const preTaxCartDollars =
+        lineItems.reduce(
           (s, li) => s + li.price_data.unit_amount * li.quantity,
           0,
-        );
-        let remainingDiscountCents =
-          percentOff > 0
-            ? Math.round(preDiscountCents * (percentOff / 100))
-            : Math.round(amountOffDollars * 100);
-        remainingDiscountCents = Math.min(
-          remainingDiscountCents,
-          preDiscountCents,
-        );
-        for (const li of lineItems) {
-          if (remainingDiscountCents <= 0) break;
-          const take = Math.min(
-            li.price_data.unit_amount,
-            remainingDiscountCents,
+        ) / 100;
+      const result = applyPromoCode(rawPromoCode, {
+        visitFeeCad,
+        preTaxCartCad: preTaxCartDollars,
+      });
+      if (result.valid) {
+        const labelSuffix = ` · ${result.display_label}`;
+        if (result.applied_to_line === "flolabs_base_fee") {
+          const visitLine = lineItems.find(
+            (li) =>
+              li.price_data.product_data.name === "FloLabs Home Visit Fee",
           );
-          li.price_data.unit_amount -= take;
-          remainingDiscountCents -= take;
-          if (take > 0) {
-            const suffix = ` · Promo ${rawPromoCode.toUpperCase()} −$${(take / 100).toFixed(2)}`;
-            li.price_data.product_data.description =
-              (li.price_data.product_data.description ?? "") + suffix;
+          if (visitLine) {
+            const takeCents = Math.min(
+              Math.round(result.discount_cad * 100),
+              visitLine.price_data.unit_amount,
+            );
+            visitLine.price_data.unit_amount -= takeCents;
+            if (takeCents > 0) {
+              visitLine.price_data.product_data.description =
+                (visitLine.price_data.product_data.description ?? "") +
+                labelSuffix +
+                ` −$${(takeCents / 100).toFixed(2)}`;
+            }
+          }
+        } else {
+          let remainingCents = Math.round(result.discount_cad * 100);
+          const preDiscountCents = lineItems.reduce(
+            (s, li) => s + li.price_data.unit_amount * li.quantity,
+            0,
+          );
+          remainingCents = Math.min(remainingCents, preDiscountCents);
+          for (const li of lineItems) {
+            if (remainingCents <= 0) break;
+            const take = Math.min(
+              li.price_data.unit_amount,
+              remainingCents,
+            );
+            li.price_data.unit_amount -= take;
+            remainingCents -= take;
+            if (take > 0) {
+              li.price_data.product_data.description =
+                (li.price_data.product_data.description ?? "") +
+                labelSuffix +
+                ` −$${(take / 100).toFixed(2)}`;
+            }
           }
         }
       }
