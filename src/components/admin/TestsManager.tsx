@@ -14,6 +14,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { formatCurrency, slugify } from "@/lib/utils";
+import { getShortLabName } from "@/lib/labs/labDisplay";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { createClient } from "@/lib/supabase/client";
 import { InsightsChatModal } from "@/components/catalogue/InsightsChatModal";
@@ -54,6 +55,8 @@ type EditableFields = {
   sku: string;
   mayo_test_id: string;
   collection_method: string;
+  active: boolean;
+  featured: boolean;
 };
 
 const EMPTY_FORM: EditableFields = {
@@ -74,6 +77,8 @@ const EMPTY_FORM: EditableFields = {
   sku: "",
   mayo_test_id: "",
   collection_method: "phlebotomist_draw",
+  active: true,
+  featured: false,
 };
 
 const MAYO_URL_BASE = "https://mayocliniclabs.com/test-catalog/overview/";
@@ -142,27 +147,6 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
     );
   };
 
-  const toggleField = async (
-    test: AdminTestRow,
-    field: "active" | "featured"
-  ) => {
-    const newValue = !test[field];
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("tests")
-      .update({ [field]: newValue })
-      .eq("id", test.id);
-
-    if (error) {
-      alert(`Failed to update: ${error.message}`);
-      return;
-    }
-
-    setTests((prev) =>
-      prev.map((t) => (t.id === test.id ? { ...t, [field]: newValue } : t))
-    );
-  };
-
   const saveEdit = async (testId: string, fields: EditableFields) => {
     const supabase = createClient();
     const handlingPayload = buildHandlingPayload(fields);
@@ -186,6 +170,8 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       sku: fields.sku || null,
       mayo_test_id: fields.mayo_test_id || null,
       collection_method: fields.collection_method || "phlebotomist_draw",
+      active: fields.active,
+      featured: fields.featured,
     };
 
     const { error } = await supabase
@@ -278,8 +264,8 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       sku: fields.sku || null,
       mayo_test_id: fields.mayo_test_id || null,
       collection_method: fields.collection_method || "phlebotomist_draw",
-      active: true,
-      featured: false,
+      active: fields.active,
+      featured: fields.featured,
     };
 
     const { data, error } = await supabase
@@ -444,6 +430,17 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       >
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
+            <colgroup>
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "10%" }} />
+            </colgroup>
             <thead>
               <tr style={{ backgroundColor: "#0f2614" }}>
                 {[
@@ -453,16 +450,13 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
                   "Category",
                   "Handling",
                   "Stability",
-                  "Cost",
-                  "Client Price",
-                  "Margin",
-                  "Active",
-                  "Featured",
+                  "Pricing",
+                  "Status",
                   "",
                 ].map((h, i) => (
                   <th
                     key={i}
-                    className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider"
+                    className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider"
                     style={{
                       color: "#c4973a",
                       fontFamily: '"DM Sans", sans-serif',
@@ -477,7 +471,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={12}
+                    colSpan={9}
                     className="px-6 py-16 text-center"
                     style={{
                       backgroundColor: "#0a1a0d",
@@ -504,7 +498,6 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
                       isEditing={isEditing}
                       onEdit={() => setEditingId(test.id)}
                       onCancel={() => setEditingId(null)}
-                      onToggle={toggleField}
                       onSave={(fields) => saveEdit(test.id, fields)}
                       onUpdateStock={updateStock}
                       onDeactivate={() => deactivateTest(test.id)}
@@ -541,7 +534,6 @@ function TestRow({
   isEditing,
   onEdit,
   onCancel,
-  onToggle,
   onSave,
   onUpdateStock,
   onDeactivate,
@@ -554,7 +546,6 @@ function TestRow({
   isEditing: boolean;
   onEdit: () => void;
   onCancel: () => void;
-  onToggle: (test: AdminTestRow, field: "active" | "featured") => void;
   onSave: (fields: EditableFields) => Promise<void>;
   onUpdateStock: (testId: string, newQty: number) => Promise<void>;
   onDeactivate: () => Promise<void>;
@@ -584,6 +575,8 @@ function TestRow({
     sku: test.sku ?? "",
     mayo_test_id: test.mayo_test_id ?? "",
     collection_method: test.collection_method ?? "phlebotomist_draw",
+    active: test.active,
+    featured: test.featured,
   };
 
   return (
@@ -595,7 +588,7 @@ function TestRow({
           borderTop: "1px solid #1a3d22",
         }}
       >
-        <td className="px-5 py-4 font-medium" style={{ color: "#ffffff" }}>
+        <td className="px-3 py-4 font-medium" style={{ color: "#ffffff" }}>
           <div>{test.name}</div>
           {test.track_inventory && <StockBadge test={test} />}
         </td>
@@ -605,14 +598,18 @@ function TestRow({
         >
           {test.sku ?? "—"}
         </td>
-        <td className="px-5 py-4" style={{ color: "#e8d5a3" }}>
-          {test.lab.name}
+        <td
+          className="px-3 py-4 whitespace-nowrap"
+          style={{ color: "#e8d5a3" }}
+          title={test.lab.name}
+        >
+          {getShortLabName(test.lab.name)}
         </td>
-        <td className="px-5 py-4" style={{ color: "#e8d5a3" }}>
+        <td className="px-3 py-4" style={{ color: "#e8d5a3" }}>
           {test.category ?? "—"}
         </td>
         <td
-          className="px-4 py-4 text-xs whitespace-nowrap"
+          className="px-3 py-4 text-xs whitespace-nowrap"
           title={formatHandling(test.handling_type)}
           style={{
             color:
@@ -624,7 +621,7 @@ function TestRow({
             : formatHandling(test.handling_type)}
         </td>
         <td
-          className="px-4 py-4 text-xs whitespace-nowrap"
+          className="px-3 py-4 text-xs whitespace-nowrap"
           style={{
             color:
               test.stability_days == null ? MISSING_DATA_COLOR : "#e8d5a3",
@@ -656,40 +653,13 @@ function TestRow({
             </span>
           )}
         </td>
-        <td
-          className="px-5 py-4 whitespace-nowrap"
-          style={{ color: "#e8d5a3" }}
-        >
-          {test.cost_cad != null ? formatCurrency(test.cost_cad) : "—"}
+        <td className="px-3 py-4 whitespace-nowrap">
+          <PricingCell price={test.price_cad} cost={test.cost_cad} />
         </td>
-        <td
-          className="px-5 py-4 font-semibold whitespace-nowrap"
-          style={{ color: "#c4973a" }}
-        >
-          {test.price_cad != null ? formatCurrency(test.price_cad) : "—"}
+        <td className="px-3 py-4 whitespace-nowrap">
+          <StatusCell active={test.active} featured={test.featured} />
         </td>
-        <td className="px-5 py-4 font-semibold whitespace-nowrap">
-          <MarginCell price={test.price_cad} cost={test.cost_cad} />
-        </td>
-        <td className="px-5 py-4">
-          <ToggleSwitch
-            on={test.active}
-            onClick={() => onToggle(test, "active")}
-            label="Active"
-            onLabel="Active"
-            offLabel="Inactive"
-          />
-        </td>
-        <td className="px-5 py-4">
-          <ToggleSwitch
-            on={test.featured}
-            onClick={() => onToggle(test, "featured")}
-            label="Featured"
-            onLabel="Featured"
-            offLabel="Not Featured"
-          />
-        </td>
-        <td className="px-5 py-4 text-right">
+        <td className="px-3 py-4 text-right">
           <div className="flex items-center justify-end gap-2">
             {test.mayo_test_id && (
               <a
@@ -733,7 +703,7 @@ function TestRow({
 
       {isEditing && (
         <tr style={{ backgroundColor: rowBg }}>
-          <td colSpan={12} className="p-0">
+          <td colSpan={9} className="p-0">
             <div
               className="px-6 py-5 border-t"
               style={{
@@ -762,22 +732,88 @@ function TestRow({
   );
 }
 
-// ─── Margin cell ────────────────────────────────────────────────────────
+// ─── Pricing cell (client price + cost + margin stacked) ───────────────
 
-function MarginCell({
+function PricingCell({
   price,
   cost,
 }: {
   price: number | null;
   cost: number | null;
 }) {
-  if (price == null || cost == null) {
+  // All three absent → single em-dash (missing data visibility).
+  if (price == null && cost == null) {
     return <span style={{ color: "#6ab04c" }}>—</span>;
   }
-  const margin = price - cost;
-  const color =
-    margin >= 50 ? "#8dc63f" : margin >= 20 ? "#c4973a" : "#e05252";
-  return <span style={{ color }}>{formatCurrency(margin)}</span>;
+  const margin =
+    price != null && cost != null ? price - cost : null;
+  const marginColor =
+    margin == null
+      ? "#6ab04c"
+      : margin >= 50
+        ? "#8dc63f"
+        : margin >= 20
+          ? "#c4973a"
+          : "#e05252";
+  return (
+    <div className="leading-tight">
+      <div className="font-semibold" style={{ color: "#c4973a" }}>
+        {price != null ? formatCurrency(price) : "—"}
+      </div>
+      <div
+        className="text-[11px] mt-0.5"
+        style={{ color: "#6ab04c" }}
+      >
+        <span>Cost {cost != null ? formatCurrency(cost) : "—"}</span>
+        <span style={{ opacity: 0.6 }}> · </span>
+        <span style={{ color: marginColor }}>
+          Margin {margin != null ? formatCurrency(margin) : "—"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Status cell (display-only active + featured pills) ────────────────
+
+function StatusCell({
+  active,
+  featured,
+}: {
+  active: boolean;
+  featured: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1 items-start">
+      {active ? (
+        <span
+          className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
+          style={{ backgroundColor: "#8dc63f", color: "#0a1a0d" }}
+        >
+          Active
+        </span>
+      ) : (
+        <span
+          className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border"
+          style={{
+            backgroundColor: "transparent",
+            borderColor: "#6b7280",
+            color: "#9ca3af",
+          }}
+        >
+          Inactive
+        </span>
+      )}
+      {featured && (
+        <span
+          className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
+          style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+        >
+          Featured
+        </span>
+      )}
+    </div>
+  );
 }
 
 // ─── Stock badge (display-only, in Name cell) ───────────────────────────
@@ -1274,6 +1310,34 @@ function InlineTestForm({
           <StockCell test={stockTest} onUpdateStock={onUpdateStock} />
         </Field>
       )}
+
+      <div
+        className="rounded-lg border p-4"
+        style={{ borderColor: "#2d6b35", backgroundColor: "#0f2614" }}
+      >
+        <p
+          className="text-xs font-semibold uppercase tracking-wider mb-3"
+          style={{ color: "#c4973a" }}
+        >
+          Visibility
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <ToggleSwitch
+            on={fields.active}
+            onClick={() => update("active", !fields.active)}
+            label="Active"
+            onLabel="Active"
+            offLabel="Inactive"
+          />
+          <ToggleSwitch
+            on={fields.featured}
+            onClick={() => update("featured", !fields.featured)}
+            label="Featured"
+            onLabel="Featured"
+            offLabel="Not Featured"
+          />
+        </div>
+      </div>
 
       {error && (
         <div
