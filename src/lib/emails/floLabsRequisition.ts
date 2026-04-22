@@ -55,7 +55,7 @@ export async function sendFloLabsRequisition(
   const { data: testsRaw } = await supabase
     .from("tests")
     .select(
-      "id, name, specimen_type, handling_type, stability_days, stability_days_frozen, stability_notes, turnaround_display, lab:labs(name, shipping_notes)"
+      "id, name, specimen_type, handling_type, stability_days, stability_days_frozen, handling_instructions, turnaround_display, lab:labs(name, shipping_notes)"
     )
     .in("id", testIds);
 
@@ -66,7 +66,7 @@ export async function sendFloLabsRequisition(
     handling_type: HandlingType | null;
     stability_days: number | null;
     stability_days_frozen: number | null;
-    stability_notes: string | null;
+    handling_instructions: string | null;
     turnaround_display: string | null;
     lab: { name: string; shipping_notes: string | null } | { name: string; shipping_notes: string | null }[] | null;
   };

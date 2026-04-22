@@ -13,7 +13,7 @@ export type CatalogueTest = {
   specimen_type: string | null;
   /** @deprecated Legacy freeform — use handling_type for rendering. */
   ship_temp: string | null;
-  stability_notes: string | null;
+  handling_instructions: string | null;
   handling_type:
     | "refrigerated_only"
     | "frozen_only"

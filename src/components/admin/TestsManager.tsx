@@ -44,7 +44,7 @@ type EditableFields = {
   cost_cad: string;
   specimen_type: string;
   handling_type: HandlingType | "";
-  stability_notes: string;
+  handling_instructions: string;
   stability_days: string;
   stability_days_frozen: string;
   turnaround_display: string;
@@ -64,7 +64,7 @@ const EMPTY_FORM: EditableFields = {
   cost_cad: "",
   specimen_type: "",
   handling_type: "",
-  stability_notes: "",
+  handling_instructions: "",
   stability_days: "",
   stability_days_frozen: "",
   turnaround_display: "",
@@ -173,7 +173,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       price_cad: fields.price_cad ? parseFloat(fields.price_cad) : null,
       cost_cad: fields.cost_cad ? parseFloat(fields.cost_cad) : null,
       specimen_type: fields.specimen_type || null,
-      stability_notes: fields.stability_notes || null,
+      handling_instructions: fields.handling_instructions || null,
       ...handlingPayload,
       turnaround_display: fields.turnaround_display || null,
       turnaround_min_days: fields.turnaround_min_days
@@ -265,7 +265,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       price_cad: fields.price_cad ? parseFloat(fields.price_cad) : null,
       cost_cad: fields.cost_cad ? parseFloat(fields.cost_cad) : null,
       specimen_type: fields.specimen_type || null,
-      stability_notes: fields.stability_notes || null,
+      handling_instructions: fields.handling_instructions || null,
       ...handlingPayload,
       turnaround_display: fields.turnaround_display || null,
       turnaround_min_days: fields.turnaround_min_days
@@ -290,7 +290,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         id, lab_id, name, slug, description, category, price_cad,
         turnaround_display, turnaround_min_days, turnaround_max_days,
         turnaround_note, specimen_type, ship_temp, ship_temperature,
-        handling_type, stability_notes, stability_days, stability_days_frozen,
+        handling_type, handling_instructions, stability_days, stability_days_frozen,
         active, featured, created_at, updated_at,
         sku, mayo_test_id, cost_cad, collection_method,
         track_inventory, stock_qty, low_stock_threshold
@@ -568,7 +568,7 @@ function TestRow({
     cost_cad: test.cost_cad != null ? String(test.cost_cad) : "",
     specimen_type: test.specimen_type ?? "",
     handling_type: test.handling_type ?? "",
-    stability_notes: test.stability_notes ?? "",
+    handling_instructions: test.handling_instructions ?? "",
     stability_days:
       test.stability_days != null ? String(test.stability_days) : "",
     stability_days_frozen:
@@ -629,7 +629,7 @@ function TestRow({
             color:
               test.stability_days == null ? MISSING_DATA_COLOR : "#e8d5a3",
           }}
-          title={test.stability_notes ?? ""}
+          title={test.handling_instructions ?? ""}
         >
           {test.stability_days == null ? (
             "—"
@@ -1257,10 +1257,13 @@ function InlineTestForm({
         />
       </Field>
 
-      <Field label="Stability Notes">
+      <Field
+        label="Handling Instructions"
+        helper="Special collection or processing instructions for FloLabs (e.g., protect from light, centrifuge within 30 min, avoid hemolysis). Do NOT restate shipping stability — that's captured by the Handling and stability fields above."
+      >
         <textarea
-          value={fields.stability_notes}
-          onChange={(e) => update("stability_notes", e.target.value)}
+          value={fields.handling_instructions}
+          onChange={(e) => update("handling_instructions", e.target.value)}
           className="mf-input"
           rows={2}
         />

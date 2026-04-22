@@ -125,7 +125,7 @@ export interface Test {
     | "ambient_only"
     | "refrigerated_or_frozen"
     | null;
-  stability_notes: string | null;
+  handling_instructions: string | null;
   stability_days: number | null;
   /** Only populated when handling_type = 'refrigerated_or_frozen'. */
   stability_days_frozen: number | null;
