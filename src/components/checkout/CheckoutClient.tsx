@@ -188,6 +188,39 @@ export function CheckoutClient({
         setQuoteDiscountCad(
           Number.isFinite(rawDiscount) && rawDiscount > 0 ? rawDiscount : 0
         );
+        // Pre-populate person count + collection city from the quote so
+        // the home-visit fee preview matches the emailed quote the moment
+        // the customer lands in checkout.
+        const quotedPersonCount = Number(data.person_count);
+        if (Number.isFinite(quotedPersonCount) && quotedPersonCount >= 1) {
+          const clamped = Math.min(6, Math.max(1, quotedPersonCount));
+          setPersonCount(clamped);
+          setPersons((prev) => {
+            const next = defaultPersons(clamped);
+            for (let i = 0; i < clamped; i++) {
+              if (prev[i])
+                next[i] = {
+                  ...next[i],
+                  ...prev[i],
+                  index: i,
+                  is_account_holder: i === 0,
+                };
+              if (i === 0) {
+                next[i].relationship = "account_holder";
+                next[i].consent_acknowledged = true;
+                next[i].is_account_holder = true;
+              }
+            }
+            return next;
+          });
+        }
+        if (typeof data.collection_city === "string" && data.collection_city) {
+          setCollectionAddress((prev) =>
+            prev.city === data.collection_city
+              ? prev
+              : { ...prev, city: data.collection_city as string }
+          );
+        }
         setAppliedQuoteNumber(quoteNumber);
       } finally {
         if (!cancelled) setQuoteLoading(false);
@@ -473,11 +506,16 @@ export function CheckoutClient({
     showSupplementFulfillmentStep ? setStep(35) : setStep(3);
 
   const visitFees = useMemo(
-    () =>
-      step === 1 || isKitOnly
-        ? null
-        : computeVisitFees(personCount, collectionAddress.postal_code),
-    [personCount, step, collectionAddress.postal_code, isKitOnly]
+    () => {
+      if (isKitOnly) return null;
+      // On step 1 we normally hide the visit fee because the user hasn't
+      // picked a person count yet. When the flow was kicked off by a
+      // quote-accept link we already know the person count from the
+      // quote, so show the fee from step 1 to match the emailed quote.
+      if (step === 1 && !appliedQuoteNumber) return null;
+      return computeVisitFees(personCount, collectionAddress.postal_code);
+    },
+    [personCount, step, collectionAddress.postal_code, isKitOnly, appliedQuoteNumber]
   );
 
   // Sidebar always reflects the cart, never the partial assignment state.

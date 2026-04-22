@@ -32,6 +32,7 @@ export async function GET(
         `id, quote_number, status, expires_at,
          subtotal_cad, discount_cad, visit_fee_cad,
          manual_discount_value, manual_discount_type,
+         person_count, collection_city,
          lines:quote_lines(
            test_id, unit_price_cad,
            test:tests(id, name, lab:labs(name))
@@ -50,6 +51,8 @@ export async function GET(
       visit_fee_cad: number;
       manual_discount_value: number | null;
       manual_discount_type: "amount" | "percent" | null;
+      person_count: number | null;
+      collection_city: string | null;
       lines: Array<{
         test_id: string;
         unit_price_cad: number;
@@ -126,6 +129,8 @@ export async function GET(
       quote_number: quote.quote_number,
       items,
       manual_discount_cad: manualDiscountCad,
+      person_count: quote.person_count ?? 1,
+      collection_city: quote.collection_city,
     });
   } catch (err) {
     console.error("[quotes:lookup]", err);
