@@ -4,9 +4,11 @@ import type { createServiceRoleClient } from "@/lib/supabase/server";
 import type { OrderMetadataPayload } from "@/lib/checkout/materialise";
 import {
   formatShipTempLong,
+  formatShipTempShort,
   formatStability,
   type ShipTemp,
 } from "@/lib/tests/shipTempDisplay";
+import { formatStabilityShort } from "@/lib/tests/stabilityDisplay";
 
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
 
@@ -18,10 +20,25 @@ type ServiceClient = ReturnType<typeof createServiceRoleClient>;
  * collection containers, and shipping notes will be added when
  * the FloLabs email template is finalised.
  */
+/**
+ * Optional overrides for ad-hoc preview sends (e.g., the preview script
+ * at scripts/send-flolabs-preview.ts). Production paths should omit
+ * `options` entirely so the production recipient and subject are used.
+ */
+export interface FloLabsRequisitionOptions {
+  /** Override the `to:` address. Useful for preview / QA sends. */
+  toOverride?: string;
+  /** Prefix for the email subject line. E.g. "[PREVIEW] ". */
+  subjectPrefix?: string;
+  /** When true, skip writing the notifications table row (preview). */
+  skipNotificationLog?: boolean;
+}
+
 export async function sendFloLabsRequisition(
   supabase: ServiceClient,
   orderId: string,
-  payload: OrderMetadataPayload
+  payload: OrderMetadataPayload,
+  options: FloLabsRequisitionOptions = {}
 ): Promise<void> {
   const orderIdShort = orderId.slice(0, 8).toUpperCase();
   const accountHolder = payload.persons.find((p) => p.is_account_holder);
@@ -55,13 +72,14 @@ export async function sendFloLabsRequisition(
   const { data: testsRaw } = await supabase
     .from("tests")
     .select(
-      "id, name, specimen_type, ship_temp, stability_days, stability_days_frozen, handling_instructions, turnaround_display, lab:labs(name, shipping_notes)"
+      "id, name, sku, specimen_type, ship_temp, stability_days, stability_days_frozen, handling_instructions, turnaround_display, lab:labs(name, shipping_notes)"
     )
     .in("id", testIds);
 
   type TestRow = {
     id: string;
     name: string;
+    sku: string | null;
     specimen_type: string | null;
     ship_temp: ShipTemp | null;
     stability_days: number | null;
@@ -149,6 +167,48 @@ export async function sendFloLabsRequisition(
     </div>`;
   });
 
+  // ── TESTS REQUESTED section ─────────────────────────────────────
+  // One block per unique test in the order. Renders per-test
+  // operational fields for FloLabs: specimen, ship temp (short),
+  // stability (short), handling instructions. Missing catalogue data
+  // renders literal "null" / "—" per the spec so incomplete records
+  // stay visible during the manual backfill.
+  //
+  // Only test line items are rendered here — supplements / resources
+  // on the same order are ignored (they aren't FloLabs's concern and
+  // don't appear in the assignments array).
+  const requestedTestsHtml = testIds
+    .map((id) => {
+      const t = testMap.get(id);
+      if (!t) return "";
+      const skuSuffix = t.sku ? ` (${esc(t.sku)})` : "";
+      const specimen = t.specimen_type ?? "null";
+      const shipTempStr = formatShipTempShort(t.ship_temp ?? null);
+      const stabilityStr = formatStabilityShort({
+        ship_temp: t.ship_temp ?? null,
+        stability_days: t.stability_days ?? null,
+        stability_days_frozen: t.stability_days_frozen ?? null,
+      });
+      const handling =
+        t.handling_instructions && t.handling_instructions.trim()
+          ? t.handling_instructions
+          : "—";
+      return `<li style="margin:0 0 14px;padding:0;list-style:none;">
+        <div style="font-size:14px;font-weight:600;color:#111827;">${esc(t.name)}${skuSuffix}</div>
+        <div style="font-size:13px;color:#4b5563;margin-top:2px;">Specimen: ${esc(specimen)}</div>
+        <div style="font-size:13px;color:#4b5563;">Ship temp: ${esc(shipTempStr)}</div>
+        <div style="font-size:13px;color:#4b5563;">Stability: ${esc(stabilityStr)}</div>
+        <div style="font-size:13px;color:#4b5563;">Handling: ${esc(handling)}</div>
+      </li>`;
+    })
+    .filter(Boolean)
+    .join("");
+
+  const requestedTestsSection = requestedTestsHtml
+    ? `<h2 style="margin:0 0 12px;font-size:18px;color:#111827;">Tests Requested</h2>
+       <ul style="margin:0 0 24px;padding:0;list-style:none;">${requestedTestsHtml}</ul>`
+    : "";
+
   const addr = payload.collection_address;
   const addressLine = [
     addr.address_line1,
@@ -174,6 +234,7 @@ export async function sendFloLabsRequisition(
     <p style="margin:0 0 4px;font-size:14px;color:#4b5563;"><strong>Order:</strong> ${orderIdShort}</p>
     <p style="margin:0 0 4px;font-size:14px;color:#4b5563;"><strong>Date:</strong> ${new Date().toLocaleDateString("en-CA")}</p>
     <p style="margin:0 0 16px;font-size:14px;color:#4b5563;"><strong>Collection Address:</strong> ${esc(addressLine)}</p>
+    ${requestedTestsSection}
     <h2 style="margin:0 0 12px;font-size:18px;color:#111827;">Patient(s) and Tests</h2>
     ${personBlocks.join("")}
     <div style="margin-top:20px;padding:16px;background:#fffbeb;border-left:4px solid #c4973a;border-radius:4px;">
@@ -194,26 +255,30 @@ export async function sendFloLabsRequisition(
 </td></tr></table>
 </body></html>`;
 
+  const toAddress = options.toOverride ?? "info@flolabs.ca";
+  const subject = `${options.subjectPrefix ?? ""}New AvoVita Collection Request — Order ${orderIdShort} — ${esc(lastName)}`;
+
   await resend.emails.send({
     from: process.env.RESEND_FROM_RESULTS!,
-    to: "info@flolabs.ca",
-    subject: `New AvoVita Collection Request — Order ${orderIdShort} — ${esc(lastName)}`,
+    to: toAddress,
+    subject,
     html,
   });
 
-  // Log to notifications table
-  await supabase.from("notifications").insert({
-    profile_id: null,
-    order_id: orderId,
-    result_id: null,
-    channel: "email",
-    template: "flolabs_requisition",
-    recipient: "info@flolabs.ca",
-    status: "sent",
-  });
+  if (!options.skipNotificationLog) {
+    await supabase.from("notifications").insert({
+      profile_id: null,
+      order_id: orderId,
+      result_id: null,
+      channel: "email",
+      template: "flolabs_requisition",
+      recipient: toAddress,
+      status: "sent",
+    });
+  }
 
   console.log(
-    `[stripe-webhook] FloLabs requisition email sent for order ${orderIdShort}`
+    `[stripe-webhook] FloLabs requisition email sent to ${toAddress} for order ${orderIdShort}`
   );
 }
 

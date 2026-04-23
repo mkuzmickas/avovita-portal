@@ -30,9 +30,12 @@ export const SHIP_TEMP_LABELS: Record<ShipTemp, string> = {
   refrigerated_or_frozen: "Refrigerated or Frozen",
 };
 
-/** Compact labels — admin list cell where horizontal space is tight. */
+/** Compact labels — admin list cell + FloLabs requisition email. Single
+ *  refrigerated-only case reads as "Refrigerated" (full word) so it
+ *  looks less abbreviated; the 2-in-1 case stays abbreviated to fit
+ *  the admin list's ~168px column. */
 export const SHIP_TEMP_SHORT_LABELS: Record<ShipTemp, string> = {
-  refrigerated_only: "Refrig",
+  refrigerated_only: "Refrigerated",
   frozen_only: "Frozen",
   ambient_only: "Ambient",
   refrigerated_or_frozen: "Refrig or Frozen",
@@ -91,9 +94,16 @@ export function formatShipTempLong(ship_temp: ShipTemp | null): string {
   return SHIP_TEMP_LABELS[ship_temp];
 }
 
-/** Short label — admin list cell where "Refrigerated or Frozen" won't fit. */
+/**
+ * Short label — admin list cell + FloLabs email.
+ *
+ * Null returns the literal string "null" (not the warning copy) so the
+ * FloLabs email renders incomplete catalogue records verbatim during
+ * the manual backfill. The admin list already branches on null before
+ * calling this, so it's unaffected by the null change.
+ */
 export function formatShipTempShort(ship_temp: ShipTemp | null): string {
-  if (!ship_temp) return SHIP_TEMP_NOT_SET;
+  if (!ship_temp) return "null";
   return SHIP_TEMP_SHORT_LABELS[ship_temp];
 }
 
