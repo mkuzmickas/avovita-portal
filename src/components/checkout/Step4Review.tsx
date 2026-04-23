@@ -37,6 +37,7 @@ import type {
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { calculateTotals } from "@/lib/checkout/totals";
+import { validateAssignments } from "@/lib/checkout/reconcileAssignments";
 import { DiscountBanner } from "./DiscountBanner";
 import type { PersonAssignmentEntry } from "./Step2AssignTests";
 
@@ -281,6 +282,25 @@ export function Step4Review({
     if (!canProceed) return;
     setSubmitting(true);
     setError(null);
+
+    // Defensive gate: with the CheckoutClient reconcile effect in
+    // place, assignments should always cover the cart's test items.
+    // If somehow they don't (future regression, race, stale localStorage
+    // tamper), refuse to hit Stripe rather than charge the customer
+    // for a session with zero tests attached — the exact failure mode
+    // from the Step 4 "0 lines" bug. See reconcileAssignments.ts.
+    const validation = validateAssignments(cart, assignments);
+    if (!validation.ok) {
+      console.error(
+        "[checkout] assignments out of sync with cart at submit:",
+        validation,
+      );
+      setError(
+        "Something went wrong preparing your order. Please refresh the page and try again.",
+      );
+      setSubmitting(false);
+      return;
+    }
 
     // Org affinity — set in localStorage by OrgProvider when the user
     // visited /org/[slug]/* or by CheckoutClient when the URL had

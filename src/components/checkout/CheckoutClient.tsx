@@ -18,6 +18,7 @@ import { Step4Review } from "./Step4Review";
 import { SupplementFulfillmentStep } from "./SupplementFulfillmentStep";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
 import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
+import { reconcileAssignments } from "@/lib/checkout/reconcileAssignments";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import type { SupplementFulfillment, SupplementShippingAddress } from "@/types/supplements";
 import type {
@@ -322,21 +323,31 @@ export function CheckoutClient({
     setRestored(true);
   }, []);
 
-  // ─── Sync assignments to cart ───────────────────────────────────────
-  // Drop any assignment whose underlying cart item has been removed.
-  // Only updates state when the filter actually changes anything so it
-  // can't loop. Runs after restore + whenever the cart changes.
+  // ─── Reconcile assignments to cart + personCount ─────────────────────
+  // Single authoritative sync: assignments is fully derived from cart,
+  // personCount, and prior per-person split choices. Any path that
+  // changes the cart (quote-accept deep-link, add from another tab,
+  // cart empty-then-refill) or changes personCount re-runs this, so
+  // Step 4's left pane can never diverge from the right-pane cart
+  // summary. See src/lib/checkout/reconcileAssignments.ts for the
+  // rules + regression tests.
   useEffect(() => {
     if (!restored || !hydrated) return;
     setAssignments((prev) => {
-      const filtered = prev.filter((a) =>
-        cart.some(
-          (c) => c.line_type === "test" && c.test_id === a.test_id,
-        )
-      );
-      return filtered.length === prev.length ? prev : filtered;
+      const next = reconcileAssignments(cart, personCount, prev);
+      if (next.length !== prev.length) return next;
+      for (let i = 0; i < next.length; i++) {
+        if (
+          next[i].test_id !== prev[i].test_id ||
+          next[i].person_index !== prev[i].person_index ||
+          next[i].price_cad !== prev[i].price_cad
+        ) {
+          return next;
+        }
+      }
+      return prev;
     });
-  }, [restored, hydrated, cart]);
+  }, [restored, hydrated, cart, personCount]);
 
   // ─── Persist on every change ──────────────────────────────────────────
   useEffect(() => {
@@ -382,24 +393,12 @@ export function CheckoutClient({
 
   // ─── Kit-only auto-advance: skip Step 1 (people count) ────────────
   // For kit-only orders there's no phlebotomist visit, so person count
-  // is always 1 and we auto-assign tests to person 0.
+  // is always 1. The reconcile effect above populates assignments
+  // from the cart whenever personCount changes, so we only need to
+  // set the count + jump ahead.
   useEffect(() => {
     if (!hydrated || !restored || !isKitOnly || step !== 1) return;
     setPersonCount(1);
-    setAssignments(
-      cart
-        .filter((item) => item.line_type === "test")
-        .map((item) => {
-          if (item.line_type !== "test") throw new Error("unreachable");
-          return {
-            test_id: item.test_id,
-            test_name: item.test_name,
-            lab_name: item.lab_name,
-            price_cad: item.price_cad,
-            person_index: 0,
-          };
-        }),
-    );
     setStep(3);
   }, [hydrated, restored, isKitOnly, step, cart]);
 
@@ -434,6 +433,8 @@ export function CheckoutClient({
   ]);
 
   // ─── Adjust persons when count changes ────────────────────────────────
+  // `assignments` is handled by the reconcile effect above — no direct
+  // filter/rebuild needed here. We just keep `persons` in step.
   const handlePersonCountChange = (count: number) => {
     setPersonCount(count);
     setPersons((prev) => {
@@ -450,8 +451,6 @@ export function CheckoutClient({
       }
       return next;
     });
-    // Drop assignments for people that no longer exist
-    setAssignments((prev) => prev.filter((a) => a.person_index < count));
   };
 
   // ─── Step navigation ──────────────────────────────────────────────────
@@ -459,28 +458,9 @@ export function CheckoutClient({
 
   const handleStep1Continue = () => {
     trackEvent("checkout_step_completed", { step: 1 });
-    if (personCount === 1) {
-      // Auto-assign every test cart item to person 0
-      setAssignments(
-        cart
-          .filter((item) => item.line_type === "test")
-          .map((item) => {
-            if (item.line_type !== "test") throw new Error("unreachable");
-            return {
-              test_id: item.test_id,
-              test_name: item.test_name,
-              lab_name: item.lab_name,
-              price_cad: item.price_cad,
-              person_index: 0,
-            };
-          })
-      );
-      setStep(3);
-    } else {
-      // Going to multi-person flow — clear any auto-assigned single-person
-      // entries that no longer match (e.g. user changed person count)
-      setStep(2);
-    }
+    // `assignments` is auto-kept-in-sync by the reconcile effect, so
+    // there's nothing to populate here — just advance.
+    setStep(personCount === 1 ? 3 : 2);
   };
 
   const handleStep2Back = () => setStep(1);
