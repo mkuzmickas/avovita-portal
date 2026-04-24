@@ -12,6 +12,7 @@ import { fulfillResourcePurchase } from "@/lib/resources/fulfillment";
 import { twilioClient, TWILIO_FROM } from "@/lib/twilio";
 import { resend } from "@/lib/resend";
 import { logNotification } from "@/lib/notifications";
+import { buildAdminOrderSmsBody } from "@/lib/sms/adminOrderSms";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -96,31 +97,56 @@ async function sendAdminSms(session: Stripe.Checkout.Session) {
     return;
   }
 
-  const lineItemCount = session.metadata?.chunk_count
+  const service = createServiceRoleClient();
+
+  // Pull assignments + holder name from the session metadata so we
+  // can look up SKUs and format the body via the shared builder.
+  const payload = session.metadata?.chunk_count
     ? (() => {
         try {
-          const payload = reassembleMetadata(
-            session.metadata as Record<string, string>
-          );
-          return payload?.assignments?.length ?? 0;
+          return reassembleMetadata(session.metadata as Record<string, string>);
         } catch {
-          return 0;
+          return null;
         }
       })()
-    : 0;
+    : null;
 
-  const amountCad = ((session.amount_total ?? 0) / 100).toFixed(2);
+  const testIds = [
+    ...new Set(payload?.assignments?.map((a) => a.test_id) ?? []),
+  ];
+  const testSkus: string[] = [];
+  if (testIds.length > 0) {
+    const { data: testsRaw } = await service
+      .from("tests")
+      .select("id, sku")
+      .in("id", testIds);
+    const skuById = new Map(
+      ((testsRaw ?? []) as Array<{ id: string; sku: string | null }>).map(
+        (t) => [t.id, t.sku]
+      )
+    );
+    // Preserve the cart's original order (first cart occurrence wins)
+    // and skip tests whose SKU is null so the SMS doesn't show "null".
+    const seen = new Set<string>();
+    for (const a of payload?.assignments ?? []) {
+      if (seen.has(a.test_id)) continue;
+      seen.add(a.test_id);
+      const sku = skuById.get(a.test_id);
+      if (sku) testSkus.push(sku);
+    }
+  }
 
-  let patientName = "Unknown";
-  try {
-    const p = reassembleMetadata(session.metadata as Record<string, string>);
-    const holder = p?.persons?.find((per) => per.is_account_holder);
-    if (holder) patientName = `${holder.first_name} ${holder.last_name}`;
-  } catch { /* ignore */ }
+  const holder = payload?.persons?.find((per) => per.is_account_holder);
+  const emailPrefix = session.customer_email?.split("@")[0] ?? null;
+  const smsBody = buildAdminOrderSmsBody({
+    orderIdShort: session.id.slice(-8).toUpperCase(),
+    totalCad: (session.amount_total ?? 0) / 100,
+    testSkus,
+    firstName: holder?.first_name ?? null,
+    lastName: holder?.last_name ?? null,
+    emailPrefix,
+  });
 
-  const smsBody = `AvoVita — New order. ${patientName}. ${lineItemCount} test(s). $${amountCad} CAD. portal.avovita.ca/admin/orders`;
-
-  const service = createServiceRoleClient();
   for (const phone of adminPhones) {
     try {
       console.log(`[stripe-webhook] attempting SMS to ${phone}`);
@@ -603,7 +629,48 @@ async function handleCheckoutCompleteV2(
       const adminPhones = [process.env.ADMIN_PHONE_NUMBER].filter(
         (ph): ph is string => !!ph && ph.length > 5,
       );
-      const smsBody = `AvoVita — New order. ${contactName}. ${lineTypeSummary}. $${amountCad} CAD. portal.avovita.ca/admin/orders`;
+
+      // Build SKU list for the SMS body via the shared helper. We
+      // look up tests by id (deduped, preserving cart order) and
+      // drop SKU-null rows so the message never contains "null".
+      const testIds = [
+        ...new Set((p.test_assignments ?? []).map((a) => a.test_id)),
+      ];
+      const testSkus: string[] = [];
+      if (testIds.length > 0) {
+        const { data: testsRaw } = await supabase
+          .from("tests")
+          .select("id, sku")
+          .in("id", testIds);
+        const skuById = new Map(
+          ((testsRaw ?? []) as Array<{ id: string; sku: string | null }>).map(
+            (t) => [t.id, t.sku],
+          ),
+        );
+        const seen = new Set<string>();
+        for (const a of p.test_assignments ?? []) {
+          if (seen.has(a.test_id)) continue;
+          seen.add(a.test_id);
+          const sku = skuById.get(a.test_id);
+          if (sku) testSkus.push(sku);
+        }
+      }
+
+      const holder = p.has_tests
+        ? p.persons?.find((per) => per.is_account_holder)
+        : null;
+      const firstName =
+        holder?.first_name ?? p.contact_first_name ?? null;
+      const lastName = holder?.last_name ?? p.contact_last_name ?? null;
+      const smsBody = buildAdminOrderSmsBody({
+        orderIdShort: session.id.slice(-8).toUpperCase(),
+        totalCad: (session.amount_total ?? 0) / 100,
+        testSkus,
+        firstName,
+        lastName,
+        emailPrefix: session.customer_email?.split("@")[0] ?? null,
+      });
+
       for (const phone of adminPhones) {
         try {
           await twilioClient.messages.create({

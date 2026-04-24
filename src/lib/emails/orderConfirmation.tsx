@@ -26,6 +26,8 @@ function promoDiscountLabel(code: string | null): string {
 
 export interface OrderConfirmationTest {
   name: string;
+  /** Catalogue SKU — rendered as "(SKU)" after the test name. */
+  sku: string | null;
   lab: string;
   price_cad: number;
   requires_fasting?: boolean;
@@ -114,7 +116,7 @@ export function renderOrderConfirmationEmail(
       (t) => `
         <tr>
           <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; color: #111827;">
-            <div style="font-weight: 600; font-size: 14px;">${escapeHtml(t.name)}</div>
+            <div style="font-weight: 600; font-size: 14px;">${escapeHtml(t.name)}${t.sku ? ` (${escapeHtml(t.sku)})` : ""}</div>
             <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">${escapeHtml(t.lab)}${t.requires_fasting ? ' · <span style="color: #c4973a; font-weight: 600;">Fasting required</span>' : ""}</div>
           </td>
           <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; color: #c4973a; font-weight: 600; text-align: right; white-space: nowrap; font-size: 14px;">

@@ -310,12 +310,13 @@ export async function sendOrderConfirmationEmail(
     const testIds = [...new Set(payload.assignments.map((a) => a.test_id))];
     const { data: testsRaw } = await supabase
       .from("tests")
-      .select("id, name, turnaround_display, collection_method, lab:labs(name)")
+      .select("id, name, sku, turnaround_display, collection_method, lab:labs(name)")
       .in("id", testIds);
 
     type TestRow = {
       id: string;
       name: string;
+      sku: string | null;
       turnaround_display: string | null;
       collection_method: string | null;
       lab: { name: string } | { name: string }[] | null;
@@ -332,6 +333,7 @@ export async function sendOrderConfirmationEmail(
         const fasting = /fasting/i.test(t?.turnaround_display ?? "");
         return {
           name: t?.name ?? "Unknown test",
+          sku: t?.sku ?? null,
           lab: lab?.name ?? "",
           price_cad: a.unit_price_cad,
           requires_fasting: fasting,
@@ -446,12 +448,13 @@ export async function sendGuestOrderConfirmationEmail(
     const testIds = [...new Set(payload.assignments.map((a) => a.test_id))];
     const { data: testsRaw } = await supabase
       .from("tests")
-      .select("id, name, turnaround_display, collection_method, lab:labs(name)")
+      .select("id, name, sku, turnaround_display, collection_method, lab:labs(name)")
       .in("id", testIds);
 
     type TestRow = {
       id: string;
       name: string;
+      sku: string | null;
       turnaround_display: string | null;
       collection_method: string | null;
       lab: { name: string } | { name: string }[] | null;
@@ -468,6 +471,7 @@ export async function sendGuestOrderConfirmationEmail(
         const fasting = /fasting/i.test(t?.turnaround_display ?? "");
         return {
           name: t?.name ?? "Unknown test",
+          sku: t?.sku ?? null,
           lab: lab?.name ?? "",
           price_cad: a.unit_price_cad,
           requires_fasting: fasting,
