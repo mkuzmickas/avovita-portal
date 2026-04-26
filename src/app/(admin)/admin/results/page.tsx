@@ -1,11 +1,11 @@
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { AdminResultsManager } from "@/components/admin/AdminResultsManager";
-import { Upload, Clock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export type MayoTest = {
   name: string;
+  sku: string | null;
   specimenType: string | null;
 };
 
@@ -42,7 +42,7 @@ export default async function AdminResultsUploadPage() {
       id, status, created_at, account_id,
       account:accounts(email),
       order_lines(
-        test:tests(name, specimen_type, lab:labs(name)),
+        test:tests(name, sku, specimen_type, lab:labs(name)),
         profile:patient_profiles(first_name, last_name, is_primary)
       ),
       results(id, storage_path, file_name, result_status, uploaded_at, lab_reference_number)
@@ -60,6 +60,7 @@ export default async function AdminResultsUploadPage() {
     order_lines: Array<{
       test: {
         name: string;
+        sku: string | null;
         specimen_type: string | null;
         lab: { name: string } | null;
       } | null;
@@ -94,6 +95,7 @@ export default async function AdminResultsUploadPage() {
       if (lab?.name === MAYO_LAB_NAME && line.test) {
         mayoTests.push({
           name: line.test.name,
+          sku: line.test.sku,
           specimenType: line.test.specimen_type,
         });
       }
@@ -136,16 +138,9 @@ export default async function AdminResultsUploadPage() {
     });
   }
 
-  const pendingCount = pendingOrders.filter(
-    (o) => !o.existingResult
-  ).length;
-  const partialCount = pendingOrders.filter(
-    (o) => o.existingResult?.result_status === "partial"
-  ).length;
-
   return (
     <div className="p-4 sm:p-6 max-w-[1800px] mx-auto">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1
           className="font-heading text-3xl font-semibold"
           style={{
@@ -159,58 +154,6 @@ export default async function AdminResultsUploadPage() {
           Upload PDFs for Mayo Clinic orders. One PDF per order covering
           all tests.
         </p>
-      </div>
-
-      {/* Status counts */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <div
-          className="flex items-center gap-3 rounded-xl border px-5 py-3"
-          style={{
-            backgroundColor: "#1a3d22",
-            borderColor: pendingCount > 0 ? "#c4973a" : "#2d6b35",
-          }}
-        >
-          <Upload
-            className="w-5 h-5"
-            style={{ color: pendingCount > 0 ? "#c4973a" : "#8dc63f" }}
-          />
-          <div>
-            <p
-              className="text-xl font-semibold"
-              style={{
-                color: pendingCount > 0 ? "#c4973a" : "#ffffff",
-              }}
-            >
-              {pendingCount}
-            </p>
-            <p className="text-xs" style={{ color: "#e8d5a3" }}>
-              orders pending upload
-            </p>
-          </div>
-        </div>
-
-        {partialCount > 0 && (
-          <div
-            className="flex items-center gap-3 rounded-xl border px-5 py-3"
-            style={{
-              backgroundColor: "#1a3d22",
-              borderColor: "#c4973a",
-            }}
-          >
-            <Clock className="w-5 h-5" style={{ color: "#c4973a" }} />
-            <div>
-              <p
-                className="text-xl font-semibold"
-                style={{ color: "#c4973a" }}
-              >
-                {partialCount}
-              </p>
-              <p className="text-xs" style={{ color: "#e8d5a3" }}>
-                orders with partial results
-              </p>
-            </div>
-          </div>
-        )}
       </div>
 
       <AdminResultsManager orders={pendingOrders} />
