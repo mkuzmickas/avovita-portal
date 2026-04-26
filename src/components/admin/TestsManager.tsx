@@ -275,8 +275,8 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         `
         id, lab_id, name, slug, description, category, price_cad,
         turnaround_display, turnaround_min_days, turnaround_max_days,
-        turnaround_note, specimen_type, ship_temp, ship_temperature,
-        ship_temp, handling_instructions, stability_days, stability_days_frozen,
+        turnaround_note, specimen_type, ship_temp,
+        handling_instructions, stability_days, stability_days_frozen,
         active, featured, created_at, updated_at,
         sku, mayo_test_id, cost_cad, collection_method,
         track_inventory, stock_qty, low_stock_threshold
