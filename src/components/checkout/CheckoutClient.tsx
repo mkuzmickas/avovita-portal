@@ -166,6 +166,7 @@ export function CheckoutClient({
         type QuoteItem = {
           test_id: string;
           test_name: string;
+          sku: string | null;
           lab_name: string;
           price_cad: number;
         };
@@ -180,6 +181,7 @@ export function CheckoutClient({
             line_type: "test" as const,
             test_id: it.test_id,
             test_name: it.test_name,
+            sku: it.sku,
             lab_name: it.lab_name,
             price_cad: it.price_cad,
             quantity: 1,

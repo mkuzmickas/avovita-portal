@@ -20,7 +20,41 @@ import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
 
 const STORAGE_KEY = "avovita-cart-v1";
 
+// ─── Tuesday-only tests ──────────────────────────────────────────────
+// These tests have the same operational constraint: ship same-day to
+// Mayo on a Tuesday or the specimen times out. The cart shows a single
+// acknowledgement modal when ANY of them is added. If the cart already
+// contains a Tuesday-only test, subsequent adds skip the modal — one
+// ack covers them all.
+//
+// Identifying by SKU keeps the registry readable; CBC stays on its
+// historical test_id because nothing in code knows its SKU yet (the
+// catalog row's SKU is whatever Mike entered manually).
 const CBC_TEST_ID = "8e46bec5-526c-42be-909c-447235e9ecd0";
+
+interface TuesdayOnlyEntry {
+  /** Match by test_id OR sku — exactly one is set. */
+  test_id?: string;
+  sku?: string;
+  display: string;
+}
+
+const TUESDAY_ONLY_TESTS: TuesdayOnlyEntry[] = [
+  { test_id: CBC_TEST_ID, display: "Complete Blood Count (CBC)" },
+  { sku: "DCTR", display: "Direct Antiglobulin Test (DCTR)" },
+];
+
+function tuesdayOnlyDisplayFor(item: CartItemTest): string | null {
+  for (const entry of TUESDAY_ONLY_TESTS) {
+    if (entry.test_id && item.test_id === entry.test_id) return entry.display;
+    if (entry.sku && item.sku === entry.sku) return entry.display;
+  }
+  return null;
+}
+
+function isTuesdayOnly(item: CartItem): item is CartItemTest {
+  return item.line_type === "test" && tuesdayOnlyDisplayFor(item) !== null;
+}
 
 // ─── Cart calculations ─────────────────────────────────────────────────
 
@@ -136,13 +170,16 @@ const CartContext = createContext<CartContextValue | null>(null);
  * reads localStorage. Legacy items without line_type are backfilled
  * to 'test' on hydration.
  *
- * Special case: the CBC test requires a Tuesday-only collection modal
- * before the item lands in the cart (line_type='test' only).
+ * Special case: Tuesday-only tests (CBC, DCTR) require an
+ * acknowledgement modal before the item lands in the cart. One modal
+ * per cart-add cycle — if either test is already in the cart the
+ * subsequent add commits silently.
  */
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
-  const [pendingCbc, setPendingCbc] = useState<CartItemTest | null>(null);
+  const [pendingTuesdayAck, setPendingTuesdayAck] =
+    useState<CartItemTest | null>(null);
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -181,15 +218,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = useCallback(
     (item: CartItem) => {
-      // CBC gate — only for tests. Opening the modal is harmless if
-      // CBC is already in cart because commitAdd's functional setState
-      // dedups on confirm. Reading `cart` from closure here was a bug:
-      // when addItem is called immediately after clearCart() (the quote
-      // deep-link path), the closure saw the PRE-clear cart and could
-      // either skip a legitimate add or trigger a modal for an item
-      // already on its way out.
-      if (item.line_type === "test" && item.test_id === CBC_TEST_ID) {
-        setPendingCbc((prev) => prev ?? item);
+      // Tuesday-only gate. Triggers the ack modal when adding a CBC or
+      // DCTR (or any future entry in TUESDAY_ONLY_TESTS) UNLESS the
+      // cart already contains a Tuesday-only test — that ack covers
+      // the second add. Functional setPendingTuesdayAck and setCart
+      // (in commitAdd) avoid the stale-closure bug we caught earlier:
+      // a clearCart() + addItem() sequence sees the freshly-cleared
+      // cart, not the pre-clear one.
+      if (item.line_type === "test" && tuesdayOnlyDisplayFor(item)) {
+        setCart((prev) => {
+          const alreadyAcked = prev.some(isTuesdayOnly);
+          if (alreadyAcked) {
+            // Skip the modal but still commit the add. Use prev here
+            // so we land in the same setCart pass — no race window.
+            const id = cartItemId(item);
+            if (prev.some((c) => cartItemId(c) === id)) return prev;
+            return [...prev, item];
+          }
+          // Need ack — queue the item, modal will commit on confirm.
+          setPendingTuesdayAck((cur) => cur ?? item);
+          return prev;
+        });
         return;
       }
       // Resources: enforce quantity = 1
@@ -251,13 +300,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return (
     <CartContext.Provider value={value}>
       {children}
-      {pendingCbc && (
-        <CbcAcknowledgeModal
+      {pendingTuesdayAck && (
+        <TuesdayOnlyAckModal
+          item={pendingTuesdayAck}
           onConfirm={() => {
-            commitAdd(pendingCbc);
-            setPendingCbc(null);
+            commitAdd(pendingTuesdayAck);
+            setPendingTuesdayAck(null);
           }}
-          onCancel={() => setPendingCbc(null)}
+          onCancel={() => setPendingTuesdayAck(null)}
         />
       )}
     </CartContext.Provider>
@@ -272,15 +322,24 @@ export function useCart(): CartContextValue {
   return ctx;
 }
 
-// ─── CBC acknowledgement modal ────────────────────────────────────────
+// ─── Tuesday-only acknowledgement modal ──────────────────────────────
+//
+// Single modal covers both CBC and DCTR — same operational risk
+// (Tuesday-only collection, ships same-day to Mayo). Headline + body
+// adapt to whichever test triggered the gate. If the customer has
+// already added one of these tests in this session, the second add
+// commits silently without re-showing the modal.
 
-function CbcAcknowledgeModal({
+function TuesdayOnlyAckModal({
+  item,
   onConfirm,
   onCancel,
 }: {
+  item: CartItemTest;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const display = tuesdayOnlyDisplayFor(item) ?? item.test_name;
   // Lock body scroll + Escape closes
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -316,12 +375,13 @@ function CbcAcknowledgeModal({
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          Important — CBC Collection Notice
+          Important — Tuesday-Only Collection Notice
         </h2>
         <div className="space-y-3 text-sm" style={{ color: "#e8d5a3" }}>
           <p>
-            The Complete Blood Count (CBC) requires a Tuesday collection only,
-            as specimens must ship same-day to Mayo Clinic Laboratories to meet
+            <strong style={{ color: "#ffffff" }}>{display}</strong> requires a
+            Tuesday collection only. The specimen has a 48-hour stability
+            window and must ship same-day to Mayo Clinic Laboratories to meet
             stability requirements.
           </p>
           <p>Please be aware:</p>
@@ -334,15 +394,15 @@ function CbcAcknowledgeModal({
               <span style={{ color: "#c4973a" }}>•</span>
               <span>
                 FedEx shipping delays can cause the specimen to time out before
-                reaching the lab — if this occurs, the CBC fee will be refunded
-                but the home visit fee is non-refundable
+                reaching the lab — if this occurs, this test fee will be
+                refunded but the home visit fee is non-refundable
               </span>
             </li>
             <li className="flex gap-2">
               <span style={{ color: "#c4973a" }}>•</span>
               <span>
-                We strongly recommend ordering the CBC alongside other tests so
-                your home visit fee is not wasted if the CBC specimen is
+                We strongly recommend ordering this test alongside others so
+                your home visit fee is not wasted if the specimen is
                 compromised in transit
               </span>
             </li>
@@ -367,7 +427,7 @@ function CbcAcknowledgeModal({
               color: "#e8d5a3",
             }}
           >
-            Remove CBC from Order
+            Remove from Order
           </button>
         </div>
       </div>

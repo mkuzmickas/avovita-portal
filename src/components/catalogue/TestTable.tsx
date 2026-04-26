@@ -189,6 +189,7 @@ function TestTableRow({
       line_type: "test" as const,
       test_id: test.id,
       test_name: test.name,
+      sku: test.sku,
       price_cad: test.price_cad as number,
       lab_name: test.lab.name,
       quantity: 1,

@@ -158,6 +158,7 @@ export function InsightsChatModal({
       line_type: "test",
       test_id: test.id,
       test_name: test.name,
+      sku: test.sku,
       price_cad: test.price_cad,
       lab_name: test.lab_name,
       quantity: 1,

@@ -35,7 +35,7 @@ export async function GET(
          person_count, collection_city,
          lines:quote_lines(
            test_id, unit_price_cad,
-           test:tests(id, name, lab:labs(name))
+           test:tests(id, name, sku, lab:labs(name))
          )`
       )
       .eq("quote_number", quoteNumber)
@@ -60,11 +60,13 @@ export async function GET(
           | {
               id: string;
               name: string;
+              sku: string | null;
               lab: { name: string } | { name: string }[] | null;
             }
           | {
               id: string;
               name: string;
+              sku: string | null;
               lab: { name: string } | { name: string }[] | null;
             }[]
           | null;
@@ -104,6 +106,7 @@ export async function GET(
       return {
         test_id: l.test_id,
         test_name: t?.name ?? "Test",
+        sku: t?.sku ?? null,
         lab_name: lab?.name ?? "",
         price_cad: Number(l.unit_price_cad),
       };
