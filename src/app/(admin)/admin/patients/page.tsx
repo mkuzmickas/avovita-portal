@@ -32,10 +32,17 @@ export type AdminPatientRow = {
   profiles: AdminPatientProfile[];
   ordersCount: number;
   primaryName: string;
+  /** First name of the primary profile — used as personalisation when
+   *  sending the Google review request from this page. */
+  primaryFirstName: string | null;
   primaryPhone: string | null;
   org_id: string | null;
   org_name: string | null;
   org_color: string | null;
+  /** Set when an admin has fired the review request for this client.
+   *  The "Send Review Request" button is permanently disabled once
+   *  this is non-null. */
+  review_request_sent_at: string | null;
 };
 
 export default async function AdminPatientsPage() {
@@ -46,6 +53,7 @@ export default async function AdminPatientsPage() {
     .select(
       `
       id, email, phone, is_representative, created_at, waiver_completed, waiver_completed_at,
+      review_request_sent_at,
       org:organizations(id, name, primary_color),
       profiles:patient_profiles(
         id, first_name, last_name, date_of_birth, biological_sex,
@@ -65,6 +73,7 @@ export default async function AdminPatientsPage() {
     created_at: string;
     waiver_completed: boolean;
     waiver_completed_at: string | null;
+    review_request_sent_at: string | null;
     profiles: AdminPatientProfile[];
     org:
       | { id: string; name: string; primary_color: string }
@@ -125,10 +134,12 @@ export default async function AdminPatientsPage() {
       profiles: account.profiles,
       ordersCount: orderCountMap.get(account.id) ?? 0,
       primaryName,
+      primaryFirstName: primary?.first_name ?? null,
       primaryPhone: primary?.phone ?? account.phone ?? null,
       org_id: org?.id ?? null,
       org_name: org?.name ?? null,
       org_color: org?.primary_color ?? null,
+      review_request_sent_at: account.review_request_sent_at,
     };
   });
 

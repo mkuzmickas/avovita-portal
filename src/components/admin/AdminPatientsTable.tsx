@@ -2,7 +2,18 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Search, ChevronDown, Baby, ArrowRight, CheckCircle, Clock, X } from "lucide-react";
+import {
+  Search,
+  ChevronDown,
+  Baby,
+  ArrowRight,
+  CheckCircle,
+  Clock,
+  X,
+  Star,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type {
   AdminPatientRow,
@@ -30,6 +41,27 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
   const [waiverFilter, setWaiverFilter] = useState<WaiverFilter>("all");
   const [repFilter, setRepFilter] = useState<RepFilter>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Review request state — local overrides keyed by account id so the
+  // button flips to "Sent" the moment the request succeeds, without
+  // waiting on a server refresh. Seed from the row data on mount.
+  const [reviewSentMap, setReviewSentMap] = useState<Record<string, string>>(
+    () => {
+      const seed: Record<string, string> = {};
+      for (const p of patients) {
+        if (p.review_request_sent_at) seed[p.id] = p.review_request_sent_at;
+      }
+      return seed;
+    },
+  );
+  const [confirmReview, setConfirmReview] = useState<AdminPatientRow | null>(
+    null,
+  );
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSuccessMessage, setReviewSuccessMessage] = useState<
+    string | null
+  >(null);
 
   // Debounce 250ms — typing doesn't re-filter on every keystroke. The
   // raw `searchInput` stays bound to the input so it stays responsive;
@@ -156,6 +188,7 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
                   "Orders",
                   "Waiver",
                   "Member Since",
+                  "Review",
                   "",
                 ].map((h, i) => (
                   <th
@@ -175,7 +208,7 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-6 py-16 text-center"
                     style={{
                       backgroundColor: "#0a1a0d",
@@ -217,6 +250,14 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
                       rowBg={rowBg}
                       isExpanded={isExpanded}
                       onToggle={() => toggle(patient.id)}
+                      reviewSentAt={
+                        reviewSentMap[patient.id] ??
+                        patient.review_request_sent_at
+                      }
+                      onRequestReview={() => {
+                        setReviewError(null);
+                        setConfirmReview(patient);
+                      }}
                     />
                   );
                 })
@@ -229,6 +270,70 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
       <p className="mt-3 text-xs text-right" style={{ color: "#6ab04c" }}>
         Showing {filtered.length} of {patients.length} patients
       </p>
+
+      {confirmReview && (
+        <ReviewRequestConfirmModal
+          client={confirmReview}
+          submitting={reviewSubmitting}
+          error={reviewError}
+          onCancel={() => {
+            if (reviewSubmitting) return;
+            setConfirmReview(null);
+            setReviewError(null);
+          }}
+          onConfirm={async () => {
+            setReviewSubmitting(true);
+            setReviewError(null);
+            try {
+              const res = await fetch(
+                `/api/admin/patients/${confirmReview.id}/send-review-request`,
+                { method: "POST" },
+              );
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                setReviewError(
+                  data.error ?? "Failed to send review request",
+                );
+                return;
+              }
+              setReviewSentMap((prev) => ({
+                ...prev,
+                [confirmReview.id]:
+                  data.review_request_sent_at ?? new Date().toISOString(),
+              }));
+              const channels = (data.sent_via ?? []) as string[];
+              setReviewSuccessMessage(
+                `Review request sent via ${channels.join(" + ") || "email"} to ${confirmReview.primaryName}.`,
+              );
+              setTimeout(() => setReviewSuccessMessage(null), 6000);
+              setConfirmReview(null);
+            } catch (err) {
+              setReviewError(
+                err instanceof Error
+                  ? err.message
+                  : "Failed to send review request",
+              );
+            } finally {
+              setReviewSubmitting(false);
+            }
+          }}
+        />
+      )}
+
+      {reviewSuccessMessage && (
+        <div
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg border shadow-lg"
+          style={{
+            backgroundColor: "rgba(141, 198, 63, 0.18)",
+            borderColor: "#8dc63f",
+            color: "#8dc63f",
+          }}
+          role="status"
+        >
+          <CheckCircle className="w-4 h-4 shrink-0" />
+          <span className="text-sm font-medium">{reviewSuccessMessage}</span>
+        </div>
+      )}
     </>
   );
 }
@@ -240,11 +345,18 @@ function PatientRow({
   rowBg,
   isExpanded,
   onToggle,
+  reviewSentAt,
+  onRequestReview,
 }: {
   patient: AdminPatientRow;
   rowBg: string;
   isExpanded: boolean;
   onToggle: () => void;
+  /** Local-state override of patient.review_request_sent_at — lets the
+   *  parent flip the button to "Sent" the moment the request succeeds
+   *  without needing a router.refresh(). */
+  reviewSentAt: string | null;
+  onRequestReview: () => void;
 }) {
   return (
     <>
@@ -318,6 +430,16 @@ function PatientRow({
         >
           {formatDate(patient.created_at)}
         </td>
+        <td
+          className="px-5 py-4 whitespace-nowrap"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ReviewRequestButton
+            sentAt={reviewSentAt}
+            hasContactInfo={!!patient.email || !!patient.primaryPhone}
+            onClick={onRequestReview}
+          />
+        </td>
         <td className="px-5 py-4 text-right">
           <ChevronDown
             className="w-4 h-4 inline-block transition-transform duration-200"
@@ -331,7 +453,7 @@ function PatientRow({
 
       {isExpanded && (
         <tr style={{ backgroundColor: rowBg }}>
-          <td colSpan={8} className="p-0">
+          <td colSpan={9} className="p-0">
             <div
               className="px-6 py-5 border-t"
               style={{
@@ -484,6 +606,197 @@ function ProfileCard({ profile }: { profile: AdminPatientProfile }) {
           </div>
         )}
       </dl>
+    </div>
+  );
+}
+
+// ─── Review request button + confirmation modal ─────────────────────────
+
+function ReviewRequestButton({
+  sentAt,
+  hasContactInfo,
+  onClick,
+}: {
+  sentAt: string | null;
+  hasContactInfo: boolean;
+  onClick: () => void;
+}) {
+  if (sentAt) {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border"
+        style={{
+          color: "#6b7280",
+          borderColor: "#2d6b35",
+          backgroundColor: "rgba(107, 114, 128, 0.08)",
+          cursor: "default",
+        }}
+        title={`Sent ${formatDate(sentAt)}`}
+      >
+        <Star className="w-3.5 h-3.5" />
+        Sent
+      </span>
+    );
+  }
+  if (!hasContactInfo) {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border"
+        style={{
+          color: "#6b7280",
+          borderColor: "#2d6b35",
+          backgroundColor: "transparent",
+          cursor: "not-allowed",
+        }}
+        title="No contact info on file"
+      >
+        <Star className="w-3.5 h-3.5" />
+        Send
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+      style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+    >
+      <Star className="w-3.5 h-3.5" />
+      Send
+    </button>
+  );
+}
+
+function ReviewRequestConfirmModal({
+  client,
+  submitting,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  client: AdminPatientRow;
+  submitting: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  // Lock body scroll + Escape closes (when not submitting).
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !submitting) onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onCancel, submitting]);
+
+  const hasEmail = !!client.email;
+  const hasPhone = !!client.primaryPhone;
+  const channels: string[] = [];
+  if (hasEmail) channels.push("email");
+  if (hasPhone) channels.push("SMS");
+  const channelText =
+    channels.length === 2
+      ? "email and SMS"
+      : channels.length === 1
+        ? channels[0]
+        : "email or SMS";
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6"
+      style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+      onClick={() => {
+        if (!submitting) onCancel();
+      }}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border p-6"
+        style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2
+          className="font-heading text-xl font-semibold mb-3"
+          style={{
+            color: "#c4973a",
+            fontFamily: '"Cormorant Garamond", Georgia, serif',
+          }}
+        >
+          Send Google Review Request?
+        </h2>
+        <p className="text-sm" style={{ color: "#e8d5a3" }}>
+          Send Google review request to{" "}
+          <strong style={{ color: "#ffffff" }}>{client.primaryName}</strong>{" "}
+          via {channelText}?
+        </p>
+        {!hasPhone && hasEmail && (
+          <p className="text-xs italic mt-2" style={{ color: "#c4973a" }}>
+            This client has no phone number — email only will be sent.
+          </p>
+        )}
+        {!hasEmail && hasPhone && (
+          <p className="text-xs italic mt-2" style={{ color: "#c4973a" }}>
+            This client has no email on file — SMS only will be sent.
+          </p>
+        )}
+
+        {error && (
+          <div
+            className="flex items-start gap-2 mt-4 p-3 rounded-lg border text-sm"
+            style={{
+              backgroundColor: "rgba(224, 82, 82, 0.12)",
+              borderColor: "#e05252",
+              color: "#e05252",
+            }}
+            role="alert"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="mt-5 flex gap-2 justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            className="px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
+            style={{
+              color: "#e8d5a3",
+              borderColor: "#2d6b35",
+              backgroundColor: "transparent",
+              opacity: submitting ? 0.5 : 1,
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={submitting}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            style={{
+              backgroundColor: "#c4973a",
+              color: "#0a1a0d",
+              opacity: submitting ? 0.6 : 1,
+            }}
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Sending…
+              </>
+            ) : (
+              "Send"
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
