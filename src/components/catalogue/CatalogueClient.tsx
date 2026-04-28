@@ -209,10 +209,21 @@ export function CatalogueClient({
       }
     }
 
-    // Order: tier ascending, then the original alphabetical order
-    // (allTests came back from Supabase .order("name")). Sort is
-    // stable in modern runtimes so a same-tier pair keeps alphabetical.
-    scored.sort((a, b) => a.tier - b.tier);
+    // Order: tier ascending, then within each tier sort by
+    // search_priority DESC (only when a query is active — browse /
+    // no-query lists stay in the alphabetical order Supabase returned).
+    // Stable sort preserves alphabetical for same-tier same-priority
+    // entries.
+    const hasQuery = query !== "";
+    scored.sort((a, b) => {
+      if (a.tier !== b.tier) return a.tier - b.tier;
+      if (hasQuery) {
+        const pDiff =
+          (b.test.search_priority ?? 0) - (a.test.search_priority ?? 0);
+        if (pDiff !== 0) return pDiff;
+      }
+      return 0;
+    });
     return scored.map((s) => s.test);
   }, [allTests, searchQuery, selectedCategory, selectedLab]);
 

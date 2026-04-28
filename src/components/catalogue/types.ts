@@ -23,6 +23,9 @@ export type CatalogueTest = {
     | null;
   stability_days: number | null;
   stability_days_frozen: number | null;
+  /** Customer-facing search ranking boost. Higher = ranks higher when
+   *  the query matches. Null / 0 means no pin. */
+  search_priority: number | null;
   featured: boolean;
   sku: string | null;
   requisition_url: string | null;

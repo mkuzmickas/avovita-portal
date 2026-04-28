@@ -57,6 +57,9 @@ type EditableFields = {
   collection_method: string;
   active: boolean;
   featured: boolean;
+  /** String form for the input; "" → null in the payload, parsed
+   *  integer otherwise. */
+  search_priority: string;
 };
 
 const EMPTY_FORM: EditableFields = {
@@ -79,6 +82,7 @@ const EMPTY_FORM: EditableFields = {
   collection_method: "phlebotomist_draw",
   active: true,
   featured: false,
+  search_priority: "0",
 };
 
 const MAYO_URL_BASE = "https://mayocliniclabs.com/test-catalog/overview/";
@@ -172,6 +176,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       collection_method: fields.collection_method || "phlebotomist_draw",
       active: fields.active,
       featured: fields.featured,
+      search_priority: parseSearchPriority(fields.search_priority),
     };
 
     const { error } = await supabase
@@ -266,6 +271,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
       collection_method: fields.collection_method || "phlebotomist_draw",
       active: fields.active,
       featured: fields.featured,
+      search_priority: parseSearchPriority(fields.search_priority),
     };
 
     const { data, error } = await supabase
@@ -277,6 +283,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
         turnaround_display, turnaround_min_days, turnaround_max_days,
         turnaround_note, specimen_type, ship_temp,
         handling_instructions, stability_days, stability_days_frozen,
+        search_priority,
         active, featured, created_at, updated_at,
         sku, mayo_test_id, cost_cad, collection_method,
         track_inventory, stock_qty, low_stock_threshold
@@ -580,6 +587,8 @@ function TestRow({
     collection_method: test.collection_method ?? "phlebotomist_draw",
     active: test.active,
     featured: test.featured,
+    search_priority:
+      test.search_priority != null ? String(test.search_priority) : "0",
   };
 
   return (
@@ -1342,6 +1351,21 @@ function InlineTestForm({
             offLabel="Not Featured"
           />
         </div>
+        <div className="mt-4">
+          <Field
+            label="Search Priority"
+            helper="Higher values rank higher in customer search results. Leave at 0 unless you specifically want to pin this test."
+          >
+            <input
+              type="number"
+              step="1"
+              value={fields.search_priority}
+              onChange={(e) => update("search_priority", e.target.value)}
+              className="mf-input sm:max-w-[160px]"
+              placeholder="0"
+            />
+          </Field>
+        </div>
       </div>
 
       {error && (
@@ -1575,6 +1599,19 @@ function ShipTempSelect({
       ))}
     </select>
   );
+}
+
+/**
+ * Parses the search-priority input string into an integer for the
+ * payload. Empty / non-numeric → 0 (the column default). Negatives
+ * are accepted — Mike could in theory de-prioritise a test below
+ * unranked peers, though that's not a current use case.
+ */
+function parseSearchPriority(raw: string): number {
+  const trimmed = raw.trim();
+  if (trimmed === "") return 0;
+  const n = parseInt(trimmed, 10);
+  return Number.isFinite(n) ? n : 0;
 }
 
 /**

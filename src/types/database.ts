@@ -130,6 +130,10 @@ export interface Test {
   stability_days: number | null;
   /** Only populated when ship_temp = 'refrigerated_or_frozen'. */
   stability_days_frozen: number | null;
+  /** Customer-facing catalogue search ranking boost. Higher = ranks
+   *  higher when the query matches. Default 0; only matters during
+   *  search, not browse/no-query. */
+  search_priority: number | null;
   active: boolean;
   featured: boolean;
   collection_method: "phlebotomist_draw" | "self_collected_kit";

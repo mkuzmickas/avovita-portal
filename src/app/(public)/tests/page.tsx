@@ -49,6 +49,7 @@ async function CatalogueData() {
       handling_instructions,
       stability_days,
       stability_days_frozen,
+      search_priority,
       collection_method,
       featured,
       sku,
