@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Search, ChevronDown, Baby, ArrowRight, CheckCircle, Clock } from "lucide-react";
+import { Search, ChevronDown, Baby, ArrowRight, CheckCircle, Clock, X } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type {
   AdminPatientRow,
@@ -25,13 +25,22 @@ interface AdminPatientsTableProps {
 }
 
 export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [waiverFilter, setWaiverFilter] = useState<WaiverFilter>("all");
   const [repFilter, setRepFilter] = useState<RepFilter>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Debounce 250ms — typing doesn't re-filter on every keystroke. The
+  // raw `searchInput` stays bound to the input so it stays responsive;
+  // `debouncedSearch` drives the actual filter.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 250);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
   const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = debouncedSearch.toLowerCase();
     return patients.filter((p) => {
       // Waiver filter
       if (waiverFilter === "complete" && !p.waiver_completed) return false;
@@ -51,7 +60,7 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
       }
       return false;
     });
-  }, [patients, searchQuery, waiverFilter, repFilter]);
+  }, [patients, debouncedSearch, waiverFilter, repFilter]);
 
   const toggle = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -74,11 +83,22 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
           />
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by client name or email…"
-            className="mf-input pl-10"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search by name or email..."
+            className="mf-input pl-10 pr-9"
           />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded transition-colors"
+              style={{ color: "#6ab04c" }}
+              aria-label="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <div className="flex gap-1 flex-wrap">
           {(
@@ -162,9 +182,27 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
                       color: "#6ab04c",
                     }}
                   >
-                    {patients.length === 0
-                      ? "No clients yet"
-                      : "No clients match your search"}
+                    {patients.length === 0 ? (
+                      "No clients yet"
+                    ) : (
+                      <div className="space-y-3">
+                        <p>No clients match</p>
+                        {searchInput && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchInput("")}
+                            className="inline-flex items-center px-4 py-2 rounded-lg text-xs font-semibold border transition-colors"
+                            style={{
+                              color: "#c4973a",
+                              borderColor: "#c4973a",
+                              backgroundColor: "transparent",
+                            }}
+                          >
+                            Clear search
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (

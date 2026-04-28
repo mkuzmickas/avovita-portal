@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -54,7 +54,8 @@ export function AdminOrdersTable({
 }: AdminOrdersTableProps) {
   const router = useRouter();
   const [orders, setOrders] = useState<AdminOrderRow[]>(initialOrders);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showShipModal, setShowShipModal] = useState(false);
@@ -126,12 +127,22 @@ export function AdminOrdersTable({
     }
   };
 
+  // Debounce 250ms — typing doesn't re-filter on every keystroke.
+  // The raw `searchInput` stays bound to the input so it stays
+  // responsive; `debouncedSearch` drives the actual filter.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 250);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
   const filteredOrders = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = debouncedSearch.toLowerCase();
     return orders.filter((order) => {
       if (statusFilter !== "all" && order.status !== statusFilter) return false;
       if (!q) return true;
-      if (order.id.toLowerCase().includes(q)) return true;
+      // Match against the associated client's first_name, last_name,
+      // and email — per spec. Order ID is no longer part of the
+      // search hay.
       if (order.account?.email?.toLowerCase().includes(q)) return true;
       for (const line of order.order_lines) {
         if (!line.profile) continue;
@@ -140,7 +151,7 @@ export function AdminOrdersTable({
       }
       return false;
     });
-  }, [orders, searchQuery, statusFilter]);
+  }, [orders, debouncedSearch, statusFilter]);
 
   const eligibleIds = useMemo(
     () =>
@@ -218,11 +229,22 @@ export function AdminOrdersTable({
           />
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by client name, email, or order ID…"
-            className="mf-input pl-10"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search by client name or email..."
+            className="mf-input pl-10 pr-9"
           />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded transition-colors"
+              style={{ color: "#6ab04c" }}
+              aria-label="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <select
           value={statusFilter}
@@ -333,9 +355,27 @@ export function AdminOrdersTable({
                     className="px-6 py-16 text-center"
                     style={{ backgroundColor: "#0a1a0d", color: "#6ab04c" }}
                   >
-                    {orders.length === 0
-                      ? "No orders yet"
-                      : "No orders match your search"}
+                    {orders.length === 0 ? (
+                      "No orders yet"
+                    ) : (
+                      <div className="space-y-3">
+                        <p>No orders match</p>
+                        {searchInput && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchInput("")}
+                            className="inline-flex items-center px-4 py-2 rounded-lg text-xs font-semibold border transition-colors"
+                            style={{
+                              color: "#c4973a",
+                              borderColor: "#c4973a",
+                              backgroundColor: "transparent",
+                            }}
+                          >
+                            Clear search
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (
