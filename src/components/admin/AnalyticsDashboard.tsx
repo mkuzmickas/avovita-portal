@@ -28,8 +28,90 @@ import {
   Monitor,
   Tablet,
   Smartphone,
+  Globe,
+  ExternalLink,
+  RefreshCw,
+  Info,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+
+/* ── GA4 (marketing site) types — mirror src/lib/analytics/gaCache.ts ─ */
+
+interface GASessionsByDayPoint {
+  date: string;
+  sessions: number;
+  users: number;
+  newUsers: number;
+}
+interface GAAcquisitionChannelRow {
+  channel: string;
+  sessions: number;
+  users: number;
+}
+interface GALandingPageRow {
+  pagePath: string;
+  sessions: number;
+  bounceRate: number;
+  engagementRate: number;
+}
+interface GADeviceRow {
+  deviceCategory: string;
+  sessions: number;
+  users: number;
+}
+interface GAResponse {
+  range: { startDate: string; endDate: string };
+  sessionsByDay: GASessionsByDayPoint[];
+  acquisitionChannels: GAAcquisitionChannelRow[];
+  topLandingPages: GALandingPageRow[];
+  deviceBreakdown: GADeviceRow[];
+  outboundClicksToPortal: number | null;
+}
+
+type GAErrorCode = "auth" | "quota" | "unavailable";
+interface GAError {
+  code: GAErrorCode;
+  message: string;
+}
+
+const GA_ERROR_MESSAGES: Record<GAErrorCode, string> = {
+  auth: "Authentication issue — contact admin",
+  quota: "GA quota exceeded, try again later",
+  unavailable: "Marketing site data temporarily unavailable",
+};
+
+/* ── Unified Funnel types — mirror src/app/api/admin/analytics/funnel/route.ts ── */
+
+interface FunnelResponse {
+  range: { startDate: string; endDate: string };
+  channel: string;
+  ga: {
+    marketingSessions: number;
+    outboundClicksToPortal: number | null;
+  } | null;
+  gaError: { code: GAErrorCode; message: string } | null;
+  portal: {
+    portalSessions: number;
+    testViewed: number;
+    testAddedToCart: number;
+    checkoutStarted: number;
+    orderCompleted: number;
+  } | null;
+  portalError: { message: string } | null;
+}
+
+const FUNNEL_CHANNELS = [
+  "All",
+  "Organic Search",
+  "Direct",
+  "Referral",
+  "Social",
+  "Email",
+  "Paid Search",
+  "Paid Social",
+  "Display",
+] as const;
+type FunnelChannel = (typeof FUNNEL_CHANNELS)[number];
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 
@@ -142,6 +224,26 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
   const [events, setEvents] = useState<AnalyticsEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // GA4 (marketing-site) state — independent of portal data so the
+  // dashboard can render progressively and so a GA failure doesn't break
+  // the portal section.
+  const [gaData, setGaData] = useState<GAResponse | null>(null);
+  const [gaLoading, setGaLoading] = useState(true);
+  const [gaError, setGaError] = useState<GAError | null>(null);
+  const [gaRetryToken, setGaRetryToken] = useState(0);
+
+  // Unified Funnel state — combines GA + portal counts. Channel filter
+  // applies to GA stages only.
+  const [unifiedChannel, setUnifiedChannel] =
+    useState<FunnelChannel>("All");
+  const [unifiedFunnelData, setUnifiedFunnelData] =
+    useState<FunnelResponse | null>(null);
+  const [unifiedFunnelLoading, setUnifiedFunnelLoading] = useState(true);
+  const [unifiedFunnelFatalError, setUnifiedFunnelFatalError] = useState<
+    string | null
+  >(null);
+  const [unifiedFunnelRetryToken, setUnifiedFunnelRetryToken] = useState(0);
+
   const supabase = useMemo(() => createClient(), []);
 
   const fetchData = useCallback(async () => {
@@ -193,14 +295,112 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
     fetchData();
   }, [fetchData]);
 
+  /* ── GA4 fetch (marketing site) ────────────────────────────────── */
+
+  useEffect(() => {
+    const ctl = new AbortController();
+    setGaLoading(true);
+    setGaError(null);
+
+    const params = new URLSearchParams({ range });
+    if (range === "custom") {
+      if (customStart) params.set("customStart", customStart);
+      if (customEnd) params.set("customEnd", customEnd);
+    }
+
+    fetch(`/api/admin/analytics/ga?${params.toString()}`, {
+      signal: ctl.signal,
+    })
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = (await r.json().catch(() => null)) as
+            | { error?: string; code?: GAErrorCode }
+            | null;
+          const code: GAErrorCode = body?.code ?? "unavailable";
+          throw {
+            code,
+            message: body?.error ?? GA_ERROR_MESSAGES[code],
+          } as GAError;
+        }
+        return (await r.json()) as GAResponse;
+      })
+      .then((data) => {
+        setGaData(data);
+        setGaLoading(false);
+      })
+      .catch((err: unknown) => {
+        if ((err as { name?: string })?.name === "AbortError") return;
+        const e = err as Partial<GAError>;
+        const code: GAErrorCode = e?.code ?? "unavailable";
+        setGaError({
+          code,
+          message: e?.message ?? GA_ERROR_MESSAGES[code],
+        });
+        setGaLoading(false);
+      });
+
+    return () => ctl.abort();
+  }, [range, customStart, customEnd, gaRetryToken]);
+
+  const retryGa = useCallback(() => setGaRetryToken((n) => n + 1), []);
+
+  /* ── Unified Funnel fetch ──────────────────────────────────────── */
+
+  useEffect(() => {
+    const ctl = new AbortController();
+    setUnifiedFunnelLoading(true);
+    setUnifiedFunnelFatalError(null);
+
+    const params = new URLSearchParams({
+      range,
+      channel: unifiedChannel,
+    });
+    if (range === "custom") {
+      if (customStart) params.set("customStart", customStart);
+      if (customEnd) params.set("customEnd", customEnd);
+    }
+
+    fetch(`/api/admin/analytics/funnel?${params.toString()}`, {
+      signal: ctl.signal,
+    })
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = (await r.json().catch(() => null)) as
+            | { error?: string }
+            | null;
+          throw new Error(
+            body?.error ?? `Funnel request failed (${r.status})`,
+          );
+        }
+        return (await r.json()) as FunnelResponse;
+      })
+      .then((data) => {
+        setUnifiedFunnelData(data);
+        setUnifiedFunnelLoading(false);
+      })
+      .catch((err: unknown) => {
+        if ((err as { name?: string })?.name === "AbortError") return;
+        setUnifiedFunnelFatalError(
+          err instanceof Error ? err.message : "Unable to load funnel",
+        );
+        setUnifiedFunnelLoading(false);
+      });
+
+    return () => ctl.abort();
+  }, [range, customStart, customEnd, unifiedChannel, unifiedFunnelRetryToken]);
+
+  const retryUnifiedFunnel = useCallback(
+    () => setUnifiedFunnelRetryToken((n) => n + 1),
+    [],
+  );
+
   /* ── Derived stats ──────────────────────────────────────────────── */
 
   const totalViews = pageViews.length;
   const uniqueSessions = new Set(pageViews.map((p) => p.session_id).filter(Boolean)).size;
   const loggedInViews = pageViews.filter((p) => p.account_id).length;
   const guestViews = totalViews - loggedInViews;
-  const orgViews = pageViews.filter((p) => p.org_id).length;
-  const directViews = totalViews - orgViews;
+  const directViews = totalViews - pageViews.filter((p) => p.org_id).length;
 
   // Daily views for chart
   const dailyViews = useMemo(() => {
@@ -771,6 +971,27 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
         </div>
       )}
 
+      {/* ─── UNIFIED FUNNEL (top of funnel → completed order) ──── */}
+      <UnifiedFunnelSection
+        data={unifiedFunnelData}
+        loading={unifiedFunnelLoading}
+        fatalError={unifiedFunnelFatalError}
+        channel={unifiedChannel}
+        onChannelChange={setUnifiedChannel}
+        onRetry={retryUnifiedFunnel}
+      />
+
+      {/* ─── MARKETING SITE (avovita.ca) ─────────────────────────── */}
+      <MarketingSiteSection
+        gaData={gaData}
+        gaLoading={gaLoading}
+        gaError={gaError}
+        onRetry={retryGa}
+      />
+
+      {/* ─── PORTAL ACTIVITY (portal.avovita.ca) ─────────────────── */}
+      <SectionHeader title="Portal Activity" subtitle="portal.avovita.ca" />
+
       {loading ? (
         <div className="py-20 text-center">
           <p className="text-sm" style={{ color: GREEN }}>
@@ -780,7 +1001,7 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
       ) : (
         <>
           {/* ─── OVERVIEW CARDS ──────────────────────────────────────── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard
               icon={<Eye className="w-5 h-5" />}
               label="Page Views"
@@ -795,11 +1016,6 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
               icon={<Users className="w-5 h-5" />}
               label="Logged In / Guest"
               value={`${fmt(loggedInViews)} / ${fmt(guestViews)}`}
-            />
-            <StatCard
-              icon={<TrendingUp className="w-5 h-5" />}
-              label="Direct / Org Traffic"
-              value={`${fmt(directViews)} / ${fmt(orgViews)}`}
             />
           </div>
 
@@ -1877,5 +2093,849 @@ function TD({
     >
       {children}
     </td>
+  );
+}
+
+/* ── Section header (used to label Marketing Site vs Portal Activity) ── */
+
+function SectionHeader({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div
+      className="flex items-baseline gap-3 pt-2 border-b pb-2"
+      style={{ borderColor: BORDER }}
+    >
+      <h2
+        className="font-heading text-2xl font-semibold"
+        style={{
+          color: "#fff",
+          fontFamily: '"Cormorant Garamond", Georgia, serif',
+        }}
+      >
+        {title}
+      </h2>
+      {subtitle && (
+        <span className="text-xs font-mono" style={{ color: GREEN }}>
+          {subtitle}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* ── Marketing Site (GA4) section ────────────────────────────────────── */
+
+function MarketingSiteSection({
+  gaData,
+  gaLoading,
+  gaError,
+  onRetry,
+}: {
+  gaData: GAResponse | null;
+  gaLoading: boolean;
+  gaError: GAError | null;
+  onRetry: () => void;
+}) {
+  return (
+    <>
+      <SectionHeader title="Marketing Site" subtitle="avovita.ca" />
+
+      {gaError ? (
+        <GAErrorCard error={gaError} onRetry={onRetry} />
+      ) : gaLoading || !gaData ? (
+        <GASkeleton />
+      ) : (
+        <GASectionContent data={gaData} />
+      )}
+    </>
+  );
+}
+
+function GAErrorCard({
+  error,
+  onRetry,
+}: {
+  error: GAError;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      className="rounded-xl border p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+      style={{ backgroundColor: BG_CARD, borderColor: BORDER }}
+    >
+      <div className="flex items-start gap-3">
+        <Globe
+          className="w-5 h-5 mt-0.5 shrink-0"
+          style={{ color: "#e05252" }}
+        />
+        <div>
+          <p className="text-sm font-semibold" style={{ color: "#fff" }}>
+            {error.message}
+          </p>
+          <p className="text-xs mt-1" style={{ color: CREAM }}>
+            Portal data below is unaffected.
+          </p>
+        </div>
+      </div>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors self-start sm:self-auto"
+        style={{
+          backgroundColor: BG_DARK,
+          color: GOLD,
+          border: `1px solid ${BORDER}`,
+        }}
+      >
+        <RefreshCw className="w-3.5 h-3.5" />
+        Retry
+      </button>
+    </div>
+  );
+}
+
+function GASkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="rounded-xl border p-5 animate-pulse"
+            style={{ backgroundColor: BG_CARD, borderColor: BORDER }}
+          >
+            <div
+              className="h-3 w-20 rounded mb-3"
+              style={{ backgroundColor: BG_DARK }}
+            />
+            <div
+              className="h-7 w-16 rounded"
+              style={{ backgroundColor: BG_DARK }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[0, 1].map((i) => (
+          <div
+            key={i}
+            className="rounded-xl border p-5 h-72 animate-pulse"
+            style={{ backgroundColor: BG_CARD, borderColor: BORDER }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GASectionContent({ data }: { data: GAResponse }) {
+  const totalSessions = data.sessionsByDay.reduce(
+    (s, d) => s + d.sessions,
+    0,
+  );
+  const totalUsers = data.sessionsByDay.reduce((s, d) => s + d.users, 0);
+  const totalNewUsers = data.sessionsByDay.reduce(
+    (s, d) => s + d.newUsers,
+    0,
+  );
+
+  const sessionsChartData = data.sessionsByDay.map((d) => ({
+    date: dateLabel(d.date),
+    Sessions: d.sessions,
+    Users: d.users,
+  }));
+
+  const totalDeviceSessions =
+    data.deviceBreakdown.reduce((s, d) => s + d.sessions, 0) || 1;
+
+  return (
+    <>
+      {/* Row 1 — Marketing-site metric cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={<Globe className="w-5 h-5" />}
+          label="GA Sessions"
+          value={fmt(totalSessions)}
+        />
+        <StatCard
+          icon={<Users className="w-5 h-5" />}
+          label="GA Users"
+          value={fmt(totalUsers)}
+        />
+        <StatCard
+          icon={<Users className="w-5 h-5" />}
+          label="GA New Users"
+          value={fmt(totalNewUsers)}
+        />
+        <StatCard
+          icon={<ExternalLink className="w-5 h-5" />}
+          label="Outbound → Portal"
+          value={
+            data.outboundClicksToPortal === null
+              ? "Not tracked"
+              : fmt(data.outboundClicksToPortal)
+          }
+        />
+      </div>
+
+      {/* Row 2 — Sessions/Users by Day  +  Acquisition Channels */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Section title="Sessions & Users by Day">
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={sessionsChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={BORDER} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: CREAM, fontSize: 11 }}
+                  stroke={BORDER}
+                />
+                <YAxis
+                  tick={{ fill: CREAM, fontSize: 11 }}
+                  stroke={BORDER}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: BG_MID,
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 8,
+                    color: "#fff",
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Sessions"
+                  stroke={GOLD}
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Users"
+                  stroke={GREEN}
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex items-center gap-6 mt-2 text-xs">
+            <span className="flex items-center gap-1.5">
+              <span
+                className="w-3 h-0.5 rounded"
+                style={{ backgroundColor: GOLD }}
+              />
+              <span style={{ color: CREAM }}>Sessions</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span
+                className="w-3 h-0.5 rounded"
+                style={{ backgroundColor: GREEN }}
+              />
+              <span style={{ color: CREAM }}>Users</span>
+            </span>
+          </div>
+        </Section>
+
+        <Section title="Acquisition Channels">
+          {data.acquisitionChannels.length === 0 ? (
+            <div className="h-72 flex items-center justify-center">
+              <span className="text-sm" style={{ color: CREAM }}>
+                No channel data in range
+              </span>
+            </div>
+          ) : (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={data.acquisitionChannels}
+                  layout="vertical"
+                  margin={{ top: 8, right: 16, bottom: 8, left: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={BORDER} />
+                  <XAxis
+                    type="number"
+                    tick={{ fill: CREAM, fontSize: 11 }}
+                    stroke={BORDER}
+                    allowDecimals={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="channel"
+                    width={130}
+                    tick={{ fill: CREAM, fontSize: 11 }}
+                    stroke={BORDER}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: BG_MID,
+                      border: `1px solid ${BORDER}`,
+                      borderRadius: 8,
+                      color: "#fff",
+                    }}
+                  />
+                  <Bar
+                    dataKey="sessions"
+                    fill={GOLD}
+                    radius={[0, 4, 4, 0]}
+                    name="Sessions"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Section>
+      </div>
+
+      {/* Row 3 — Top Landing Pages  +  Device Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Section
+          title="Top Landing Pages"
+          action={
+            <ExportButton
+              onClick={() =>
+                downloadCSV(
+                  "ga-top-landing-pages.csv",
+                  ["Path", "Sessions", "Bounce Rate", "Engagement Rate"],
+                  data.topLandingPages.map((p) => [
+                    p.pagePath,
+                    String(p.sessions),
+                    `${(p.bounceRate * 100).toFixed(1)}%`,
+                    `${(p.engagementRate * 100).toFixed(1)}%`,
+                  ]),
+                )
+              }
+            />
+          }
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                  <TH>Path</TH>
+                  <TH align="right">Sessions</TH>
+                  <TH align="right">Bounce</TH>
+                  <TH align="right">Engagement</TH>
+                </tr>
+              </thead>
+              <tbody>
+                {data.topLandingPages.map((p) => (
+                  <tr
+                    key={p.pagePath}
+                    style={{ borderBottom: `1px solid ${BORDER}` }}
+                  >
+                    <TD>{p.pagePath}</TD>
+                    <TD align="right">{fmt(p.sessions)}</TD>
+                    <TD align="right">
+                      {(p.bounceRate * 100).toFixed(1)}%
+                    </TD>
+                    <TD align="right">
+                      {(p.engagementRate * 100).toFixed(1)}%
+                    </TD>
+                  </tr>
+                ))}
+                {data.topLandingPages.length === 0 && (
+                  <tr>
+                    <TD colSpan={4}>No data in range</TD>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+
+        <Section title="Device Breakdown">
+          {data.deviceBreakdown.length === 0 ? (
+            <div className="h-56 flex items-center justify-center">
+              <span className="text-sm" style={{ color: CREAM }}>
+                No device data
+              </span>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {data.deviceBreakdown.map((d) => {
+                const Icon =
+                  d.deviceCategory === "mobile"
+                    ? Smartphone
+                    : d.deviceCategory === "tablet"
+                      ? Tablet
+                      : Monitor;
+                const pctOfTotal =
+                  (d.sessions / totalDeviceSessions) * 100;
+                return (
+                  <div key={d.deviceCategory}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Icon className="w-4 h-4" style={{ color: GOLD }} />
+                      <span
+                        className="text-sm capitalize font-medium"
+                        style={{ color: "#fff" }}
+                      >
+                        {d.deviceCategory}
+                      </span>
+                      <span
+                        className="text-xs ml-auto"
+                        style={{ color: CREAM }}
+                      >
+                        {fmt(d.sessions)} sessions ({pctOfTotal.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div
+                      className="relative h-2 rounded-full overflow-hidden"
+                      style={{ backgroundColor: BG_DARK }}
+                    >
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full"
+                        style={{
+                          width: `${pctOfTotal}%`,
+                          backgroundColor: GOLD,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Section>
+      </div>
+    </>
+  );
+}
+
+/* ── Unified Funnel section ──────────────────────────────────────────── *
+ * This funnel uses aggregate counts from two independent measurement
+ * systems. Stage-to-stage conversion rates within the same system are
+ * valid; the handoff between marketing site (GA) and portal
+ * (analytics_events) is approximate. For per-user attribution,
+ * cross-domain session ID stitching would be required — see future work.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+interface FunnelStage {
+  label: string;
+  count: number | null;
+  /** "ga" stages styled differently from "portal" stages. */
+  source: "ga" | "portal";
+  /** True when this stage's count is unavailable but tracked elsewhere. */
+  notTracked?: boolean;
+  /** True when channel filter applies and this stage has no attribution. */
+  greyed?: boolean;
+}
+
+function buildFunnelStages(
+  data: FunnelResponse | null,
+  channel: FunnelChannel,
+): FunnelStage[] {
+  const portalGreyed = channel !== "All";
+  return [
+    {
+      label: "Marketing site sessions",
+      count: data?.ga?.marketingSessions ?? null,
+      source: "ga",
+    },
+    {
+      label: "Outbound clicks to portal",
+      count: data?.ga?.outboundClicksToPortal ?? null,
+      source: "ga",
+      notTracked:
+        data?.ga != null && data.ga.outboundClicksToPortal === null,
+    },
+    {
+      label: "Portal sessions",
+      count: portalGreyed ? null : (data?.portal?.portalSessions ?? null),
+      source: "portal",
+      greyed: portalGreyed,
+    },
+    {
+      label: "Test viewed",
+      count: portalGreyed ? null : (data?.portal?.testViewed ?? null),
+      source: "portal",
+      greyed: portalGreyed,
+    },
+    {
+      label: "Tests added to cart",
+      count: portalGreyed ? null : (data?.portal?.testAddedToCart ?? null),
+      source: "portal",
+      greyed: portalGreyed,
+    },
+    {
+      label: "Checkout started",
+      count: portalGreyed ? null : (data?.portal?.checkoutStarted ?? null),
+      source: "portal",
+      greyed: portalGreyed,
+    },
+    {
+      label: "Order completed",
+      count: portalGreyed ? null : (data?.portal?.orderCompleted ?? null),
+      source: "portal",
+      greyed: portalGreyed,
+    },
+  ];
+}
+
+function UnifiedFunnelSection({
+  data,
+  loading,
+  fatalError,
+  channel,
+  onChannelChange,
+  onRetry,
+}: {
+  data: FunnelResponse | null;
+  loading: boolean;
+  fatalError: string | null;
+  channel: FunnelChannel;
+  onChannelChange: (c: FunnelChannel) => void;
+  onRetry: () => void;
+}) {
+  const stages = buildFunnelStages(data, channel);
+  const gaError = data?.gaError ?? null;
+  const portalError = data?.portalError ?? null;
+  const bothFailed =
+    !loading && !fatalError && data?.ga == null && data?.portal == null;
+
+  return (
+    <>
+      <SectionHeader title="Unified Funnel" subtitle="acquisition → order" />
+
+      <div
+        className="rounded-xl border p-5 space-y-4"
+        style={{ backgroundColor: BG_CARD, borderColor: BORDER }}
+      >
+        {/* Header — caveat tooltip + channel filter */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h2
+              className="text-base font-semibold"
+              style={{ color: "#fff" }}
+            >
+              Top of funnel → completed order
+            </h2>
+            <FunnelInfoTooltip />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs" style={{ color: CREAM }}>
+              Channel:
+            </label>
+            <select
+              value={channel}
+              onChange={(e) =>
+                onChannelChange(e.target.value as FunnelChannel)
+              }
+              className="text-xs px-2 py-1 rounded"
+              style={{
+                backgroundColor: BG_DARK,
+                color: GOLD,
+                border: `1px solid ${BORDER}`,
+              }}
+            >
+              {FUNNEL_CHANNELS.map((c) => (
+                <option key={c} value={c} style={{ backgroundColor: BG_DARK }}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Body */}
+        {fatalError ? (
+          <FunnelInlineError message={fatalError} onRetry={onRetry} />
+        ) : bothFailed ? (
+          <FunnelInlineError
+            message="Unified funnel data is currently unavailable from both sources."
+            onRetry={onRetry}
+          />
+        ) : loading && !data ? (
+          <FunnelSkeleton />
+        ) : (
+          <FunnelBars
+            stages={stages}
+            channel={channel}
+            gaError={gaError}
+            portalError={portalError}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
+function FunnelInfoTooltip() {
+  return (
+    <span
+      className="inline-flex relative group"
+      tabIndex={0}
+      aria-label="About this funnel"
+    >
+      <Info
+        className="w-4 h-4 cursor-help"
+        style={{ color: CREAM }}
+      />
+      <span
+        className="invisible group-hover:visible group-focus:visible absolute left-6 top-0 z-10 w-72 text-xs rounded-lg p-3 shadow-lg"
+        style={{
+          backgroundColor: BG_DARK,
+          color: CREAM,
+          border: `1px solid ${BORDER}`,
+        }}
+      >
+        This funnel combines metrics from two independent sources:
+        avovita.ca (Google Analytics) and portal.avovita.ca (internal
+        events). The handoff between marketing site and portal is
+        approximate — we cannot perfectly track individual users across
+        both systems.
+      </span>
+    </span>
+  );
+}
+
+function FunnelInlineError({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-3">
+      <p className="text-sm" style={{ color: CREAM }}>
+        {message}
+      </p>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+        style={{
+          backgroundColor: BG_DARK,
+          color: GOLD,
+          border: `1px solid ${BORDER}`,
+        }}
+      >
+        <RefreshCw className="w-3.5 h-3.5" />
+        Retry
+      </button>
+    </div>
+  );
+}
+
+function FunnelSkeleton() {
+  return (
+    <div className="space-y-2">
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+        <div
+          key={i}
+          className="h-9 rounded-lg animate-pulse"
+          style={{ backgroundColor: BG_DARK, opacity: 1 - i * 0.07 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FunnelBars({
+  stages,
+  channel,
+  gaError,
+  portalError,
+}: {
+  stages: FunnelStage[];
+  channel: FunnelChannel;
+  gaError: { code: GAErrorCode; message: string } | null;
+  portalError: { message: string } | null;
+}) {
+  // Conversion math: skip null counts and skip the GA→portal boundary
+  // (stages[1] → stages[2]) — independent measurement systems.
+  const maxCount = Math.max(
+    1,
+    ...stages
+      .map((s) => s.count ?? 0)
+      .filter((n) => Number.isFinite(n)),
+  );
+
+  return (
+    <div className="space-y-2">
+      {/* Per-source error badges */}
+      {gaError && (
+        <FunnelSourceBanner
+          source="GA"
+          message={`Marketing-site stages unavailable: ${gaError.message}`}
+        />
+      )}
+      {portalError && (
+        <FunnelSourceBanner
+          source="Portal"
+          message={`Portal stages unavailable: ${portalError.message}`}
+        />
+      )}
+
+      {stages.map((stage, i) => {
+        const prev = stages[i - 1];
+        // 0 → 1 (within GA): valid conversion.
+        // 1 → 2 (GA → portal): NOT a conversion — show approximate handoff annotation.
+        // 2 → 3, 3 → 4, ... (within portal): valid conversion.
+        const isCrossSourceBoundary =
+          i === 2 && prev?.source === "ga" && stage.source === "portal";
+        const showConversion =
+          !isCrossSourceBoundary &&
+          !stage.greyed &&
+          !prev?.greyed &&
+          prev?.count != null &&
+          stage.count != null &&
+          prev.count > 0;
+        const conversionPct = showConversion
+          ? ((stage.count as number) / (prev.count as number)) * 100
+          : null;
+
+        return (
+          <FunnelRow
+            key={stage.label}
+            stage={stage}
+            maxCount={maxCount}
+            conversionPct={conversionPct}
+            crossSourceAnnotation={isCrossSourceBoundary}
+          />
+        );
+      })}
+
+      {channel !== "All" && (
+        <p
+          className="text-xs italic mt-3 pt-3 border-t"
+          style={{ color: CREAM, borderColor: BORDER }}
+        >
+          Showing channel <strong style={{ color: GOLD }}>{channel}</strong>.
+          Marketing-site stages refilter; portal stages cannot be sliced
+          (channel attribution unavailable on the portal side).
+        </p>
+      )}
+    </div>
+  );
+}
+
+function FunnelSourceBanner({
+  source,
+  message,
+}: {
+  source: "GA" | "Portal";
+  message: string;
+}) {
+  return (
+    <div
+      className="text-xs px-3 py-2 rounded-lg flex items-center gap-2"
+      style={{
+        backgroundColor: BG_DARK,
+        color: "#e05252",
+        border: `1px solid ${BORDER}`,
+      }}
+    >
+      <span className="font-bold">{source}:</span>
+      <span style={{ color: CREAM }}>{message}</span>
+    </div>
+  );
+}
+
+function FunnelRow({
+  stage,
+  maxCount,
+  conversionPct,
+  crossSourceAnnotation,
+}: {
+  stage: FunnelStage;
+  maxCount: number;
+  conversionPct: number | null;
+  crossSourceAnnotation: boolean;
+}) {
+  const widthPct =
+    stage.count != null
+      ? Math.max(2, (stage.count / maxCount) * 100)
+      : 0;
+
+  // GA stages: green-tinted. Portal stages: gold. Greyed: muted.
+  const barColor = stage.greyed
+    ? "#3a4a3f"
+    : stage.source === "ga"
+      ? GREEN
+      : GOLD;
+  const labelColor = stage.greyed ? "#8a9a90" : "#fff";
+
+  return (
+    <div>
+      {crossSourceAnnotation && (
+        <div
+          className="flex items-center gap-2 pl-4 mb-1 text-xs italic"
+          style={{ color: CREAM }}
+        >
+          <span style={{ color: GREEN }}>↳</span>
+          approximate handoff (different measurement systems)
+        </div>
+      )}
+      <div className="flex items-center gap-3">
+        <div
+          className="w-44 text-xs font-medium truncate"
+          style={{ color: labelColor }}
+        >
+          {stage.label}
+          {stage.source === "ga" && (
+            <span
+              className="ml-1.5 text-[10px] uppercase font-semibold"
+              style={{ color: GREEN }}
+            >
+              GA
+            </span>
+          )}
+        </div>
+        <div
+          className="flex-1 relative h-9 rounded-lg overflow-hidden"
+          style={{ backgroundColor: BG_DARK }}
+        >
+          {stage.count != null && !stage.greyed && (
+            <div
+              className="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
+              style={{
+                width: `${widthPct}%`,
+                backgroundColor: barColor,
+                opacity: stage.source === "ga" ? 0.85 : 1,
+              }}
+            />
+          )}
+          <div className="absolute inset-0 flex items-center px-3">
+            {stage.greyed ? (
+              <span
+                className="text-xs italic"
+                style={{ color: "#8a9a90" }}
+              >
+                channel attribution unavailable
+              </span>
+            ) : stage.notTracked ? (
+              <span className="text-xs italic" style={{ color: CREAM }}>
+                Not tracked
+              </span>
+            ) : stage.count == null ? (
+              <span className="text-xs italic" style={{ color: CREAM }}>
+                unavailable
+              </span>
+            ) : (
+              <span
+                className="text-xs font-semibold"
+                style={{ color: stage.source === "ga" ? "#fff" : BG_DARK }}
+              >
+                {fmt(stage.count)}
+              </span>
+            )}
+          </div>
+        </div>
+        <div
+          className="w-24 text-right shrink-0 text-xs"
+          style={{ color: conversionPct != null ? GREEN : CREAM }}
+        >
+          {conversionPct != null
+            ? `${conversionPct.toFixed(1)}%`
+            : "—"}
+        </div>
+      </div>
+    </div>
   );
 }
