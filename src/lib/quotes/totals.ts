@@ -6,12 +6,9 @@ export interface QuoteTotals {
   subtotal_cad: number;
   discount_cad: number;
   visit_fee_cad: number;
-  /** Sum of admin-entered freeform charge / credit lines on the quote.
-   *  Folded into total_cad pre-GST. 0 when the quote has no custom
-   *  lines (the common case). */
-  custom_lines_total_cad: number;
   /** Pre-tax total. The grand total shown to the customer is
-   *  `total_cad + gst_cad`. */
+   *  `total_cad + gst_cad`. Custom-line amounts (sum of
+   *  quotes.custom_lines[].amount_cad) are already folded into this. */
   total_cad: number;
   /** 5% GST on total_cad. Persisted so tax stays stable if the rate
    *  ever shifts. */
@@ -96,7 +93,6 @@ export function computeQuoteTotals(
     subtotal_cad: subtotal,
     discount_cad: discount,
     visit_fee_cad: visitFee,
-    custom_lines_total_cad: Math.round(customLinesTotal * 100) / 100,
     total_cad: total,
     gst_cad: gst,
   };

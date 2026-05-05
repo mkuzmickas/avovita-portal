@@ -27,7 +27,6 @@ describe("a) Banff scenario — quote with one $300 custom line + 2 tests + FloL
     expect(totals.subtotal_cad).toBe(400);
     expect(totals.discount_cad).toBe(40);
     expect(totals.visit_fee_cad).toBe(85);
-    expect(totals.custom_lines_total_cad).toBe(300);
     expect(totals.total_cad).toBeCloseTo(745, 2);
     expect(totals.gst_cad).toBeCloseTo(37.25, 2);
     expect(grandTotalCad(totals)).toBeCloseTo(782.25, 2);
@@ -44,7 +43,6 @@ describe("b) Negative custom line (loyalty credit) reduces subtotal correctly", 
       null,
       [{ amount_cad: -50 }]
     );
-    expect(totals.custom_lines_total_cad).toBe(-50);
     expect(totals.total_cad).toBeCloseTo(235, 2);
     expect(totals.gst_cad).toBeCloseTo(11.75, 2);
   });
@@ -64,7 +62,6 @@ describe("c) Multiple custom lines (positive + negative mixed) sum correctly", (
         { amount_cad: 10 },
       ]
     );
-    expect(totals.custom_lines_total_cad).toBe(260);
     expect(totals.total_cad).toBeCloseTo(645, 2);
     expect(totals.gst_cad).toBeCloseTo(32.25, 2);
   });
