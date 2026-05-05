@@ -21,6 +21,12 @@ interface OrderLine {
   profile_id: string | null;
   quantity: number;
   unit_price_cad: number;
+  /** Set when line_type='custom' — admin-entered description (also the
+   *  customer-facing label, mirrored on Stripe). */
+  custom_description: string | null;
+  /** Set when line_type='custom' — admin-only internal note. Never
+   *  rendered customer-side. */
+  custom_notes: string | null;
   test: { name: string; sku: string | null } | null;
   supplement: { name: string; sku: string | null } | null;
   resource: { title: string } | null;
@@ -228,7 +234,9 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
                   ? line.test?.name ?? "Unknown test"
                   : line.line_type === "supplement"
                     ? line.supplement?.name ?? "Unknown supplement"
-                    : line.resource?.title ?? "Unknown resource";
+                    : line.line_type === "custom"
+                      ? line.custom_description ?? "Custom line"
+                      : line.resource?.title ?? "Unknown resource";
               const sku =
                 line.line_type === "test"
                   ? line.test?.sku
@@ -236,6 +244,8 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
                     ? line.supplement?.sku
                     : null;
               const lineTotal = line.unit_price_cad * line.quantity;
+              const isCredit =
+                line.line_type === "custom" && line.unit_price_cad < 0;
 
               return (
                 <tr
@@ -253,7 +263,24 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
                           {sku}
                         </span>
                       )}
+                      {isCredit && (
+                        <span
+                          className="ml-2 text-[10px] uppercase tracking-wider"
+                          style={{ color: "#8dc63f" }}
+                        >
+                          credit
+                        </span>
+                      )}
                     </div>
+                    {line.line_type === "custom" && line.custom_notes && (
+                      <div
+                        className="text-[11px] mt-0.5 pl-2 italic"
+                        style={{ color: "#c4973a" }}
+                        title="Internal note (admin only)"
+                      >
+                        🔒 {line.custom_notes}
+                      </div>
+                    )}
                     {line.profile && (
                       <div
                         className="text-[11px] mt-0.5 pl-2"

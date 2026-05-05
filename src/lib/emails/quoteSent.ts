@@ -10,10 +10,20 @@ export interface QuoteEmailLine {
   unit_price_cad: number;
 }
 
+/** Customer-facing custom line — `notes` are admin-only and are NEVER
+ *  passed in here. Caller strips them at the API boundary. */
+export interface QuoteEmailCustomLine {
+  description: string;
+  amount_cad: number;
+}
+
 export interface QuoteEmailProps {
   firstName: string;
   quoteNumber: string;
   lines: QuoteEmailLine[];
+  /** Admin-entered freeform charge / credit lines. Empty / undefined to
+   *  hide the section entirely (the common case). */
+  customLines?: QuoteEmailCustomLine[];
   subtotal: number;
   discount: number;
   visitFee: number;
@@ -61,6 +71,7 @@ export function renderQuoteEmail(props: QuoteEmailProps): string {
     firstName,
     quoteNumber,
     lines,
+    customLines = [],
     subtotal,
     discount,
     visitFee,
@@ -182,6 +193,22 @@ export function renderQuoteEmail(props: QuoteEmailProps): string {
                   <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Home visit fee (in-home collection)</td>
                   <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(visitFee)}</td>
                 </tr>
+                ${customLines
+                  .map((c) => {
+                    const isCredit = c.amount_cad < 0;
+                    const labelColor = isCredit ? "#6fa030" : "#6b7280";
+                    const valueColor = isCredit ? "#6fa030" : "#111827";
+                    const weight = isCredit ? "font-weight: 600;" : "";
+                    const valueText = isCredit
+                      ? `−${formatCurrency(Math.abs(c.amount_cad))}`
+                      : formatCurrency(c.amount_cad);
+                    return `
+                <tr>
+                  <td style="padding: 6px 0; color: ${labelColor}; font-size: 13px; ${weight}">${escapeHtml(c.description)}</td>
+                  <td style="padding: 6px 0; text-align: right; color: ${valueColor}; font-size: 13px; ${weight}">${valueText}</td>
+                </tr>`;
+                  })
+                  .join("")}
                 ${manualDiscountRow}
                 <tr>
                   <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">GST (5%)</td>

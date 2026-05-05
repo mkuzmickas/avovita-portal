@@ -85,6 +85,8 @@ export function CheckoutCartSummary({
   const resourceSubtotal = cart
     .filter((i) => i.line_type === "resource")
     .reduce((s, i) => s + i.price_cad, 0);
+  const customCartItems = cart.filter((i) => i.line_type === "custom");
+  const customLineAmounts = customCartItems.map((i) => i.price_cad);
 
   const kitFee = computeKitServiceFee(cart);
 
@@ -96,6 +98,7 @@ export function CheckoutCartSummary({
     resourceSubtotal,
     kitServiceFee: kitFee.amount,
     quoteDiscount: quoteDiscountCad,
+    customLineAmounts,
   });
 
   const subtotal = totals.testsSubtotal;
@@ -303,6 +306,22 @@ export function CheckoutCartSummary({
                 <span>{formatCurrency(kitFee.amount)}</span>
               </div>
             )}
+            {customCartItems.map((c) => (
+              <div
+                key={c.custom_id}
+                className="flex justify-between text-sm"
+                style={{
+                  color: c.price_cad < 0 ? "#8dc63f" : "#e8d5a3",
+                }}
+              >
+                <span className="truncate pr-2">{c.description}</span>
+                <span className="whitespace-nowrap">
+                  {c.price_cad < 0
+                    ? `−${formatCurrency(Math.abs(c.price_cad))}`
+                    : formatCurrency(c.price_cad)}
+                </span>
+              </div>
+            ))}
 
             {totals.quoteDiscount > 0 && (
               <div

@@ -158,6 +158,18 @@ export function Step4Review({
   const suppShippingFee =
     suppFulfillment === "shipping" ? SUPPLEMENT_SHIPPING_FEE_CAD : 0;
 
+  // Custom cart items (admin-set freeform charge / credit lines from an
+  // accepted quote). Carry their amounts into the calculator so GST is
+  // recalculated on the combined subtotal.
+  const customCartItems = useMemo(
+    () => cart.filter((i) => i.line_type === "custom"),
+    [cart]
+  );
+  const customLineAmounts = useMemo(
+    () => customCartItems.map((i) => i.price_cad),
+    [customCartItems]
+  );
+
   const totals = useMemo(
     () =>
       calculateTotals({
@@ -169,9 +181,10 @@ export function Step4Review({
         supplementShippingFee: suppShippingFee,
         kitServiceFee: kitFee.amount,
         quoteDiscount: quoteDiscountCad,
+        customLineAmounts,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [assignments, visitFees.total, appliedPromo, supplementSubtotal, resourceSubtotal, suppShippingFee, kitFee.amount, quoteDiscountCad]
+    [assignments, visitFees.total, appliedPromo, supplementSubtotal, resourceSubtotal, suppShippingFee, kitFee.amount, quoteDiscountCad, customLineAmounts]
   );
   const subtotal = totals.testsSubtotal;
   const discount = useMemo(
@@ -319,10 +332,14 @@ export function Step4Review({
     // checkout-unified which handles all three line types.
     const hasSupplements = cart.some((i) => i.line_type === "supplement");
     const hasResources = cart.some((i) => i.line_type === "resource");
+    const hasCustomLines = cart.some((i) => i.line_type === "custom");
     const isKitOnlyCart = kitFee.hasKitTests && !kitFee.hasPhlebotomistTests;
-    // Route through checkout-unified if mixed OR kit-only (old route
-    // always adds visit fee server-side, which is wrong for kit-only).
-    const isMixedCart = hasSupplements || hasResources || isKitOnlyCart;
+    // Route through checkout-unified if the cart includes anything
+    // beyond plain phlebotomist tests. Custom lines (e.g. the Banff
+    // travel surcharge) only flow through the unified path because the
+    // V1 route knows nothing about them.
+    const isMixedCart =
+      hasSupplements || hasResources || hasCustomLines || isKitOnlyCart;
 
     try {
       if (isMixedCart) {
@@ -335,6 +352,16 @@ export function Step4Review({
         const subtotalResources = cart
           .filter((i) => i.line_type === "resource")
           .reduce((s, i) => s + i.price_cad, 0);
+        const customLinesPayload = customCartItems.map((c) => ({
+          custom_id: c.custom_id,
+          description: c.description,
+          amount_cad: c.price_cad,
+          notes: c.notes ?? null,
+        }));
+        const customLinesTotal = customLinesPayload.reduce(
+          (s, c) => s + c.amount_cad,
+          0
+        );
 
         const pendingPayload: PendingOrderPayload = {
           version: 2,
@@ -371,6 +398,7 @@ export function Step4Review({
             ? suppShippingAddress
             : null,
           kit_service_fee: kitFee.amount,
+          custom_lines: customLinesPayload,
           subtotal_tests: subtotal,
           subtotal_supplements: subtotalSupplements,
           subtotal_resources: subtotalResources,
@@ -382,7 +410,8 @@ export function Step4Review({
             subtotalSupplements +
             subtotalResources +
             suppShippingFee +
-            kitFee.amount,
+            kitFee.amount +
+            customLinesTotal,
         };
 
         // 1. Create pending order
@@ -682,6 +711,22 @@ export function Step4Review({
               </span>
             </div>
           )}
+          {customCartItems.map((c) => (
+            <div
+              key={c.custom_id}
+              className="flex justify-between"
+              style={{
+                color: c.price_cad < 0 ? "#8dc63f" : "#e8d5a3",
+              }}
+            >
+              <span>{c.description}</span>
+              <span>
+                {c.price_cad < 0
+                  ? `−${formatCurrency(Math.abs(c.price_cad))}`
+                  : formatCurrency(c.price_cad)}
+              </span>
+            </div>
+          ))}
           {supplementSubtotal > 0 && (
             <div
               className="flex justify-between pt-2 mt-1 border-t"

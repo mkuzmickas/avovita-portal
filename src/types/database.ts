@@ -262,6 +262,20 @@ export interface Organization {
   created_at: string;
 }
 
+/**
+ * Admin-entered freeform charge / credit on a quote. Stored as a JSONB
+ * array on `quotes.custom_lines` (migration 022).
+ *
+ *   - description: customer-facing label, 1-100 chars
+ *   - amount_cad:  positive (charge) or negative (credit); ±$10,000 cap
+ *   - notes:       admin-only, never rendered customer-side
+ */
+export interface CustomQuoteLine {
+  description: string;
+  amount_cad: number;
+  notes: string | null;
+}
+
 export interface Quote {
   id: string;
   quote_number: string;
@@ -286,6 +300,10 @@ export interface Quote {
    *  when type=percent. */
   manual_discount_value: number;
   manual_discount_type: "amount" | "percent";
+  /** Freeform charge / credit lines added by an admin. Renders in quote
+   *  email + carries through cart + Stripe + order confirmation email +
+   *  admin order detail. Customer never sees the per-line `notes`. */
+  custom_lines: CustomQuoteLine[];
   sent_at: string | null;
   expires_at: string | null;
   created_by: string | null;

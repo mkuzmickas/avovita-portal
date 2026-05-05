@@ -33,7 +33,7 @@ import {
   type StabilityItem,
 } from "@/lib/quotes/stability";
 import type { ShipTemp } from "@/lib/tests/shipTempDisplay";
-import type { Quote } from "@/types/database";
+import type { Quote, CustomQuoteLine } from "@/types/database";
 import type {
   QuoteLineWithTest,
   CatalogueTestForQuote,
@@ -90,6 +90,46 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
     "amount" | "percent"
   >(quote.manual_discount_type ?? "amount");
 
+  // Custom lines — admin-entered freeform charges/credits beyond the
+  // standard test/fee lines. Each row is locally edited as strings so a
+  // mid-typing "-" or "1." doesn't get coerced into 0; we coerce to
+  // number only at save / total time.
+  type CustomLineDraft = {
+    /** Stable client-side id so React keys stay stable across reorders. */
+    key: string;
+    description: string;
+    amount: string;
+    notes: string;
+  };
+  const [customLines, setCustomLines] = useState<CustomLineDraft[]>(
+    () =>
+      (quote.custom_lines ?? []).map((c, i) => ({
+        key: `c${i}-${Math.random().toString(36).slice(2, 8)}`,
+        description: c.description,
+        amount: String(c.amount_cad),
+        notes: c.notes ?? "",
+      }))
+  );
+
+  /** Convert UI drafts to the canonical CustomQuoteLine[] shape. Drops
+   *  rows missing description or with non-finite amount so a partial
+   *  edit doesn't bork live totals. Mirrored server-side by
+   *  sanitizeCustomLines for save-time validation. */
+  const customLinesResolved = useMemo<CustomQuoteLine[]>(() => {
+    const out: CustomQuoteLine[] = [];
+    for (const c of customLines) {
+      const desc = c.description.trim();
+      const amt = Number(c.amount);
+      if (!desc || !Number.isFinite(amt)) continue;
+      out.push({
+        description: desc,
+        amount_cad: Math.round(amt * 10_000) / 10_000,
+        notes: c.notes.trim() ? c.notes.trim() : null,
+      });
+    }
+    return out;
+  }, [customLines]);
+
   // Test search + person picker
   const [search, setSearch] = useState("");
   const [isListOpen, setIsListOpen] = useState(false);
@@ -117,6 +157,22 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
   const [success, setSuccess] = useState<string | null>(null);
 
   const manualDiscountNum = Number(manualDiscountValue) || 0;
+  const customLinesJson = useMemo(
+    () => JSON.stringify(customLinesResolved),
+    [customLinesResolved]
+  );
+  const initialCustomLinesJson = useMemo(
+    () =>
+      JSON.stringify(
+        (quote.custom_lines ?? []).map((c) => ({
+          description: c.description,
+          amount_cad: c.amount_cad,
+          notes: c.notes,
+        }))
+      ),
+    [quote.custom_lines]
+  );
+
   const dirty =
     firstName !== (quote.client_first_name ?? "") ||
     lastName !== (quote.client_last_name ?? "") ||
@@ -126,16 +182,25 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
     notes !== (quote.notes ?? "") ||
     expiresAt !== isoDay(quote.expires_at) ||
     manualDiscountNum !== (quote.manual_discount_value ?? 0) ||
-    manualDiscountType !== (quote.manual_discount_type ?? "amount");
+    manualDiscountType !== (quote.manual_discount_type ?? "amount") ||
+    customLinesJson !== initialCustomLinesJson;
 
-  // Live totals from current lines + personCount + manual discount
+  // Live totals from current lines + personCount + manual discount + custom lines
   const liveTotals = useMemo(
     () =>
-      computeQuoteTotals(lines, personCount, {
-        value: manualDiscountNum,
-        type: manualDiscountType,
-      }),
-    [lines, personCount, manualDiscountNum, manualDiscountType]
+      computeQuoteTotals(
+        lines,
+        personCount,
+        { value: manualDiscountNum, type: manualDiscountType },
+        customLinesResolved
+      ),
+    [
+      lines,
+      personCount,
+      manualDiscountNum,
+      manualDiscountType,
+      customLinesResolved,
+    ]
   );
   // Admin-only margin: total minus the sum of wholesale cost_cad for
   // the tests in this quote. Lines whose test has no cost are skipped
@@ -317,6 +382,7 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
             : undefined,
           manual_discount_value: manualDiscountNum,
           manual_discount_type: manualDiscountType,
+          custom_lines: customLinesResolved,
         }),
       });
       const data = await res.json();
@@ -338,6 +404,7 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
           : prev.expires_at,
         manual_discount_value: manualDiscountNum,
         manual_discount_type: manualDiscountType,
+        custom_lines: customLinesResolved,
         ...liveTotals,
       }));
       flash("Draft saved");
@@ -696,6 +763,12 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
               </ul>
             )}
           </div>
+
+          {/* ─── Custom lines (freeform admin-entered charges/credits) ─── */}
+          <CustomLinesEditor
+            lines={customLines}
+            onChange={setCustomLines}
+          />
         </section>
 
         {/* RIGHT — client info + summary */}
@@ -811,6 +884,18 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                   label={`Home visit fee (${personCount} ${personCount === 1 ? "person" : "people"})`}
                   value={formatCurrency(liveTotals.visit_fee_cad)}
                 />
+                {customLinesResolved.map((c, i) => (
+                  <SummaryRow
+                    key={`live-custom-${i}`}
+                    label={c.description}
+                    value={
+                      c.amount_cad < 0
+                        ? `−${formatCurrency(Math.abs(c.amount_cad))}`
+                        : formatCurrency(c.amount_cad)
+                    }
+                    accent={c.amount_cad < 0 ? "#8dc63f" : undefined}
+                  />
+                ))}
                 {liveManualDiscount > 0 && (
                   <SummaryRow
                     label="Additional discount"
@@ -1180,6 +1265,168 @@ function Field({
         {required && <span style={{ color: "#e05252" }}> *</span>}
       </label>
       {children}
+    </div>
+  );
+}
+
+/* ── Custom-lines editor ──────────────────────────────────────────────── *
+ * Freeform admin-entered charge / credit lines (e.g. "FloLabs travel —
+ * 240km @ $1.25/km" → $300). Description + amount are customer-facing;
+ * the optional notes field is admin-only and never rendered customer-
+ * side. Each row is locally edited as strings so a mid-typing "-" or
+ * trailing "." doesn't get coerced to 0; coercion happens at save / live-
+ * total time via customLinesResolved in the parent.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+interface CustomLineDraft {
+  key: string;
+  description: string;
+  amount: string;
+  notes: string;
+}
+
+function CustomLinesEditor({
+  lines,
+  onChange,
+}: {
+  lines: CustomLineDraft[];
+  onChange: (next: CustomLineDraft[]) => void;
+}) {
+  const update = (key: string, patch: Partial<CustomLineDraft>) =>
+    onChange(lines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  const remove = (key: string) =>
+    onChange(lines.filter((l) => l.key !== key));
+  const add = () =>
+    onChange([
+      ...lines,
+      {
+        key: `c${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        description: "",
+        amount: "",
+        notes: "",
+      },
+    ]);
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-baseline justify-between mb-2">
+        <p
+          className="text-xs uppercase tracking-wider"
+          style={{ color: "#6ab04c" }}
+        >
+          Custom Lines ({lines.length})
+        </p>
+        <button
+          type="button"
+          onClick={add}
+          className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors"
+          style={{
+            color: "#c4973a",
+            borderColor: "#2d6b35",
+            backgroundColor: "#0f2614",
+          }}
+        >
+          <Plus className="w-3.5 h-3.5" /> Custom Line
+        </button>
+      </div>
+
+      {lines.length === 0 ? (
+        <p
+          className="text-xs italic px-3 py-3 rounded-lg border text-center"
+          style={{
+            color: "#6ab04c",
+            backgroundColor: "#0f2614",
+            borderColor: "#2d6b35",
+          }}
+        >
+          No custom lines. Use these for one-off charges (e.g. travel
+          surcharges) or credits beyond the standard test + fee lines.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {lines.map((l) => {
+            const amountNum = Number(l.amount);
+            const amountValid =
+              l.amount.trim() !== "" &&
+              Number.isFinite(amountNum) &&
+              amountNum >= -10_000 &&
+              amountNum <= 10_000;
+            const descValid =
+              l.description.trim().length > 0 &&
+              l.description.trim().length <= 100;
+            const showWarn = !descValid || !amountValid;
+            return (
+              <li
+                key={l.key}
+                className="rounded-lg border p-3 space-y-2"
+                style={{
+                  backgroundColor: "#0f2614",
+                  borderColor: showWarn ? "#c4973a" : "#2d6b35",
+                }}
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_auto] gap-2">
+                  <input
+                    type="text"
+                    value={l.description}
+                    onChange={(e) =>
+                      update(l.key, { description: e.target.value })
+                    }
+                    maxLength={100}
+                    placeholder="Description (e.g. Travel — 240km @ $1.25/km)"
+                    className="mf-input text-sm"
+                  />
+                  <input
+                    type="number"
+                    value={l.amount}
+                    onChange={(e) =>
+                      update(l.key, { amount: e.target.value })
+                    }
+                    step="0.01"
+                    min={-10000}
+                    max={10000}
+                    placeholder="Amount CAD"
+                    className="mf-input text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => remove(l.key)}
+                    className="p-2 rounded transition-colors self-start"
+                    style={{ color: "#e05252" }}
+                    aria-label="Remove custom line"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={l.notes}
+                  onChange={(e) =>
+                    update(l.key, { notes: e.target.value })
+                  }
+                  maxLength={500}
+                  placeholder="Internal notes (optional)"
+                  className="mf-input text-xs"
+                  style={{ color: "#e8d5a3" }}
+                />
+                <p className="text-[11px] italic" style={{ color: "#6ab04c" }}>
+                  Internal only — not shown to customer.
+                </p>
+                {showWarn && (
+                  <p
+                    className="text-[11px] flex items-center gap-1"
+                    style={{ color: "#c4973a" }}
+                  >
+                    <AlertCircle className="w-3 h-3" />
+                    {!descValid
+                      ? "Description required (1–100 chars)."
+                      : "Amount must be a number between −10,000 and 10,000."}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

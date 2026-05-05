@@ -32,7 +32,7 @@ export async function GET(
         `id, quote_number, status, expires_at,
          subtotal_cad, discount_cad, visit_fee_cad,
          manual_discount_value, manual_discount_type,
-         person_count, collection_city,
+         person_count, collection_city, custom_lines,
          lines:quote_lines(
            test_id, unit_price_cad,
            test:tests(id, name, sku, lab:labs(name))
@@ -41,6 +41,11 @@ export async function GET(
       .eq("quote_number", quoteNumber)
       .maybeSingle();
 
+    type RawCustomLine = {
+      description?: unknown;
+      amount_cad?: unknown;
+      notes?: unknown;
+    };
     type Row = {
       id: string;
       quote_number: string;
@@ -53,6 +58,7 @@ export async function GET(
       manual_discount_type: "amount" | "percent" | null;
       person_count: number | null;
       collection_city: string | null;
+      custom_lines: RawCustomLine[] | null;
       lines: Array<{
         test_id: string;
         unit_price_cad: number;
@@ -127,10 +133,26 @@ export async function GET(
       }
     );
 
+    // Strip per-line `notes` here — they're admin-only and never make it
+    // to the customer's browser. Description + amount only.
+    const customLines = (quote.custom_lines ?? [])
+      .filter(
+        (c): c is { description: string; amount_cad: number } =>
+          !!c &&
+          typeof c.description === "string" &&
+          c.description.trim().length > 0 &&
+          Number.isFinite(Number(c.amount_cad))
+      )
+      .map((c) => ({
+        description: c.description,
+        amount_cad: Number(c.amount_cad),
+      }));
+
     return NextResponse.json({
       valid: true,
       quote_number: quote.quote_number,
       items,
+      custom_lines: customLines,
       manual_discount_cad: manualDiscountCad,
       person_count: quote.person_count ?? 1,
       collection_city: quote.collection_city,

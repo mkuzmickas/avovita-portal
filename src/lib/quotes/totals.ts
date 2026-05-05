@@ -6,6 +6,10 @@ export interface QuoteTotals {
   subtotal_cad: number;
   discount_cad: number;
   visit_fee_cad: number;
+  /** Sum of admin-entered freeform charge / credit lines on the quote.
+   *  Folded into total_cad pre-GST. 0 when the quote has no custom
+   *  lines (the common case). */
+  custom_lines_total_cad: number;
   /** Pre-tax total. The grand total shown to the customer is
    *  `total_cad + gst_cad`. */
   total_cad: number;
@@ -55,26 +59,44 @@ export function resolveManualDiscount(
  *     into total_cad so total_cad is always the customer-facing number.
  *   - total clamped at $0.
  */
+/**
+ * A custom line as accepted by the totals calculator. The full
+ * CustomQuoteLine carries `description` + `notes` — the calculator
+ * cares only about the amount.
+ */
+export interface CustomLineForTotals {
+  amount_cad: number;
+}
+
 export function computeQuoteTotals(
   lines: QuoteLineForTotals[],
   personCount: number,
-  manualDiscount: ManualDiscount | null = null
+  manualDiscount: ManualDiscount | null = null,
+  customLines: CustomLineForTotals[] = []
 ): QuoteTotals {
   const subtotal = lines.reduce((s, l) => s + (l.unit_price_cad ?? 0), 0);
   const discount = computeDiscount(lines.length).total;
   const visitFee = computeVisitFees(Math.max(1, personCount)).total;
+  const customLinesTotal = customLines.reduce(
+    (s, c) => s + (Number.isFinite(c.amount_cad) ? c.amount_cad : 0),
+    0
+  );
   const manualCad = resolveManualDiscount(
     subtotal,
     discount,
     visitFee,
     manualDiscount
   );
-  const total = Math.max(0, subtotal - discount + visitFee - manualCad);
+  const total = Math.max(
+    0,
+    subtotal - discount + visitFee + customLinesTotal - manualCad
+  );
   const gst = calculateGST(total);
   return {
     subtotal_cad: subtotal,
     discount_cad: discount,
     visit_fee_cad: visitFee,
+    custom_lines_total_cad: Math.round(customLinesTotal * 100) / 100,
     total_cad: total,
     gst_cad: gst,
   };

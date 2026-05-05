@@ -27,6 +27,12 @@ export interface TotalsInput {
    *  dollars). Applied alongside the Stripe promo, but independently —
    *  both can stack. */
   quoteDiscount?: number;
+  /** Custom-line amounts (CAD dollars) carried from an accepted quote.
+   *  Each entry is one line; positives are charges, negatives are
+   *  credits. Folded into the pre-tax subtotal so GST recalcs on the
+   *  combined total. Stripe gets one line item per entry; the webhook
+   *  persists each into order_lines with line_type='custom'. */
+  customLineAmounts?: number[];
 }
 
 export interface Totals {
@@ -34,6 +40,10 @@ export interface Totals {
   multiTestDiscount: number;
   subtotalAfterDiscount: number;
   visitFee: number;
+  /** Sum of custom-line amounts (positive = charge, negative = credit).
+   *  Echoed back so the UI can render a single "Custom charges" rollup
+   *  if it wants; per-line rendering walks the input list directly. */
+  customLinesTotal: number;
   promoDiscount: number;
   /** Additional discount from an accepted quote. 0 when not a quote
    *  acceptance flow. */
@@ -66,10 +76,16 @@ export function calculateTotals({
   supplementShippingFee = 0,
   kitServiceFee = 0,
   quoteDiscount = 0,
+  customLineAmounts = [],
 }: TotalsInput): Totals {
   const testsSubtotal = testLinePrices.reduce((s, p) => s + p, 0);
   const multiTestDiscount = computeDiscount(testLinePrices.length).total;
   const subtotalAfterDiscount = Math.max(0, testsSubtotal - multiTestDiscount);
+
+  const customLinesTotal = customLineAmounts.reduce(
+    (s, a) => s + (Number.isFinite(a) ? a : 0),
+    0
+  );
 
   const preDiscountTotal =
     subtotalAfterDiscount +
@@ -77,7 +93,8 @@ export function calculateTotals({
     supplementSubtotal +
     resourceSubtotal +
     supplementShippingFee +
-    kitServiceFee;
+    kitServiceFee +
+    customLinesTotal;
 
   // Quote discount is applied first (it's promised by the quote), then
   // Stripe promo on top. Both clamp against running remainder so the
@@ -125,6 +142,7 @@ export function calculateTotals({
     multiTestDiscount,
     subtotalAfterDiscount,
     visitFee,
+    customLinesTotal: Math.round(customLinesTotal * 100) / 100,
     promoDiscount,
     quoteDiscount: clampedQuoteDiscount,
     subtotalBeforeTax,

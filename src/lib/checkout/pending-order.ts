@@ -61,6 +61,21 @@ export interface PendingOrderPayload {
   // ── Kit service fee ────────────────────────────────────────────
   kit_service_fee?: number;
 
+  // ── Custom cart lines (from an accepted quote) ────────────────
+  /**
+   * Admin-entered freeform charge / credit lines carried over from
+   * an accepted quote. Each entry becomes a Stripe line item AND an
+   * order_lines row with line_type='custom'. `notes` ride along for
+   * admin visibility but are stripped from any customer-facing
+   * surface (Stripe product name, confirmation email).
+   */
+  custom_lines?: Array<{
+    custom_id: string;
+    description: string;
+    amount_cad: number;
+    notes?: string | null;
+  }>;
+
   // ── Computed totals (server-side authoritative) ───────────────
   subtotal_tests: number;
   subtotal_supplements: number;

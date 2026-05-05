@@ -78,7 +78,7 @@ export async function POST(
         `
         id, quote_number, client_first_name, client_last_name, client_email,
         subtotal_cad, discount_cad, visit_fee_cad, total_cad, gst_cad,
-        manual_discount_value, manual_discount_type,
+        manual_discount_value, manual_discount_type, custom_lines,
         expires_at, notes
       `
       )
@@ -98,6 +98,9 @@ export async function POST(
       gst_cad: number | null;
       manual_discount_value: number | null;
       manual_discount_type: "amount" | "percent" | null;
+      custom_lines:
+        | Array<{ description: string; amount_cad: number; notes: string | null }>
+        | null;
       expires_at: string | null;
       notes: string | null;
     };
@@ -179,6 +182,13 @@ export async function POST(
     const gstCad =
       quote.gst_cad != null ? quote.gst_cad : calculateGST(quote.total_cad);
 
+    // Customer-facing custom lines — strip per-line `notes` (admin-only)
+    // before rendering. Description + amount only.
+    const customLinesForEmail = (quote.custom_lines ?? []).map((c) => ({
+      description: c.description,
+      amount_cad: Number(c.amount_cad),
+    }));
+
     const html = renderQuoteEmail({
       firstName: quote.client_first_name,
       quoteNumber: quote.quote_number,
@@ -187,6 +197,7 @@ export async function POST(
       discount: quote.discount_cad,
       visitFee: quote.visit_fee_cad,
       manualDiscount: manualDiscountCad,
+      customLines: customLinesForEmail,
       total: quote.total_cad,
       gst: gstCad,
       expiresAt: quote.expires_at,

@@ -63,6 +63,7 @@ export async function GET(
       `
       id, line_type, test_id, supplement_id, resource_id,
       profile_id, quantity, unit_price_cad,
+      custom_description, custom_notes,
       test:tests(name, sku),
       supplement:supplements(name, sku),
       resource:resources(title),
@@ -112,6 +113,8 @@ export async function GET(
         profile_id: l.profile_id,
         quantity: l.quantity,
         unit_price_cad: l.unit_price_cad,
+        custom_description: l.custom_description ?? null,
+        custom_notes: l.custom_notes ?? null,
         test: normalize(l.test),
         supplement: normalize(l.supplement),
         resource: normalize(l.resource),

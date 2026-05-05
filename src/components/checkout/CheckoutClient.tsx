@@ -170,8 +170,13 @@ export function CheckoutClient({
           lab_name: string;
           price_cad: number;
         };
+        type QuoteCustomLine = {
+          description: string;
+          amount_cad: number;
+        };
         const items = (data.items ?? []) as QuoteItem[];
-        if (items.length === 0) {
+        const customLines = (data.custom_lines ?? []) as QuoteCustomLine[];
+        if (items.length === 0 && customLines.length === 0) {
           setQuoteError("This quote has no tests attached.");
           return;
         }
@@ -184,6 +189,21 @@ export function CheckoutClient({
             sku: it.sku,
             lab_name: it.lab_name,
             price_cad: it.price_cad,
+            quantity: 1,
+          });
+        }
+        // Quote custom lines → cart custom items. Stable ids keyed on
+        // quote number + index so re-accepting the same quote doesn't
+        // duplicate. Notes are NOT in the public /api/quotes/[number]
+        // response (admin-only), so they don't appear here either —
+        // the webhook hydrates them from the original quote row.
+        for (let i = 0; i < customLines.length; i++) {
+          const c = customLines[i];
+          addItem({
+            line_type: "custom" as const,
+            custom_id: `${quoteNumber}-${i}`,
+            description: c.description,
+            price_cad: Number(c.amount_cad),
             quantity: 1,
           });
         }

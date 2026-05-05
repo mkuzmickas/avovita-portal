@@ -290,6 +290,48 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // ── Custom lines from an accepted quote ──────────────────────
+    // Positive amounts get their own Stripe line item (description from
+    // the admin, locked at quote-set price). Negative amounts can't be
+    // a Stripe line item — Stripe rejects negative unit_amount — so we
+    // distribute them as a discount across existing lines, same trick
+    // the multi-test discount uses. The order_lines table records each
+    // custom line individually regardless of sign.
+    const customLines = payload.custom_lines ?? [];
+    for (const c of customLines) {
+      const amountCents = Math.round(c.amount_cad * 100);
+      if (amountCents > 0) {
+        lineItems.push({
+          price_data: {
+            currency: "cad",
+            product_data: {
+              name: c.description.slice(0, 250),
+            },
+            unit_amount: amountCents,
+          },
+          quantity: 1,
+        });
+      } else if (amountCents < 0) {
+        let remaining = -amountCents;
+        const cap = lineItems.reduce(
+          (s, li) => s + li.price_data.unit_amount,
+          0,
+        );
+        remaining = Math.min(remaining, cap);
+        for (const li of lineItems) {
+          if (remaining <= 0) break;
+          const take = Math.min(li.price_data.unit_amount, remaining);
+          li.price_data.unit_amount -= take;
+          remaining -= take;
+          if (take > 0) {
+            li.price_data.product_data.description =
+              (li.price_data.product_data.description ?? "") +
+              ` · ${c.description} −$${(take / 100).toFixed(2)}`;
+          }
+        }
+      }
+    }
+
     if (lineItems.length === 0) {
       return NextResponse.json(
         { error: "No payable items in cart" },

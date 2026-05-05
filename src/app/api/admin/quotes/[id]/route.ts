@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { computeQuoteTotals } from "@/lib/quotes/totals";
+import {
+  sanitizeCustomLines,
+  type CustomQuoteLineInput,
+} from "@/lib/quotes/customLines";
+import type { CustomQuoteLine } from "@/types/database";
 
 export const runtime = "nodejs";
 
@@ -85,6 +90,17 @@ export async function PATCH(
     ) {
       update.manual_discount_type = body.manual_discount_type;
     }
+    let customLinesUpdate: CustomQuoteLine[] | null = null;
+    if ("custom_lines" in body) {
+      const result = sanitizeCustomLines(
+        body.custom_lines as CustomQuoteLineInput[] | null | undefined
+      );
+      if (!result.ok) {
+        return NextResponse.json({ error: result.error }, { status: 400 });
+      }
+      customLinesUpdate = result.lines;
+      update.custom_lines = customLinesUpdate;
+    }
 
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
@@ -92,22 +108,27 @@ export async function PATCH(
 
     const service = createServiceRoleClient();
 
-    // If person_count OR the manual discount changed, recompute totals
-    // from existing lines so total_cad stays in sync with the UI.
+    // If person_count OR the manual discount changed OR custom_lines
+    // were updated, recompute totals so total_cad stays in sync with
+    // the UI. computeQuoteTotals is the single source of truth.
     const totalsAffected =
       "person_count" in update ||
       "manual_discount_value" in update ||
-      "manual_discount_type" in update;
+      "manual_discount_type" in update ||
+      customLinesUpdate !== null;
     if (totalsAffected) {
       const { data: quoteRaw } = await service
         .from("quotes")
-        .select("person_count, manual_discount_value, manual_discount_type")
+        .select(
+          "person_count, manual_discount_value, manual_discount_type, custom_lines"
+        )
         .eq("id", id)
         .maybeSingle();
       const current = (quoteRaw ?? {}) as {
         person_count: number | null;
         manual_discount_value: number | null;
         manual_discount_type: "amount" | "percent" | null;
+        custom_lines: CustomQuoteLine[] | null;
       };
       const { data: linesRaw } = await service
         .from("quote_lines")
@@ -124,10 +145,13 @@ export async function PATCH(
         (update.manual_discount_type as "amount" | "percent" | undefined) ??
         current.manual_discount_type ??
         "amount";
-      const totals = computeQuoteTotals(lines, personCount, {
-        value: manualVal,
-        type: manualType,
-      });
+      const customLines = customLinesUpdate ?? current.custom_lines ?? [];
+      const totals = computeQuoteTotals(
+        lines,
+        personCount,
+        { value: manualVal, type: manualType },
+        customLines
+      );
       Object.assign(update, totals);
     }
 

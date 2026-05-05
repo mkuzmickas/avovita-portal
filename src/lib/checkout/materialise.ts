@@ -75,6 +75,15 @@ export interface OrderMetadataPayload {
       | "other";
     poa_confirmed: boolean;
   } | null;
+  /** Custom lines from an accepted quote. Customer surfaces (Stripe
+   *  product names, confirmation email) render only `description` +
+   *  `amount_cad`. `notes` are admin-only. */
+  custom_lines?: Array<{
+    custom_id: string;
+    description: string;
+    amount_cad: number;
+    notes?: string | null;
+  }>;
 }
 
 /**
@@ -384,6 +393,10 @@ export async function sendOrderConfirmationEmail(
       confirmationLink: confirmationLink ?? null,
       hasPhlebotomistTests,
       hasKitTests,
+      customLines: (payload.custom_lines ?? []).map((c) => ({
+        description: c.description,
+        amount_cad: c.amount_cad,
+      })),
     });
 
     try {
@@ -508,6 +521,10 @@ export async function sendGuestOrderConfirmationEmail(
       stripeSessionId,
       promoCode,
       promoDiscount,
+      customLines: (payload.custom_lines ?? []).map((c) => ({
+        description: c.description,
+        amount_cad: c.amount_cad,
+      })),
     });
 
     console.log(`[checkout] attempting email to ${customerEmail}`);

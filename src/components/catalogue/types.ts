@@ -78,7 +78,35 @@ export type CartItemResource = {
   quantity: 1; // Digital — always 1
 };
 
-export type CartItem = CartItemTest | CartItemSupplement | CartItemResource;
+/**
+ * Admin-entered freeform line item carried over from an accepted quote.
+ * The customer cannot add or modify these — they're locked at the
+ * description and amount the admin set on the quote, identified by
+ * `custom_id` (a stable client-side UUID assigned at quote-accept time
+ * for cart deduplication).
+ *
+ * `notes` are admin-only — never rendered customer-side, but persisted
+ * through the cart → Stripe metadata → orders.line_items.custom_notes
+ * pipeline so admins can see "this $300 was Banff travel" later.
+ */
+export type CartItemCustom = {
+  line_type: "custom";
+  custom_id: string;
+  /** Customer-facing label, mirrored as Stripe product name. */
+  description: string;
+  /** CAD dollars. Positive = charge, negative = credit. Locked at the
+   *  quote-set value; not customer-editable. */
+  price_cad: number;
+  quantity: 1;
+  /** Admin-only internal notes. Never shown to the customer. */
+  notes?: string | null;
+};
+
+export type CartItem =
+  | CartItemTest
+  | CartItemSupplement
+  | CartItemResource
+  | CartItemCustom;
 
 /** Unique identifier for deduplication within the cart. */
 export function cartItemId(item: CartItem): string {
@@ -89,12 +117,16 @@ export function cartItemId(item: CartItem): string {
       return `supp:${item.supplement_id}`;
     case "resource":
       return `res:${item.resource_id}`;
+    case "custom":
+      return `custom:${item.custom_id}`;
   }
 }
 
 /** Display name regardless of line type. */
 export function cartItemName(item: CartItem): string {
-  return item.line_type === "test" ? item.test_name : item.name;
+  if (item.line_type === "test") return item.test_name;
+  if (item.line_type === "custom") return item.description;
+  return item.name;
 }
 
 /**

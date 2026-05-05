@@ -851,6 +851,7 @@ async function handleCheckoutCompleteV2(
       promo_code: p.promo_code ?? null,
       org_id: p.org_id ?? null,
       representative: p.representative ?? null,
+      custom_lines: p.custom_lines ?? [],
     };
 
     // materialiseOrder creates profiles + test order_lines + visit_group
@@ -950,6 +951,34 @@ async function handleCheckoutCompleteV2(
       console.error(
         "[stripe-webhook-v2] supplement inventory error (non-fatal):",
         err,
+      );
+    }
+  }
+
+  // ─── 9b. Custom lines — insert order_lines (line_type='custom') ──
+  // Each entry on p.custom_lines becomes one order_lines row carrying
+  // the customer-facing description, the locked admin-set amount, and
+  // the admin-only internal notes (which never appear on any customer
+  // surface but are surfaced in the admin order detail panel).
+  if (p.custom_lines && p.custom_lines.length > 0) {
+    const customLines = p.custom_lines.map((c) => ({
+      order_id: orderId,
+      line_type: "custom" as const,
+      test_id: null,
+      supplement_id: null,
+      resource_id: null,
+      profile_id: null,
+      quantity: 1,
+      unit_price_cad: c.amount_cad,
+      custom_description: c.description,
+      custom_notes: c.notes ?? null,
+    }));
+    const { error: customErr } = await supabase
+      .from("order_lines")
+      .insert(customLines);
+    if (customErr) {
+      console.error(
+        `[stripe-webhook-v2] Failed to create custom order_lines: ${customErr.message}`,
       );
     }
   }

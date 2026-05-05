@@ -65,6 +65,10 @@ export interface OrderConfirmationProps {
   hasPhlebotomistTests?: boolean;
   /** True if order has self-collected kit tests. */
   hasKitTests?: boolean;
+  /** Customer-facing custom lines from an accepted quote. The caller
+   *  strips per-line `notes` before passing in — only description +
+   *  amount renders in the email. */
+  customLines?: Array<{ description: string; amount_cad: number }>;
 }
 
 const FLO_LABS_URL = "https://flolabsbooking.as.me/?appointmentType=84416067";
@@ -100,6 +104,7 @@ export function renderOrderConfirmationEmail(
     hasKitTests = false,
     kitServiceFee = 0,
     kitServiceLabel = "",
+    customLines = [],
   } = props;
 
   const hasPromo = promoDiscount > 0;
@@ -239,6 +244,22 @@ export function renderOrderConfirmationEmail(
                 </tr>`
                     : ""
                 }
+                ${customLines
+                  .map((c) => {
+                    const credit = c.amount_cad < 0;
+                    const labelColor = credit ? "#6fa030" : "#6b7280";
+                    const valueColor = credit ? "#6fa030" : "#111827";
+                    const weight = credit ? "font-weight: 600;" : "";
+                    const value = credit
+                      ? `−${formatCurrency(Math.abs(c.amount_cad))}`
+                      : formatCurrency(c.amount_cad);
+                    return `
+                <tr>
+                  <td style="padding: 6px 0; color: ${labelColor}; font-size: 13px; ${weight}">${escapeHtml(c.description)}</td>
+                  <td style="padding: 6px 0; text-align: right; color: ${valueColor}; font-size: 13px; ${weight}">${value}</td>
+                </tr>`;
+                  })
+                  .join("")}
                 ${
                   hasPromo
                     ? `
