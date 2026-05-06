@@ -8,7 +8,6 @@ import {
   Search,
   X,
   Plus,
-  Check,
   Trash2,
   Loader2,
   AlertCircle,
@@ -249,12 +248,14 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
     liveManualDiscount,
   ]);
 
-  // Test ids currently in the quote — powers the "Added" indicator and
-  // toggle-add behavior on the search dropdown.
-  const addedTestIds = useMemo(
-    () => new Set(lines.map((l) => l.test_id)),
-    [lines]
-  );
+  // Count of how many lines exist per test_id — drives the "× N already
+  // added" badge on the dropdown. Multiples are intentional (e.g. one
+  // test for each of two people in the same quote).
+  const addedCountByTestId = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of lines) m.set(l.test_id, (m.get(l.test_id) ?? 0) + 1);
+    return m;
+  }, [lines]);
 
   const stabilityItems = useMemo<StabilityItem[]>(
     () =>
@@ -332,20 +333,6 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
     };
     setLines((prev) => [...prev, newLine]);
     router.refresh();
-  };
-
-  /**
-   * Toggle-add: if the test is already in the quote, remove the most
-   * recently added line for that test_id; otherwise add it. Keeps the
-   * search dropdown open either way.
-   */
-  const toggleTest = async (test: CatalogueTestForQuote) => {
-    const existing = [...lines].reverse().find((l) => l.test_id === test.id);
-    if (existing) {
-      await removeLine(existing.id);
-    } else {
-      await addTest(test);
-    }
   };
 
   const removeLine = async (lineId: string) => {
@@ -623,17 +610,13 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                 }}
               >
                 {filteredCatalogue.map((t) => {
-                  const isAdded = addedTestIds.has(t.id);
+                  const addedCount = addedCountByTestId.get(t.id) ?? 0;
                   return (
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => toggleTest(t)}
-                      aria-pressed={isAdded}
+                      onClick={() => addTest(t)}
                       className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#1a3d22]"
-                      style={{
-                        opacity: isAdded ? 0.65 : 1,
-                      }}
                     >
                       <div className="min-w-0">
                         <p
@@ -650,35 +633,27 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
                               <span>SKU: {t.sku}</span>
                             </>
                           )}
+                          {addedCount > 0 && (
+                            <>
+                              {" · "}
+                              <span style={{ color: "#8dc63f" }}>
+                                × {addedCount} in quote
+                              </span>
+                            </>
+                          )}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {isAdded ? (
-                          <span
-                            className="text-xs font-semibold uppercase tracking-wider"
-                            style={{ color: "#8dc63f" }}
-                          >
-                            Added
-                          </span>
-                        ) : (
-                          <span
-                            className="text-sm font-semibold"
-                            style={{ color: "#c4973a" }}
-                          >
-                            {formatCurrency(t.price_cad)}
-                          </span>
-                        )}
-                        {isAdded ? (
-                          <Check
-                            className="w-4 h-4"
-                            style={{ color: "#8dc63f" }}
-                          />
-                        ) : (
-                          <Plus
-                            className="w-4 h-4"
-                            style={{ color: "#c4973a" }}
-                          />
-                        )}
+                        <span
+                          className="text-sm font-semibold"
+                          style={{ color: "#c4973a" }}
+                        >
+                          {formatCurrency(t.price_cad)}
+                        </span>
+                        <Plus
+                          className="w-4 h-4"
+                          style={{ color: "#c4973a" }}
+                        />
                       </div>
                     </button>
                   );
