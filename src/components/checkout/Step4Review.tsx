@@ -612,7 +612,7 @@ export function Step4Review({
                 >
                   {personItems.map((a) => (
                     <li
-                      key={`${a.test_id}-${a.person_index}`}
+                      key={a.instance_id}
                       className="flex flex-col gap-0.5"
                     >
                       <div className="flex items-center justify-between gap-3 text-xs">

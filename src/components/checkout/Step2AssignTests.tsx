@@ -16,19 +16,25 @@ import { DiscountBanner } from "./DiscountBanner";
 import type { CatalogueCartItem } from "@/components/catalogue/types";
 
 /**
- * One assignment per cart item. The same test_id can never appear twice
- * in the assignments array — assigning a test "moves" it to its new
- * person, replacing any previous mapping. To order the same test for
- * multiple people the customer must add it to the cart that many times
- * before reaching checkout.
+ * One assignment per cart row. Keyed by `instance_id` so the same
+ * test_id can appear more than once (one row per person) when the cart
+ * was loaded from a multi-line quote. instance_id falls back to
+ * `test_id` when the cart row didn't carry one (catalogue add path) —
+ * those rows are still unique by test_id because the cart's commitAdd
+ * dedupes by `test:${instance_id ?? test_id}`.
  */
 export interface PersonAssignmentEntry {
+  instance_id: string;
   test_id: string;
   test_name: string;
   lab_name: string;
   price_cad: number;
   /** 0-based person index */
   person_index: number;
+}
+
+function instanceKey(item: CatalogueCartItem): string {
+  return item.instance_id ?? item.test_id;
 }
 
 interface Step2AssignTestsProps {
@@ -53,7 +59,7 @@ export function Step2AssignTests({
   onBack,
   onContinue,
 }: Step2AssignTestsProps) {
-  const [openMenuTestId, setOpenMenuTestId] = useState<string | null>(null);
+  const [openInstanceId, setOpenInstanceId] = useState<string | null>(null);
 
   const peopleIndices = useMemo(
     () => Array.from({ length: personCount }, (_, i) => i),
@@ -71,11 +77,14 @@ export function Step2AssignTests({
     return map;
   }, [assignments, peopleIndices]);
 
-  // Cart items still waiting to be assigned (left column)
+  // Cart items still waiting to be assigned (left column). Match by
+  // instance_id (with test_id fallback) so two cart rows for the same
+  // test_id are treated as distinct.
   const unassignedCartItems = useMemo(
     () =>
       cart.filter(
-        (item) => !assignments.some((a) => a.test_id === item.test_id)
+        (item) =>
+          !assignments.some((a) => a.instance_id === instanceKey(item))
       ),
     [cart, assignments]
   );
@@ -104,12 +113,16 @@ export function Step2AssignTests({
   const cartAfterDiscount = cartSubtotal - discount.total;
 
   /**
-   * Move a test to a person. Replaces any prior assignment for that
-   * test_id — the same test can only belong to one person at a time.
+   * Move a cart row to a person. Replaces any prior assignment for the
+   * same instance_id — each cart row can only belong to one person at
+   * a time, but two cart rows with the same test_id (e.g. one per
+   * person on a multi-line quote) coexist freely.
    */
   const handleAssign = (item: CatalogueCartItem, personIndex: number) => {
-    const next = assignments.filter((a) => a.test_id !== item.test_id);
+    const key = instanceKey(item);
+    const next = assignments.filter((a) => a.instance_id !== key);
     next.push({
+      instance_id: key,
       test_id: item.test_id,
       test_name: item.test_name,
       lab_name: item.lab_name,
@@ -117,12 +130,14 @@ export function Step2AssignTests({
       person_index: personIndex,
     });
     onAssignmentsChange(next);
-    setOpenMenuTestId(null);
+    setOpenInstanceId(null);
   };
 
-  /** Send a test back to the unassigned column. */
-  const handleUnassign = (testId: string) => {
-    onAssignmentsChange(assignments.filter((a) => a.test_id !== testId));
+  /** Send a cart row back to the unassigned column. */
+  const handleUnassign = (instanceId: string) => {
+    onAssignmentsChange(
+      assignments.filter((a) => a.instance_id !== instanceId)
+    );
   };
 
   return (
@@ -214,11 +229,12 @@ export function Step2AssignTests({
           ) : (
             <ul className="space-y-2">
               {unassignedCartItems.map((item) => {
-                const menuOpen = openMenuTestId === item.test_id;
+                const key = instanceKey(item);
+                const menuOpen = openInstanceId === key;
 
                 return (
                   <li
-                    key={item.test_id}
+                    key={key}
                     className="rounded-lg border p-3 relative"
                     style={{
                       backgroundColor: "#0f2614",
@@ -246,8 +262,8 @@ export function Step2AssignTests({
                       <button
                         type="button"
                         onClick={() =>
-                          setOpenMenuTestId((prev) =>
-                            prev === item.test_id ? null : item.test_id
+                          setOpenInstanceId((prev) =>
+                            prev === key ? null : key
                           )
                         }
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0"
@@ -334,7 +350,7 @@ export function Step2AssignTests({
                   <ul className="space-y-1.5">
                     {items.map((entry) => (
                       <li
-                        key={entry.test_id}
+                        key={entry.instance_id}
                         className="flex items-center gap-2 px-3 py-2 rounded-md border"
                         style={{
                           backgroundColor: "#1a3d22",
@@ -357,7 +373,7 @@ export function Step2AssignTests({
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleUnassign(entry.test_id)}
+                          onClick={() => handleUnassign(entry.instance_id)}
                           className="p-1 rounded-md transition-colors"
                           style={{ color: "#6ab04c" }}
                           aria-label="Unassign"

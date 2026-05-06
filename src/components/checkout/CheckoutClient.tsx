@@ -181,9 +181,16 @@ export function CheckoutClient({
           return;
         }
         clearCart();
-        for (const it of items) {
+        // Each quote line becomes its own cart row, even when two lines
+        // share the same test_id (e.g. one quote for two people who each
+        // get the same panel). instance_id is the per-row dedup key so
+        // commitAdd doesn't collapse duplicates. Index suffix keeps the
+        // id stable across re-acceptance of the same quote.
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
           addItem({
             line_type: "test" as const,
+            instance_id: `${quoteNumber}-line-${i}`,
             test_id: it.test_id,
             test_name: it.test_name,
             sku: it.sku,

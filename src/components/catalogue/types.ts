@@ -58,6 +58,13 @@ export type CartItemTest = {
    *  Tuesday-only tests (CBC, DCTR) at the add-to-cart gate. */
   sku?: string | null;
   collection_method?: "phlebotomist_draw" | "self_collected_kit";
+  /** Stable per-cart-row identifier so the same test can appear more
+   *  than once in the cart (e.g. when an accepted quote covers two
+   *  people who each get the same panel). When unset, the cart falls
+   *  back to deduplicating by test_id — preserves the catalogue's
+   *  one-click-adds-one-line behaviour. Set explicitly by the quote-
+   *  accept loader in CheckoutClient. */
+  instance_id?: string;
 };
 
 export type CartItemSupplement = {
@@ -108,11 +115,14 @@ export type CartItem =
   | CartItemResource
   | CartItemCustom;
 
-/** Unique identifier for deduplication within the cart. */
+/** Unique identifier for deduplication within the cart. Tests fall back
+ *  to `test:${test_id}` when no instance_id is present, so the catalogue
+ *  one-click-adds-one-line behaviour survives. Quote-loaded test rows
+ *  carry an instance_id so duplicates of the same test_id coexist. */
 export function cartItemId(item: CartItem): string {
   switch (item.line_type) {
     case "test":
-      return `test:${item.test_id}`;
+      return `test:${item.instance_id ?? item.test_id}`;
     case "supplement":
       return `supp:${item.supplement_id}`;
     case "resource":
