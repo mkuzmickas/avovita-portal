@@ -34,6 +34,7 @@ import {
   Info,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { paginateQuery } from "@/lib/supabase/paginate";
 
 /* ── GA4 (marketing site) types — mirror src/lib/analytics/gaCache.ts ─ */
 
@@ -254,25 +255,39 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
         ? new Date(customEnd + "T23:59:59").toISOString()
         : new Date().toISOString();
 
+    // page_views and analytics_events both exceed PostgREST's max-rows
+    // cap (1000) on a 30-day window in production, so paginate. A plain
+    // .limit(50000) silently returns only the first 1000 rows, which —
+    // combined with .order(..., ascending: true) — froze the chart on
+    // the earliest days of the window.
     const [pvRes, evRes, adminRes] = await Promise.all([
-      supabase
-        .from("page_views")
-        .select("path, account_id, org_id, session_id, device_type, created_at")
-        .gte("created_at", start)
-        .lte("created_at", end)
-        .order("created_at", { ascending: true })
-        .limit(50000),
-      supabase
-        .from("analytics_events")
-        .select("event_type, event_data, account_id, org_id, session_id, created_at")
-        .gte("created_at", start)
-        .lte("created_at", end)
-        .order("created_at", { ascending: true })
-        .limit(50000),
-      supabase
-        .from("accounts")
-        .select("id")
-        .eq("role", "admin"),
+      paginateQuery<PageView>(
+        () =>
+          supabase
+            .from("page_views")
+            .select(
+              "path, account_id, org_id, session_id, device_type, created_at",
+            )
+            .gte("created_at", start)
+            .lte("created_at", end)
+            .order("created_at", { ascending: true }) as unknown as ReturnType<
+            Parameters<typeof paginateQuery<PageView>>[0]
+          >,
+      ),
+      paginateQuery<AnalyticsEvent>(
+        () =>
+          supabase
+            .from("analytics_events")
+            .select(
+              "event_type, event_data, account_id, org_id, session_id, created_at",
+            )
+            .gte("created_at", start)
+            .lte("created_at", end)
+            .order("created_at", { ascending: true }) as unknown as ReturnType<
+            Parameters<typeof paginateQuery<AnalyticsEvent>>[0]
+          >,
+      ),
+      supabase.from("accounts").select("id").eq("role", "admin"),
     ]);
 
     // Permanently exclude admin accounts from all dashboard data.
