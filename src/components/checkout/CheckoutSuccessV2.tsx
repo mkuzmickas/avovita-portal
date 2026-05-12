@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { StabilityDisclaimerModal } from "./StabilityDisclaimerModal";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
 
 const WAIVER_TEXT = `AVOVITA WELLNESS CLIENT CONSENT, RELEASE OF LIABILITY, AND INDEMNIFICATION AGREEMENT
 
@@ -125,6 +126,25 @@ export function CheckoutSuccessV2({
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const hasStabilityWarning = stabilityConstrainedTests.length > 0;
   const [stabilityAcknowledged, setStabilityAcknowledged] = useState(false);
+
+  // Fire the terminal funnel events on mount. The old CheckoutSuccessClient
+  // had these but was orphaned when V2 replaced it, which left the admin
+  // analytics dashboard showing 0 for "Step 4 — Review" and
+  // "Order Completed" despite real orders going through. The sessionStorage
+  // guard keys off the Stripe sessionId so a page refresh on the success
+  // URL doesn't double-count.
+  const { trackEvent } = useAnalytics();
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = `av-order-tracked-${sessionId}`;
+    if (window.sessionStorage.getItem(key)) return;
+    window.sessionStorage.setItem(key, "1");
+    trackEvent("checkout_step_completed", { step: 4 });
+    trackEvent("order_completed", {
+      order_id: orderIdShort,
+      total,
+    });
+  }, [trackEvent, sessionId, orderIdShort, total]);
 
   return (
     <div
