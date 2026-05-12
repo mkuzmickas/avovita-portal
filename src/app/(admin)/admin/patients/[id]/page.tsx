@@ -14,7 +14,22 @@ export type PatientRepositoryResult = {
   uploaded_at: string;
   profile_id: string;
   profile_label: string;
-  source: "manual_upload" | "patient_upload";
+  /**
+   * Free-form. Production data uses 'order_attached', 'manual_upload',
+   * 'patient_upload' — not the values migration 003 declared. Treat as
+   * advisory and classify rows via @/lib/results/classify (which keys
+   * off order_id, the structural truth).
+   */
+  source: string | null;
+  document_type: string | null;
+  document_date: string | null;
+  description: string | null;
+  /** Raw FK; non-null = order-attached. */
+  order_id: string | null;
+  /** First 8 chars of order_id for display. Null when order_id is null. */
+  order_id_short: string | null;
+  /** Email of the admin/account that uploaded this row. Null for system uploads. */
+  uploaded_by_email: string | null;
 };
 
 export default async function AdminPatientDetailPage({
@@ -90,32 +105,66 @@ export default async function AdminPatientDetailPage({
     ])
   );
 
-  // Pull manual-upload results for this account's profiles
+  // Pull every result tied to this account's profiles — manual + order +
+  // patient self-uploads — so the admin sees one mixed list.
   const { data: resultsRaw } =
     profileIds.length === 0
       ? { data: [] }
       : await service
           .from("results")
-          .select("id, file_name, uploaded_at, profile_id, source")
-          .in("source", ["manual_upload", "patient_upload"])
+          .select(
+            "id, file_name, uploaded_at, profile_id, source, document_type, document_date, description, order_id, uploaded_by, storage_path"
+          )
           .in("profile_id", profileIds)
           .order("uploaded_at", { ascending: false });
 
-  const results: PatientRepositoryResult[] = (
-    (resultsRaw ?? []) as unknown as Array<{
+  type RawResult = {
+    id: string;
+    file_name: string;
+    uploaded_at: string;
+    profile_id: string;
+    source: string | null;
+    document_type: string | null;
+    document_date: string | null;
+    description: string | null;
+    order_id: string | null;
+    uploaded_by: string;
+    storage_path: string;
+  };
+  const rawResults = ((resultsRaw ?? []) as unknown as RawResult[]).filter(
+    // Hide sentinel direct-delivery rows (same convention as the customer page).
+    (r) => !r.storage_path.startsWith("__")
+  );
+
+  // Resolve uploader emails in one round-trip.
+  const uploaderIds = [...new Set(rawResults.map((r) => r.uploaded_by))];
+  const uploaderEmailById = new Map<string, string | null>();
+  if (uploaderIds.length > 0) {
+    const { data: uploadersRaw } = await service
+      .from("accounts")
+      .select("id, email")
+      .in("id", uploaderIds);
+    for (const u of (uploadersRaw ?? []) as Array<{
       id: string;
-      file_name: string;
-      uploaded_at: string;
-      profile_id: string;
-      source: "manual_upload" | "patient_upload";
-    }>
-  ).map((r) => ({
+      email: string | null;
+    }>) {
+      uploaderEmailById.set(u.id, u.email);
+    }
+  }
+
+  const results: PatientRepositoryResult[] = rawResults.map((r) => ({
     id: r.id,
     file_name: r.file_name,
     uploaded_at: r.uploaded_at,
     profile_id: r.profile_id,
     profile_label: profileLabelById.get(r.profile_id) ?? "—",
     source: r.source,
+    document_type: r.document_type,
+    document_date: r.document_date,
+    description: r.description,
+    order_id: r.order_id,
+    order_id_short: r.order_id ? r.order_id.slice(0, 8).toUpperCase() : null,
+    uploaded_by_email: uploaderEmailById.get(r.uploaded_by) ?? null,
   }));
 
   return (

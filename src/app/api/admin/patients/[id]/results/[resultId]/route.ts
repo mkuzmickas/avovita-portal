@@ -47,7 +47,7 @@ export async function DELETE(
     const { data: resultRaw } = await service
       .from("results")
       .select(
-        "id, storage_path, source, profile:patient_profiles(account_id)"
+        "id, storage_path, source, profile_id, document_type, profile:patient_profiles(account_id)"
       )
       .eq("id", resultId)
       .maybeSingle();
@@ -55,6 +55,8 @@ export async function DELETE(
       id: string;
       storage_path: string;
       source: string;
+      profile_id: string;
+      document_type: string | null;
       profile: { account_id: string } | { account_id: string }[] | null;
     };
     const row = resultRaw as ResultShape | null;
@@ -100,6 +102,28 @@ export async function DELETE(
       .catch((err) =>
         console.warn("[admin:patients:results:delete] storage remove failed", err)
       );
+
+    await service
+      .from("analytics_events")
+      .insert({
+        event_type: "manual_result_deleted",
+        event_data: {
+          profile_id: row.profile_id,
+          document_type: row.document_type,
+          uploaded_by_admin_id: user.id,
+          file_count_in_batch: 1,
+          result_id: resultId,
+        },
+        account_id: accountId,
+      })
+      .then(({ error }) => {
+        if (error) {
+          console.warn(
+            "[admin:patients:results:delete] analytics insert failed:",
+            error.message
+          );
+        }
+      });
 
     return NextResponse.json({ success: true });
   } catch (err) {

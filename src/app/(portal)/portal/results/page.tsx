@@ -14,10 +14,9 @@ import { ResendConfirmationButton } from "@/components/portal/ResendConfirmation
 import { MyRecordsUpload } from "@/components/portal/MyRecordsUpload";
 import { DeleteMyRecordButton } from "@/components/portal/DeleteMyRecordButton";
 import { AiInterpretationButton } from "@/components/portal/AiInterpretationButton";
+import { classifyResultRow } from "@/lib/results/classify";
 
 export const dynamic = "force-dynamic";
-
-type ResultSource = "order" | "manual_upload" | "patient_upload";
 
 type ResultRow = {
   id: string;
@@ -27,7 +26,20 @@ type ResultRow = {
   result_status: "partial" | "final";
   uploaded_at: string;
   viewed_at: string | null;
-  source: ResultSource;
+  /** Free-form. Classify via @/lib/results/classify (keys off order_id). */
+  source: string | null;
+  document_type: string | null;
+  document_date: string | null;
+  description: string | null;
+};
+
+const DOC_TYPE_LABEL: Record<string, string> = {
+  lab_result: "Lab Result",
+  imaging_report: "Imaging Report",
+  specialist_report: "Specialist Report",
+  medical_history: "Medical History",
+  prescription: "Prescription",
+  other: "Document",
 };
 
 export default async function ResultsPage() {
@@ -81,20 +93,35 @@ export default async function ResultsPage() {
     .select(
       `
       id, order_id, storage_path, file_name, result_status,
-      uploaded_at, viewed_at, source
+      uploaded_at, viewed_at, source,
+      document_type, document_date, description
     `
     )
+    // Sort the column we expect to be populated for the most recent
+    // (manual) uploads — order rows fall back to uploaded_at below.
     .order("uploaded_at", { ascending: false });
 
-  // Filter out sentinel direct-delivery rows
-  const results = ((resultsRaw ?? []) as unknown as ResultRow[]).filter(
-    (r) => !r.storage_path.startsWith("__")
-  );
+  // Filter out sentinel direct-delivery rows, then re-sort the customer
+  // view by document_date (most recent first) using uploaded_at as the
+  // fallback for rows where document_date is unset (every order row, and
+  // any manual upload where the admin left it blank).
+  const results = ((resultsRaw ?? []) as unknown as ResultRow[])
+    .filter((r) => !r.storage_path.startsWith("__"))
+    .sort((a, b) => {
+      const ka = a.document_date ?? a.uploaded_at;
+      const kb = b.document_date ?? b.uploaded_at;
+      return kb.localeCompare(ka);
+    });
 
-  // Tests per order — only needed for source='order' rows
+  // Tests per order — only needed for order-attached rows (any row with
+  // a non-null order_id). Don't trust the source string: production has
+  // 'order_attached' on every order row, so source==='order' would miss
+  // them all.
   const orderIds = [
     ...new Set(
-      results.filter((r) => r.source === "order" && r.order_id).map((r) => r.order_id as string)
+      results
+        .filter((r) => classifyResultRow(r) === "order" && r.order_id)
+        .map((r) => r.order_id as string)
     ),
   ];
   const orderTestsMap = new Map<string, Array<{ name: string; lab: string }>>();
@@ -162,7 +189,7 @@ export default async function ResultsPage() {
       ) : (
         <div className="space-y-4">
           {results.map((result) =>
-            result.source === "order" ? (
+            classifyResultRow(result) === "order" ? (
               <OrderResultCard
                 key={result.id}
                 result={result}
@@ -264,7 +291,15 @@ function OrderResultCard({
 // ─── Manual admin upload or patient self-upload ────────────────────────
 
 function UploadedResultCard({ result }: { result: ResultRow }) {
-  const isPatientUpload = result.source === "patient_upload";
+  const isPatientUpload = classifyResultRow(result) === "patient";
+  const docTypeLabel = result.document_type
+    ? DOC_TYPE_LABEL[result.document_type] ?? "Document"
+    : null;
+  // Prefer the date the document was actually issued. Fall back to the
+  // upload date when the admin didn't provide one (and for old rows).
+  const displayDate = result.document_date ?? result.uploaded_at;
+  const isFallbackDate = !result.document_date;
+
   return (
     <div
       className="rounded-xl border overflow-hidden"
@@ -293,6 +328,16 @@ function UploadedResultCard({ result }: { result: ResultRow }) {
                 text="Added by AvoVita"
               />
             )}
+            {docTypeLabel && (
+              <Badge color="#8dc63f" text={docTypeLabel} />
+            )}
+            {result.result_status === "partial" && (
+              <Badge
+                color="#c4973a"
+                icon={<Clock className="w-3 h-3" />}
+                text="Partial — more may follow"
+              />
+            )}
           </div>
 
           <p
@@ -302,8 +347,18 @@ function UploadedResultCard({ result }: { result: ResultRow }) {
             {result.file_name}
           </p>
 
+          {result.description && (
+            <p
+              className="text-xs mt-1 italic"
+              style={{ color: "#e8d5a3" }}
+            >
+              {result.description}
+            </p>
+          )}
+
           <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
-            Uploaded {formatDate(result.uploaded_at)}
+            {formatDate(displayDate)}
+            {isFallbackDate && " (uploaded)"}
           </p>
         </div>
 
