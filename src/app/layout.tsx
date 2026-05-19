@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { CartProvider } from "@/components/cart/CartContext";
 import { AnalyticsProvider } from "@/lib/analytics/useAnalytics";
+import { PreviewAvailabilityFab } from "@/components/PreviewAvailabilityFab";
 
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
@@ -87,7 +88,10 @@ export default function RootLayout({
         style={{ backgroundColor: "#0a1a0d", color: "#e8d5a3" }}
       >
         <CartProvider>
-          <AnalyticsProvider>{children}</AnalyticsProvider>
+          <AnalyticsProvider>
+            {children}
+            <PreviewAvailabilityFab />
+          </AnalyticsProvider>
         </CartProvider>
       </body>
     </html>
