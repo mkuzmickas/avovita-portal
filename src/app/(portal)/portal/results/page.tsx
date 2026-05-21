@@ -121,7 +121,7 @@ export default async function ResultsPage() {
     ...new Set(
       results
         .filter((r) => classifyResultRow(r) === "order" && r.order_id)
-        .map((r) => r.order_id as string)
+        .map((r) => r.order_id as string),
     ),
   ];
   const orderTestsMap = new Map<string, Array<{ name: string; lab: string }>>();
@@ -188,34 +188,84 @@ export default async function ResultsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {results.map((result) =>
-            classifyResultRow(result) === "order" ? (
-              <OrderResultCard
-                key={result.id}
-                result={result}
-                tests={orderTestsMap.get(result.order_id ?? "") ?? []}
-              />
-            ) : (
-              <UploadedResultCard key={result.id} result={result} />
-            )
-          )}
+          {(() => {
+            // Group order-attached PDFs by order_id so a batch of N
+            // PDFs renders as ONE card (with N download buttons inside)
+            // instead of N cards each repeating the order's test list.
+            const groups = new Map<string, ResultRow[]>();
+            const singles: ResultRow[] = [];
+            for (const r of results) {
+              if (classifyResultRow(r) === "order" && r.order_id) {
+                const arr = groups.get(r.order_id) ?? [];
+                arr.push(r);
+                groups.set(r.order_id, arr);
+              } else {
+                singles.push(r);
+              }
+            }
+            type Entry =
+              | {
+                  kind: "order";
+                  key: string;
+                  sortKey: string;
+                  orderId: string;
+                  items: ResultRow[];
+                }
+              | { kind: "single"; key: string; sortKey: string; item: ResultRow };
+            const entries: Entry[] = [];
+            for (const [orderId, items] of groups) {
+              const sorted = [...items].sort((a, b) =>
+                b.uploaded_at.localeCompare(a.uploaded_at),
+              );
+              entries.push({
+                kind: "order",
+                key: `order-${orderId}`,
+                sortKey: sorted[0].uploaded_at,
+                orderId,
+                items: sorted,
+              });
+            }
+            for (const r of singles) {
+              entries.push({
+                kind: "single",
+                key: `single-${r.id}`,
+                sortKey: r.document_date ?? r.uploaded_at,
+                item: r,
+              });
+            }
+            entries.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+            return entries.map((entry) =>
+              entry.kind === "order" ? (
+                <OrderResultCard
+                  key={entry.key}
+                  items={entry.items}
+                  tests={orderTestsMap.get(entry.orderId) ?? []}
+                />
+              ) : (
+                <UploadedResultCard key={entry.key} result={entry.item} />
+              ),
+            );
+          })()}
         </div>
       )}
     </div>
   );
 }
 
-// ─── Order-attached result ─────────────────────────────────────────────
+// ─── Order-attached result group (one card per order, N PDFs inside) ──
 
 function OrderResultCard({
-  result,
+  items,
   tests,
 }: {
-  result: ResultRow;
+  items: ResultRow[];
   tests: Array<{ name: string; lab: string }>;
 }) {
-  const isNew = !result.viewed_at;
-  const isPartial = result.result_status === "partial";
+  // Status precedence: any 'final' → Final; otherwise → Partial.
+  // "New" if at least one PDF in the group hasn't been viewed yet.
+  const isPartial = !items.some((r) => r.result_status === "final");
+  const isNew = items.some((r) => !r.viewed_at);
+  const newestUploadedAt = items[0]?.uploaded_at;
 
   return (
     <div
@@ -241,9 +291,7 @@ function OrderResultCard({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-2">
-            {isNew && (
-              <Badge color="#c4973a" text="New" />
-            )}
+            {isNew && <Badge color="#c4973a" text="New" />}
             <Badge
               color={isPartial ? "#c4973a" : "#8dc63f"}
               icon={
@@ -253,35 +301,82 @@ function OrderResultCard({
                   <CheckCircle className="w-3 h-3" />
                 )
               }
-              text={isPartial ? "Partial — more results may follow" : "Final"}
+              text={
+                isPartial ? "Partial — additional results may follow" : "Final"
+              }
             />
+            {items.length > 1 && (
+              <Badge
+                color="#8dc63f"
+                text={`${items.length} PDFs attached`}
+              />
+            )}
           </div>
 
-          <ul className="space-y-0.5 mb-2">
-            {tests.map((t, i) => (
-              <li key={i} className="text-sm" style={{ color: "#ffffff" }}>
-                {t.name}
-                {t.lab && (
-                  <span className="text-xs ml-1.5" style={{ color: "#6ab04c" }}>
-                    · {t.lab}
-                  </span>
-                )}
-              </li>
-            ))}
+          {tests.length > 0 && (
+            <ul className="space-y-0.5 mb-3">
+              {tests.map((t, i) => (
+                <li key={i} className="text-sm" style={{ color: "#ffffff" }}>
+                  {t.name}
+                  {t.lab && (
+                    <span
+                      className="text-xs ml-1.5"
+                      style={{ color: "#6ab04c" }}
+                    >
+                      · {t.lab}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* One row per attached PDF — keeps each individually viewable
+              and runnable through AI interpretation. */}
+          <ul className="space-y-1.5 mb-2">
+            {items.map((r) => {
+              const rowIsNew = !r.viewed_at;
+              return (
+                <li
+                  key={r.id}
+                  className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 border"
+                  style={{
+                    backgroundColor: "#0f2614",
+                    borderColor: rowIsNew ? "#c4973a" : "#2d6b35",
+                  }}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="text-xs break-words"
+                      style={{
+                        color: "#e8d5a3",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {r.file_name}
+                    </p>
+                    <p className="text-[11px]" style={{ color: "#6ab04c" }}>
+                      Uploaded {formatDate(r.uploaded_at)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <ViewResultButton
+                      resultId={r.id}
+                      storagePath={r.storage_path}
+                      isNew={rowIsNew}
+                    />
+                    <AiInterpretationButton resultId={r.id} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
 
-          <p className="text-xs" style={{ color: "#6ab04c" }}>
-            Uploaded {formatDate(result.uploaded_at)}
-          </p>
-        </div>
-
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <ViewResultButton
-            resultId={result.id}
-            storagePath={result.storage_path}
-            isNew={isNew}
-          />
-          <AiInterpretationButton resultId={result.id} />
+          {newestUploadedAt && (
+            <p className="text-xs" style={{ color: "#6ab04c" }}>
+              Most recent upload {formatDate(newestUploadedAt)}
+            </p>
+          )}
         </div>
       </div>
     </div>

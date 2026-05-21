@@ -3,13 +3,22 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
+/**
+ * POST /api/results/delete
+ *
+ * Admin-only. Delete a single order-attached results row (storage +
+ * DB). Now that orders can carry multiple PDFs, the order status is
+ * only rewound to 'shipped' / 'confirmed' when no PDFs remain — if
+ * other PDFs still exist for the order, the existing 'complete' /
+ * 'resulted' status is preserved (recomputed from the most recent
+ * remaining result_status: any 'final' → 'complete', else 'resulted').
+ */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -19,7 +28,6 @@ export async function POST(request: NextRequest) {
       .select("role")
       .eq("id", user.id)
       .single();
-
     if (!account || account.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -36,49 +44,88 @@ export async function POST(request: NextRequest) {
 
     const { data: resultRaw } = await service
       .from("results")
-      .select("id, storage_path, order_id")
+      .select(
+        "id, storage_path, order_id, order:orders(account_id, shipped_at)"
+      )
       .eq("id", result_id)
       .single();
-
-    const result = resultRaw as {
+    type ResultShape = {
       id: string;
       storage_path: string;
       order_id: string;
-    } | null;
-
+      order:
+        | { account_id: string | null; shipped_at: string | null }
+        | { account_id: string | null; shipped_at: string | null }[]
+        | null;
+    };
+    const result = resultRaw as ResultShape | null;
     if (!result) {
       return NextResponse.json(
         { error: "Result not found" },
         { status: 404 }
       );
     }
+    const orderAccountId = Array.isArray(result.order)
+      ? result.order[0]?.account_id ?? null
+      : result.order?.account_id ?? null;
+    const orderShippedAt = Array.isArray(result.order)
+      ? result.order[0]?.shipped_at ?? null
+      : result.order?.shipped_at ?? null;
 
-    // Delete file from storage
     if (result.storage_path && !result.storage_path.startsWith("__")) {
       await service.storage
         .from("results-pdfs")
         .remove([result.storage_path])
-        .catch(() => {});
+        .catch(() => undefined);
     }
-
-    // Delete the result record
     await service.from("results").delete().eq("id", result.id);
 
-    // Reset order status back to shipped (or confirmed if it was never shipped)
-    const { data: orderRaw } = await service
-      .from("orders")
-      .select("shipped_at")
-      .eq("id", result.order_id)
-      .single();
-    const order = orderRaw as { shipped_at: string | null } | null;
+    // Recompute order status from whatever PDFs remain.
+    const { data: remainingRaw } = await service
+      .from("results")
+      .select("result_status")
+      .eq("order_id", result.order_id);
+    const remaining =
+      (remainingRaw as Array<{ result_status: string }> | null) ?? [];
 
-    const resetStatus = order?.shipped_at ? "shipped" : "confirmed";
+    let newStatus: string;
+    if (remaining.length === 0) {
+      newStatus = orderShippedAt ? "shipped" : "confirmed";
+    } else if (remaining.some((r) => r.result_status === "final")) {
+      newStatus = "complete";
+    } else {
+      newStatus = "resulted";
+    }
     await service
       .from("orders")
-      .update({ status: resetStatus })
+      .update({ status: newStatus })
       .eq("id", result.order_id);
 
-    return NextResponse.json({ success: true });
+    await service
+      .from("analytics_events")
+      .insert({
+        event_type: "order_result_pdf_deleted",
+        event_data: {
+          order_id: result.order_id,
+          result_id,
+          admin_user_id: user.id,
+          remaining_pdf_count: remaining.length,
+        },
+        account_id: orderAccountId,
+      })
+      .then(({ error }) => {
+        if (error)
+          console.warn(
+            "[results:delete] analytics insert failed:",
+            error.message
+          );
+      });
+
+    return NextResponse.json({
+      success: true,
+      remaining_pdf_count: remaining.length,
+      new_order_status: newStatus,
+    });
   } catch (err) {
     console.error("[results/delete] error:", err);
     return NextResponse.json(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Upload,
   FileText,
@@ -15,9 +15,10 @@ import {
   Search,
   X,
   ChevronDown,
+  Eye,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import type { PendingOrder } from "@/app/(admin)/admin/results/page";
+import type { PendingOrder, OrderResultRow } from "@/app/(admin)/admin/results/page";
 
 interface AdminResultsManagerProps {
   orders: PendingOrder[];
@@ -35,31 +36,32 @@ interface DerivedStatus {
   color: string;
 }
 
-function deriveStatus(order: PendingOrder): DerivedStatus {
-  if (!order.existingResult) {
-    return {
-      key: "awaiting",
-      label: "Awaiting upload",
-      color: "#c4973a",
-    };
+/**
+ * Per-order status derived from however many PDFs are attached. Any
+ * 'final' wins; else any 'partial'; else nothing yet.
+ */
+function deriveStatus(results: OrderResultRow[]): DerivedStatus {
+  if (results.length === 0) {
+    return { key: "awaiting", label: "Awaiting upload", color: "#c4973a" };
   }
-  if (order.existingResult.result_status === "partial") {
-    return {
-      key: "partial",
-      label: "Partial uploaded",
-      color: "#93c5fd",
-    };
+  if (results.some((r) => r.result_status === "final")) {
+    return { key: "final", label: "Final uploaded", color: "#8dc63f" };
   }
-  return {
-    key: "final",
-    label: "Final uploaded",
-    color: "#8dc63f",
-  };
+  return { key: "partial", label: "Partial uploaded", color: "#93c5fd" };
 }
 
 function daysSince(iso: string): number {
   const ms = Date.now() - new Date(iso).getTime();
   return Math.max(0, Math.floor(ms / 86_400_000));
+}
+
+const MAX_BATCH = 20;
+const MAX_BYTES = 25 * 1024 * 1024;
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 // ─── Top-level manager ─────────────────────────────────────────────────
@@ -72,8 +74,6 @@ export function AdminResultsManager({ orders }: AdminResultsManagerProps) {
   const [sortBy, setSortBy] = useState<SortBy>("oldest_pending");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Debounce the search query so 250ms of typing doesn't re-render
-  // the list every keystroke.
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 250);
     return () => clearTimeout(t);
@@ -89,13 +89,19 @@ export function AdminResultsManager({ orders }: AdminResultsManagerProps) {
   const visibleOrders = useMemo(() => {
     const q = debouncedSearch.toLowerCase();
     const filtered = orders.filter((o) => {
-      const status = deriveStatus(o);
+      const status = deriveStatus(o.results);
       if (statusFilter === "awaiting" && status.key !== "awaiting") return false;
       if (statusFilter === "partial" && status.key !== "partial") return false;
       if (hideCompleted && status.key === "final") return false;
       if (q !== "") {
         const hay =
-          (o.patientName + " " + o.patientEmail + " " + o.orderId + " " + o.orderIdShort).toLowerCase();
+          (o.patientName +
+            " " +
+            o.patientEmail +
+            " " +
+            o.orderId +
+            " " +
+            o.orderIdShort).toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -141,7 +147,7 @@ export function AdminResultsManager({ orders }: AdminResultsManagerProps) {
               {visibleCount}
             </p>
             <p className="text-xs" style={{ color: "#e8d5a3" }}>
-              orders pending upload
+              orders matching filters
             </p>
             {showTotalSubtitle && (
               <p
@@ -201,7 +207,6 @@ export function AdminResultsManager({ orders }: AdminResultsManagerProps) {
             label="Hide completed"
             active={hideCompleted}
             onClick={() => setHideCompleted((v) => !v)}
-            variant="toggle"
           />
           <div className="flex-1" />
           <select
@@ -278,14 +283,11 @@ function FilterChip({
   label,
   active,
   onClick,
-  variant = "exclusive",
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
-  variant?: "exclusive" | "toggle";
 }) {
-  void variant;
   return (
     <button
       type="button"
@@ -302,7 +304,19 @@ function FilterChip({
   );
 }
 
-// ─── Per-order card (collapsed → expanded) ─────────────────────────────
+// ─── Per-order card (batch upload + uploaded list) ─────────────────────
+
+type QueueItemStatus =
+  | { state: "pending" }
+  | { state: "uploading"; progress: number }
+  | { state: "done" }
+  | { state: "error"; message: string };
+
+interface QueueItem {
+  id: string; // local id
+  file: File;
+  status: QueueItemStatus;
+}
 
 function OrderUploadCard({
   order,
@@ -313,29 +327,26 @@ function OrderUploadCard({
   expanded: boolean;
   onToggleExpand: () => void;
 }) {
-  const [result, setResult] = useState(order.existingResult);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [justUploaded, setJustUploaded] = useState(false);
-  const [showUploadZone, setShowUploadZone] = useState(!result);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [results, setResults] = useState<OrderResultRow[]>(order.results);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
   const [resultStatus, setResultStatus] = useState<"partial" | "final">(
-    "final"
+    "final",
   );
-  const [deleting, setDeleting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [batchError, setBatchError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [justNotified, setJustNotified] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const replaceTargetIdRef = useRef<string | null>(null);
+  const [replacingId, setReplacingId] = useState<string | null>(null);
 
-  const status = useMemo(
-    () =>
-      deriveStatus({
-        ...order,
-        existingResult: result, // reflect post-upload changes in the pill
-      }),
-    [order, result],
+  const status = useMemo(() => deriveStatus(results), [results]);
+  const pendingDays = useMemo(
+    () => daysSince(order.createdAt),
+    [order.createdAt],
   );
-  const pendingDays = useMemo(() => daysSince(order.createdAt), [order.createdAt]);
   const pendingColor = pendingDays > 7 ? "#c4973a" : "#6ab04c";
 
   const skuList = useMemo(() => {
@@ -347,102 +358,242 @@ function OrderUploadCard({
     return `${skus.slice(0, 4).join(", ")} +${skus.length - 4} more`;
   }, [order.mayoTests]);
 
-  const handleFile = useCallback((file: File) => {
-    if (file.type !== "application/pdf") {
-      setError("Only PDF files are accepted.");
-      return;
+  const addFilesToQueue = useCallback((fileList: FileList | File[]) => {
+    const incoming = Array.from(fileList);
+    const errors: string[] = [];
+    const accepted: QueueItem[] = [];
+    for (const f of incoming) {
+      if (f.type !== "application/pdf") {
+        errors.push(`${f.name}: only PDF files are accepted.`);
+        continue;
+      }
+      if (f.size > MAX_BYTES) {
+        errors.push(`${f.name}: exceeds 25 MB.`);
+        continue;
+      }
+      accepted.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file: f,
+        status: { state: "pending" },
+      });
     }
-    setSelectedFile(file);
-    setError(null);
+    setQueue((prev) => {
+      const combined = [...prev, ...accepted];
+      if (combined.length > MAX_BATCH) {
+        errors.push(`Batch capped at ${MAX_BATCH} files — extras dropped.`);
+        return combined.slice(0, MAX_BATCH);
+      }
+      return combined;
+    });
+    setBatchError(errors.length > 0 ? errors.join(" ") : null);
   }, []);
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) handleFile(file);
-    },
-    [handleFile]
-  );
+  const removeFromQueue = (id: string) => {
+    setQueue((prev) => prev.filter((q) => q.id !== id));
+  };
 
-  const handleUpload = async () => {
-    if (!selectedFile) return;
-    setUploading(true);
-    setError(null);
+  const handleUploadAndNotify = async () => {
+    setBatchError(null);
+    const pending = queue.filter(
+      (q) => q.status.state === "pending" || q.status.state === "error",
+    );
+    if (pending.length === 0) return;
 
-    const formData = new FormData();
-    formData.append("order_id", order.orderId);
-    formData.append("result_status", resultStatus);
-    formData.append("file", selectedFile);
+    setSubmitting(true);
+    setQueue((prev) =>
+      prev.map((q) =>
+        pending.some((p) => p.id === q.id)
+          ? { ...q, status: { state: "uploading", progress: 0 } }
+          : q,
+      ),
+    );
 
     try {
+      const fd = new FormData();
+      fd.append("order_id", order.orderId);
+      fd.append("result_status", resultStatus);
+      for (const it of pending) fd.append("file", it.file);
+
       const res = await fetch("/api/results/upload", {
         method: "POST",
-        body: formData,
+        body: fd,
       });
+      const data = (await res.json().catch(() => ({}))) as {
+        uploaded?: Array<{ id: string; file_name: string }>;
+        failed?: Array<{ file_name: string; error: string }>;
+        notified?: boolean;
+        error?: string;
+      };
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Upload failed");
+        throw new Error(data.error ?? `HTTP ${res.status}`);
       }
 
-      const data = await res.json();
-      setResult({
-        id: data.result_id,
-        storage_path: "",
-        file_name: selectedFile.name,
-        result_status: resultStatus,
-        uploaded_at: new Date().toISOString(),
-        lab_reference_number: null,
-      });
-      setJustUploaded(true);
-      setShowUploadZone(false);
-      setSelectedFile(null);
-      setTimeout(() => setJustUploaded(false), 5000);
+      const successes = new Set(
+        (data.uploaded ?? []).map((u) => u.file_name),
+      );
+      const failures = new Map<string, string>(
+        (data.failed ?? []).map((f) => [f.file_name, f.error]),
+      );
+
+      // Mark each queue row + add successful rows to the uploaded list.
+      setQueue((prev) =>
+        prev
+          .map((q) => {
+            if (!pending.some((p) => p.id === q.id)) return q;
+            if (successes.has(q.file.name))
+              return { ...q, status: { state: "done" as const } };
+            if (failures.has(q.file.name))
+              return {
+                ...q,
+                status: {
+                  state: "error" as const,
+                  message: failures.get(q.file.name) ?? "Upload failed",
+                },
+              };
+            return {
+              ...q,
+              status: {
+                state: "error" as const,
+                message: "No response for this file",
+              },
+            };
+          })
+          // Drop the just-completed rows so the queue clears on success.
+          .filter((q) => q.status.state !== "done"),
+      );
+
+      if (data.uploaded && data.uploaded.length > 0) {
+        const newRows: OrderResultRow[] = data.uploaded.map((u) => ({
+          id: u.id,
+          storage_path: "",
+          file_name: u.file_name,
+          result_status: resultStatus,
+          uploaded_at: new Date().toISOString(),
+          lab_reference_number: null,
+        }));
+        setResults((prev) => [...newRows, ...prev]);
+        if (data.notified) {
+          setJustNotified(true);
+          setTimeout(() => setJustNotified(false), 6000);
+        }
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      setQueue((prev) =>
+        prev.map((q) =>
+          pending.some((p) => p.id === q.id)
+            ? { ...q, status: { state: "error", message: msg } }
+            : q,
+        ),
+      );
+      setBatchError(msg);
     } finally {
-      setUploading(false);
+      setSubmitting(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!result) return;
-    setDeleting(true);
-    setError(null);
+  const viewPdf = async (id: string) => {
+    try {
+      const res = await fetch("/api/results/view", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ result_id: id }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? `HTTP ${res.status}`);
+      }
+      const { url } = await res.json();
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to open PDF");
+    }
+  };
 
+  const triggerReplace = (id: string) => {
+    replaceTargetIdRef.current = id;
+    replaceInputRef.current?.click();
+  };
+
+  const handleReplaceFile = async (file: File) => {
+    const id = replaceTargetIdRef.current;
+    replaceTargetIdRef.current = null;
+    if (!id) return;
+    if (file.type !== "application/pdf") {
+      setBatchError(`${file.name}: only PDF files are accepted.`);
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setBatchError(`${file.name}: exceeds 25 MB.`);
+      return;
+    }
+    setReplacingId(id);
+    setBatchError(null);
+    try {
+      const fd = new FormData();
+      fd.append("result_id", id);
+      fd.append("file", file);
+      const res = await fetch("/api/results/replace", {
+        method: "POST",
+        body: fd,
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        result_id?: string;
+        file_name?: string;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setResults((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                file_name: data.file_name ?? file.name,
+                uploaded_at: new Date().toISOString(),
+              }
+            : r,
+        ),
+      );
+    } catch (err) {
+      setBatchError(err instanceof Error ? err.message : "Replace failed");
+    } finally {
+      setReplacingId(null);
+    }
+  };
+
+  const confirmDeletePdf = async () => {
+    const id = pendingDeleteId;
+    if (!id) return;
     try {
       const res = await fetch("/api/results/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ result_id: result.id }),
+        body: JSON.stringify({ result_id: id }),
       });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Delete failed");
-      }
-
-      setResult(null);
-      setConfirmDelete(false);
-      setShowUploadZone(true);
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setResults((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
+      setBatchError(err instanceof Error ? err.message : "Delete failed");
     } finally {
-      setDeleting(false);
+      setPendingDeleteId(null);
     }
   };
 
-  const hasResult = !!result;
-  const isPartial = result?.result_status === "partial";
+  const pendingCount = queue.filter(
+    (q) => q.status.state === "pending" || q.status.state === "error",
+  ).length;
 
   return (
     <div
       className="rounded-xl border overflow-hidden"
       style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
     >
-      {/* ── Always-visible collapsed summary row ─────────────── */}
+      {/* ── Collapsed summary row ─────────────── */}
       <button
         type="button"
         onClick={onToggleExpand}
@@ -451,7 +602,6 @@ function OrderUploadCard({
         style={{ backgroundColor: "#0f2614" }}
       >
         <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-          {/* Left: order id + name + email */}
           <div className="min-w-0 flex-1 sm:flex-[2]">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-xs" style={{ color: "#6ab04c" }}>
@@ -463,6 +613,17 @@ function OrderUploadCard({
               >
                 {order.patientName}
               </span>
+              {results.length > 0 && (
+                <span
+                  className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: "rgba(141,198,63,0.15)",
+                    color: "#8dc63f",
+                  }}
+                >
+                  {results.length} PDF{results.length === 1 ? "" : "s"}
+                </span>
+              )}
             </div>
             {order.patientEmail !== "—" && (
               <p
@@ -475,7 +636,6 @@ function OrderUploadCard({
             )}
           </div>
 
-          {/* Middle: date + tests + SKUs */}
           <div className="min-w-0 flex-1 sm:flex-[2]">
             <p className="text-xs" style={{ color: "#6ab04c" }}>
               Placed {formatDate(order.createdAt)} · {order.mayoTests.length}{" "}
@@ -495,7 +655,6 @@ function OrderUploadCard({
             )}
           </div>
 
-          {/* Right: status pill + pending days + chevron */}
           <div className="flex items-center gap-2.5 shrink-0">
             <span
               className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border"
@@ -524,8 +683,7 @@ function OrderUploadCard({
         </div>
       </button>
 
-      {/* ── Expanded body — kept in DOM with display:none so upload
-          state survives collapse → reopen ─────────────────────── */}
+      {/* ── Expanded body ─────────────────────── */}
       <div
         className="px-5 sm:px-6 py-4"
         style={{ display: expanded ? undefined : "none" }}
@@ -568,122 +726,131 @@ function OrderUploadCard({
           ))}
         </ul>
 
-        {/* Result on file indicator */}
-        {hasResult && !showUploadZone && !confirmDelete && (
-          <div
-            className="flex items-center justify-between gap-3 rounded-lg border p-4 mb-4 flex-wrap"
-            style={{
-              backgroundColor: "#0f2614",
-              borderColor: isPartial ? "#c4973a" : "#8dc63f",
-            }}
-          >
-            <div className="flex items-center gap-2.5">
-              {isPartial ? (
-                <Clock className="w-5 h-5 shrink-0" style={{ color: "#c4973a" }} />
-              ) : (
-                <CheckCircle className="w-5 h-5 shrink-0" style={{ color: "#8dc63f" }} />
-              )}
-              <div>
-                <p
-                  className="text-sm font-semibold"
-                  style={{ color: isPartial ? "#c4973a" : "#8dc63f" }}
-                >
-                  {isPartial ? "Partial results on file" : "Final results on file"}
-                </p>
-                <p className="text-xs" style={{ color: "#6ab04c" }}>
-                  Uploaded {formatDate(result!.uploaded_at)}
-                  {result!.file_name && <> · {result!.file_name}</>}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowUploadZone(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border shrink-0"
-                style={{
-                  color: "#e8d5a3",
-                  borderColor: "#2d6b35",
-                  backgroundColor: "transparent",
-                }}
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Replace PDF
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border shrink-0"
-                style={{
-                  color: "#e05252",
-                  borderColor: "#e05252",
-                  backgroundColor: "transparent",
-                }}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Delete confirmation */}
-        {confirmDelete && (
-          <div
-            className="rounded-lg border p-4 mb-4"
-            style={{
-              backgroundColor: "rgba(224, 82, 82, 0.08)",
-              borderColor: "#e05252",
-            }}
-          >
-            <p className="text-sm mb-3" style={{ color: "#e05252" }}>
-              Are you sure you want to delete this result? The patient will
-              lose access to this PDF.
+        {/* Uploaded PDFs list */}
+        {results.length > 0 && (
+          <div className="mb-4">
+            <p
+              className="text-xs uppercase tracking-wider mb-2 font-semibold"
+              style={{ color: "#c4973a" }}
+            >
+              Uploaded PDFs ({results.length})
             </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold"
-                style={{
-                  backgroundColor: "#e05252",
-                  color: "#ffffff",
-                  opacity: deleting ? 0.6 : 1,
-                }}
-              >
-                {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Confirm Delete
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(false)}
-                className="px-4 py-2 rounded-lg text-xs font-semibold border"
-                style={{
-                  color: "#e8d5a3",
-                  borderColor: "#2d6b35",
-                  backgroundColor: "transparent",
-                }}
-              >
-                Cancel
-              </button>
-            </div>
+            <ul className="space-y-1.5">
+              {results.map((r) => (
+                <li
+                  key={r.id}
+                  className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border"
+                  style={{
+                    backgroundColor: "#0f2614",
+                    borderColor: "#2d6b35",
+                  }}
+                >
+                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                    {r.result_status === "partial" ? (
+                      <Clock
+                        className="w-4 h-4 shrink-0 mt-0.5"
+                        style={{ color: "#c4973a" }}
+                      />
+                    ) : (
+                      <CheckCircle
+                        className="w-4 h-4 shrink-0 mt-0.5"
+                        style={{ color: "#8dc63f" }}
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <p
+                        className="text-sm break-words"
+                        style={{ color: "#ffffff", overflowWrap: "anywhere" }}
+                      >
+                        {r.file_name}
+                      </p>
+                      <p
+                        className="text-[11px]"
+                        style={{ color: "#6ab04c" }}
+                      >
+                        {r.result_status === "partial" ? "Partial" : "Final"}
+                        {" · "}Uploaded {formatDate(r.uploaded_at)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => viewPdf(r.id)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold border"
+                      style={{
+                        backgroundColor: "transparent",
+                        borderColor: "#2d6b35",
+                        color: "#e8d5a3",
+                      }}
+                    >
+                      <Eye className="w-3 h-3" />
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => triggerReplace(r.id)}
+                      disabled={replacingId === r.id}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold border disabled:opacity-50"
+                      style={{
+                        backgroundColor: "transparent",
+                        borderColor: "#2d6b35",
+                        color: "#e8d5a3",
+                      }}
+                    >
+                      {replacingId === r.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                      Replace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingDeleteId(r.id)}
+                      className="p-1.5 rounded"
+                      style={{ color: "#e05252" }}
+                      aria-label="Delete PDF"
+                      title="Delete this PDF"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <input
+              ref={replaceInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleReplaceFile(f);
+                e.target.value = "";
+              }}
+            />
           </div>
         )}
 
-        {/* Just-uploaded confirmation */}
-        {justUploaded && (
+        {justNotified && (
           <div
-            className="flex items-center gap-3 rounded-lg border p-4 mb-4"
+            className="flex items-center gap-3 rounded-lg border p-3 mb-4"
             style={{
-              backgroundColor: "rgba(141, 198, 63, 0.12)",
+              backgroundColor: "rgba(141,198,63,0.12)",
               borderColor: "#8dc63f",
             }}
           >
-            <CheckCircle className="w-5 h-5 shrink-0" style={{ color: "#8dc63f" }} />
+            <CheckCircle
+              className="w-5 h-5 shrink-0"
+              style={{ color: "#8dc63f" }}
+            />
             <div>
-              <p className="text-sm font-semibold" style={{ color: "#ffffff" }}>
-                Results uploaded — patient notified by email and SMS
+              <p
+                className="text-sm font-semibold"
+                style={{ color: "#ffffff" }}
+              >
+                Batch uploaded — customer notified by email (and SMS if on file)
               </p>
               <p className="text-xs" style={{ color: "#8dc63f" }}>
                 {new Date().toLocaleString()}
@@ -692,58 +859,87 @@ function OrderUploadCard({
           </div>
         )}
 
-        {/* Upload zone */}
-        {showUploadZone && (
-          <div className="space-y-3">
-            <div
-              onDrop={handleDrop}
-              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onClick={() => inputRef.current?.click()}
-              className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors"
-              style={{
-                borderColor: dragging ? "#c4973a" : selectedFile ? "#8dc63f" : "#2d6b35",
-                backgroundColor: dragging ? "#1f4a28" : selectedFile ? "#1a3d22" : "#0f2614",
-              }}
-            >
-              <input
-                ref={inputRef}
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFile(file);
-                }}
-              />
-              {selectedFile ? (
-                <div className="flex items-center justify-center gap-2">
-                  <FileText className="w-5 h-5" style={{ color: "#8dc63f" }} />
-                  <span className="text-sm font-medium truncate max-w-xs" style={{ color: "#ffffff" }}>
-                    {selectedFile.name}
-                  </span>
-                  <span className="text-xs" style={{ color: "#6ab04c" }}>
-                    ({(selectedFile.size / 1024).toFixed(0)} KB)
-                  </span>
-                </div>
-              ) : (
-                <div>
-                  <Upload className="w-8 h-8 mx-auto mb-2" style={{ color: "#6ab04c" }} />
-                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
-                    <span className="font-semibold" style={{ color: "#c4973a" }}>Drop PDF here</span> or click to upload
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
-                    One PDF for all Mayo tests in this order
-                  </p>
-                </div>
-              )}
-            </div>
+        {/* Drop zone (always available so admins can add another batch) */}
+        <div
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            if (e.dataTransfer.files.length > 0)
+              addFilesToQueue(e.dataTransfer.files);
+          }}
+          className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors"
+          style={{
+            borderColor: dragging ? "#c4973a" : "#2d6b35",
+            backgroundColor: dragging ? "#1f4a28" : "#0f2614",
+          }}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept="application/pdf"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) addFilesToQueue(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <Upload
+            className="w-8 h-8 mx-auto mb-2"
+            style={{ color: "#6ab04c" }}
+          />
+          <p className="text-sm" style={{ color: "#e8d5a3" }}>
+            <span className="font-semibold" style={{ color: "#c4973a" }}>
+              Drop PDFs here
+            </span>{" "}
+            or click to upload — multiple files supported
+          </p>
+          <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
+            PDF only · 25 MB max · up to {MAX_BATCH} per batch · one email per
+            batch
+          </p>
+        </div>
 
-            {/* Status toggle */}
+        {/* Queue */}
+        {queue.length > 0 && (
+          <ul className="space-y-1.5 mt-4">
+            {queue.map((q) => (
+              <QueueRow key={q.id} item={q} onRemove={removeFromQueue} />
+            ))}
+          </ul>
+        )}
+
+        {batchError && (
+          <p
+            className="mt-3 text-xs flex items-start gap-1.5"
+            style={{ color: "#e05252" }}
+          >
+            <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span>{batchError}</span>
+          </p>
+        )}
+
+        {/* Status toggle + Upload & Notify button */}
+        {queue.length > 0 && (
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-4">
-              <p className="text-xs font-medium" style={{ color: "#e8d5a3" }}>Status:</p>
+              <p
+                className="text-xs font-medium"
+                style={{ color: "#e8d5a3" }}
+              >
+                Status:
+              </p>
               {(["final", "partial"] as const).map((s) => (
-                <label key={s} className="flex items-center gap-1.5 cursor-pointer">
+                <label
+                  key={s}
+                  className="flex items-center gap-1.5 cursor-pointer"
+                >
                   <input
                     type="radio"
                     name={`status-${order.orderId}`}
@@ -753,11 +949,14 @@ function OrderUploadCard({
                     style={{ accentColor: "#c4973a" }}
                   />
                   <span
-                    className="text-xs font-medium capitalize"
+                    className="text-xs font-medium"
                     style={{
-                      color: resultStatus === s
-                        ? s === "partial" ? "#c4973a" : "#8dc63f"
-                        : "#6ab04c",
+                      color:
+                        resultStatus === s
+                          ? s === "partial"
+                            ? "#c4973a"
+                            : "#8dc63f"
+                          : "#6ab04c",
                     }}
                   >
                     {s === "final" ? "Final Results" : "Partial Results"}
@@ -765,41 +964,153 @@ function OrderUploadCard({
                 </label>
               ))}
             </div>
-
-            {error && (
-              <div className="flex items-center gap-2 text-sm" style={{ color: "#e05252" }}>
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                {error}
-              </div>
-            )}
-
-            {selectedFile && (
-              <button
-                type="button"
-                onClick={handleUpload}
-                disabled={uploading}
-                className="mf-btn-primary w-full py-2.5"
-              >
-                {uploading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Uploading & notifying patient…</>
-                ) : (
-                  <><Upload className="w-4 h-4" /> Upload and Notify</>
-                )}
-              </button>
-            )}
-
-            {hasResult && (
-              <button
-                type="button"
-                onClick={() => { setShowUploadZone(false); setSelectedFile(null); setError(null); }}
-                className="w-full text-center text-xs font-medium py-1"
-                style={{ color: "#6ab04c" }}
-              >
-                Cancel
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleUploadAndNotify}
+              disabled={submitting || pendingCount === 0}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Uploading…
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Upload & Notify ({pendingCount})
+                </>
+              )}
+            </button>
           </div>
         )}
+      </div>
+
+      {pendingDeleteId && (
+        <DeleteConfirmModal
+          onCancel={() => setPendingDeleteId(null)}
+          onConfirm={confirmDeletePdf}
+        />
+      )}
+    </div>
+  );
+}
+
+function QueueRow({
+  item,
+  onRemove,
+}: {
+  item: QueueItem;
+  onRemove: (id: string) => void;
+}) {
+  const s = item.status;
+  const icon =
+    s.state === "done" ? (
+      <CheckCircle className="w-4 h-4" style={{ color: "#8dc63f" }} />
+    ) : s.state === "error" ? (
+      <AlertCircle className="w-4 h-4" style={{ color: "#e05252" }} />
+    ) : s.state === "uploading" ? (
+      <Loader2 className="w-4 h-4 animate-spin" style={{ color: "#c4973a" }} />
+    ) : (
+      <FileText className="w-4 h-4" style={{ color: "#6ab04c" }} />
+    );
+
+  const removable = s.state === "pending" || s.state === "error";
+
+  return (
+    <li
+      className="flex items-center gap-3 px-3 py-2 rounded-lg border"
+      style={{
+        backgroundColor: "#0f2614",
+        borderColor: s.state === "error" ? "#e05252" : "#2d6b35",
+      }}
+    >
+      {icon}
+      <div className="min-w-0 flex-1">
+        <p
+          className="text-sm truncate"
+          style={{ color: "#ffffff" }}
+          title={item.file.name}
+        >
+          {item.file.name}
+        </p>
+        <p className="text-[11px]" style={{ color: "#6ab04c" }}>
+          {formatBytes(item.file.size)}
+        </p>
+        {s.state === "error" && (
+          <p className="text-xs mt-0.5" style={{ color: "#e05252" }}>
+            {s.message}
+          </p>
+        )}
+      </div>
+      {removable && (
+        <button
+          type="button"
+          onClick={() => onRemove(item.id)}
+          aria-label="Remove from queue"
+          style={{ color: "#6ab04c" }}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+    </li>
+  );
+}
+
+function DeleteConfirmModal({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+      onClick={onCancel}
+    >
+      <div
+        className="rounded-xl border max-w-md w-full p-5"
+        style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3
+          className="font-heading text-lg font-semibold mb-2"
+          style={{
+            color: "#ffffff",
+            fontFamily: '"Cormorant Garamond", Georgia, serif',
+          }}
+        >
+          Delete this PDF?
+        </h3>
+        <p className="text-sm mb-5" style={{ color: "#e8d5a3" }}>
+          The customer will no longer see this file. No email is sent. This
+          cannot be undone.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-3 py-2 rounded-lg text-sm font-medium border"
+            style={{
+              backgroundColor: "transparent",
+              borderColor: "#2d6b35",
+              color: "#e8d5a3",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="px-3 py-2 rounded-lg text-sm font-semibold"
+            style={{ backgroundColor: "#e05252", color: "#ffffff" }}
+          >
+            Delete permanently
+          </button>
+        </div>
       </div>
     </div>
   );

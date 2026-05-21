@@ -9,14 +9,14 @@ export type MayoTest = {
   specimenType: string | null;
 };
 
-export type OrderResult = {
+export type OrderResultRow = {
   id: string;
   storage_path: string;
   file_name: string;
   result_status: "partial" | "final";
   uploaded_at: string;
   lab_reference_number: string | null;
-} | null;
+};
 
 export type PendingOrder = {
   orderId: string;
@@ -26,7 +26,8 @@ export type PendingOrder = {
   patientEmail: string;
   accountId: string;
   mayoTests: MayoTest[];
-  existingResult: OrderResult;
+  /** All PDFs already attached to this order, newest first. */
+  results: OrderResultRow[];
 };
 
 const MAYO_LAB_NAME = "Mayo Clinic Laboratories";
@@ -111,20 +112,16 @@ export default async function AdminResultsUploadPage() {
       ? `${primaryProfile.first_name} ${primaryProfile.last_name}`
       : (order.account?.email ?? "Unknown");
 
-    const existingResult =
-      order.results.length > 0
-        ? {
-            id: order.results[0].id,
-            storage_path: order.results[0].storage_path,
-            file_name: order.results[0].file_name,
-            result_status: order.results[0].result_status as
-              | "partial"
-              | "final",
-            uploaded_at: order.results[0].uploaded_at,
-            lab_reference_number:
-              order.results[0].lab_reference_number,
-          }
-        : null;
+    const results: OrderResultRow[] = order.results
+      .map((r) => ({
+        id: r.id,
+        storage_path: r.storage_path,
+        file_name: r.file_name,
+        result_status: r.result_status as "partial" | "final",
+        uploaded_at: r.uploaded_at,
+        lab_reference_number: r.lab_reference_number,
+      }))
+      .sort((a, b) => b.uploaded_at.localeCompare(a.uploaded_at));
 
     pendingOrders.push({
       orderId: order.id,
@@ -134,7 +131,7 @@ export default async function AdminResultsUploadPage() {
       patientEmail: order.account?.email ?? "—",
       accountId: order.account_id ?? "",
       mayoTests,
-      existingResult,
+      results,
     });
   }
 
@@ -151,8 +148,8 @@ export default async function AdminResultsUploadPage() {
           Upload Lab <span style={{ color: "#c4973a" }}>Results</span>
         </h1>
         <p className="mt-1" style={{ color: "#e8d5a3" }}>
-          Upload PDFs for Mayo Clinic orders. One PDF per order covering
-          all tests.
+          Upload one or more PDFs per order. The customer gets a single
+          results-ready email per upload batch.
         </p>
       </div>
 
