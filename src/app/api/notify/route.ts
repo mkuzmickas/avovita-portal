@@ -134,7 +134,6 @@ export async function POST(request: NextRequest) {
         await resend.emails.send({
           from: process.env.RESEND_FROM_RESULTS!,
           to: account.email,
-          bcc: ["jenna@avovita.ca", "mike@avovita.ca"],
           subject: emailSubject,
           html,
         });
