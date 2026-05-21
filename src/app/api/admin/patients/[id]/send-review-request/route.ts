@@ -121,7 +121,6 @@ export async function POST(
         await resend.emails.send({
           from: process.env.RESEND_FROM_ORDERS!,
           to: email,
-          bcc: ["jenna@avovita.ca", "mike@avovita.ca"],
           subject: reviewRequestSubject(),
           html: renderReviewRequestEmail({ firstName }),
         });
