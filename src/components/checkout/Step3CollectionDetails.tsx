@@ -98,6 +98,20 @@ export function Step3CollectionDetails({
   // Pre-fill account holder fields from their existing patient profile
   const [profilePrefilled, setProfilePrefilled] = useState(false);
 
+  // Out-of-town gate — ticking the box blocks checkout and opens a modal
+  // telling the customer to email AvoVita to coordinate. Intentionally
+  // ephemeral: no DB column, no order flag. Once they uncheck the box
+  // (after coordinating out of band, AvoVita tells them what address to
+  // type) the order proceeds indistinguishably from any other.
+  //
+  // Future: replace the contact-to-book gate with a direct Acuity
+  // booking link for the out-of-town drop-in location (separate
+  // calendar). For now this is a hard gate requiring the customer to
+  // contact AvoVita; they then uncheck the box and complete checkout
+  // with an address provided privately by AvoVita.
+  const [fromOutOfTown, setFromOutOfTown] = useState(false);
+  const [outOfTownModalOpen, setOutOfTownModalOpen] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -218,7 +232,8 @@ export function Step3CollectionDetails({
   const canContinue =
     addressValid &&
     (isCaregiver ? representativeValid && dependentsValid : accountHolderValid && additionalAllValid && allConsentsObtained) &&
-    !zoneUnserved;
+    !zoneUnserved &&
+    !fromOutOfTown;
 
   // Compute a human-readable list of what's still missing so the
   // greyed-out Continue button isn't a mystery.
@@ -499,6 +514,41 @@ export function Step3CollectionDetails({
             please place a separate order for them.
           </p>
         </div>
+
+        {/* Out-of-town gate — see state declaration above for rationale */}
+        <label
+          className="flex items-start gap-3 rounded-lg border px-4 py-3 mt-4 cursor-pointer transition-colors"
+          style={{
+            backgroundColor: fromOutOfTown
+              ? "rgba(196, 151, 58, 0.16)"
+              : "rgba(196, 151, 58, 0.06)",
+            borderColor: "#c4973a",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={fromOutOfTown}
+            onChange={(e) => {
+              const next = e.target.checked;
+              setFromOutOfTown(next);
+              if (next) setOutOfTownModalOpen(true);
+            }}
+            className="mt-0.5 shrink-0"
+            style={{ accentColor: "#c4973a" }}
+          />
+          <div className="min-w-0">
+            <p
+              className="text-sm font-semibold"
+              style={{ color: "#c4973a" }}
+            >
+              I&apos;m from out of town
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#e8d5a3" }}>
+              Tick this if you&apos;re visiting Calgary and need to
+              coordinate a drop-in collection with us.
+            </p>
+          </div>
+        </label>
       </section>
 
       {/* ─── Person 1 (You) ────────────────────────────────────── */}
@@ -669,6 +719,33 @@ export function Step3CollectionDetails({
           </div>
         )}
 
+        {fromOutOfTown && (
+          <div
+            className="flex items-start gap-2 rounded-lg border px-4 py-3 mb-4 text-sm"
+            style={{
+              backgroundColor: "rgba(196, 151, 58, 0.12)",
+              borderColor: "#c4973a",
+              color: "#e8d5a3",
+            }}
+          >
+            <AlertCircle
+              className="w-4 h-4 shrink-0 mt-0.5"
+              style={{ color: "#c4973a" }}
+            />
+            <span>
+              Please contact AvoVita at{" "}
+              <a
+                href="mailto:mike@avovita.ca"
+                className="font-semibold underline"
+                style={{ color: "#c4973a" }}
+              >
+                mike@avovita.ca
+              </a>{" "}
+              to coordinate your out-of-town booking before continuing.
+            </span>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             type="button"
@@ -686,6 +763,80 @@ export function Step3CollectionDetails({
           >
             Continue to Review
             <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {outOfTownModalOpen && (
+        <OutOfTownModal onClose={() => setOutOfTownModalOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+// ─── Out-of-town gate modal ────────────────────────────────────────────
+
+function OutOfTownModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6"
+      style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl border p-6"
+        style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center border"
+            style={{
+              backgroundColor: "rgba(196, 151, 58, 0.15)",
+              borderColor: "#c4973a",
+            }}
+          >
+            <MapPin className="w-5 h-5" style={{ color: "#c4973a" }} />
+          </div>
+          <h2
+            className="font-heading text-xl font-semibold"
+            style={{
+              color: "#ffffff",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+            }}
+          >
+            Out of Town?
+          </h2>
+        </div>
+
+        <div className="space-y-3 text-sm" style={{ color: "#e8d5a3" }}>
+          <p>
+            Contact AvoVita to book. We have a drop-in location available
+            near Canada Olympic Park, available on Saturdays and Tuesday
+            mornings. This must be coordinated with AvoVita prior to
+            booking. Please note, the $85 collection fee for the first
+            person, and $55 for each additional person, will still apply.
+          </p>
+          <p>
+            Email us:{" "}
+            <a
+              href="mailto:mike@avovita.ca"
+              className="font-semibold underline"
+              style={{ color: "#c4973a" }}
+            >
+              mike@avovita.ca
+            </a>
+          </p>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+          >
+            Close
           </button>
         </div>
       </div>
