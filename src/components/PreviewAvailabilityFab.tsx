@@ -210,8 +210,16 @@ export function PreviewAvailabilityFab() {
               </button>
             </div>
 
-            {/* Scrollable body */}
-            <div className="overflow-y-auto p-5 space-y-4">
+            {/* Scrollable body — flex-1 + min-h-0 are mandatory: without
+                them, the body's flex child can't shrink below its
+                natural content height (the 2000px iframe + banners), so
+                overflow-y:auto never engages and the bottom of the
+                calendar sits below the viewport. The explicit
+                maxHeight is belt-and-suspenders. */}
+            <div
+              className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
+              style={{ maxHeight: "calc(100vh - 12rem)" }}
+            >
               {/* Amber preview-only notice */}
               <div
                 className="flex gap-3 rounded-lg border p-4"
@@ -268,13 +276,12 @@ export function PreviewAvailabilityFab() {
                   Acuity widget, so no booking can be initiated from the
                   preview. Cross-origin iframes can't be scrolled by the
                   parent, so we sidestep that limit by rendering the
-                  iframe at its full Acuity content height (1500px) and
-                  letting the OUTER modal body scroll to expose it.
-                  Wheel and touchmove events pass through the
-                  pointer-events: none iframe and bubble to the
-                  overflow-y:auto modal body, which scrolls normally.
-                  cursor: not-allowed on the wrapper gives the desktop
-                  signal that clicks are dead.
+                  iframe at its full Acuity content height (2000px,
+                  intentionally over-tall) with scrolling="no" so the
+                  iframe never adds its own scrollbar. The outer modal
+                  body scrolls to expose the full height. Wheel and
+                  touchmove events pass through pointer-events:none and
+                  bubble to that body's overflow-y:auto.
                   DO NOT replicate on the real booking step in
                   CheckoutSuccessV2 — that one must stay interactive. */}
               <div
@@ -303,9 +310,10 @@ export function PreviewAvailabilityFab() {
                   src={ACUITY_EMBED_URL}
                   title="FloLabs collection availability preview"
                   onLoad={() => setIframeLoaded(true)}
+                  scrolling="no"
                   className="w-full block"
                   style={{
-                    height: "1500px",
+                    height: "2000px",
                     border: "none",
                     backgroundColor: "transparent",
                     pointerEvents: "none",
