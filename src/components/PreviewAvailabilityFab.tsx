@@ -241,9 +241,38 @@ export function PreviewAvailabilityFab() {
                 </p>
               </div>
 
-              {/* Acuity iframe */}
+              {/* Restating banner — sits flush above the iframe so the
+                  customer sees "preview only" right where they're about
+                  to try to click. The amber notice above gives the long
+                  version; this short one reinforces it visually now
+                  that interaction is actually blocked. */}
               <div
-                className="relative rounded-lg overflow-hidden border"
+                className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs"
+                style={{
+                  backgroundColor: "rgba(196,151,58,0.10)",
+                  borderColor: "#c4973a",
+                  color: "#c4973a",
+                }}
+              >
+                <Info className="w-4 h-4 shrink-0" />
+                <span>
+                  <strong>Preview only</strong> — availability shown for
+                  reference. Your appointment is booked after you complete
+                  your order.
+                </span>
+              </div>
+
+              {/* Acuity iframe — wrapped in a `group` container so the
+                  overlay's hover state can reveal the tap hint pill.
+                  Strictly read-only: the overlay covers the entire
+                  iframe and captures every pointer event, and the
+                  iframe itself has pointer-events: none as a belt-and-
+                  suspenders measure. Acuity has no native read-only
+                  mode, so this is the only way to prevent real bookings
+                  being made from the preview. DO NOT replicate on the
+                  real booking step in CheckoutSuccessV2. */}
+              <div
+                className="group relative rounded-lg overflow-hidden border"
                 style={{ borderColor: "#2d6b35", backgroundColor: "#0f2614" }}
               >
                 {!iframeLoaded && (
@@ -269,8 +298,39 @@ export function PreviewAvailabilityFab() {
                     height: "600px",
                     border: "none",
                     backgroundColor: "transparent",
+                    // Belt-and-suspenders: if the overlay above ever
+                    // fails to mount, the iframe still can't receive
+                    // clicks/taps.
+                    pointerEvents: "none",
                   }}
                 />
+                {/* Interaction-blocking overlay. Visually near-
+                    transparent so the calendar reads through; pointer
+                    events are captured here and never reach the iframe.
+                    The centered pill fades in on hover/tap so the
+                    customer gets an immediate, subtle reason why
+                    clicking the calendar did nothing. */}
+                <div
+                  className="absolute inset-0 z-20 flex items-center justify-center"
+                  style={{
+                    backgroundColor: "transparent",
+                    cursor: "not-allowed",
+                  }}
+                  aria-hidden="true"
+                  role="presentation"
+                >
+                  <span
+                    className="pointer-events-none rounded-full px-3 py-1.5 text-xs font-semibold border opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity"
+                    style={{
+                      backgroundColor: "rgba(15, 38, 20, 0.92)",
+                      borderColor: "#c4973a",
+                      color: "#c4973a",
+                      boxShadow: "0 4px 14px rgba(0,0,0,0.4)",
+                    }}
+                  >
+                    Booking available after checkout
+                  </span>
+                </div>
               </div>
             </div>
 
