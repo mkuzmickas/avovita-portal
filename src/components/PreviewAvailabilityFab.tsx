@@ -48,6 +48,7 @@ export function PreviewAvailabilityFab() {
   const fabRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   const hidden = shouldHide(pathname);
 
@@ -217,6 +218,7 @@ export function PreviewAvailabilityFab() {
                 calendar sits below the viewport. The explicit
                 maxHeight is belt-and-suspenders. */}
             <div
+              ref={bodyRef}
               className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
               style={{ maxHeight: "calc(100vh - 12rem)" }}
             >
@@ -309,7 +311,22 @@ export function PreviewAvailabilityFab() {
                 <iframe
                   src={ACUITY_EMBED_URL}
                   title="FloLabs collection availability preview"
-                  onLoad={() => setIframeLoaded(true)}
+                  onLoad={() => {
+                    setIframeLoaded(true);
+                    // Land the customer on the calendar instead of the
+                    // intro text. We can't read positions inside the
+                    // cross-origin Acuity iframe, so scroll our own
+                    // container by a fixed offset that's been tuned to
+                    // land roughly on the month grid. setTimeout lets
+                    // Acuity finish painting (which often happens after
+                    // onLoad) so the scrollHeight is correct.
+                    setTimeout(() => {
+                      bodyRef.current?.scrollTo({
+                        top: 550,
+                        behavior: "smooth",
+                      });
+                    }, 300);
+                  }}
                   scrolling="no"
                   className="w-full block"
                   style={{
