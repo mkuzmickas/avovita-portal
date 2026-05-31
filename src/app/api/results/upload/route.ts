@@ -64,6 +64,34 @@ export async function POST(request: NextRequest) {
       | null;
     const files = formData.getAll("file") as File[];
 
+    // Optional per-file mismatch overrides. The admin UI only includes
+    // entries for files where the parsed PDF name didn't match the
+    // client's profile name AND the admin explicitly ticked "Override
+    // and upload anyway". For each entry we write an analytics_events
+    // audit row after the corresponding result row is created.
+    type OverrideEntry = {
+      file_name: string;
+      detected_pdf_name: string | null;
+      client_profile_name: string | null;
+    };
+    let overrides: OverrideEntry[] = [];
+    const overridesRaw = formData.get("mismatch_overrides") as string | null;
+    if (overridesRaw) {
+      try {
+        const parsed = JSON.parse(overridesRaw);
+        if (Array.isArray(parsed)) {
+          overrides = parsed.filter(
+            (o): o is OverrideEntry =>
+              !!o && typeof o.file_name === "string",
+          );
+        }
+      } catch {
+        // Malformed payload — ignore. The UI is the only caller, and a
+        // bad payload here shouldn't fail the entire batch.
+      }
+    }
+    const overrideByFilename = new Map(overrides.map((o) => [o.file_name, o]));
+
     if (!orderId) {
       return NextResponse.json(
         { error: "order_id is required" },
@@ -235,6 +263,43 @@ export async function POST(request: NextRequest) {
           if (error)
             console.warn(
               "[results:upload] analytics insert failed:",
+              error.message
+            );
+        });
+    }
+
+    // Per-file mismatch-override audit rows. Written separately from
+    // the batch event so each override gets its own queryable row with
+    // the detected vs profile name pair, enabling a later "show me
+    // every override in the last 90 days" investigation.
+    const uploadedAtIso = new Date().toISOString();
+    const overrideRows = uploaded
+      .map((u) => {
+        const o = overrideByFilename.get(u.file_name);
+        if (!o) return null;
+        return {
+          event_type: "results_upload_mismatch_override",
+          event_data: {
+            order_id: orderId,
+            results_row_id: u.id,
+            admin_user_id: user.id,
+            pdf_filename: u.file_name,
+            detected_pdf_name: o.detected_pdf_name,
+            client_profile_name: o.client_profile_name,
+            uploaded_at: uploadedAtIso,
+          },
+          account_id: order.account_id,
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+    if (overrideRows.length > 0) {
+      await service
+        .from("analytics_events")
+        .insert(overrideRows)
+        .then(({ error }) => {
+          if (error)
+            console.warn(
+              "[results:upload] override audit insert failed:",
               error.message
             );
         });

@@ -6,6 +6,7 @@ import {
   FileText,
   CheckCircle,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   Clock,
   Mail,
@@ -316,6 +317,63 @@ interface QueueItem {
   id: string; // local id
   file: File;
   status: QueueItemStatus;
+  /**
+   * Best-effort name parsed from the PDF filename. Lab PDFs follow
+   * `LASTNAME_FIRSTNAME_*.pdf` (e.g. SILKIN_LARISSA_…pdf). Null when
+   * the filename doesn't match that shape — in which case no mismatch
+   * detection runs and no override is required.
+   */
+  detectedName: { first: string; last: string; display: string } | null;
+  /** Admin explicitly accepted a detected name-vs-profile mismatch. */
+  overridden: boolean;
+}
+
+/**
+ * Parse a "LASTNAME_FIRSTNAME_..." pattern out of a PDF filename. We
+ * only treat the result as confident if both parts are alphabetic,
+ * since arbitrary filenames like "results-2024-04.pdf" should NOT
+ * trigger spurious mismatch warnings.
+ */
+function detectNameFromFilename(
+  fileName: string,
+): { first: string; last: string; display: string } | null {
+  const stem = fileName.replace(/\.pdf$/i, "");
+  const parts = stem.split("_");
+  if (parts.length < 2) return null;
+  const last = parts[0].trim();
+  const first = parts[1].trim();
+  if (!/^[A-Za-z'-]{2,}$/.test(last)) return null;
+  if (!/^[A-Za-z'-]{2,}$/.test(first)) return null;
+  const cap = (s: string) =>
+    s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  return {
+    first: cap(first),
+    last: cap(last),
+    display: `${cap(first)} ${cap(last)}`,
+  };
+}
+
+/**
+ * True when the detected name's first AND last both appear (case-
+ * insensitive, hyphen-tolerant) somewhere in the profile name. We're
+ * permissive on ordering because profiles can be stored as either
+ * "First Last" or "Last, First" — so we just check word membership.
+ */
+function namesMatchProfile(
+  detected: { first: string; last: string },
+  profileName: string,
+): boolean {
+  const tokens = new Set(
+    profileName
+      .toLowerCase()
+      .split(/[\s,]+/)
+      .flatMap((t) => t.split("-"))
+      .filter(Boolean),
+  );
+  return (
+    tokens.has(detected.first.toLowerCase()) &&
+    tokens.has(detected.last.toLowerCase())
+  );
 }
 
 function OrderUploadCard({
@@ -375,6 +433,8 @@ function OrderUploadCard({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         file: f,
         status: { state: "pending" },
+        detectedName: detectNameFromFilename(f.name),
+        overridden: false,
       });
     }
     setQueue((prev) => {
@@ -390,6 +450,22 @@ function OrderUploadCard({
 
   const removeFromQueue = (id: string) => {
     setQueue((prev) => prev.filter((q) => q.id !== id));
+  };
+
+  const setOverridden = (id: string, value: boolean) => {
+    setQueue((prev) =>
+      prev.map((q) => (q.id === id ? { ...q, overridden: value } : q)),
+    );
+  };
+
+  /**
+   * True if this file's parsed name doesn't match the order's client.
+   * Skips detection (returns false) when the filename didn't yield a
+   * confident name — we don't want to nag admins on every PDF.
+   */
+  const itemHasMismatch = (item: QueueItem): boolean => {
+    if (!item.detectedName) return false;
+    return !namesMatchProfile(item.detectedName, order.patientName);
   };
 
   const handleUploadAndNotify = async () => {
@@ -413,6 +489,21 @@ function OrderUploadCard({
       fd.append("order_id", order.orderId);
       fd.append("result_status", resultStatus);
       for (const it of pending) fd.append("file", it.file);
+
+      // Per-file mismatch overrides: one entry per file the admin
+      // explicitly accepted despite a name mismatch. The API uses this
+      // to write the audit row only for files that actually had to be
+      // overridden — not every batch carries one.
+      const overrides = pending
+        .filter((it) => it.overridden && itemHasMismatch(it))
+        .map((it) => ({
+          file_name: it.file.name,
+          detected_pdf_name: it.detectedName?.display ?? null,
+          client_profile_name: order.patientName,
+        }));
+      if (overrides.length > 0) {
+        fd.append("mismatch_overrides", JSON.stringify(overrides));
+      }
 
       const res = await fetch("/api/results/upload", {
         method: "POST",
@@ -587,6 +678,16 @@ function OrderUploadCard({
   const pendingCount = queue.filter(
     (q) => q.status.state === "pending" || q.status.state === "error",
   ).length;
+
+  // Any submittable file whose name mismatches but isn't yet overridden
+  // blocks the whole batch. Each mismatch must be explicitly
+  // acknowledged per-file — no bulk skip.
+  const unacknowledgedMismatch = queue.some(
+    (q) =>
+      (q.status.state === "pending" || q.status.state === "error") &&
+      itemHasMismatch(q) &&
+      !q.overridden,
+  );
 
   return (
     <div
@@ -910,7 +1011,14 @@ function OrderUploadCard({
         {queue.length > 0 && (
           <ul className="space-y-1.5 mt-4">
             {queue.map((q) => (
-              <QueueRow key={q.id} item={q} onRemove={removeFromQueue} />
+              <QueueRow
+                key={q.id}
+                item={q}
+                profileName={order.patientName}
+                hasMismatch={itemHasMismatch(q)}
+                onRemove={removeFromQueue}
+                onOverrideChange={setOverridden}
+              />
             ))}
           </ul>
         )}
@@ -967,7 +1075,9 @@ function OrderUploadCard({
             <button
               type="button"
               onClick={handleUploadAndNotify}
-              disabled={submitting || pendingCount === 0}
+              disabled={
+                submitting || pendingCount === 0 || unacknowledgedMismatch
+              }
               className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
             >
@@ -999,10 +1109,16 @@ function OrderUploadCard({
 
 function QueueRow({
   item,
+  profileName,
+  hasMismatch,
   onRemove,
+  onOverrideChange,
 }: {
   item: QueueItem;
+  profileName: string;
+  hasMismatch: boolean;
   onRemove: (id: string) => void;
+  onOverrideChange: (id: string, value: boolean) => void;
 }) {
   const s = item.status;
   const icon =
@@ -1012,47 +1128,112 @@ function QueueRow({
       <AlertCircle className="w-4 h-4" style={{ color: "#e05252" }} />
     ) : s.state === "uploading" ? (
       <Loader2 className="w-4 h-4 animate-spin" style={{ color: "#c4973a" }} />
+    ) : hasMismatch ? (
+      <AlertTriangle className="w-4 h-4" style={{ color: "#e05252" }} />
     ) : (
       <FileText className="w-4 h-4" style={{ color: "#6ab04c" }} />
     );
 
   const removable = s.state === "pending" || s.state === "error";
+  // Mismatch warning blocks submission unless explicitly overridden.
+  // Only render the warning while the file is queue-resident (pending
+  // or error) — once it's uploading/done, the warning is moot.
+  const showMismatch =
+    hasMismatch && (s.state === "pending" || s.state === "error");
 
   return (
     <li
-      className="flex items-center gap-3 px-3 py-2 rounded-lg border"
+      className="rounded-lg border"
       style={{
         backgroundColor: "#0f2614",
-        borderColor: s.state === "error" ? "#e05252" : "#2d6b35",
+        borderColor:
+          s.state === "error"
+            ? "#e05252"
+            : showMismatch
+              ? "#e05252"
+              : "#2d6b35",
       }}
     >
-      {icon}
-      <div className="min-w-0 flex-1">
-        <p
-          className="text-sm truncate"
-          style={{ color: "#ffffff" }}
-          title={item.file.name}
-        >
-          {item.file.name}
-        </p>
-        <p className="text-[11px]" style={{ color: "#6ab04c" }}>
-          {formatBytes(item.file.size)}
-        </p>
-        {s.state === "error" && (
-          <p className="text-xs mt-0.5" style={{ color: "#e05252" }}>
-            {s.message}
+      <div className="flex items-center gap-3 px-3 py-2">
+        {icon}
+        <div className="min-w-0 flex-1">
+          <p
+            className="text-sm truncate"
+            style={{ color: "#ffffff" }}
+            title={item.file.name}
+          >
+            {item.file.name}
           </p>
+          <p className="text-[11px]" style={{ color: "#6ab04c" }}>
+            {formatBytes(item.file.size)}
+          </p>
+          {s.state === "error" && (
+            <p className="text-xs mt-0.5" style={{ color: "#e05252" }}>
+              {s.message}
+            </p>
+          )}
+        </div>
+        {removable && (
+          <button
+            type="button"
+            onClick={() => onRemove(item.id)}
+            aria-label="Remove from queue"
+            style={{ color: "#6ab04c" }}
+          >
+            <X className="w-4 h-4" />
+          </button>
         )}
       </div>
-      {removable && (
-        <button
-          type="button"
-          onClick={() => onRemove(item.id)}
-          aria-label="Remove from queue"
-          style={{ color: "#6ab04c" }}
+
+      {showMismatch && (
+        <div
+          className="border-t px-3 py-2.5 space-y-2"
+          style={{
+            borderColor: "#e05252",
+            backgroundColor: "rgba(224, 82, 82, 0.08)",
+          }}
         >
-          <X className="w-4 h-4" />
-        </button>
+          <div className="flex items-start gap-2">
+            <AlertTriangle
+              className="w-3.5 h-3.5 shrink-0 mt-0.5"
+              style={{ color: "#e05252" }}
+            />
+            <p className="text-xs leading-relaxed" style={{ color: "#e8d5a3" }}>
+              <span className="font-semibold" style={{ color: "#e05252" }}>
+                Possible patient mismatch.
+              </span>{" "}
+              This PDF appears to be for{" "}
+              <strong style={{ color: "#ffffff" }}>
+                {item.detectedName?.display ?? "—"}
+              </strong>
+              , but this order is on{" "}
+              <strong style={{ color: "#ffffff" }}>{profileName}</strong>
+              &apos;s account.
+            </p>
+          </div>
+          <label className="flex items-start gap-2 cursor-pointer pl-5">
+            <input
+              type="checkbox"
+              checked={item.overridden}
+              onChange={(e) => onOverrideChange(item.id, e.target.checked)}
+              className="mt-0.5 shrink-0"
+              style={{ accentColor: "#c4973a" }}
+            />
+            <span className="text-xs" style={{ color: "#e8d5a3" }}>
+              <span className="font-semibold" style={{ color: "#c4973a" }}>
+                Override and upload anyway
+              </span>
+              <span
+                className="block text-[11px] mt-0.5"
+                style={{ color: "#6ab04c" }}
+              >
+                Use only when you&apos;ve confirmed this PDF is for the
+                correct client (e.g., results for a family member ordered
+                under this account).
+              </span>
+            </span>
+          </label>
+        </div>
       )}
     </li>
   );
