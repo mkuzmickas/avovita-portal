@@ -342,9 +342,17 @@ export function Step4Review({
     // Route through checkout-unified if the cart includes anything
     // beyond plain phlebotomist tests. Custom lines (e.g. the Banff
     // travel surcharge) only flow through the unified path because the
-    // V1 route knows nothing about them.
+    // V1 route knows nothing about them. Out-of-town orders also use
+    // unified — the V1 /api/stripe/checkout route enforces a complete
+    // collection address, which OOT intentionally leaves blank, and
+    // the V1 webhook doesn't carry the is_out_of_town flag onto the
+    // orders row.
     const isMixedCart =
-      hasSupplements || hasResources || hasCustomLines || isKitOnlyCart;
+      hasSupplements ||
+      hasResources ||
+      hasCustomLines ||
+      isKitOnlyCart ||
+      isOutOfTown;
 
     try {
       if (isMixedCart) {
