@@ -131,17 +131,54 @@ export async function POST(request: NextRequest) {
     }
     const order = orderRaw as { id: string; account_id: string | null };
 
+    // Resolve a profile to attach the results to. Try in priority order:
+    //   1. Account's primary profile (the historical default)
+    //   2. A profile linked via the order's order_lines (this is the
+    //      actual person the order is for, even when the account never
+    //      finished primary-profile setup — common when a customer
+    //      orders for a family member under their own account).
+    //   3. Any profile on the account (last-resort fallback).
+    // Only 400 if none of these turn up anything — that would mean the
+    // account has zero profiles at all and the order has no order_lines
+    // linked to a profile either, which is a genuine data problem the
+    // upload can't paper over.
+    let profileId: string | null = null;
+
     const { data: primaryProfileRaw } = await service
       .from("patient_profiles")
       .select("id")
       .eq("account_id", order.account_id ?? "")
       .eq("is_primary", true)
       .maybeSingle();
-    const profileId =
-      (primaryProfileRaw as { id: string } | null)?.id ?? null;
+    profileId = (primaryProfileRaw as { id: string } | null)?.id ?? null;
+
+    if (!profileId) {
+      const { data: orderLinesRaw } = await service
+        .from("order_lines")
+        .select("profile_id")
+        .eq("order_id", orderId);
+      const lines =
+        (orderLinesRaw as Array<{ profile_id: string | null }> | null) ?? [];
+      const linePid = lines.map((l) => l.profile_id).find((p) => !!p);
+      if (linePid) profileId = linePid;
+    }
+
+    if (!profileId) {
+      const { data: anyProfileRaw } = await service
+        .from("patient_profiles")
+        .select("id")
+        .eq("account_id", order.account_id ?? "")
+        .limit(1)
+        .maybeSingle();
+      profileId = (anyProfileRaw as { id: string } | null)?.id ?? null;
+    }
+
     if (!profileId) {
       return NextResponse.json(
-        { error: "No patient profile found for this order" },
+        {
+          error:
+            "Cannot attach results: this order's account has no patient profiles and no order_lines linked to a profile.",
+        },
         { status: 400 }
       );
     }
