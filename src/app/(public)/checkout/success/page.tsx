@@ -12,6 +12,13 @@ export const dynamic = "force-dynamic";
 const ACUITY_URL =
   process.env.NEXT_PUBLIC_ACUITY_EMBED_URL ??
   "https://flolabsbooking.as.me/?appointmentType=84416067";
+// Out-of-town orders use a separate FloLabs Acuity calendar tied to the
+// drop-in collection location near Canada Olympic Park. Both URLs come
+// from env vars so the appointmentTypes can be rotated without a deploy
+// and the residential drop-in address never lands in git.
+const ACUITY_URL_OUT_OF_TOWN = process.env.NEXT_PUBLIC_ACUITY_EMBED_URL_OUT_OF_TOWN;
+const OUT_OF_TOWN_DROPIN_ADDRESS =
+  process.env.NEXT_PUBLIC_OUT_OF_TOWN_DROPIN_ADDRESS ?? null;
 
 interface SearchParams {
   session_id?: string;
@@ -64,7 +71,7 @@ export default async function CheckoutSuccessPage({
   const { data: orderRaw } = await service
     .from("orders")
     .select(
-      `id, total_cad, account_id, org_id,
+      `id, total_cad, account_id, org_id, is_out_of_town,
        account:accounts(email, waiver_completed),
        org:organizations(waiver_addendum, waiver_addendum_title)`
     )
@@ -79,12 +86,21 @@ export default async function CheckoutSuccessPage({
     total_cad: number | null;
     account_id: string | null;
     org_id: string | null;
+    is_out_of_town: boolean | null;
     account:
       | { email: string | null; waiver_completed: boolean }
       | { email: string | null; waiver_completed: boolean }[]
       | null;
     org: OrgBlock | OrgBlock[] | null;
   } | null;
+  const isOutOfTown = !!order?.is_out_of_town;
+  // Pick the Acuity calendar based on the mode the customer chose at
+  // checkout. Falls back to the in-area URL if the out-of-town env var
+  // isn't set (e.g. local dev) so the page renders something useable.
+  const acuityUrl =
+    isOutOfTown && ACUITY_URL_OUT_OF_TOWN
+      ? ACUITY_URL_OUT_OF_TOWN
+      : ACUITY_URL;
   const orgBlock = Array.isArray(order?.org) ? order?.org[0] : order?.org;
   const waiverAddendum = orgBlock?.waiver_addendum ?? null;
   const waiverAddendumTitle = orgBlock?.waiver_addendum_title ?? null;
@@ -214,7 +230,14 @@ export default async function CheckoutSuccessPage({
         isRepresentative={isRepresentative}
         dependents={dependents}
         representativeRelationship={rep?.relationship ?? null}
-        acuityUrl={ACUITY_URL}
+        acuityUrl={acuityUrl}
+        isOutOfTown={isOutOfTown}
+        outOfTownDropinAddress={
+          isOutOfTown
+            ? (OUT_OF_TOWN_DROPIN_ADDRESS ??
+              "[Address will be provided by AvoVita]")
+            : null
+        }
         initialWaiverDone={initialWaiverDone}
         waiverAddendum={waiverAddendum}
         waiverAddendumTitle={waiverAddendumTitle}

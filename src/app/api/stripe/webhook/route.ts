@@ -812,6 +812,7 @@ async function handleCheckoutCompleteV2(
     supplement_fulfillment: p.supplement_fulfillment ?? null,
     supplement_shipping_fee_cad: p.supplement_shipping_fee_cad ?? 0,
     supplement_shipping_address: p.supplement_shipping_address ?? null,
+    is_out_of_town: p.is_out_of_town ?? false,
   };
 
   const { data: orderRaw, error: orderErr } = await supabase

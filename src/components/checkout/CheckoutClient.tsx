@@ -60,6 +60,7 @@ interface PersistedCheckoutState {
   step: number;
   orderMode?: OrderMode;
   representative?: RepresentativeBlock;
+  isOutOfTown?: boolean;
 }
 
 function defaultPersons(count: number): CheckoutPerson[] {
@@ -108,6 +109,17 @@ export function CheckoutClient({
   const [assignments, setAssignments] = useState<PersonAssignmentEntry[]>([]);
   const [collectionAddress, setCollectionAddress] =
     useState<CollectionAddress>(defaultAddress);
+  // Out-of-town toggle on Step 3. When true, the address form is
+  // hidden, the collection address is left blank, and the success
+  // page renders the dedicated out-of-town Acuity calendar plus the
+  // drop-in address from NEXT_PUBLIC_OUT_OF_TOWN_DROPIN_ADDRESS.
+  const [isOutOfTown, setIsOutOfTown] = useState(false);
+  // Stash whatever the customer typed before switching to out-of-town
+  // so we can restore it if they switch back, matching the existing
+  // snapshot-and-restore pattern used elsewhere on this step.
+  const [savedAddress, setSavedAddress] = useState<CollectionAddress | null>(
+    null,
+  );
   const [restored, setRestored] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
   const [orderMode, setOrderMode] = useState<OrderMode>("self");
@@ -315,6 +327,9 @@ export function CheckoutClient({
           if (parsed.collectionAddress) {
             setCollectionAddress(parsed.collectionAddress);
           }
+          if (parsed.isOutOfTown === true) {
+            setIsOutOfTown(true);
+          }
           if (typeof parsed.step === "number") {
             setStep(parsed.step);
           }
@@ -390,6 +405,7 @@ export function CheckoutClient({
         step,
         orderMode,
         representative,
+        isOutOfTown,
       };
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
     } catch {
@@ -403,6 +419,7 @@ export function CheckoutClient({
     step,
     orderMode,
     representative,
+    isOutOfTown,
     restored,
   ]);
 
@@ -670,6 +687,20 @@ export function CheckoutClient({
                 orderMode={orderMode}
                 representative={representative}
                 onRepresentativeChange={setRepresentative}
+                isOutOfTown={isOutOfTown}
+                onIsOutOfTownChange={(next) => {
+                  setIsOutOfTown(next);
+                  if (next) {
+                    // Switching to out-of-town: stash whatever's in the
+                    // address form so it survives a flip-back, then blank
+                    // the live state.
+                    setSavedAddress((prev) => prev ?? collectionAddress);
+                    setCollectionAddress(defaultAddress);
+                  } else if (savedAddress) {
+                    setCollectionAddress(savedAddress);
+                    setSavedAddress(null);
+                  }
+                }}
               />
             )}
             {/* Step 3.5 = supplement fulfillment, injected between address (3) and review (4)
@@ -703,6 +734,7 @@ export function CheckoutClient({
                 suppShippingAddress={suppShippingAddress}
                 acceptedQuoteNumber={appliedQuoteNumber}
                 quoteDiscountCad={quoteDiscountCad}
+                isOutOfTown={isOutOfTown}
               />
             )}
           </div>

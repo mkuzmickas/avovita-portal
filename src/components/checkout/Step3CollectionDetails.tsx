@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   AlertCircle,
   CheckCircle,
+  Info,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
@@ -33,6 +34,10 @@ interface Step3Props {
   orderMode: OrderMode;
   representative: RepresentativeBlock;
   onRepresentativeChange: (next: RepresentativeBlock) => void;
+  /** Out-of-town collection mode toggle (lives on the parent so it
+   *  survives step navigation + flows into the payload). */
+  isOutOfTown: boolean;
+  onIsOutOfTownChange: (next: boolean) => void;
 }
 
 const REP_RELATIONSHIP_OPTIONS: Array<{
@@ -83,6 +88,8 @@ export function Step3CollectionDetails({
   onRepresentativeChange,
   onBack,
   onContinue,
+  isOutOfTown,
+  onIsOutOfTownChange,
 }: Step3Props) {
   const visitFees = useMemo(
     () => computeVisitFees(persons.length, collectionAddress.postal_code),
@@ -98,19 +105,6 @@ export function Step3CollectionDetails({
   // Pre-fill account holder fields from their existing patient profile
   const [profilePrefilled, setProfilePrefilled] = useState(false);
 
-  // Out-of-town gate — ticking the box blocks checkout and opens a modal
-  // telling the customer to email AvoVita to coordinate. Intentionally
-  // ephemeral: no DB column, no order flag. Once they uncheck the box
-  // (after coordinating out of band, AvoVita tells them what address to
-  // type) the order proceeds indistinguishably from any other.
-  //
-  // Future: replace the contact-to-book gate with a direct Acuity
-  // booking link for the out-of-town drop-in location (separate
-  // calendar). For now this is a hard gate requiring the customer to
-  // contact AvoVita; they then uncheck the box and complete checkout
-  // with an address provided privately by AvoVita.
-  const [fromOutOfTown, setFromOutOfTown] = useState(false);
-  const [outOfTownModalOpen, setOutOfTownModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -229,17 +223,22 @@ export function Step3CollectionDetails({
         p.biological_sex !== ""
     );
 
-  const canContinue =
-    addressValid &&
-    (isCaregiver ? representativeValid && dependentsValid : accountHolderValid && additionalAllValid && allConsentsObtained) &&
-    !zoneUnserved &&
-    !fromOutOfTown;
+  // Collection mode must be picked first. In-area requires a valid
+  // address + serviced postal code; out-of-town hides those entirely
+  // and only requires people-info validity.
+  const peopleValid = isCaregiver
+    ? representativeValid && dependentsValid
+    : accountHolderValid && additionalAllValid && allConsentsObtained;
+  const canContinue = isOutOfTown
+    ? peopleValid
+    : addressValid && peopleValid && !zoneUnserved;
 
   // Compute a human-readable list of what's still missing so the
   // greyed-out Continue button isn't a mystery.
   const missingFields: string[] = [];
-  if (!addressValid) missingFields.push("collection address");
-  if (zoneUnserved) missingFields.push("a serviced postal code");
+  if (!isOutOfTown && !addressValid) missingFields.push("collection address");
+  if (!isOutOfTown && zoneUnserved)
+    missingFields.push("a serviced postal code");
   if (isCaregiver) {
     if (!representativeValid) {
       const repMissing: string[] = [];
@@ -308,7 +307,81 @@ export function Step3CollectionDetails({
         </div>
       )}
 
-      {/* ─── Collection Address ──────────────────────────────────── */}
+      {/* ─── Collection mode ─────────────────────────────────────── */}
+      <section className="mb-6">
+        <h2
+          className="font-heading text-xl font-semibold mb-1"
+          style={{
+            color: "#c4973a",
+            fontFamily: '"Cormorant Garamond", Georgia, serif',
+          }}
+        >
+          Where will your collection take place?
+        </h2>
+        <p className="text-xs mb-4" style={{ color: "#e8d5a3" }}>
+          Pick one to continue.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <CollectionModeButton
+            active={!isOutOfTown}
+            title="I have a Calgary and area address for collection"
+            subtitle="FloLabs phlebotomist comes to you (home, hotel, office)."
+            onClick={() => {
+              if (isOutOfTown) onIsOutOfTownChange(false);
+            }}
+          />
+          <CollectionModeButton
+            active={isOutOfTown}
+            title="I'm from out of town"
+            subtitle="Drop-in collection near Canada Olympic Park (Tue/Sat mornings)."
+            onClick={() => {
+              if (!isOutOfTown) onIsOutOfTownChange(true);
+            }}
+          />
+        </div>
+      </section>
+
+      {/* ─── Out-of-town informational panel ─────────────────────── */}
+      {isOutOfTown && (
+        <section className="mb-8">
+          <div
+            className="flex items-start gap-3 rounded-xl border p-5"
+            style={{
+              backgroundColor: "rgba(217,169,57,0.10)",
+              borderColor: "#d4a84a",
+            }}
+          >
+            <Info
+              className="w-5 h-5 shrink-0 mt-0.5"
+              style={{ color: "#d4a84a" }}
+            />
+            <div>
+              <h3
+                className="font-heading text-lg font-semibold mb-1"
+                style={{
+                  color: "#ffffff",
+                  fontFamily:
+                    '"Cormorant Garamond", Georgia, serif',
+                }}
+              >
+                Out-of-town drop-in collection
+              </h3>
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: "#e8d5a3" }}
+              >
+                We have a location near Canada Olympic Park available on
+                Tuesday and Saturday mornings only. The exact address
+                will be provided after your order is confirmed, when you
+                select your appointment time.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ─── Collection Address (in-area only) ───────────────────── */}
+      {!isOutOfTown && (
       <section className="mb-8">
         <h2
           className="font-heading text-xl font-semibold mb-1"
@@ -515,41 +588,8 @@ export function Step3CollectionDetails({
           </p>
         </div>
 
-        {/* Out-of-town gate — see state declaration above for rationale */}
-        <label
-          className="flex items-start gap-3 rounded-lg border px-4 py-3 mt-4 cursor-pointer transition-colors"
-          style={{
-            backgroundColor: fromOutOfTown
-              ? "rgba(196, 151, 58, 0.16)"
-              : "rgba(196, 151, 58, 0.06)",
-            borderColor: "#c4973a",
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={fromOutOfTown}
-            onChange={(e) => {
-              const next = e.target.checked;
-              setFromOutOfTown(next);
-              if (next) setOutOfTownModalOpen(true);
-            }}
-            className="mt-0.5 shrink-0"
-            style={{ accentColor: "#c4973a" }}
-          />
-          <div className="min-w-0">
-            <p
-              className="text-sm font-semibold"
-              style={{ color: "#c4973a" }}
-            >
-              I&apos;m from out of town
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: "#e8d5a3" }}>
-              Tick this if you&apos;re visiting Calgary and need to
-              coordinate a drop-in collection with us.
-            </p>
-          </div>
-        </label>
       </section>
+      )}
 
       {/* ─── Person 1 (You) ────────────────────────────────────── */}
       {profilePrefilled && (
@@ -719,33 +759,6 @@ export function Step3CollectionDetails({
           </div>
         )}
 
-        {fromOutOfTown && (
-          <div
-            className="flex items-start gap-2 rounded-lg border px-4 py-3 mb-4 text-sm"
-            style={{
-              backgroundColor: "rgba(196, 151, 58, 0.12)",
-              borderColor: "#c4973a",
-              color: "#e8d5a3",
-            }}
-          >
-            <AlertCircle
-              className="w-4 h-4 shrink-0 mt-0.5"
-              style={{ color: "#c4973a" }}
-            />
-            <span>
-              Please contact AvoVita at{" "}
-              <a
-                href="mailto:mike@avovita.ca"
-                className="font-semibold underline"
-                style={{ color: "#c4973a" }}
-              >
-                mike@avovita.ca
-              </a>{" "}
-              to coordinate your out-of-town booking before continuing.
-            </span>
-          </div>
-        )}
-
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             type="button"
@@ -767,80 +780,50 @@ export function Step3CollectionDetails({
         </div>
       </div>
 
-      {outOfTownModalOpen && (
-        <OutOfTownModal onClose={() => setOutOfTownModalOpen(false)} />
-      )}
     </div>
   );
 }
 
-// ─── Out-of-town gate modal ────────────────────────────────────────────
+// ─── Collection-mode toggle button ─────────────────────────────────────
 
-function OutOfTownModal({ onClose }: { onClose: () => void }) {
+function CollectionModeButton({
+  active,
+  title,
+  subtitle,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+}) {
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6"
-      style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
-      onClick={onClose}
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className="text-left rounded-xl border-2 px-4 py-4 transition-colors"
+      style={{
+        backgroundColor: active ? "#c4973a" : "transparent",
+        borderColor: "#c4973a",
+        color: active ? "#0a1a0d" : "#e8d5a3",
+      }}
     >
-      <div
-        className="w-full max-w-lg rounded-2xl border p-6"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
-        onClick={(e) => e.stopPropagation()}
+      <p
+        className="text-sm font-semibold"
+        style={{ color: active ? "#0a1a0d" : "#ffffff" }}
       >
-        <div className="flex items-center gap-3 mb-4">
-          <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{
-              backgroundColor: "rgba(196, 151, 58, 0.15)",
-              borderColor: "#c4973a",
-            }}
-          >
-            <MapPin className="w-5 h-5" style={{ color: "#c4973a" }} />
-          </div>
-          <h2
-            className="font-heading text-xl font-semibold"
-            style={{
-              color: "#ffffff",
-              fontFamily: '"Cormorant Garamond", Georgia, serif',
-            }}
-          >
-            Out of Town?
-          </h2>
-        </div>
-
-        <div className="space-y-3 text-sm" style={{ color: "#e8d5a3" }}>
-          <p>
-            Contact AvoVita to book. We have a drop-in location available
-            near Canada Olympic Park, available on Saturdays and Tuesday
-            mornings. This must be coordinated with AvoVita prior to
-            booking. Please note, the $85 collection fee for the first
-            person, and $55 for each additional person, will still apply.
-          </p>
-          <p>
-            Email us:{" "}
-            <a
-              href="mailto:mike@avovita.ca"
-              className="font-semibold underline"
-              style={{ color: "#c4973a" }}
-            >
-              mike@avovita.ca
-            </a>
-          </p>
-        </div>
-
-        <div className="mt-6 flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+        {title}
+      </p>
+      <p
+        className="text-xs mt-1 leading-relaxed"
+        style={{
+          color: active ? "rgba(10,26,13,0.85)" : "#6ab04c",
+        }}
+      >
+        {subtitle}
+      </p>
+    </button>
   );
 }
 

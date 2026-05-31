@@ -60,6 +60,10 @@ interface Step4Props {
    *  this isn't a quote acceptance. */
   acceptedQuoteNumber?: string | null;
   quoteDiscountCad?: number;
+  /** True when the customer picked "I'm from out of town" on Step 3.
+   *  Persisted on the order so the success page renders the dedicated
+   *  out-of-town Acuity calendar + drop-in address banner. */
+  isOutOfTown?: boolean;
 }
 
 const RELATIONSHIP_LABEL: Record<string, string> = {
@@ -111,6 +115,7 @@ export function Step4Review({
   suppShippingAddress = null,
   acceptedQuoteNumber = null,
   quoteDiscountCad = 0,
+  isOutOfTown = false,
 }: Step4Props) {
   const { trackEvent } = useAnalytics();
   const { cart } = useCart();
@@ -377,6 +382,7 @@ export function Step4Review({
             unit_price_cad: a.price_cad,
           })),
           collection_address: collectionAddress,
+          is_out_of_town: isOutOfTown,
           visit_fees: {
             base: visitFees.base_fee,
             additional_per_person: visitFees.additional_fee_per_person,
@@ -532,18 +538,36 @@ export function Step4Review({
           className="rounded-lg border px-4 py-3"
           style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
         >
-          <p className="text-sm" style={{ color: "#ffffff" }}>
-            {collectionAddress.address_line1}
-          </p>
-          {collectionAddress.address_line2 && (
-            <p className="text-sm" style={{ color: "#ffffff" }}>
-              {collectionAddress.address_line2}
-            </p>
+          {isOutOfTown ? (
+            <>
+              <p
+                className="text-sm font-semibold"
+                style={{ color: "#c4973a" }}
+              >
+                Out-of-town drop-in collection
+              </p>
+              <p className="text-xs mt-1" style={{ color: "#e8d5a3" }}>
+                Near Canada Olympic Park · Tue/Sat mornings. The exact
+                address will be shown after payment when you pick your
+                appointment time.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm" style={{ color: "#ffffff" }}>
+                {collectionAddress.address_line1}
+              </p>
+              {collectionAddress.address_line2 && (
+                <p className="text-sm" style={{ color: "#ffffff" }}>
+                  {collectionAddress.address_line2}
+                </p>
+              )}
+              <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                {collectionAddress.city}, {collectionAddress.province}{" "}
+                {collectionAddress.postal_code}
+              </p>
+            </>
           )}
-          <p className="text-sm" style={{ color: "#e8d5a3" }}>
-            {collectionAddress.city}, {collectionAddress.province}{" "}
-            {collectionAddress.postal_code}
-          </p>
         </div>
       </section>
 
