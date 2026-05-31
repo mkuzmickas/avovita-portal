@@ -93,7 +93,13 @@ export default async function CheckoutSuccessPage({
       | null;
     org: OrgBlock | OrgBlock[] | null;
   } | null;
-  const isOutOfTown = !!order?.is_out_of_town;
+  // Prefer the orders column (set by the webhook), but fall back to
+  // the pending-order snapshot. This keeps the success page rendering
+  // the correct Acuity calendar through transient states where the
+  // orders row is briefly unavailable (Stripe webhook still in flight,
+  // or — historically — before migration 024 added the column).
+  const isOutOfTown =
+    !!(order?.is_out_of_town ?? pendingPayload?.is_out_of_town);
   // Pick the Acuity calendar based on the mode the customer chose at
   // checkout. Falls back to the in-area URL if the out-of-town env var
   // isn't set (e.g. local dev) so the page renders something useable.
