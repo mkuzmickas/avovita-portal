@@ -682,12 +682,13 @@ function OrderUploadCard({
   // Any submittable file whose name mismatches but isn't yet overridden
   // blocks the whole batch. Each mismatch must be explicitly
   // acknowledged per-file — no bulk skip.
-  const unacknowledgedMismatch = queue.some(
+  const unacknowledgedFiles = queue.filter(
     (q) =>
       (q.status.state === "pending" || q.status.state === "error") &&
       itemHasMismatch(q) &&
       !q.overridden,
   );
+  const unacknowledgedMismatch = unacknowledgedFiles.length > 0;
 
   return (
     <div
@@ -1024,13 +1025,54 @@ function OrderUploadCard({
         )}
 
         {batchError && (
-          <p
-            className="mt-3 text-xs flex items-start gap-1.5"
-            style={{ color: "#e05252" }}
+          <div
+            className="mt-3 flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm"
+            style={{
+              backgroundColor: "rgba(224, 82, 82, 0.12)",
+              borderColor: "#e05252",
+              color: "#e05252",
+            }}
           >
-            <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-            <span>{batchError}</span>
-          </p>
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+            <span className="leading-relaxed">{batchError}</span>
+          </div>
+        )}
+
+        {/* Explicit "why is Upload disabled" hint — Tailwind's
+            disabled:opacity-50 alone is too subtle a cue. If the user
+            clicks the button while it's still gated by an
+            unacknowledged mismatch, name the file(s) involved so they
+            don't think the click silently failed. */}
+        {unacknowledgedMismatch && (
+          <div
+            className="mt-3 flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs"
+            style={{
+              backgroundColor: "rgba(196, 151, 58, 0.10)",
+              borderColor: "#c4973a",
+              color: "#e8d5a3",
+            }}
+          >
+            <AlertCircle
+              className="w-4 h-4 mt-0.5 shrink-0"
+              style={{ color: "#c4973a" }}
+            />
+            <span className="leading-relaxed">
+              <span className="font-semibold" style={{ color: "#c4973a" }}>
+                Upload &amp; Notify is disabled
+              </span>{" "}
+              because{" "}
+              {unacknowledgedFiles.length === 1
+                ? "1 file has"
+                : `${unacknowledgedFiles.length} files have`}{" "}
+              a possible patient mismatch that hasn&apos;t been
+              acknowledged. Tick &ldquo;Override and upload anyway&rdquo;
+              on{" "}
+              {unacknowledgedFiles
+                .map((f) => `"${f.file.name}"`)
+                .join(", ")}{" "}
+              to proceed.
+            </span>
+          </div>
         )}
 
         {/* Status toggle + Upload & Notify button */}
