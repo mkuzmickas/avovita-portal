@@ -8,6 +8,7 @@ import {
   Loader2,
   Download,
   AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -649,7 +650,9 @@ function ExpensesTab({
           mode="create"
           onCancel={() => setCreating(false)}
           onSaved={(created) => {
-            setCreating(false);
+            // Leave the form OPEN on create — admins usually add
+            // expenses in batches. ExpenseForm clears its own fields
+            // and flashes a "Added" hint so the click feels confirmed.
             // The expenses list is held in client state initialised
             // once from the server prop, so router.refresh() alone
             // wouldn't rehydrate it — append the new row directly.
@@ -857,6 +860,7 @@ function ExpenseForm({
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [justAddedName, setJustAddedName] = useState<string | null>(null);
 
   const submit = async () => {
     setError(null);
@@ -893,15 +897,28 @@ function ExpenseForm({
       // { id }, the rest matches what we just posted. For edit, the
       // initial id is already present on `initial`; pass it through
       // unchanged.
+      const savedName = name.trim();
       onSaved({
         id: mode === "create" ? (data as { id: string }).id : initial?.id,
-        name: name.trim(),
+        name: savedName,
         amount_cad: amt,
         category,
         frequency,
         notes: notes.trim() || null,
         active: initial?.active ?? true,
       });
+      // On create, keep the form open and clear the per-row fields so
+      // the admin can immediately type the next expense. Keep category
+      // and frequency since multiple entries usually share them.
+      if (mode === "create") {
+        setName("");
+        setAmount("");
+        setNotes("");
+        setJustAddedName(savedName);
+        // Clear the success flash after a few seconds so the form
+        // doesn't keep stale text floating around.
+        setTimeout(() => setJustAddedName(null), 3500);
+      }
     } finally {
       setSaving(false);
     }
@@ -978,6 +995,21 @@ function ExpenseForm({
         >
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
+        </div>
+      )}
+
+      {justAddedName && (
+        <div
+          className="flex items-center gap-2 p-3 rounded-lg text-sm border"
+          style={{
+            backgroundColor: "rgba(141, 198, 63, 0.12)",
+            borderColor: "#8dc63f",
+            color: "#8dc63f",
+          }}
+        >
+          <CheckCircle className="w-4 h-4 shrink-0" />
+          Added &ldquo;{justAddedName}&rdquo; — enter the next expense or
+          click Cancel when you&apos;re done.
         </div>
       )}
 
