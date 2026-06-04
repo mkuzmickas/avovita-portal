@@ -648,8 +648,24 @@ function ExpensesTab({
         <ExpenseForm
           mode="create"
           onCancel={() => setCreating(false)}
-          onSaved={() => {
+          onSaved={(created) => {
             setCreating(false);
+            // The expenses list is held in client state initialised
+            // once from the server prop, so router.refresh() alone
+            // wouldn't rehydrate it — append the new row directly.
+            if (created?.id) {
+              const fresh: Expense = {
+                id: created.id,
+                name: created.name ?? "",
+                amount_cad: created.amount_cad ?? 0,
+                category: (created.category ?? "other") as ExpenseCategory,
+                frequency: (created.frequency ?? "monthly") as ExpenseFrequency,
+                notes: created.notes ?? null,
+                active: created.active ?? true,
+                created_at: new Date().toISOString(),
+              };
+              setExpenses((prev) => [fresh, ...prev]);
+            }
             router.refresh();
           }}
         />
@@ -872,12 +888,19 @@ function ExpenseForm({
         setError(data.error ?? "Failed to save");
         return;
       }
+      // For create, include the new id + active=true so the parent
+      // can append a complete row to the local list — server returns
+      // { id }, the rest matches what we just posted. For edit, the
+      // initial id is already present on `initial`; pass it through
+      // unchanged.
       onSaved({
+        id: mode === "create" ? (data as { id: string }).id : initial?.id,
         name: name.trim(),
         amount_cad: amt,
         category,
         frequency,
         notes: notes.trim() || null,
+        active: initial?.active ?? true,
       });
     } finally {
       setSaving(false);
