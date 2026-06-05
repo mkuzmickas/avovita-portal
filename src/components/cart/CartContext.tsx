@@ -20,40 +20,85 @@ import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
 
 const STORAGE_KEY = "avovita-cart-v1";
 
-// ─── Tuesday-only tests ──────────────────────────────────────────────
-// These tests have the same operational constraint: ship same-day to
-// Mayo on a Tuesday or the specimen times out. The cart shows a single
-// acknowledgement modal when ANY of them is added. If the cart already
-// contains a Tuesday-only test, subsequent adds skip the modal — one
-// ack covers them all.
+// ─── Schedule-restricted tests ───────────────────────────────────────
+// Tests whose operational constraint (specimen stability + shipping
+// window) requires booking on a specific day of the week. The cart
+// shows a single acknowledgement modal when ANY restricted test is
+// added; if the cart already holds one, the second add commits
+// silently so one ack covers the rest of the session.
+//
+// Each entry carries its OWN modal copy so the Mayo-bound Tuesday-only
+// tests (CBC, DCTR) and the R&E-bound Monday-or-Tuesday test (MELISA)
+// can describe their day constraint + destination lab accurately
+// without ifs in the modal body.
 //
 // Identifying by SKU keeps the registry readable; CBC stays on its
 // historical test_id because nothing in code knows its SKU yet (the
 // catalog row's SKU is whatever Mike entered manually).
 const CBC_TEST_ID = "8e46bec5-526c-42be-909c-447235e9ecd0";
 
-interface TuesdayOnlyEntry {
+interface ScheduleAckEntry {
   /** Match by test_id OR sku — exactly one is set. */
   test_id?: string;
   sku?: string;
   display: string;
+  /** Modal title — short headline mentioning the day constraint. */
+  headline: string;
+  /** Sentence rendered after "**{display}** ". Should end with a period. */
+  intro: string;
+  /** Bullet items under "Please be aware:". */
+  bullets: string[];
 }
 
-const TUESDAY_ONLY_TESTS: TuesdayOnlyEntry[] = [
-  { test_id: CBC_TEST_ID, display: "Complete Blood Count (CBC)" },
-  { sku: "DCTR", display: "Direct Antiglobulin Test (DCTR)" },
+// CBC + DCTR ship same-day to Mayo on Tuesday or the specimen times out.
+// Shared copy because the operational risk is identical.
+const TUESDAY_MAYO_INTRO =
+  "requires a Tuesday collection only. The specimen has a 48-hour stability window and must ship same-day to Mayo Clinic Laboratories to meet stability requirements.";
+const TUESDAY_MAYO_BULLETS = [
+  "Your FloLabs appointment must be booked on a Tuesday",
+  "FedEx shipping delays can cause the specimen to time out before reaching the lab — if this occurs, this test fee will be refunded but the home visit fee is non-refundable",
+  "We strongly recommend ordering this test alongside others so your home visit fee is not wasted if the specimen is compromised in transit",
 ];
 
-function tuesdayOnlyDisplayFor(item: CartItemTest): string | null {
-  for (const entry of TUESDAY_ONLY_TESTS) {
-    if (entry.test_id && item.test_id === entry.test_id) return entry.display;
-    if (entry.sku && item.sku === entry.sku) return entry.display;
+const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
+  {
+    test_id: CBC_TEST_ID,
+    display: "Complete Blood Count (CBC)",
+    headline: "Important — Tuesday-Only Collection Notice",
+    intro: TUESDAY_MAYO_INTRO,
+    bullets: TUESDAY_MAYO_BULLETS,
+  },
+  {
+    sku: "DCTR",
+    display: "Direct Antiglobulin Test (DCTR)",
+    headline: "Important — Tuesday-Only Collection Notice",
+    intro: TUESDAY_MAYO_INTRO,
+    bullets: TUESDAY_MAYO_BULLETS,
+  },
+  {
+    sku: "MELISA",
+    display: "MELISA",
+    headline: "Important — Monday or Tuesday Collection Notice",
+    intro:
+      "requires a Monday (non-holiday) or Tuesday collection only due to specimen stability and shipping considerations to R&E Diagnostics.",
+    bullets: [
+      "Your FloLabs appointment must be booked on a Monday (excluding statutory holidays) or Tuesday",
+      "Shipping delays can cause the specimen to time out before reaching the lab — if this occurs, this test fee will be refunded but the home visit fee is non-refundable",
+      "We strongly recommend ordering this test alongside others so your home visit fee is not wasted if the specimen is compromised in transit",
+    ],
+  },
+];
+
+function scheduleAckEntryFor(item: CartItemTest): ScheduleAckEntry | null {
+  for (const entry of SCHEDULE_ACK_TESTS) {
+    if (entry.test_id && item.test_id === entry.test_id) return entry;
+    if (entry.sku && item.sku === entry.sku) return entry;
   }
   return null;
 }
 
-function isTuesdayOnly(item: CartItem): item is CartItemTest {
-  return item.line_type === "test" && tuesdayOnlyDisplayFor(item) !== null;
+function hasScheduleAck(item: CartItem): item is CartItemTest {
+  return item.line_type === "test" && scheduleAckEntryFor(item) !== null;
 }
 
 // ─── Cart calculations ─────────────────────────────────────────────────
@@ -170,15 +215,15 @@ const CartContext = createContext<CartContextValue | null>(null);
  * reads localStorage. Legacy items without line_type are backfilled
  * to 'test' on hydration.
  *
- * Special case: Tuesday-only tests (CBC, DCTR) require an
- * acknowledgement modal before the item lands in the cart. One modal
- * per cart-add cycle — if either test is already in the cart the
- * subsequent add commits silently.
+ * Special case: schedule-restricted tests (CBC + DCTR Tuesday-only,
+ * MELISA Monday-or-Tuesday) require an acknowledgement modal before
+ * the item lands in the cart. One modal per cart-add cycle — if any
+ * such test is already in the cart the subsequent add commits silently.
  */
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
-  const [pendingTuesdayAck, setPendingTuesdayAck] =
+  const [pendingScheduleAck, setPendingScheduleAck] =
     useState<CartItemTest | null>(null);
 
   // Hydrate from localStorage on mount
@@ -218,16 +263,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = useCallback(
     (item: CartItem) => {
-      // Tuesday-only gate. Triggers the ack modal when adding a CBC or
-      // DCTR (or any future entry in TUESDAY_ONLY_TESTS) UNLESS the
-      // cart already contains a Tuesday-only test — that ack covers
-      // the second add. Functional setPendingTuesdayAck and setCart
-      // (in commitAdd) avoid the stale-closure bug we caught earlier:
-      // a clearCart() + addItem() sequence sees the freshly-cleared
-      // cart, not the pre-clear one.
-      if (item.line_type === "test" && tuesdayOnlyDisplayFor(item)) {
+      // Schedule-restricted gate. Triggers the ack modal when adding
+      // any entry in SCHEDULE_ACK_TESTS UNLESS the cart already contains
+      // one — that ack covers the second add. Functional setPendingAck
+      // and setCart (in commitAdd) avoid the stale-closure bug we
+      // caught earlier: a clearCart() + addItem() sequence sees the
+      // freshly-cleared cart, not the pre-clear one.
+      if (item.line_type === "test" && scheduleAckEntryFor(item)) {
         setCart((prev) => {
-          const alreadyAcked = prev.some(isTuesdayOnly);
+          const alreadyAcked = prev.some(hasScheduleAck);
           if (alreadyAcked) {
             // Skip the modal but still commit the add. Use prev here
             // so we land in the same setCart pass — no race window.
@@ -236,7 +280,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             return [...prev, item];
           }
           // Need ack — queue the item, modal will commit on confirm.
-          setPendingTuesdayAck((cur) => cur ?? item);
+          setPendingScheduleAck((cur) => cur ?? item);
           return prev;
         });
         return;
@@ -300,14 +344,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return (
     <CartContext.Provider value={value}>
       {children}
-      {pendingTuesdayAck && (
-        <TuesdayOnlyAckModal
-          item={pendingTuesdayAck}
+      {pendingScheduleAck && (
+        <ScheduleAckModal
+          item={pendingScheduleAck}
           onConfirm={() => {
-            commitAdd(pendingTuesdayAck);
-            setPendingTuesdayAck(null);
+            commitAdd(pendingScheduleAck);
+            setPendingScheduleAck(null);
           }}
-          onCancel={() => setPendingTuesdayAck(null)}
+          onCancel={() => setPendingScheduleAck(null)}
         />
       )}
     </CartContext.Provider>
@@ -322,15 +366,17 @@ export function useCart(): CartContextValue {
   return ctx;
 }
 
-// ─── Tuesday-only acknowledgement modal ──────────────────────────────
+// ─── Schedule-restricted acknowledgement modal ──────────────────────
 //
-// Single modal covers both CBC and DCTR — same operational risk
-// (Tuesday-only collection, ships same-day to Mayo). Headline + body
-// adapt to whichever test triggered the gate. If the customer has
-// already added one of these tests in this session, the second add
-// commits silently without re-showing the modal.
+// One modal renders any of the tests in SCHEDULE_ACK_TESTS. Headline,
+// intro paragraph, and bullets all come from the matched entry so
+// MELISA (Monday-or-Tuesday, R&E Diagnostics) and CBC/DCTR (Tuesday-
+// only, Mayo) can each speak accurately about their own day
+// constraint without conditionals here. If the customer has already
+// added one of these tests in this session, the second add commits
+// silently without re-showing.
 
-function TuesdayOnlyAckModal({
+function ScheduleAckModal({
   item,
   onConfirm,
   onCancel,
@@ -339,7 +385,11 @@ function TuesdayOnlyAckModal({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const display = tuesdayOnlyDisplayFor(item) ?? item.test_name;
+  const entry = scheduleAckEntryFor(item);
+  const display = entry?.display ?? item.test_name;
+  const headline = entry?.headline ?? "Important — Collection Notice";
+  const intro = entry?.intro ?? "has scheduling restrictions for collection.";
+  const bullets = entry?.bullets ?? [];
   // Lock body scroll + Escape closes
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -375,37 +425,20 @@ function TuesdayOnlyAckModal({
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          Important — Tuesday-Only Collection Notice
+          {headline}
         </h2>
         <div className="space-y-3 text-sm" style={{ color: "#e8d5a3" }}>
           <p>
-            <strong style={{ color: "#ffffff" }}>{display}</strong> requires a
-            Tuesday collection only. The specimen has a 48-hour stability
-            window and must ship same-day to Mayo Clinic Laboratories to meet
-            stability requirements.
+            <strong style={{ color: "#ffffff" }}>{display}</strong> {intro}
           </p>
           <p>Please be aware:</p>
           <ul className="space-y-1.5 list-none pl-0">
-            <li className="flex gap-2">
-              <span style={{ color: "#c4973a" }}>•</span>
-              <span>Your FloLabs appointment must be booked on a Tuesday</span>
-            </li>
-            <li className="flex gap-2">
-              <span style={{ color: "#c4973a" }}>•</span>
-              <span>
-                FedEx shipping delays can cause the specimen to time out before
-                reaching the lab — if this occurs, this test fee will be
-                refunded but the home visit fee is non-refundable
-              </span>
-            </li>
-            <li className="flex gap-2">
-              <span style={{ color: "#c4973a" }}>•</span>
-              <span>
-                We strongly recommend ordering this test alongside others so
-                your home visit fee is not wasted if the specimen is
-                compromised in transit
-              </span>
-            </li>
+            {bullets.map((b, i) => (
+              <li key={i} className="flex gap-2">
+                <span style={{ color: "#c4973a" }}>•</span>
+                <span>{b}</span>
+              </li>
+            ))}
           </ul>
         </div>
         <div className="mt-6 flex flex-col sm:flex-row gap-3">

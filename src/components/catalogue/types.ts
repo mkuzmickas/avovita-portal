@@ -55,7 +55,8 @@ export type CartItemTest = {
   /** Catalogue SKU. Optional because legacy localStorage carts pre-date
    *  this field — the CartProvider migration backfills via the test_id
    *  → tests table on hydration where possible. Used to identify
-   *  Tuesday-only tests (CBC, DCTR) at the add-to-cart gate. */
+   *  schedule-restricted tests (DCTR, MELISA, …) at the add-to-cart
+   *  gate. */
   sku?: string | null;
   collection_method?: "phlebotomist_draw" | "self_collected_kit";
   /** Stable per-cart-row identifier so the same test can appear more
