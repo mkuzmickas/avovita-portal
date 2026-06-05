@@ -13,6 +13,7 @@ const SHORT_NAME_BY_FULL: Record<string, string> = {
   DynaLife: "DynaLife",
   ReligenDx: "ReligenDx",
   "Precision Epigenomics": "Precision",
+  "R&E Diagnostics": "R&E",
 };
 
 /**
