@@ -80,7 +80,7 @@ const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
     display: "MELISA",
     headline: "Important — Monday or Tuesday Collection Notice",
     intro:
-      "requires a Monday (non-holiday) or Tuesday collection only due to specimen stability and shipping considerations to R&E Diagnostics.",
+      "requires a Monday (non-holiday) or Tuesday collection only. The specimen ships to Western University in London, Ontario — the reference lab that runs MELISA testing on behalf of R&E Diagnostics — and must arrive within its stability window.",
     bullets: [
       "Your FloLabs appointment must be booked on a Monday (excluding statutory holidays) or Tuesday",
       "Shipping delays can cause the specimen to time out before reaching the lab — if this occurs, this test fee will be refunded but the home visit fee is non-refundable",
