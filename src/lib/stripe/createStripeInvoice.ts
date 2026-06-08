@@ -85,7 +85,12 @@ export async function createStripeInvoice(opts: {
   //    precision on prices that round oddly. Negative values are
   //    accepted directly for discount lines.
   for (const line of opts.lines) {
-    const unitCents = (line.unitPriceCad * 100).toFixed(2); // decimal cents
+    // unit_amount_decimal is typed as a branded `Decimal` in this SDK
+    // — use Stripe.Decimal.from() to construct one rather than casting.
+    // Cents with two decimal places handles half-cent rounding cleanly.
+    const unitCents = Stripe.Decimal.from(
+      Math.round(line.unitPriceCad * 10000) / 100,
+    );
     await stripe.invoiceItems.create({
       customer: opts.stripeCustomerId,
       invoice: invoice.id,
