@@ -77,20 +77,22 @@ export async function createStripeInvoice(opts: {
     throw new Error("createStripeInvoice: Stripe returned an invoice without an id");
   }
 
-  // 2. Attach the line items. Stripe wants the total line amount in
-  //    CENTS as `amount` (= unit_price * quantity rounded to int). The
-  //    SDK API version 2026-03-25.dahlia removed the per-create
-  //    unit_amount field; the docs say `amount` should equal
-  //    unit_amount * quantity. Round to avoid floating-point drift.
+  // 2. Attach the line items. Stripe's API rule: pass EITHER `amount`
+  //    alone (no quantity) OR `unit_amount_decimal` + `quantity` —
+  //    never `amount` + `quantity` together. We want the customer to
+  //    see the unit price × qty breakdown on the hosted page, so the
+  //    second form. Decimal-string is used so we don't lose half-cent
+  //    precision on prices that round oddly. Negative values are
+  //    accepted directly for discount lines.
   for (const line of opts.lines) {
-    const amountCents = Math.round(line.unitPriceCad * line.quantity * 100);
+    const unitCents = (line.unitPriceCad * 100).toFixed(2); // decimal cents
     await stripe.invoiceItems.create({
       customer: opts.stripeCustomerId,
       invoice: invoice.id,
       currency: "cad",
       description: line.description,
       quantity: line.quantity,
-      amount: amountCents,
+      unit_amount_decimal: unitCents,
     });
   }
 
