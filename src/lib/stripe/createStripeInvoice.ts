@@ -1,16 +1,20 @@
 import "server-only";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
+import { getGstTaxRate } from "@/lib/stripe/getGstTaxRate";
 
 /**
  * Creates and finalises a Stripe Invoice for an AvoVita customer, then
  * sends Stripe's hosted invoice email.
  *
- * GST: `automatic_tax: { enabled: true }` lets Stripe Tax compute and
- * add the 5% Canadian GST line based on the AvoVita business address.
- * If Stripe Tax isn't configured for the account this call throws and
- * the caller falls back to manually appending a 5% line — flagged in
- * the spec.
+ * GST: we hard-wire 5% via Stripe's TaxRate object, applied as
+ * default_tax_rates on the invoice. We deliberately do NOT use
+ * automatic_tax — Stripe Tax requires a complete customer address
+ * (line + city + postal + country) and most of our customers don't
+ * have one on file at invoice-creation time, which would fail with
+ * "enough customer location information must be provided". The rate
+ * is the same on every order so the fixed-rate approach is correct;
+ * see getGstTaxRate.ts for the lookup/cache mechanics.
  *
  * collection_method='send_invoice': customers pay via the hosted page,
  * not auto-charged. We get back a hosted_invoice_url to embed in our
@@ -59,16 +63,21 @@ export async function createStripeInvoice(opts: {
    */
   daysUntilDue?: number;
 }): Promise<CreatedStripeInvoice> {
-  // 1. Create the draft invoice. We pass pending_invoice_items_behavior
+  // 1. Resolve the AvoVita GST 5% tax rate. Cached process-wide after
+  //    first call; the only round-trip cost is on a cold-start invoice.
+  const gstTaxRateId = await getGstTaxRate();
+
+  // 2. Create the draft invoice. We pass pending_invoice_items_behavior
   //    so it only picks up items we explicitly attach below — prevents
   //    a stray pending item on the customer from sneaking onto this
-  //    invoice.
+  //    invoice. default_tax_rates applies the 5% GST to every line we
+  //    attach below without needing per-item tax_rates plumbing.
   const invoice = await stripe.invoices.create({
     customer: opts.stripeCustomerId,
     currency: "cad",
     collection_method: "send_invoice",
     days_until_due: opts.daysUntilDue ?? 14,
-    automatic_tax: { enabled: true },
+    default_tax_rates: [gstTaxRateId],
     pending_invoice_items_behavior: "exclude",
     metadata: opts.metadata,
     footer: opts.footerText,
