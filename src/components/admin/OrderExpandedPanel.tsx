@@ -8,6 +8,7 @@ import {
   MapPin,
   CreditCard,
   FileText,
+  Download,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { calculateGST } from "@/lib/tax/gst";
@@ -180,6 +181,29 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
       role="region"
       aria-label={`Order details for #${orderIdShort}`}
     >
+      {/* Top action bar — Invoice PDF download. The OrderDetails shape
+          here doesn't carry status, so we gate on total_cad > 0 (which
+          catches AVOVITA-TEST $0 internal orders). On the rare pending
+          paid order, the API still gates by status and returns 409. */}
+      {(order.total_cad ?? 0) > 0 && (
+        <div className="flex justify-end">
+          <a
+            href={`/api/orders/${order.id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold border transition-colors"
+            style={{
+              backgroundColor: "transparent",
+              borderColor: "#c4973a",
+              color: "#c4973a",
+            }}
+          >
+            <Download className="w-3.5 h-3.5" />
+            Download Invoice PDF
+          </a>
+        </div>
+      )}
+
       {/* Section 6: Discrepancy warning */}
       {hasDiscrepancy && (
         <div

@@ -8,6 +8,7 @@ import {
   FileText,
   FlaskConical,
   Truck,
+  Download,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
@@ -51,6 +52,19 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
 
   const testCount = order.order_lines.length;
   const needsBooking = order.status === "confirmed";
+  // Invoice PDF: paid statuses + non-zero total. Mirrors the API gate
+  // so we don't surface a button that 409s — and excludes AVOVITA-TEST
+  // internal zero-dollar orders the same way the route does.
+  const PAID_STATUSES = new Set([
+    "confirmed",
+    "scheduled",
+    "collected",
+    "shipped",
+    "resulted",
+    "complete",
+  ]);
+  const invoiceAvailable =
+    PAID_STATUSES.has(order.status) && (order.total_cad ?? 0) > 0;
 
   return (
     <div
@@ -121,6 +135,50 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
           <div className="px-4 sm:px-6 py-5 border-b" style={{ borderColor: "#2d6b35" }}>
             <OrderTimeline status={order.status} />
           </div>
+
+          {/* Invoice / Receipt PDF — top placement because customers
+              have specifically been looking for this for insurance
+              submissions and we want them to find it on first scan. */}
+          {invoiceAvailable && (
+            <div
+              className="mx-4 sm:mx-6 my-5 rounded-xl border p-4 sm:p-5"
+              style={{
+                backgroundColor: "rgba(141, 198, 63, 0.06)",
+                borderColor: "#8dc63f",
+              }}
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <FileText
+                  className="w-5 h-5 shrink-0 mt-0.5"
+                  style={{ color: "#8dc63f" }}
+                />
+                <div>
+                  <h4
+                    className="font-heading text-lg font-semibold mb-1"
+                    style={{
+                      color: "#ffffff",
+                      fontFamily: '"Cormorant Garamond", Georgia, serif',
+                    }}
+                  >
+                    Download your invoice
+                  </h4>
+                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                    A PDF receipt for this order — useful for insurance
+                    claims, FSA / HSA reimbursement, and your records.
+                  </p>
+                </div>
+              </div>
+              <a
+                href={`/api/orders/${order.id}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mf-btn-primary w-full sm:w-auto sm:inline-flex px-5 py-3"
+              >
+                <Download className="w-4 h-4" />
+                Download Invoice PDF
+              </a>
+            </div>
+          )}
 
           {/* FloLabs booking CTA when order is newly confirmed */}
           {needsBooking && (

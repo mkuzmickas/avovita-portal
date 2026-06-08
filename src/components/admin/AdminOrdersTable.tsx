@@ -14,6 +14,7 @@ import {
   Calendar,
   Package,
   ChevronDown,
+  Download,
 } from "lucide-react";
 import { OrderExpandedPanel } from "./OrderExpandedPanel";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -40,6 +41,18 @@ const STATUS_OPTIONS: OrderStatus[] = [
   "complete",
   "cancelled",
 ];
+
+// Statuses for which a customer-facing invoice PDF makes sense. Mirrors
+// the gate on /api/orders/[orderId]/pdf so a clickable link never lands
+// on a 409.
+const INVOICE_PDF_STATUSES = new Set<OrderStatus>([
+  "confirmed",
+  "scheduled",
+  "collected",
+  "shipped",
+  "resulted",
+  "complete",
+]);
 
 const SHIPPABLE_STATUSES: OrderStatus[] = ["confirmed", "scheduled", "collected"];
 
@@ -442,7 +455,22 @@ export function AdminOrdersTable({
                         className="px-4 py-4 font-mono text-xs whitespace-nowrap"
                         style={{ color: "#6ab04c" }}
                       >
-                        #{order.id.slice(0, 8).toUpperCase()}
+                        <span>#{order.id.slice(0, 8).toUpperCase()}</span>
+                        {INVOICE_PDF_STATUSES.has(order.status) &&
+                          (order.total_cad ?? 0) > 0 && (
+                            <a
+                              href={`/api/orders/${order.id}/pdf`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Download invoice PDF"
+                              aria-label="Download invoice PDF"
+                              className="ml-2 inline-flex items-center"
+                              style={{ color: "#c4973a" }}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </a>
+                          )}
                       </td>
                       <td
                         className="px-4 py-4 text-xs whitespace-nowrap"
