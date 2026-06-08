@@ -4,18 +4,33 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
+  Eye,
   Loader2,
   Plus,
   Search,
   Trash2,
   UserPlus,
+  X,
 } from "lucide-react";
+import {
+  renderInvoiceNotificationEmail,
+  invoiceNotificationSubject,
+  invoiceNotificationSmsBody,
+} from "@/lib/emails/invoiceNotification";
 
 type SupplementOption = {
   id: string;
   name: string;
   sku: string | null;
   price_cad: number;
+};
+
+type TestOption = {
+  id: string;
+  name: string;
+  sku: string | null;
+  price_cad: number;
+  lab_name: string | null;
 };
 
 type CustomerSearchResult = {
@@ -31,7 +46,7 @@ type ResolvedCustomer = CustomerSearchResult & { isNew?: boolean };
 
 type LineType =
   | "supplement"
-  | "service"
+  | "test"
   | "custom"
   | "discount";
 
@@ -39,6 +54,7 @@ interface DraftLine {
   id: string;
   line_type: LineType;
   supplement_id: string | null;
+  test_id: string | null;
   description: string;
   quantity: number;
   unit_price_cad: number;
@@ -55,8 +71,10 @@ function newId() {
 
 export function NewInvoiceForm({
   supplements,
+  tests,
 }: {
   supplements: SupplementOption[];
+  tests: TestOption[];
 }) {
   const router = useRouter();
 
@@ -81,6 +99,8 @@ export function NewInvoiceForm({
   // ─── Line items ────────────────────────────────────────────────
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [supplementPickerOpen, setSupplementPickerOpen] = useState(false);
+  const [testPickerOpen, setTestPickerOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // ─── Form state ────────────────────────────────────────────────
   const [adminNotes, setAdminNotes] = useState("");
@@ -167,6 +187,7 @@ export function NewInvoiceForm({
         id: newId(),
         line_type: "supplement",
         supplement_id: s.id,
+        test_id: null,
         description: `${s.name}${s.sku ? ` (${s.sku})` : ""}`,
         quantity: 1,
         unit_price_cad: s.price_cad,
@@ -175,18 +196,20 @@ export function NewInvoiceForm({
     setSupplementPickerOpen(false);
   };
 
-  const addServiceLine = () => {
+  const addTestLine = (t: TestOption) => {
     setLines((prev) => [
       ...prev,
       {
         id: newId(),
-        line_type: "service",
+        line_type: "test",
         supplement_id: null,
-        description: "",
+        test_id: t.id,
+        description: `${t.name}${t.sku ? ` (${t.sku})` : ""}${t.lab_name ? ` — ${t.lab_name}` : ""}`,
         quantity: 1,
-        unit_price_cad: 0,
+        unit_price_cad: t.price_cad,
       },
     ]);
+    setTestPickerOpen(false);
   };
 
   const addCustomLine = () => {
@@ -196,6 +219,7 @@ export function NewInvoiceForm({
         id: newId(),
         line_type: "custom",
         supplement_id: null,
+        test_id: null,
         description: "",
         quantity: 1,
         unit_price_cad: 0,
@@ -210,6 +234,7 @@ export function NewInvoiceForm({
         id: newId(),
         line_type: "discount",
         supplement_id: null,
+        test_id: null,
         description: "",
         quantity: 1,
         unit_price_cad: 0,
@@ -276,6 +301,7 @@ export function NewInvoiceForm({
           lines: lines.map((l) => ({
             line_type: l.line_type,
             supplement_id: l.supplement_id,
+            test_id: l.test_id,
             description: l.description.trim(),
             quantity: l.quantity,
             unit_price_cad: l.unit_price_cad,
@@ -630,16 +656,16 @@ export function NewInvoiceForm({
           </button>
           <button
             type="button"
-            onClick={addServiceLine}
+            onClick={() => setTestPickerOpen((v) => !v)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border"
             style={{
               backgroundColor: "transparent",
-              borderColor: "#2d6b35",
-              color: "#e8d5a3",
+              borderColor: "#c4973a",
+              color: "#c4973a",
             }}
           >
             <Plus className="w-3 h-3" />
-            Add service
+            Add test
           </button>
           <button
             type="button"
@@ -714,6 +740,60 @@ export function NewInvoiceForm({
             )}
           </div>
         )}
+
+        {testPickerOpen && (
+          <div
+            className="mt-3 rounded-lg border p-3 max-h-64 overflow-y-auto"
+            style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+          >
+            {tests.length === 0 ? (
+              <p className="text-xs" style={{ color: "#6ab04c" }}>
+                No active tests in the catalogue.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {tests.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      onClick={() => addTestLine(t)}
+                      className="w-full text-left flex items-center justify-between gap-3 px-2 py-1.5 rounded hover:bg-[#1a3d22]"
+                    >
+                      <span
+                        className="text-sm"
+                        style={{ color: "#ffffff" }}
+                      >
+                        {t.name}
+                        {t.sku && (
+                          <span
+                            className="ml-2 text-xs font-mono"
+                            style={{ color: "#6ab04c" }}
+                          >
+                            {t.sku}
+                          </span>
+                        )}
+                        {t.lab_name && (
+                          <span
+                            className="ml-2 text-xs"
+                            style={{ color: "#8dc63f" }}
+                          >
+                            · {t.lab_name}
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className="text-xs font-semibold"
+                        style={{ color: "#c4973a" }}
+                      >
+                        {CURRENCY.format(t.price_cad)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </section>
 
       {/* ─── Notes + totals + submit ────────────────────────────── */}
@@ -772,7 +852,21 @@ export function NewInvoiceForm({
           </div>
         )}
 
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            disabled={!customer || lines.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: "transparent",
+              borderColor: "#c4973a",
+              color: "#c4973a",
+            }}
+          >
+            <Eye className="w-4 h-4" />
+            Preview invoice
+          </button>
           <button
             type="button"
             onClick={onSubmit}
@@ -785,6 +879,241 @@ export function NewInvoiceForm({
           </button>
         </div>
       </section>
+
+      {previewOpen && customer && (
+        <PreviewModal
+          customer={customer}
+          lines={lines}
+          subtotalPreview={subtotal}
+          taxPreview={taxPreview}
+          totalPreview={totalPreview}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Preview modal ────────────────────────────────────────────────────
+//
+// Renders the exact email body (via the shared template) plus the SMS
+// the customer would receive. The hosted-Stripe invoice page itself
+// can't be previewed pre-creation — that comes from Stripe's API after
+// finalisation — so we show the rendered email + SMS preview, the
+// total breakdown, and a note describing where the Stripe page link
+// will appear.
+
+function PreviewModal({
+  customer,
+  lines,
+  subtotalPreview,
+  taxPreview,
+  totalPreview,
+  onClose,
+}: {
+  customer: ResolvedCustomer;
+  lines: DraftLine[];
+  subtotalPreview: number;
+  taxPreview: number;
+  totalPreview: number;
+  onClose: () => void;
+}) {
+  const firstName = customer.first_name ?? "there";
+  const fakeInvoiceNumber = "AVO-XXXX"; // assigned by the server on submit
+  const fakeHostedUrl = "https://invoice.stripe.com/i/acct_…/…";
+  const emailHtml = renderInvoiceNotificationEmail({
+    firstName,
+    invoiceNumber: fakeInvoiceNumber,
+    totalCad: totalPreview,
+    hostedInvoiceUrl: fakeHostedUrl,
+    lines: lines.map((l) => ({
+      description: l.description || "(line description)",
+      quantity: l.quantity,
+      unitPriceCad: l.unit_price_cad,
+    })),
+    invoiceType: "products",
+  });
+  const subject = invoiceNotificationSubject(fakeInvoiceNumber, "products");
+  const smsBody = invoiceNotificationSmsBody({
+    firstName,
+    invoiceNumber: fakeInvoiceNumber,
+    totalCad: totalPreview,
+    hostedInvoiceUrl: fakeHostedUrl,
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+      onClick={onClose}
+    >
+      <div
+        className="rounded-xl border max-w-3xl w-full max-h-[90vh] flex flex-col"
+        style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="flex items-center justify-between p-5 border-b"
+          style={{ borderColor: "#2d6b35" }}
+        >
+          <h2
+            className="font-heading text-xl font-semibold"
+            style={{
+              color: "#ffffff",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+            }}
+          >
+            Invoice preview
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close preview"
+            style={{ color: "#e8d5a3" }}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          <p
+            className="text-xs leading-relaxed rounded-lg border px-3 py-2"
+            style={{
+              backgroundColor: "rgba(196, 151, 58, 0.10)",
+              borderColor: "#c4973a",
+              color: "#e8d5a3",
+            }}
+          >
+            <strong style={{ color: "#c4973a" }}>Preview only.</strong>{" "}
+            The real invoice number ({fakeInvoiceNumber}) and Stripe
+            hosted URL are assigned by the server when you click
+            <em> Create and Send Invoice</em>. The total below is a
+            preview using a 5% GST estimate — Stripe Tax computes the
+            authoritative value at finalisation.
+          </p>
+
+          <section>
+            <h3
+              className="text-xs uppercase tracking-wider mb-2 font-bold"
+              style={{ color: "#c4973a" }}
+            >
+              Email recipient
+            </h3>
+            <p className="text-sm" style={{ color: "#ffffff" }}>
+              {customer.email ?? "(no email on file)"}
+            </p>
+            <p
+              className="text-xs mt-2 uppercase tracking-wider font-bold"
+              style={{ color: "#c4973a" }}
+            >
+              Subject
+            </p>
+            <p className="text-sm" style={{ color: "#e8d5a3" }}>
+              {subject}
+            </p>
+          </section>
+
+          <section>
+            <h3
+              className="text-xs uppercase tracking-wider mb-2 font-bold"
+              style={{ color: "#c4973a" }}
+            >
+              Email body
+            </h3>
+            <div
+              className="rounded-lg border overflow-hidden"
+              style={{ borderColor: "#2d6b35" }}
+            >
+              <iframe
+                title="Invoice email preview"
+                srcDoc={emailHtml}
+                sandbox=""
+                className="w-full"
+                style={{
+                  height: "480px",
+                  backgroundColor: "#ffffff",
+                  border: "none",
+                }}
+              />
+            </div>
+          </section>
+
+          <section>
+            <h3
+              className="text-xs uppercase tracking-wider mb-2 font-bold"
+              style={{ color: "#c4973a" }}
+            >
+              SMS{" "}
+              <span
+                className="text-[10px] font-normal normal-case"
+                style={{ color: "#6ab04c" }}
+              >
+                — to {customer.phone ?? "(no phone on file)"}
+              </span>
+            </h3>
+            {customer.phone ? (
+              <div
+                className="rounded-lg border px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap"
+                style={{
+                  backgroundColor: "#0f2614",
+                  borderColor: "#2d6b35",
+                  color: "#e8d5a3",
+                }}
+              >
+                {smsBody}
+              </div>
+            ) : (
+              <p className="text-xs" style={{ color: "#6ab04c" }}>
+                No phone on file — SMS will not be sent.
+              </p>
+            )}
+          </section>
+
+          <section>
+            <h3
+              className="text-xs uppercase tracking-wider mb-2 font-bold"
+              style={{ color: "#c4973a" }}
+            >
+              Totals preview
+            </h3>
+            <dl className="text-sm space-y-1" style={{ color: "#e8d5a3" }}>
+              <div className="flex justify-between">
+                <dt>Subtotal</dt>
+                <dd>{CURRENCY.format(subtotalPreview)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>GST 5% (estimate — Stripe finalises)</dt>
+                <dd>{CURRENCY.format(taxPreview)}</dd>
+              </div>
+              <div
+                className="flex justify-between text-base font-bold pt-1 border-t"
+                style={{ borderColor: "#2d6b35", color: "#c4973a" }}
+              >
+                <dt>Total</dt>
+                <dd>{CURRENCY.format(totalPreview)}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <div
+          className="p-5 border-t flex justify-end"
+          style={{ borderColor: "#2d6b35" }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg text-sm font-semibold border"
+            style={{
+              backgroundColor: "transparent",
+              borderColor: "#2d6b35",
+              color: "#e8d5a3",
+            }}
+          >
+            Close preview
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

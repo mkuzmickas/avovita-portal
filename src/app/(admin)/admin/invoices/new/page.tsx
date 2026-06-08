@@ -22,17 +22,37 @@ export default async function AdminNewInvoicePage() {
   }
 
   const service = createServiceRoleClient();
-  const { data: supplementsRaw } = await service
-    .from("supplements")
-    .select("id, name, sku, price_cad")
-    .eq("active", true)
-    .order("name", { ascending: true });
-  const supplements = (supplementsRaw ?? []) as Array<{
+  const [supplementsRes, testsRes] = await Promise.all([
+    service
+      .from("supplements")
+      .select("id, name, sku, price_cad")
+      .eq("active", true)
+      .order("name", { ascending: true }),
+    service
+      .from("tests")
+      .select("id, name, sku, price_cad, lab:labs(name)")
+      .eq("active", true)
+      .order("name", { ascending: true }),
+  ]);
+  const supplements = (supplementsRes.data ?? []) as Array<{
     id: string;
     name: string;
     sku: string | null;
     price_cad: number | null;
   }>;
+  const tests = ((testsRes.data ?? []) as Array<{
+    id: string;
+    name: string;
+    sku: string | null;
+    price_cad: number | null;
+    lab: { name: string } | { name: string }[] | null;
+  }>).map((t) => ({
+    id: t.id,
+    name: t.name,
+    sku: t.sku,
+    price_cad: t.price_cad ?? 0,
+    lab_name: Array.isArray(t.lab) ? (t.lab[0]?.name ?? null) : (t.lab?.name ?? null),
+  }));
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
@@ -68,6 +88,7 @@ export default async function AdminNewInvoicePage() {
           sku: s.sku,
           price_cad: s.price_cad ?? 0,
         }))}
+        tests={tests}
       />
     </div>
   );
