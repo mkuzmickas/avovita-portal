@@ -72,15 +72,25 @@ export default async function AdminInvoicesPage() {
   }
 
   const service = createServiceRoleClient();
-  const { data: invoicesRaw } = await service
+  // invoices joins accounts via TWO foreign keys (account_id and
+  // created_by) so the embed must name the FK explicitly — PostgREST
+  // 201s the request otherwise. The previous unqualified shorthand
+  // failed silently and the page rendered "No invoices yet" with
+  // real rows in the DB.
+  const { data: invoicesRaw, error: invoicesErr } = await service
     .from("invoices")
     .select(
       `id, invoice_number, account_id, order_id, invoice_type, status,
        total_cad, sent_at, paid_at, created_at, created_by,
-       account:accounts(email)`,
+       account:accounts!invoices_account_id_fkey(email)`,
     )
     .order("created_at", { ascending: false })
     .limit(200);
+  if (invoicesErr) {
+    // Surface this so a future FK ambiguity doesn't silently empty
+    // the list again. Vercel logs catch it; the empty state stays.
+    console.error("[admin:invoices:list] query failed:", invoicesErr);
+  }
   const invoices = ((invoicesRaw ?? []) as unknown as InvoiceRow[]) || [];
 
   // Resolve creator emails in one round-trip.
