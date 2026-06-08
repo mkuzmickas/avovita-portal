@@ -319,6 +319,8 @@ export async function POST(request: NextRequest) {
             firstName: customerFirstName,
             invoiceNumber: invoiceRow.invoice_number,
             totalCad: stripeResult.total_cad,
+            subtotalCad: stripeResult.subtotal_cad,
+            taxCad: stripeResult.tax_cad,
             hostedInvoiceUrl: stripeResult.hosted_invoice_url,
             lines: lines.map((l) => ({
               description: l.description,

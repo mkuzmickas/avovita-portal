@@ -49,7 +49,8 @@ export async function POST(
     const { data: invoiceRaw } = await service
       .from("invoices")
       .select(
-        `id, invoice_number, account_id, status, invoice_type, total_cad,
+        `id, invoice_number, account_id, status, invoice_type,
+         subtotal_cad, tax_cad, total_cad,
          stripe_hosted_invoice_url, order_id`,
       )
       .eq("id", id)
@@ -60,6 +61,8 @@ export async function POST(
       account_id: string;
       status: "draft" | "sent" | "paid" | "void";
       invoice_type: "products" | "order_amendment";
+      subtotal_cad: number;
+      tax_cad: number;
       total_cad: number;
       stripe_hosted_invoice_url: string | null;
       order_id: string | null;
@@ -133,6 +136,8 @@ export async function POST(
             firstName: customerFirstName,
             invoiceNumber: invoice.invoice_number,
             totalCad: invoice.total_cad,
+            subtotalCad: invoice.subtotal_cad,
+            taxCad: invoice.tax_cad,
             hostedInvoiceUrl: invoice.stripe_hosted_invoice_url,
             lines: lines.map((l) => ({
               description: l.description,

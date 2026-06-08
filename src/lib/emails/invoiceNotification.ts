@@ -25,6 +25,13 @@ export interface InvoiceNotificationProps {
   /** Few-line summary of what's on the invoice. Cap to ~6 entries to
    *  keep the email scannable. */
   lines: InvoiceLineSummary[];
+  /** Pre-tax subtotal — optional; derived from `lines` when omitted so
+   *  callers that don't have a Stripe-authoritative value can still
+   *  render the breakdown. */
+  subtotalCad?: number;
+  /** GST 5% as a positive number. Optional; derived from
+   *  `totalCad - subtotalCad` when omitted. Rendered only when > 0. */
+  taxCad?: number;
   /** 'products' is a Flow B standalone purchase; 'order_amendment' is
    *  Flow A tests added to an existing order. */
   invoiceType: "products" | "order_amendment";
@@ -90,6 +97,36 @@ export function renderInvoiceNotificationEmail(
       ? `<p style="margin: 6px 0 0 0; font-size: 12px; color: #6b7280; font-style: italic;">+ ${props.lines.length - 6} additional line${props.lines.length - 6 === 1 ? "" : "s"}. The full breakdown is on the hosted invoice.</p>`
       : "";
 
+  // Derive subtotal + tax when the caller didn't pass them. The
+  // sum-of-lines fallback matches what we display in the line table
+  // above so the breakdown stays internally consistent.
+  const derivedSubtotal = props.lines.reduce(
+    (s, l) => s + l.unitPriceCad * l.quantity,
+    0,
+  );
+  const subtotal = props.subtotalCad ?? derivedSubtotal;
+  const tax = props.taxCad ?? Math.max(0, props.totalCad - subtotal);
+  const showBreakdown = tax > 0.005; // hide when GST is effectively zero
+  const breakdownRowsHtml = showBreakdown
+    ? `
+        <tr>
+          <td style="padding: 10px 0 2px 0; font-size: 13px; color: #6b7280;">
+            Subtotal
+          </td>
+          <td style="padding: 10px 0 2px 0; font-size: 13px; color: #6b7280; text-align: right; white-space: nowrap;">
+            ${fmtMoney(subtotal)}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 2px 0; font-size: 13px; color: #6b7280;">
+            GST 5%
+          </td>
+          <td style="padding: 2px 0; font-size: 13px; color: #6b7280; text-align: right; white-space: nowrap;">
+            ${fmtMoney(tax)}
+          </td>
+        </tr>`
+    : "";
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -124,11 +161,12 @@ export function renderInvoiceNotificationEmail(
 
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top: 2px solid #0f2614;">
                 ${linesHtml}
+                ${breakdownRowsHtml}
                 <tr>
-                  <td style="padding: 12px 0 0 0; font-size: 15px; color: #111827; font-weight: 600;">
+                  <td style="padding: 12px 0 0 0; font-size: 15px; color: #111827; font-weight: 600; border-top: 1px solid #e5e7eb;">
                     Total
                   </td>
-                  <td style="padding: 12px 0 0 0; font-size: 15px; color: #c4973a; font-weight: 700; text-align: right; white-space: nowrap;">
+                  <td style="padding: 12px 0 0 0; font-size: 15px; color: #c4973a; font-weight: 700; text-align: right; white-space: nowrap; border-top: 1px solid #e5e7eb;">
                     ${fmtMoney(props.totalCad)}
                   </td>
                 </tr>

@@ -925,6 +925,8 @@ function PreviewModal({
     firstName,
     invoiceNumber: fakeInvoiceNumber,
     totalCad: totalPreview,
+    subtotalCad: subtotalPreview,
+    taxCad: taxPreview,
     hostedInvoiceUrl: fakeHostedUrl,
     lines: lines.map((l) => ({
       description: l.description || "(line description)",
