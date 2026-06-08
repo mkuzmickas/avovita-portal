@@ -99,8 +99,30 @@ export function NewInvoiceForm({
   // ─── Line items ────────────────────────────────────────────────
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [supplementPickerOpen, setSupplementPickerOpen] = useState(false);
+  const [supplementFilter, setSupplementFilter] = useState("");
   const [testPickerOpen, setTestPickerOpen] = useState(false);
+  const [testFilter, setTestFilter] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Catalogues filter in-memory — the lists ship with the server page
+  // so there's no network call. Match on name + SKU + (for tests) lab
+  // name. Case-insensitive, all terms must hit.
+  const filteredSupplements = useMemo(() => {
+    const q = supplementFilter.trim().toLowerCase();
+    if (!q) return supplements;
+    return supplements.filter((s) => {
+      const hay = `${s.name} ${s.sku ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [supplementFilter, supplements]);
+  const filteredTests = useMemo(() => {
+    const q = testFilter.trim().toLowerCase();
+    if (!q) return tests;
+    return tests.filter((t) => {
+      const hay = `${t.name} ${t.sku ?? ""} ${t.lab_name ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [testFilter, tests]);
 
   // ─── Form state ────────────────────────────────────────────────
   const [adminNotes, setAdminNotes] = useState("");
@@ -697,101 +719,151 @@ export function NewInvoiceForm({
 
         {supplementPickerOpen && (
           <div
-            className="mt-3 rounded-lg border p-3 max-h-64 overflow-y-auto"
+            className="mt-3 rounded-lg border"
             style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
           >
-            {supplements.length === 0 ? (
-              <p className="text-xs" style={{ color: "#6ab04c" }}>
-                No active supplements in the catalogue.
-              </p>
-            ) : (
-              <ul className="space-y-1">
-                {supplements.map((s) => (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      onClick={() => addSupplementLine(s)}
-                      className="w-full text-left flex items-center justify-between gap-3 px-2 py-1.5 rounded hover:bg-[#1a3d22]"
-                    >
-                      <span
-                        className="text-sm"
-                        style={{ color: "#ffffff" }}
+            <div
+              className="p-2 border-b"
+              style={{ borderColor: "#2d6b35" }}
+            >
+              <div className="relative">
+                <Search
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
+                  style={{ color: "#6ab04c" }}
+                />
+                <input
+                  type="text"
+                  value={supplementFilter}
+                  onChange={(e) => setSupplementFilter(e.target.value)}
+                  placeholder={`Filter ${supplements.length} supplements by name or SKU…`}
+                  autoFocus
+                  className="mf-input text-sm pl-8 pr-2 py-1.5"
+                />
+              </div>
+            </div>
+            <div className="max-h-64 overflow-y-auto p-3">
+              {supplements.length === 0 ? (
+                <p className="text-xs" style={{ color: "#6ab04c" }}>
+                  No active supplements in the catalogue.
+                </p>
+              ) : filteredSupplements.length === 0 ? (
+                <p className="text-xs" style={{ color: "#6ab04c" }}>
+                  No matches for &ldquo;{supplementFilter}&rdquo;.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {filteredSupplements.map((s) => (
+                    <li key={s.id}>
+                      <button
+                        type="button"
+                        onClick={() => addSupplementLine(s)}
+                        className="w-full text-left flex items-center justify-between gap-3 px-2 py-1.5 rounded hover:bg-[#1a3d22]"
                       >
-                        {s.name}
-                        {s.sku && (
-                          <span
-                            className="ml-2 text-xs font-mono"
-                            style={{ color: "#6ab04c" }}
-                          >
-                            {s.sku}
-                          </span>
-                        )}
-                      </span>
-                      <span
-                        className="text-xs font-semibold"
-                        style={{ color: "#c4973a" }}
-                      >
-                        {CURRENCY.format(s.price_cad)}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                        <span
+                          className="text-sm"
+                          style={{ color: "#ffffff" }}
+                        >
+                          {s.name}
+                          {s.sku && (
+                            <span
+                              className="ml-2 text-xs font-mono"
+                              style={{ color: "#6ab04c" }}
+                            >
+                              {s.sku}
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className="text-xs font-semibold"
+                          style={{ color: "#c4973a" }}
+                        >
+                          {CURRENCY.format(s.price_cad)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         )}
 
         {testPickerOpen && (
           <div
-            className="mt-3 rounded-lg border p-3 max-h-64 overflow-y-auto"
+            className="mt-3 rounded-lg border"
             style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
           >
-            {tests.length === 0 ? (
-              <p className="text-xs" style={{ color: "#6ab04c" }}>
-                No active tests in the catalogue.
-              </p>
-            ) : (
-              <ul className="space-y-1">
-                {tests.map((t) => (
-                  <li key={t.id}>
-                    <button
-                      type="button"
-                      onClick={() => addTestLine(t)}
-                      className="w-full text-left flex items-center justify-between gap-3 px-2 py-1.5 rounded hover:bg-[#1a3d22]"
-                    >
-                      <span
-                        className="text-sm"
-                        style={{ color: "#ffffff" }}
+            <div
+              className="p-2 border-b"
+              style={{ borderColor: "#2d6b35" }}
+            >
+              <div className="relative">
+                <Search
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
+                  style={{ color: "#6ab04c" }}
+                />
+                <input
+                  type="text"
+                  value={testFilter}
+                  onChange={(e) => setTestFilter(e.target.value)}
+                  placeholder={`Filter ${tests.length} tests by name, SKU, or lab…`}
+                  autoFocus
+                  className="mf-input text-sm pl-8 pr-2 py-1.5"
+                />
+              </div>
+            </div>
+            <div className="max-h-64 overflow-y-auto p-3">
+              {tests.length === 0 ? (
+                <p className="text-xs" style={{ color: "#6ab04c" }}>
+                  No active tests in the catalogue.
+                </p>
+              ) : filteredTests.length === 0 ? (
+                <p className="text-xs" style={{ color: "#6ab04c" }}>
+                  No matches for &ldquo;{testFilter}&rdquo;.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {filteredTests.map((t) => (
+                    <li key={t.id}>
+                      <button
+                        type="button"
+                        onClick={() => addTestLine(t)}
+                        className="w-full text-left flex items-center justify-between gap-3 px-2 py-1.5 rounded hover:bg-[#1a3d22]"
                       >
-                        {t.name}
-                        {t.sku && (
-                          <span
-                            className="ml-2 text-xs font-mono"
-                            style={{ color: "#6ab04c" }}
-                          >
-                            {t.sku}
-                          </span>
-                        )}
-                        {t.lab_name && (
-                          <span
-                            className="ml-2 text-xs"
-                            style={{ color: "#8dc63f" }}
-                          >
-                            · {t.lab_name}
-                          </span>
-                        )}
-                      </span>
-                      <span
-                        className="text-xs font-semibold"
-                        style={{ color: "#c4973a" }}
-                      >
-                        {CURRENCY.format(t.price_cad)}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                        <span
+                          className="text-sm"
+                          style={{ color: "#ffffff" }}
+                        >
+                          {t.name}
+                          {t.sku && (
+                            <span
+                              className="ml-2 text-xs font-mono"
+                              style={{ color: "#6ab04c" }}
+                            >
+                              {t.sku}
+                            </span>
+                          )}
+                          {t.lab_name && (
+                            <span
+                              className="ml-2 text-xs"
+                              style={{ color: "#8dc63f" }}
+                            >
+                              · {t.lab_name}
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className="text-xs font-semibold"
+                          style={{ color: "#c4973a" }}
+                        >
+                          {CURRENCY.format(t.price_cad)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         )}
       </section>
