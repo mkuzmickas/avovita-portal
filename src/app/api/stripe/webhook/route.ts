@@ -77,6 +77,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (event.type === "invoice.paid") {
+    const stripeInvoice = event.data.object as Stripe.Invoice;
+    try {
+      await handleInvoicePaid(stripeInvoice);
+    } catch (err) {
+      console.error("[stripe-webhook] invoice.paid failed:", err);
+    }
+  }
+
+  if (
+    event.type === "invoice.voided" ||
+    event.type === "invoice.marked_uncollectible"
+  ) {
+    const stripeInvoice = event.data.object as Stripe.Invoice;
+    try {
+      await handleInvoiceVoided(stripeInvoice);
+    } catch (err) {
+      console.error(`[stripe-webhook] ${event.type} failed:`, err);
+    }
+  }
+
   return NextResponse.json({ received: true });
 }
 
@@ -1105,4 +1126,289 @@ async function handleCheckoutCompleteV2(
   console.log(
     `[stripe-webhook-v2] order ${orderId} created (${lineTypeSummary})`,
   );
+}
+
+// ─── Invoice payment handlers (Phase 2) ───────────────────────────────
+
+/**
+ * Fired when a Stripe Invoice is paid via the hosted page (Flow A or
+ * Flow B). Looks up our invoices row by stripe_invoice_id, updates
+ * status to 'paid', and depending on invoice_type either flips the
+ * related order_lines to 'paid' (Flow A) or creates a lightweight
+ * 'products' order so the purchase shows up in the customer's portal
+ * (Flow B).
+ *
+ * Idempotent: a duplicate event (Stripe retries on 5xx) is a no-op
+ * once the row is already 'paid'.
+ *
+ * Phase-3 note: the order_amendment branch currently flips ALL unpaid
+ * order_lines for the parent order_id. Phase 3 adds a
+ * order_lines.invoice_id column so concurrent amendments only flip
+ * their own rows. Until then, the rare two-in-flight case can be
+ * resolved manually.
+ */
+async function handleInvoicePaid(stripeInvoice: Stripe.Invoice) {
+  if (!stripeInvoice.id) return;
+  const supabase = createServiceRoleClient();
+
+  const { data: rowRaw } = await supabase
+    .from("invoices")
+    .select(
+      "id, invoice_number, account_id, profile_id, order_id, invoice_type, status, total_cad",
+    )
+    .eq("stripe_invoice_id", stripeInvoice.id)
+    .maybeSingle();
+  const row = rowRaw as {
+    id: string;
+    invoice_number: string;
+    account_id: string;
+    profile_id: string | null;
+    order_id: string | null;
+    invoice_type: "products" | "order_amendment";
+    status: "draft" | "sent" | "paid" | "void";
+    total_cad: number;
+  } | null;
+  if (!row) {
+    console.warn(
+      `[stripe-webhook] invoice.paid for unknown stripe_invoice_id ${stripeInvoice.id}`,
+    );
+    return;
+  }
+  if (row.status === "paid") {
+    // Replay — nothing to do.
+    return;
+  }
+  if (row.status === "void") {
+    // Edge case: Stripe paid an invoice we'd already voided locally.
+    // Don't silently flip back; flag for manual review.
+    console.warn(
+      `[stripe-webhook] invoice.paid fired for already-voided invoice ${row.invoice_number}`,
+    );
+    return;
+  }
+
+  // Stripe SDK 2026-03-25.dahlia replaced Invoice.payment_intent with
+  // an Invoice.payments list. Walk the list for the first paid entry
+  // and pull its payment_intent id (string or Charge object).
+  const paymentEntries = stripeInvoice.payments?.data ?? [];
+  let paymentIntentId: string | null = null;
+  for (const entry of paymentEntries) {
+    if (entry.status !== "paid") continue;
+    const pi = entry.payment.payment_intent;
+    if (typeof pi === "string") {
+      paymentIntentId = pi;
+      break;
+    }
+    if (pi && typeof pi === "object" && "id" in pi) {
+      paymentIntentId = pi.id;
+      break;
+    }
+  }
+
+  await supabase
+    .from("invoices")
+    .update({
+      status: "paid",
+      paid_at: new Date().toISOString(),
+      stripe_payment_intent_id: paymentIntentId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", row.id);
+
+  if (row.invoice_type === "order_amendment" && row.order_id) {
+    // Flip all unpaid lines on the parent order. See phase-3 note above.
+    await supabase
+      .from("order_lines")
+      .update({ payment_status: "paid" })
+      .eq("order_id", row.order_id)
+      .eq("payment_status", "unpaid");
+  }
+
+  if (row.invoice_type === "products") {
+    // Create a lightweight 'products' order so this purchase shows up
+    // in the customer's portal Orders list. No collection_address, no
+    // appointment, no FloLabs — just a record.
+    const { data: lineRowsRaw } = await supabase
+      .from("invoice_line_items")
+      .select(
+        "line_type, test_id, supplement_id, description, quantity, unit_price_cad, line_total_cad, sort_order",
+      )
+      .eq("invoice_id", row.id)
+      .order("sort_order", { ascending: true });
+    type ILine = {
+      line_type:
+        | "test"
+        | "supplement"
+        | "service"
+        | "custom"
+        | "shipping"
+        | "discount";
+      test_id: string | null;
+      supplement_id: string | null;
+      description: string;
+      quantity: number;
+      unit_price_cad: number;
+      line_total_cad: number;
+      sort_order: number;
+    };
+    const lineRows = (lineRowsRaw as ILine[] | null) ?? [];
+
+    const { data: orderInsertRaw, error: orderInsErr } = await supabase
+      .from("orders")
+      .insert({
+        account_id: row.account_id,
+        stripe_payment_intent_id: paymentIntentId,
+        status: "complete",
+        order_type: "products",
+        subtotal_cad: lineRows
+          .filter((l) => l.line_type !== "discount")
+          .reduce((s, l) => s + l.line_total_cad, 0),
+        total_cad: row.total_cad,
+        tax_cad: 0,
+        notes: `Auto-created from invoice ${row.invoice_number}`,
+      })
+      .select("id")
+      .single();
+    if (orderInsErr || !orderInsertRaw) {
+      console.error(
+        "[stripe-webhook] failed to create products order:",
+        orderInsErr,
+      );
+      return;
+    }
+    const newOrderId = (orderInsertRaw as { id: string }).id;
+
+    // Mirror the invoice lines onto order_lines so the portal renders
+    // the same items. Each is paid by definition.
+    if (lineRows.length > 0 && row.profile_id) {
+      const orderLineInserts = lineRows
+        .filter((l) => l.line_type !== "discount") // discounts already in totals
+        .map((l) => {
+          // order_lines accepts 'test' / 'supplement' / 'resource' line
+          // types. Map invoice-line 'service' / 'custom' / 'shipping'
+          // onto 'resource' so the existing UI renders them as a row
+          // without exploding on an unknown enum. Discounts are
+          // skipped above.
+          let mappedType: "test" | "supplement" | "resource" = "resource";
+          if (l.line_type === "test") mappedType = "test";
+          else if (l.line_type === "supplement") mappedType = "supplement";
+          return {
+            order_id: newOrderId,
+            line_type: mappedType,
+            test_id: l.line_type === "test" ? l.test_id : null,
+            supplement_id:
+              l.line_type === "supplement" ? l.supplement_id : null,
+            profile_id: row.profile_id,
+            quantity: l.quantity,
+            unit_price_cad: l.unit_price_cad,
+            custom_description:
+              l.line_type === "test" || l.line_type === "supplement"
+                ? null
+                : l.description,
+            payment_status: "paid",
+          };
+        });
+      await supabase.from("order_lines").insert(orderLineInserts);
+    }
+
+    // Link the invoice back to the new order for the portal join.
+    await supabase
+      .from("invoices")
+      .update({ order_id: newOrderId })
+      .eq("id", row.id);
+  }
+
+  // Audit log.
+  await supabase
+    .from("analytics_events")
+    .insert({
+      event_type: "invoice_paid",
+      event_data: {
+        invoice_id: row.id,
+        invoice_number: row.invoice_number,
+        invoice_type: row.invoice_type,
+        amount_cad: row.total_cad,
+        stripe_payment_intent_id: paymentIntentId,
+      },
+      account_id: row.account_id,
+    })
+    .then(({ error }) => {
+      if (error)
+        console.warn(
+          "[stripe-webhook] invoice_paid audit insert failed:",
+          error.message,
+        );
+    });
+
+  console.log(`[stripe-webhook] invoice ${row.invoice_number} marked paid`);
+}
+
+/**
+ * Fired when an admin (or a Stripe operator) voids an invoice we sent.
+ * 'invoice.marked_uncollectible' takes the same code path — both mean
+ * the invoice will not be paid.
+ *
+ * Per the spec: leave any unpaid order_lines in place. Admin manually
+ * removes them if desired.
+ */
+async function handleInvoiceVoided(stripeInvoice: Stripe.Invoice) {
+  if (!stripeInvoice.id) return;
+  const supabase = createServiceRoleClient();
+
+  const { data: rowRaw } = await supabase
+    .from("invoices")
+    .select("id, invoice_number, account_id, total_cad, status, invoice_type")
+    .eq("stripe_invoice_id", stripeInvoice.id)
+    .maybeSingle();
+  const row = rowRaw as {
+    id: string;
+    invoice_number: string;
+    account_id: string;
+    total_cad: number;
+    status: "draft" | "sent" | "paid" | "void";
+    invoice_type: string;
+  } | null;
+  if (!row) {
+    console.warn(
+      `[stripe-webhook] invoice.voided for unknown stripe_invoice_id ${stripeInvoice.id}`,
+    );
+    return;
+  }
+  if (row.status === "void") return; // idempotent
+  if (row.status === "paid") {
+    console.warn(
+      `[stripe-webhook] cannot void already-paid invoice ${row.invoice_number}`,
+    );
+    return;
+  }
+
+  await supabase
+    .from("invoices")
+    .update({
+      status: "void",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", row.id);
+
+  await supabase
+    .from("analytics_events")
+    .insert({
+      event_type: "invoice_voided",
+      event_data: {
+        invoice_id: row.id,
+        invoice_number: row.invoice_number,
+        invoice_type: row.invoice_type,
+        amount_cad: row.total_cad,
+      },
+      account_id: row.account_id,
+    })
+    .then(({ error }) => {
+      if (error)
+        console.warn(
+          "[stripe-webhook] invoice_voided audit insert failed:",
+          error.message,
+        );
+    });
+
+  console.log(`[stripe-webhook] invoice ${row.invoice_number} marked void`);
 }
