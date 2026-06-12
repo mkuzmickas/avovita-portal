@@ -224,14 +224,14 @@ export function Step3CollectionDetails({
     );
 
   // Collection mode must be picked first. In-area requires a valid
-  // address + serviced postal code; out-of-town hides those entirely
-  // and only requires people-info validity.
+  // address + serviced postal code. Out-of-town is a hard contact-us
+  // gate — the customer can't proceed to payment; they must email
+  // AvoVita first and we'll handle them out-of-band.
   const peopleValid = isCaregiver
     ? representativeValid && dependentsValid
     : accountHolderValid && additionalAllValid && allConsentsObtained;
-  const canContinue = isOutOfTown
-    ? peopleValid
-    : addressValid && peopleValid && !zoneUnserved;
+  const canContinue =
+    !isOutOfTown && addressValid && peopleValid && !zoneUnserved;
 
   // Compute a human-readable list of what's still missing so the
   // greyed-out Continue button isn't a mystery.
@@ -333,7 +333,7 @@ export function Step3CollectionDetails({
           <CollectionModeButton
             active={isOutOfTown}
             title="I'm from out of town"
-            subtitle="Drop-in collection near Canada Olympic Park (Tue/Sat mornings)."
+            subtitle="Contact us to discuss collection options before booking."
             onClick={() => {
               if (!isOutOfTown) onIsOutOfTownChange(true);
             }}
@@ -364,16 +364,24 @@ export function Step3CollectionDetails({
                     '"Cormorant Garamond", Georgia, serif',
                 }}
               >
-                Out-of-town drop-in collection
+                Contact us to discuss options
               </h3>
               <p
-                className="text-sm leading-relaxed"
+                className="text-sm leading-relaxed mb-2"
                 style={{ color: "#e8d5a3" }}
               >
-                We have a location near Canada Olympic Park available on
-                Tuesday and Saturday mornings only. The exact address
-                will be provided after your order is confirmed, when you
-                select your appointment time.
+                Out-of-town collections are coordinated case-by-case.
+                Please email us before booking and we&apos;ll work out the
+                best option for your trip.
+              </p>
+              <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                <a
+                  href="mailto:mike@avovita.ca"
+                  className="font-semibold underline"
+                  style={{ color: "#c4973a" }}
+                >
+                  mike@avovita.ca
+                </a>
               </p>
             </div>
           </div>

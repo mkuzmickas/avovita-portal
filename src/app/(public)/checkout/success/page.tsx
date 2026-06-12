@@ -12,13 +12,12 @@ export const dynamic = "force-dynamic";
 const ACUITY_URL =
   process.env.NEXT_PUBLIC_ACUITY_EMBED_URL ??
   "https://flolabsbooking.as.me/?appointmentType=84416067";
-// Out-of-town orders use a separate FloLabs Acuity calendar tied to the
-// drop-in collection location near Canada Olympic Park. Both URLs come
-// from env vars so the appointmentTypes can be rotated without a deploy
-// and the residential drop-in address never lands in git.
-const ACUITY_URL_OUT_OF_TOWN = process.env.NEXT_PUBLIC_ACUITY_EMBED_URL_OUT_OF_TOWN;
-const OUT_OF_TOWN_DROPIN_ADDRESS =
-  process.env.NEXT_PUBLIC_OUT_OF_TOWN_DROPIN_ADDRESS ?? null;
+// Out-of-town reverted to a soft contact-us gate on Step 3 — the
+// customer can't proceed to payment in that mode, so the success page
+// no longer needs a dedicated calendar or drop-in address. The
+// NEXT_PUBLIC_ACUITY_EMBED_URL_OUT_OF_TOWN and
+// NEXT_PUBLIC_OUT_OF_TOWN_DROPIN_ADDRESS env vars are unused after
+// this change; safe to remove from Vercel.
 
 interface SearchParams {
   session_id?: string;
@@ -93,20 +92,14 @@ export default async function CheckoutSuccessPage({
       | null;
     org: OrgBlock | OrgBlock[] | null;
   } | null;
-  // Prefer the orders column (set by the webhook), but fall back to
-  // the pending-order snapshot. This keeps the success page rendering
-  // the correct Acuity calendar through transient states where the
-  // orders row is briefly unavailable (Stripe webhook still in flight,
-  // or — historically — before migration 024 added the column).
+  // The OOT flag is still tracked on the order (the gate lives on
+  // Step 3) but we no longer fork the Acuity calendar — OOT customers
+  // can't reach this page because Step 3 blocks them on the soft
+  // contact-us gate. Kept the read so any pre-revert OOT orders still
+  // render an Acuity calendar instead of breaking.
   const isOutOfTown =
     !!(order?.is_out_of_town ?? pendingPayload?.is_out_of_town);
-  // Pick the Acuity calendar based on the mode the customer chose at
-  // checkout. Falls back to the in-area URL if the out-of-town env var
-  // isn't set (e.g. local dev) so the page renders something useable.
-  const acuityUrl =
-    isOutOfTown && ACUITY_URL_OUT_OF_TOWN
-      ? ACUITY_URL_OUT_OF_TOWN
-      : ACUITY_URL;
+  const acuityUrl = ACUITY_URL;
   const orgBlock = Array.isArray(order?.org) ? order?.org[0] : order?.org;
   const waiverAddendum = orgBlock?.waiver_addendum ?? null;
   const waiverAddendumTitle = orgBlock?.waiver_addendum_title ?? null;
@@ -238,12 +231,7 @@ export default async function CheckoutSuccessPage({
         representativeRelationship={rep?.relationship ?? null}
         acuityUrl={acuityUrl}
         isOutOfTown={isOutOfTown}
-        outOfTownDropinAddress={
-          isOutOfTown
-            ? (OUT_OF_TOWN_DROPIN_ADDRESS ??
-              "[Address will be provided by AvoVita]")
-            : null
-        }
+        outOfTownDropinAddress={null}
         initialWaiverDone={initialWaiverDone}
         waiverAddendum={waiverAddendum}
         waiverAddendumTitle={waiverAddendumTitle}

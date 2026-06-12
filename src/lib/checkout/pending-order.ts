@@ -38,11 +38,9 @@ export interface PendingOrderPayload {
   collection_address?: CollectionAddress;
   /**
    * True when the customer picked "I'm from out of town" on Step 3.
-   * In that mode the address fields are blank (the drop-in address is
-   * communicated by AvoVita and rendered on the success page from
-   * NEXT_PUBLIC_OUT_OF_TOWN_DROPIN_ADDRESS). Persisted on the orders
-   * row as is_out_of_town so the success page knows which Acuity
-   * calendar to render.
+   * Step 3 blocks this mode from proceeding to payment (soft
+   * contact-us gate) — the flag is still persisted in case the
+   * order shape changes in the future or to surface in admin views.
    */
   is_out_of_town?: boolean;
   visit_fees?: {

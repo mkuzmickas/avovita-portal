@@ -68,14 +68,11 @@ export interface CheckoutSuccessV2Props {
   representativeRelationship: string | null;
   /** Defaults to FloLabs Acuity URL when not provided. */
   acuityUrl: string;
-  /** Customer picked the out-of-town drop-in mode on Step 3. When true,
-   *  the acuityUrl will be the dedicated out-of-town calendar (selected
-   *  by the server page) and a banner is rendered above the iframe
-   *  naming the drop-in address. */
+  /** Carried for prop-shape stability after the OOT revert — Step 3
+   *  now blocks OOT customers before they ever reach this page, so
+   *  these are effectively dead but a prior pending order with the
+   *  flag set could still land here. */
   isOutOfTown?: boolean;
-  /** Drop-in address from NEXT_PUBLIC_OUT_OF_TOWN_DROPIN_ADDRESS. Only
-   *  used when isOutOfTown is true; falls back to a placeholder string
-   *  in that case if the env var isn't set. */
   outOfTownDropinAddress?: string | null;
   /** Pre-existing waiver state (e.g. logged-in user already signed). */
   initialWaiverDone: boolean;
@@ -297,35 +294,10 @@ export function CheckoutSuccessV2({
             />
           )}
           {(!hasStabilityWarning || stabilityAcknowledged) && (<>
-          {isOutOfTown ? (
-            <div
-              className="flex items-start gap-3 rounded-lg border px-4 py-3 mb-4"
-              style={{
-                backgroundColor: "rgba(217,169,57,0.10)",
-                borderColor: "#d4a84a",
-              }}
-            >
-              <CheckCircle
-                className="w-4 h-4 shrink-0 mt-0.5"
-                style={{ color: "#d4a84a" }}
-              />
-              <p className="text-sm leading-relaxed" style={{ color: "#e8d5a3" }}>
-                Please select your appointment date and time for a
-                collection at{" "}
-                <strong style={{ color: "#ffffff" }}>
-                  {outOfTownDropinAddress ??
-                    "[Address will be provided by AvoVita]"}
-                </strong>
-                . The calendar shows Tuesday and Saturday morning slots
-                only.
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
-              Pick the date and time that works best for the in-home
-              visit.
-            </p>
-          )}
+          <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
+            Pick the date and time that works best for the in-home
+            visit.
+          </p>
           <div
             className="relative rounded-xl border overflow-hidden"
             style={{

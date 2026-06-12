@@ -110,9 +110,9 @@ export function CheckoutClient({
   const [collectionAddress, setCollectionAddress] =
     useState<CollectionAddress>(defaultAddress);
   // Out-of-town toggle on Step 3. When true, the address form is
-  // hidden, the collection address is left blank, and the success
-  // page renders the dedicated out-of-town Acuity calendar plus the
-  // drop-in address from NEXT_PUBLIC_OUT_OF_TOWN_DROPIN_ADDRESS.
+  // hidden and Step 3 renders a contact-us gate that blocks the
+  // customer from advancing to payment — OOT collections are
+  // coordinated case-by-case over email.
   const [isOutOfTown, setIsOutOfTown] = useState(false);
   // Stash whatever the customer typed before switching to out-of-town
   // so we can restore it if they switch back, matching the existing
