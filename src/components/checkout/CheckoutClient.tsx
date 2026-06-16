@@ -93,7 +93,7 @@ export function CheckoutClient({
   void _accountEmail;
   void _showResourceSuccessNotice;
   const router = useRouter();
-  const { cart, hydrated, addItem, clearCart } = useCart();
+  const { cart, hydrated, addItem, removeItem, clearCart } = useCart();
   const { trackEvent } = useAnalytics();
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -671,6 +671,8 @@ export function CheckoutClient({
                 personCount={personCount}
                 assignments={assignments}
                 onAssignmentsChange={setAssignments}
+                addCartItem={addItem}
+                removeCartItem={removeItem}
                 onBack={handleStep2Back}
                 onContinue={handleStep2Continue}
               />

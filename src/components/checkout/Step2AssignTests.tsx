@@ -1,15 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import {
-  X,
-  Users,
-  ArrowRight,
-  ArrowLeft,
-  Info,
-  AlertCircle,
-  UserPlus,
-} from "lucide-react";
+import { useMemo } from "react";
+import { X, Users, ArrowRight, ArrowLeft, Info, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { DiscountBanner } from "./DiscountBanner";
@@ -17,11 +9,10 @@ import type { CatalogueCartItem } from "@/components/catalogue/types";
 
 /**
  * One assignment per cart row. Keyed by `instance_id` so the same
- * test_id can appear more than once (one row per person) when the cart
- * was loaded from a multi-line quote. instance_id falls back to
- * `test_id` when the cart row didn't carry one (catalogue add path) —
- * those rows are still unique by test_id because the cart's commitAdd
- * dedupes by `test:${instance_id ?? test_id}`.
+ * test_id can appear more than once (one row per person). instance_id
+ * falls back to `test_id` when the cart row didn't carry one
+ * (catalogue add path); Step 2 generates `step2:${test_id}:${nonce}`
+ * for any additional rows it clones to support multi-person assignment.
  */
 export interface PersonAssignmentEntry {
   instance_id: string;
@@ -33,8 +24,23 @@ export interface PersonAssignmentEntry {
   person_index: number;
 }
 
-function instanceKey(item: CatalogueCartItem): string {
-  return item.instance_id ?? item.test_id;
+/** Stable cart id for a test row. Mirrors cartItemId() in
+ *  catalogue/types.ts so removeItem() takes the right key without
+ *  importing the function. */
+function cartIdForTest(instanceId: string): string {
+  return `test:${instanceId}`;
+}
+
+/** A unique-enough instance_id for a Step-2-created clone. Includes
+ *  test_id for debuggability and a random suffix so rapid-fire clicks
+ *  can't collide. The cart-context dedup makes accidental dupes a no-op
+ *  anyway, but this keeps localStorage clean. */
+function newCloneInstanceId(testId: string): string {
+  const rand =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `step2:${testId}:${rand}`;
 }
 
 interface Step2AssignTestsProps {
@@ -42,7 +48,19 @@ interface Step2AssignTestsProps {
   personCount: number;
   /** Persisted assignments from CheckoutClient state. */
   assignments: PersonAssignmentEntry[];
-  onAssignmentsChange: (next: PersonAssignmentEntry[]) => void;
+  /** Accepts both a value and a functional updater so handlers that
+   *  also mutate the cart can avoid stale-closure races on rapid
+   *  clicks. CheckoutClient passes React's setAssignments directly. */
+  onAssignmentsChange: (
+    next:
+      | PersonAssignmentEntry[]
+      | ((prev: PersonAssignmentEntry[]) => PersonAssignmentEntry[]),
+  ) => void;
+  /** Cart mutation hooks from CartContext. Step 2 clones cart rows
+   *  on-demand when a customer assigns the same test to a second
+   *  person, and removes them when they uncheck. */
+  addCartItem: (item: CatalogueCartItem) => void;
+  removeCartItem: (cartItemId: string) => void;
   onBack: () => void;
   onContinue: () => void;
 }
@@ -56,17 +74,57 @@ export function Step2AssignTests({
   personCount,
   assignments,
   onAssignmentsChange,
+  addCartItem,
+  removeCartItem,
   onBack,
   onContinue,
 }: Step2AssignTestsProps) {
-  const [openInstanceId, setOpenInstanceId] = useState<string | null>(null);
-
   const peopleIndices = useMemo(
     () => Array.from({ length: personCount }, (_, i) => i),
-    [personCount]
+    [personCount],
   );
 
-  // Bucket assignments by person for the right column display
+  // Group cart rows by test_id so the customer sees one card per
+  // unique test with checkboxes for each person. Two cart rows for the
+  // same test (e.g. Vitamin D for John AND Jane) collapse into a
+  // single card; the per-person checkboxes derive from `assignments`.
+  type TestGroup = {
+    test_id: string;
+    test_name: string;
+    lab_name: string;
+    price_cad: number;
+    /** Sample cart row used as a template when cloning. */
+    template: CatalogueCartItem;
+  };
+  const testGroups = useMemo<TestGroup[]>(() => {
+    const map = new Map<string, TestGroup>();
+    for (const item of cart) {
+      if (item.line_type !== "test") continue;
+      if (map.has(item.test_id)) continue;
+      map.set(item.test_id, {
+        test_id: item.test_id,
+        test_name: item.test_name,
+        lab_name: item.lab_name,
+        price_cad: item.price_cad,
+        template: item,
+      });
+    }
+    return [...map.values()];
+  }, [cart]);
+
+  // For each (test_id, person_index) pair, the assignment (if any) that
+  // covers it. Used to render the checkbox state and to find the row
+  // to remove when the customer unchecks.
+  type AssignmentLookup = Map<string, PersonAssignmentEntry>;
+  const assignmentByTestPerson = useMemo<AssignmentLookup>(() => {
+    const map = new Map<string, PersonAssignmentEntry>();
+    for (const a of assignments) {
+      map.set(`${a.test_id}:${a.person_index}`, a);
+    }
+    return map;
+  }, [assignments]);
+
+  // Bucket assignments by person for the right-column summary.
   const assignmentsByPerson = useMemo(() => {
     const map = new Map<number, PersonAssignmentEntry[]>();
     for (const idx of peopleIndices) map.set(idx, []);
@@ -77,66 +135,80 @@ export function Step2AssignTests({
     return map;
   }, [assignments, peopleIndices]);
 
-  // Cart items still waiting to be assigned (left column). Match by
-  // instance_id (with test_id fallback) so two cart rows for the same
-  // test_id are treated as distinct.
-  const unassignedCartItems = useMemo(
-    () =>
-      cart.filter(
-        (item) =>
-          !assignments.some((a) => a.instance_id === instanceKey(item))
-      ),
-    [cart, assignments]
-  );
-
   // Continue rules:
-  //   - every cart item must be assigned
-  //   - every person must have at least one test assigned to them
+  //   - every test in the cart has at least one person checked (no
+  //     orphan rows — a test with zero people doesn't make sense)
+  //   - every person has at least one test assigned to them
   const peopleWithoutTests = peopleIndices.filter(
-    (idx) => (assignmentsByPerson.get(idx)?.length ?? 0) === 0
+    (idx) => (assignmentsByPerson.get(idx)?.length ?? 0) === 0,
   );
-  const allCartAssigned = unassignedCartItems.length === 0;
-  const canContinue = allCartAssigned && peopleWithoutTests.length === 0;
+  const testsWithoutAnyone = testGroups.filter(
+    (g) => !peopleIndices.some((idx) => assignmentByTestPerson.has(`${g.test_id}:${idx}`)),
+  );
+  const canContinue =
+    testsWithoutAnyone.length === 0 && peopleWithoutTests.length === 0;
 
   // Cart subtotal — same value used by the order summary sidebar so the
-  // step body and sidebar always agree, regardless of how many cart items
-  // have been assigned so far.
+  // step body and sidebar always agree.
   const cartSubtotal = cart.reduce(
     (s, c) => s + c.price_cad * c.quantity,
-    0
+    0,
   );
-
-  // Discount preview is based on cart line count, not on partial
-  // assignment progress, so the banner appears as soon as ≥ 2 cart items
-  // are present.
+  // Discount preview based on cart line count so it reflects the true
+  // billable lines (a Vitamin D for two people counts as two lines).
   const discount = computeDiscount(cart.length);
   const cartAfterDiscount = cartSubtotal - discount.total;
 
   /**
-   * Move a cart row to a person. Replaces any prior assignment for the
-   * same instance_id — each cart row can only belong to one person at
-   * a time, but two cart rows with the same test_id (e.g. one per
-   * person on a multi-line quote) coexist freely.
+   * Toggle a (test_id, person_index) pair. The cart row count for a
+   * test always equals the number of checked people on that test —
+   * checking adds a row + assignment, unchecking removes both. Uses
+   * functional updates so rapid clicks across different tests can't
+   * stomp each other.
    */
-  const handleAssign = (item: CatalogueCartItem, personIndex: number) => {
-    const key = instanceKey(item);
-    const next = assignments.filter((a) => a.instance_id !== key);
-    next.push({
-      instance_id: key,
-      test_id: item.test_id,
-      test_name: item.test_name,
-      lab_name: item.lab_name,
-      price_cad: item.price_cad,
-      person_index: personIndex,
+  const togglePersonForTest = (
+    group: TestGroup,
+    personIndex: number,
+  ) => {
+    const key = `${group.test_id}:${personIndex}`;
+    const existing = assignmentByTestPerson.get(key);
+
+    if (existing) {
+      // UNCHECK — drop the cart row first, then the assignment. Order
+      // doesn't matter for correctness; React batches both setStates
+      // into one render.
+      removeCartItem(cartIdForTest(existing.instance_id));
+      onAssignmentsChange((prev) =>
+        prev.filter((a) => a.instance_id !== existing.instance_id),
+      );
+      return;
+    }
+
+    // CHECK — clone a new cart row and create the assignment.
+    const newInstanceId = newCloneInstanceId(group.test_id);
+    addCartItem({
+      ...group.template,
+      instance_id: newInstanceId,
     });
-    onAssignmentsChange(next);
-    setOpenInstanceId(null);
+    onAssignmentsChange((prev) => [
+      ...prev,
+      {
+        instance_id: newInstanceId,
+        test_id: group.test_id,
+        test_name: group.test_name,
+        lab_name: group.lab_name,
+        price_cad: group.price_cad,
+        person_index: personIndex,
+      },
+    ]);
   };
 
-  /** Send a cart row back to the unassigned column. */
-  const handleUnassign = (instanceId: string) => {
-    onAssignmentsChange(
-      assignments.filter((a) => a.instance_id !== instanceId)
+  /** Right-column X — same effect as unchecking that person's box on
+   *  the left card for this assignment. */
+  const handleUnassign = (entry: PersonAssignmentEntry) => {
+    removeCartItem(cartIdForTest(entry.instance_id));
+    onAssignmentsChange((prev) =>
+      prev.filter((a) => a.instance_id !== entry.instance_id),
     );
   };
 
@@ -167,18 +239,13 @@ export function Step2AssignTests({
 
       <div
         className="flex items-start gap-2 rounded-lg border px-4 py-3 mb-4"
-        style={{
-          backgroundColor: "#0f2614",
-          borderColor: "#2d6b35",
-        }}
+        style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
       >
-        <Info
-          className="w-4 h-4 shrink-0 mt-0.5"
-          style={{ color: "#c4973a" }}
-        />
+        <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#c4973a" }} />
         <p className="text-xs leading-relaxed" style={{ color: "#e8d5a3" }}>
-          Each test can only be assigned to one person. To order the same
-          test for multiple people, add it to your cart multiple times.
+          Check the box for each person who should get this test. You can
+          assign the same test to more than one person — each person on
+          the checkbox row will be billed and resulted separately.
         </p>
       </div>
 
@@ -191,7 +258,7 @@ export function Step2AssignTests({
 
       {/* Two columns desktop, stacked mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* LEFT — unassigned tests from cart */}
+        {/* LEFT — tests in cart with per-person checkboxes */}
         <div>
           <h3
             className="font-heading text-lg font-semibold mb-3 flex items-center gap-2"
@@ -200,7 +267,7 @@ export function Step2AssignTests({
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Unassigned Tests
+            Tests in cart
             <span
               className="text-xs font-medium px-2 py-0.5 rounded-full border"
               style={{
@@ -210,95 +277,129 @@ export function Step2AssignTests({
                 fontFamily: '"DM Sans", sans-serif',
               }}
             >
-              {unassignedCartItems.length} of {cart.length}
+              {testGroups.length} test{testGroups.length === 1 ? "" : "s"}
             </span>
           </h3>
 
-          {unassignedCartItems.length === 0 ? (
+          {testGroups.length === 0 ? (
             <div
               className="rounded-lg border px-4 py-6 text-center"
-              style={{
-                backgroundColor: "#0f2614",
-                borderColor: "#2d6b35",
-              }}
+              style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
             >
-              <p className="text-xs" style={{ color: "#8dc63f" }}>
-                All tests assigned ✓
+              <p className="text-xs" style={{ color: "#c4973a" }}>
+                No tests in your cart yet.
               </p>
             </div>
           ) : (
-            <ul className="space-y-2">
-              {unassignedCartItems.map((item) => {
-                const key = instanceKey(item);
-                const menuOpen = openInstanceId === key;
-
+            <ul className="space-y-3">
+              {testGroups.map((group) => {
+                const assignedPeople = peopleIndices.filter((idx) =>
+                  assignmentByTestPerson.has(`${group.test_id}:${idx}`),
+                );
+                const orphan = assignedPeople.length === 0;
                 return (
                   <li
-                    key={key}
-                    className="rounded-lg border p-3 relative"
+                    key={group.test_id}
+                    className="rounded-lg border p-3"
                     style={{
                       backgroundColor: "#0f2614",
-                      borderColor: "#2d6b35",
+                      borderColor: orphan ? "#c4973a" : "#2d6b35",
                     }}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-3 mb-3">
                       <div className="flex-1 min-w-0">
                         <p
                           className="text-sm font-medium leading-snug"
                           style={{ color: "#ffffff" }}
                         >
-                          {item.test_name}
+                          {group.test_name}
                         </p>
                         <p
                           className="text-xs mt-0.5"
                           style={{ color: "#6ab04c" }}
                         >
-                          {item.lab_name} ·{" "}
+                          {group.lab_name} ·{" "}
                           <span style={{ color: "#c4973a", fontWeight: 600 }}>
-                            {formatCurrency(item.price_cad)}
+                            {formatCurrency(group.price_cad)} per person
                           </span>
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOpenInstanceId((prev) =>
-                            prev === key ? null : key
-                          )
-                        }
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0"
-                        style={{
-                          backgroundColor: "#c4973a",
-                          color: "#0a1a0d",
-                        }}
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        Assign
-                      </button>
                     </div>
 
-                    {/* Person picker menu */}
-                    {menuOpen && (
-                      <div
-                        className="absolute right-3 top-12 z-20 rounded-lg border shadow-xl py-1 min-w-[200px]"
-                        style={{
-                          backgroundColor: "#0a1a0d",
-                          borderColor: "#c4973a",
-                        }}
+                    <div>
+                      <p
+                        className="text-[11px] uppercase tracking-wider font-semibold mb-2"
+                        style={{ color: "#c4973a" }}
                       >
-                        {peopleIndices.map((idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => handleAssign(item, idx)}
-                            className="w-full text-left px-4 py-2 text-sm transition-colors hover:bg-[#1f4a28]"
-                            style={{ color: "#e8d5a3" }}
-                          >
-                            {personLabel(idx)}
-                          </button>
-                        ))}
+                        Assign to:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {peopleIndices.map((idx) => {
+                          const checked = assignmentByTestPerson.has(
+                            `${group.test_id}:${idx}`,
+                          );
+                          return (
+                            <label
+                              key={idx}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border transition-colors"
+                              style={{
+                                backgroundColor: checked
+                                  ? "#1f4a28"
+                                  : "transparent",
+                                borderColor: checked ? "#c4973a" : "#2d6b35",
+                                color: checked ? "#ffffff" : "#e8d5a3",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() =>
+                                  togglePersonForTest(group, idx)
+                                }
+                                className="sr-only"
+                              />
+                              <span
+                                aria-hidden="true"
+                                className="inline-block w-3.5 h-3.5 rounded-sm border flex items-center justify-center"
+                                style={{
+                                  backgroundColor: checked
+                                    ? "#c4973a"
+                                    : "transparent",
+                                  borderColor: checked ? "#c4973a" : "#6ab04c",
+                                }}
+                              >
+                                {checked && (
+                                  <svg
+                                    width="9"
+                                    height="9"
+                                    viewBox="0 0 12 12"
+                                    fill="none"
+                                  >
+                                    <path
+                                      d="M2 6.5L5 9.5L10 3.5"
+                                      stroke="#0a1a0d"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                )}
+                              </span>
+                              {personLabel(idx)}
+                            </label>
+                          );
+                        })}
                       </div>
-                    )}
+                      {orphan && (
+                        <p
+                          className="text-[11px] mt-2"
+                          style={{ color: "#c4973a" }}
+                        >
+                          Pick at least one person, or remove this test from
+                          your cart.
+                        </p>
+                      )}
+                    </div>
                   </li>
                 );
               })}
@@ -339,12 +440,9 @@ export function Step2AssignTests({
                 </div>
 
                 {items.length === 0 ? (
-                  <p
-                    className="text-xs italic"
-                    style={{ color: "#c4973a" }}
-                  >
-                    No tests assigned yet — click Assign on a test to add it
-                    here.
+                  <p className="text-xs italic" style={{ color: "#c4973a" }}>
+                    No tests assigned yet — check this person on one of the
+                    test cards to add a copy.
                   </p>
                 ) : (
                   <ul className="space-y-1.5">
@@ -373,11 +471,11 @@ export function Step2AssignTests({
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleUnassign(entry.instance_id)}
+                          onClick={() => handleUnassign(entry)}
                           className="p-1 rounded-md transition-colors"
                           style={{ color: "#6ab04c" }}
-                          aria-label="Unassign"
-                          title="Move back to unassigned"
+                          aria-label={`Remove ${entry.test_name} from ${personLabel(idx)}`}
+                          title="Remove this test from this person"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -397,10 +495,7 @@ export function Step2AssignTests({
         style={{ borderColor: "#2d6b35" }}
       >
         <div className="flex items-center justify-between">
-          <span
-            className="text-sm font-medium"
-            style={{ color: "#e8d5a3" }}
-          >
+          <span className="text-sm font-medium" style={{ color: "#e8d5a3" }}>
             Tests subtotal ({cart.length}{" "}
             {cart.length === 1 ? "line" : "lines"})
           </span>
@@ -455,19 +550,17 @@ export function Step2AssignTests({
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
-              {!allCartAssigned && (
+              {testsWithoutAnyone.length > 0 && (
                 <>
-                  {unassignedCartItems.length}{" "}
-                  {unassignedCartItems.length === 1 ? "test is" : "tests are"}{" "}
-                  still unassigned.{" "}
+                  {testsWithoutAnyone.length}{" "}
+                  {testsWithoutAnyone.length === 1 ? "test has" : "tests have"}{" "}
+                  no one checked.{" "}
                 </>
               )}
               {peopleWithoutTests.length > 0 && (
                 <>
                   Each person needs at least one test —{" "}
-                  {peopleWithoutTests
-                    .map((i) => personLabel(i))
-                    .join(", ")}{" "}
+                  {peopleWithoutTests.map((i) => personLabel(i)).join(", ")}{" "}
                   {peopleWithoutTests.length === 1 ? "is" : "are"} still empty.
                 </>
               )}
