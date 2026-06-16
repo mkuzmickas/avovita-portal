@@ -319,7 +319,20 @@ export async function POST(request: NextRequest) {
             firstName: customerFirstName,
             invoiceNumber: invoiceRow.invoice_number,
             totalCad: stripeResult.total_cad,
-            subtotalCad: stripeResult.subtotal_cad,
+            // Stripe's "subtotal" is already net of discounts. The
+            // email's subtotal slot wants the GROSS (pre-discount)
+            // number so the breakdown reads naturally; derive it
+            // from the positive lines here, and pass the discount
+            // total separately for the explicit row.
+            subtotalCad: lines
+              .filter((l) => l.unit_price_cad > 0)
+              .reduce((s, l) => s + l.unit_price_cad * l.quantity, 0),
+            discountCad: lines
+              .filter((l) => l.unit_price_cad < 0)
+              .reduce(
+                (s, l) => s + Math.abs(l.unit_price_cad * l.quantity),
+                0,
+              ),
             taxCad: stripeResult.tax_cad,
             hostedInvoiceUrl: stripeResult.hosted_invoice_url,
             lines: lines.map((l) => ({

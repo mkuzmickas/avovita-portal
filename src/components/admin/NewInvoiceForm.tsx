@@ -274,40 +274,52 @@ export function NewInvoiceForm({
     setLines((prev) => prev.filter((l) => l.id !== id));
   };
 
-  const subtotal = useMemo(
+  // Totals breakdown — kept structurally identical to what Stripe will
+  // compute on finalisation so the preview matches the hosted invoice.
+  //   • grossSubtotal = sum of positive (chargeable) lines
+  //   • discount      = absolute value of all negative (discount) lines
+  //   • taxable       = grossSubtotal − discount
+  //   • taxPreview    = 5% of taxable (Stripe applies the GST rate per
+  //                    line, including negatives, so the rate ends up
+  //                    on the net amount — this preview mirrors that)
+  //   • totalPreview  = taxable + taxPreview
+  const grossSubtotal = useMemo(
     () =>
-      lines.reduce((s, l) => s + l.unit_price_cad * l.quantity, 0),
-    [lines],
-  );
-  const taxPreview = useMemo(
-    () =>
-      // Preview only — Stripe re-computes authoritative GST. Skip
-      // negative (discount) lines from the taxable base in the preview
-      // since most discounts in practice are pre-tax.
       lines
-        .filter((l) => l.unit_price_cad >= 0)
-        .reduce((s, l) => s + l.unit_price_cad * l.quantity, 0) * 0.05,
+        .filter((l) => l.line_type !== "discount")
+        .reduce((s, l) => s + l.unit_price_cad * l.quantity, 0),
     [lines],
   );
-  const totalPreview = subtotal + taxPreview;
+  const discount = useMemo(
+    () =>
+      lines
+        .filter((l) => l.line_type === "discount")
+        .reduce((s, l) => s + Math.abs(l.unit_price_cad * l.quantity), 0),
+    [lines],
+  );
+  const taxableBase = Math.max(0, grossSubtotal - discount);
+  const taxPreview = taxableBase * 0.05;
+  const totalPreview = taxableBase + taxPreview;
 
   // ─── Submit ────────────────────────────────────────────────────
-  const canSubmit = !!customer && lines.length > 0 && subtotal !== 0 && !submitting;
+  const canSubmit =
+    !!customer && lines.length > 0 && totalPreview > 0 && !submitting;
 
   const onSubmit = async () => {
     if (!customer) return;
     setSubmitError(null);
     // Validate per-line description on the client so the API doesn't
-    // have to bounce us back.
+    // have to bounce us back. The discount-must-be-negative check is
+    // unnecessary now that the discount widget stores -|value|
+    // internally regardless of how the admin types it; an empty
+    // discount line trips the "amount required" guard below.
     for (let i = 0; i < lines.length; i++) {
       if (!lines[i].description.trim()) {
         setSubmitError(`Line ${i + 1} needs a description.`);
         return;
       }
-      if (lines[i].line_type === "discount" && lines[i].unit_price_cad >= 0) {
-        setSubmitError(
-          `Line ${i + 1} (discount) must have a negative amount.`,
-        );
+      if (lines[i].line_type === "discount" && lines[i].unit_price_cad === 0) {
+        setSubmitError(`Line ${i + 1} (discount) needs an amount.`);
         return;
       }
     }
@@ -603,60 +615,123 @@ export function NewInvoiceForm({
                   placeholder="Description (visible to customer)"
                   className="mf-input text-sm"
                 />
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label
-                      className="block text-[10px] uppercase mb-0.5"
-                      style={{ color: "#6ab04c" }}
-                    >
-                      Quantity
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={l.quantity}
-                      onChange={(e) =>
-                        updateLine(l.id, {
-                          quantity: Math.max(1, Number(e.target.value)),
-                        })
-                      }
-                      className="mf-input text-sm"
-                    />
+                {l.line_type === "discount" ? (
+                  // Discount: single input. Always stored negative so
+                  // Stripe / totals math is unambiguous. Admin types
+                  // the positive amount; we negate on change. Quantity
+                  // is fixed at 1 for discounts to keep the math
+                  // mental-model simple ("the discount is $X off").
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label
+                        className="block text-[10px] uppercase mb-0.5"
+                        style={{ color: "#e05252" }}
+                      >
+                        Discount amount (CAD)
+                      </label>
+                      <div className="relative">
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none"
+                          style={{ color: "#e05252" }}
+                        >
+                          −$
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={
+                            l.unit_price_cad === 0
+                              ? ""
+                              : Math.abs(l.unit_price_cad)
+                          }
+                          placeholder="0.00"
+                          onChange={(e) => {
+                            const raw = Number(e.target.value);
+                            const positive = Number.isFinite(raw)
+                              ? Math.max(0, raw)
+                              : 0;
+                            updateLine(l.id, {
+                              quantity: 1,
+                              unit_price_cad: -positive,
+                            });
+                          }}
+                          className="mf-input text-sm pl-10"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label
+                        className="block text-[10px] uppercase mb-0.5"
+                        style={{ color: "#6ab04c" }}
+                      >
+                        Applied
+                      </label>
+                      <p
+                        className="px-3 py-1.5 text-sm font-semibold"
+                        style={{ color: "#e05252" }}
+                      >
+                        {CURRENCY.format(l.unit_price_cad * l.quantity)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <label
-                      className="block text-[10px] uppercase mb-0.5"
-                      style={{ color: "#6ab04c" }}
-                    >
-                      Unit price (CAD)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={l.unit_price_cad}
-                      onChange={(e) =>
-                        updateLine(l.id, {
-                          unit_price_cad: Number(e.target.value),
-                        })
-                      }
-                      className="mf-input text-sm"
-                    />
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label
+                        className="block text-[10px] uppercase mb-0.5"
+                        style={{ color: "#6ab04c" }}
+                      >
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={l.quantity}
+                        onChange={(e) =>
+                          updateLine(l.id, {
+                            quantity: Math.max(1, Number(e.target.value)),
+                          })
+                        }
+                        className="mf-input text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="block text-[10px] uppercase mb-0.5"
+                        style={{ color: "#6ab04c" }}
+                      >
+                        Unit price (CAD)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={l.unit_price_cad}
+                        onChange={(e) =>
+                          updateLine(l.id, {
+                            unit_price_cad: Number(e.target.value),
+                          })
+                        }
+                        className="mf-input text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="block text-[10px] uppercase mb-0.5"
+                        style={{ color: "#6ab04c" }}
+                      >
+                        Line total
+                      </label>
+                      <p
+                        className="px-3 py-1.5 text-sm font-semibold"
+                        style={{ color: "#c4973a" }}
+                      >
+                        {CURRENCY.format(l.unit_price_cad * l.quantity)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <label
-                      className="block text-[10px] uppercase mb-0.5"
-                      style={{ color: "#6ab04c" }}
-                    >
-                      Line total
-                    </label>
-                    <p
-                      className="px-3 py-1.5 text-sm font-semibold"
-                      style={{ color: "#c4973a" }}
-                    >
-                      {CURRENCY.format(l.unit_price_cad * l.quantity)}
-                    </p>
-                  </div>
-                </div>
+                )}
               </li>
             ))}
           </ul>
@@ -895,10 +970,19 @@ export function NewInvoiceForm({
         <dl className="space-y-1 text-sm" style={{ color: "#e8d5a3" }}>
           <div className="flex justify-between">
             <dt>Subtotal</dt>
-            <dd>{CURRENCY.format(subtotal)}</dd>
+            <dd>{CURRENCY.format(grossSubtotal)}</dd>
           </div>
+          {discount > 0 && (
+            <div
+              className="flex justify-between"
+              style={{ color: "#e05252" }}
+            >
+              <dt>Discount</dt>
+              <dd>−{CURRENCY.format(discount)}</dd>
+            </div>
+          )}
           <div className="flex justify-between">
-            <dt>GST 5% (preview — Stripe Tax computes final)</dt>
+            <dt>GST 5% (preview — Stripe finalises)</dt>
             <dd>{CURRENCY.format(taxPreview)}</dd>
           </div>
           <div
@@ -956,7 +1040,8 @@ export function NewInvoiceForm({
         <PreviewModal
           customer={customer}
           lines={lines}
-          subtotalPreview={subtotal}
+          grossSubtotalPreview={grossSubtotal}
+          discountPreview={discount}
           taxPreview={taxPreview}
           totalPreview={totalPreview}
           onClose={() => setPreviewOpen(false)}
@@ -978,14 +1063,16 @@ export function NewInvoiceForm({
 function PreviewModal({
   customer,
   lines,
-  subtotalPreview,
+  grossSubtotalPreview,
+  discountPreview,
   taxPreview,
   totalPreview,
   onClose,
 }: {
   customer: ResolvedCustomer;
   lines: DraftLine[];
-  subtotalPreview: number;
+  grossSubtotalPreview: number;
+  discountPreview: number;
   taxPreview: number;
   totalPreview: number;
   onClose: () => void;
@@ -997,7 +1084,8 @@ function PreviewModal({
     firstName,
     invoiceNumber: fakeInvoiceNumber,
     totalCad: totalPreview,
-    subtotalCad: subtotalPreview,
+    subtotalCad: grossSubtotalPreview,
+    discountCad: discountPreview,
     taxCad: taxPreview,
     hostedInvoiceUrl: fakeHostedUrl,
     lines: lines.map((l) => ({
@@ -1153,8 +1241,17 @@ function PreviewModal({
             <dl className="text-sm space-y-1" style={{ color: "#e8d5a3" }}>
               <div className="flex justify-between">
                 <dt>Subtotal</dt>
-                <dd>{CURRENCY.format(subtotalPreview)}</dd>
+                <dd>{CURRENCY.format(grossSubtotalPreview)}</dd>
               </div>
+              {discountPreview > 0 && (
+                <div
+                  className="flex justify-between"
+                  style={{ color: "#e05252" }}
+                >
+                  <dt>Discount</dt>
+                  <dd>−{CURRENCY.format(discountPreview)}</dd>
+                </div>
+              )}
               <div className="flex justify-between">
                 <dt>GST 5% (estimate — Stripe finalises)</dt>
                 <dd>{CURRENCY.format(taxPreview)}</dd>

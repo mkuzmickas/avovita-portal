@@ -25,12 +25,19 @@ export interface InvoiceNotificationProps {
   /** Few-line summary of what's on the invoice. Cap to ~6 entries to
    *  keep the email scannable. */
   lines: InvoiceLineSummary[];
-  /** Pre-tax subtotal — optional; derived from `lines` when omitted so
+  /** Pre-tax, **pre-discount** subtotal (i.e. sum of positive lines
+   *  only). Optional; derived from positive lines when omitted so
    *  callers that don't have a Stripe-authoritative value can still
    *  render the breakdown. */
   subtotalCad?: number;
+  /** Total discount as a **positive** number (the renderer prepends
+   *  the minus sign). Derived from negative-priced lines when omitted.
+   *  When > 0 the breakdown renders an explicit Discount row between
+   *  Subtotal and GST so customers can see what they saved. */
+  discountCad?: number;
   /** GST 5% as a positive number. Optional; derived from
-   *  `totalCad - subtotalCad` when omitted. Rendered only when > 0. */
+   *  `totalCad - (subtotalCad - discountCad)` when omitted. Rendered
+   *  only when > 0. */
   taxCad?: number;
   /** 'products' is a Flow B standalone purchase; 'order_amendment' is
    *  Flow A tests added to an existing order. */
@@ -97,16 +104,36 @@ export function renderInvoiceNotificationEmail(
       ? `<p style="margin: 6px 0 0 0; font-size: 12px; color: #6b7280; font-style: italic;">+ ${props.lines.length - 6} additional line${props.lines.length - 6 === 1 ? "" : "s"}. The full breakdown is on the hosted invoice.</p>`
       : "";
 
-  // Derive subtotal + tax when the caller didn't pass them. The
-  // sum-of-lines fallback matches what we display in the line table
-  // above so the breakdown stays internally consistent.
-  const derivedSubtotal = props.lines.reduce(
-    (s, l) => s + l.unitPriceCad * l.quantity,
+  // Derive subtotal + discount + tax when the caller didn't pass them.
+  // Positive lines feed the gross subtotal; negative lines feed the
+  // discount (rendered as a positive number with a leading minus).
+  // The sum-of-lines fallback matches the line table above so the
+  // breakdown stays internally consistent.
+  const positiveLineTotal = props.lines.reduce(
+    (s, l) => s + Math.max(0, l.unitPriceCad) * l.quantity,
     0,
   );
-  const subtotal = props.subtotalCad ?? derivedSubtotal;
-  const tax = props.taxCad ?? Math.max(0, props.totalCad - subtotal);
-  const showBreakdown = tax > 0.005; // hide when GST is effectively zero
+  const negativeLineTotal = props.lines.reduce(
+    (s, l) => s + Math.max(0, -l.unitPriceCad) * l.quantity,
+    0,
+  );
+  const subtotal = props.subtotalCad ?? positiveLineTotal;
+  const discount = props.discountCad ?? negativeLineTotal;
+  const tax =
+    props.taxCad ?? Math.max(0, props.totalCad - (subtotal - discount));
+  const showDiscount = discount > 0.005;
+  const showBreakdown = tax > 0.005 || showDiscount;
+  const discountRowHtml = showDiscount
+    ? `
+        <tr>
+          <td style="padding: 2px 0; font-size: 13px; color: #b91c1c;">
+            Discount
+          </td>
+          <td style="padding: 2px 0; font-size: 13px; color: #b91c1c; text-align: right; white-space: nowrap;">
+            −${fmtMoney(discount)}
+          </td>
+        </tr>`
+    : "";
   const breakdownRowsHtml = showBreakdown
     ? `
         <tr>
@@ -117,6 +144,7 @@ export function renderInvoiceNotificationEmail(
             ${fmtMoney(subtotal)}
           </td>
         </tr>
+        ${discountRowHtml}
         <tr>
           <td style="padding: 2px 0; font-size: 13px; color: #6b7280;">
             GST 5%

@@ -136,7 +136,20 @@ export async function POST(
             firstName: customerFirstName,
             invoiceNumber: invoice.invoice_number,
             totalCad: invoice.total_cad,
-            subtotalCad: invoice.subtotal_cad,
+            // The DB column `invoices.subtotal_cad` is Stripe's already-
+            // net-of-discount subtotal. The email wants the GROSS
+            // subtotal (positive lines only) so the breakdown can show
+            // an explicit Discount row underneath. Compute both from
+            // the line items table.
+            subtotalCad: lines
+              .filter((l) => l.unit_price_cad > 0)
+              .reduce((s, l) => s + l.unit_price_cad * l.quantity, 0),
+            discountCad: lines
+              .filter((l) => l.unit_price_cad < 0)
+              .reduce(
+                (s, l) => s + Math.abs(l.unit_price_cad * l.quantity),
+                0,
+              ),
             taxCad: invoice.tax_cad,
             hostedInvoiceUrl: invoice.stripe_hosted_invoice_url,
             lines: lines.map((l) => ({
