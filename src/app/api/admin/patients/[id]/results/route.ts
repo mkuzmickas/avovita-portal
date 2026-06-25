@@ -289,7 +289,6 @@ export async function POST(
           await resend.emails.send({
             from: process.env.RESEND_FROM_RESULTS!,
             to: owner.email,
-            bcc: ["mike@avovita.ca"],
             subject: DOCUMENT_UPLOADED_SUBJECT,
             html: renderDocumentUploadedEmail({
               firstName: profile.first_name,
