@@ -508,7 +508,11 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     subtotal_cad: payload.subtotal,
     discount_cad: payload.discount_cad ?? 0,
     home_visit_fee_cad: payload.visit_fees.total,
-    tax_cad: 0,
+    // Stripe Tax (automatic_tax: true on the Checkout Session) computes
+    // GST and adds it to the customer total. Persist the authoritative
+    // value from `total_details.amount_tax` (in cents) so portal/admin
+    // views show the right number instead of $0.00.
+    tax_cad: (session.total_details?.amount_tax ?? 0) / 100,
     total_cad: total,
     notes: null,
     org_id: payload.org_id ?? null,
@@ -827,7 +831,8 @@ async function handleCheckoutCompleteV2(
     subtotal_cad: p.subtotal_tests + p.subtotal_supplements + p.subtotal_resources,
     discount_cad: p.test_discount,
     home_visit_fee_cad: p.visit_fees?.total ?? 0,
-    tax_cad: 0,
+    // Authoritative tax from Stripe Tax (automatic_tax on the session).
+    tax_cad: (session.total_details?.amount_tax ?? 0) / 100,
     total_cad: total,
     notes: null,
     org_id: p.org_id ?? null,
@@ -1157,7 +1162,7 @@ async function handleInvoicePaid(stripeInvoice: Stripe.Invoice) {
   const { data: rowRaw } = await supabase
     .from("invoices")
     .select(
-      "id, invoice_number, account_id, profile_id, order_id, invoice_type, status, total_cad",
+      "id, invoice_number, account_id, profile_id, order_id, invoice_type, status, total_cad, tax_cad",
     )
     .eq("stripe_invoice_id", stripeInvoice.id)
     .maybeSingle();
@@ -1170,6 +1175,7 @@ async function handleInvoicePaid(stripeInvoice: Stripe.Invoice) {
     invoice_type: "products" | "order_amendment";
     status: "draft" | "sent" | "paid" | "void";
     total_cad: number;
+    tax_cad: number | null;
   } | null;
   if (!row) {
     console.warn(
@@ -1267,7 +1273,9 @@ async function handleInvoicePaid(stripeInvoice: Stripe.Invoice) {
           .filter((l) => l.line_type !== "discount")
           .reduce((s, l) => s + l.line_total_cad, 0),
         total_cad: row.total_cad,
-        tax_cad: 0,
+        // Copy the GST the invoice already collected from Stripe so
+        // the auto-created order's portal view shows the right number.
+        tax_cad: row.tax_cad ?? 0,
         notes: `Auto-created from invoice ${row.invoice_number}`,
       })
       .select("id")

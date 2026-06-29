@@ -162,7 +162,25 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
   const suppShipping = order.supplement_shipping_fee_cad ?? 0;
   const subtotalBeforeTax =
     linesSubtotal - discount + homeVisitFee + suppShipping;
-  const estimatedGST = order.tax_cad ?? calculateGST(subtotalBeforeTax);
+  // GST resolution, in order of trust:
+  //   1. `orders.tax_cad` when it's > 0 — populated by the webhook
+  //      from Stripe's authoritative total_details.amount_tax.
+  //   2. `total_cad - subtotalBeforeTax` when total is set but tax
+  //      wasn't persisted (Stripe charged the right amount; the webhook
+  //      stored `tax_cad: 0` before the persistence fix). This rescues
+  //      every existing legacy/AVOVITA-TEST order without a backfill.
+  //   3. 5% of the subtotal as a last-resort estimate for orders that
+  //      have neither total nor tax recorded (very old or stuck rows).
+  // `??` alone wouldn't work — DB stores 0, not null, so we have to
+  // gate on > 0.
+  const persistedTax =
+    order.tax_cad != null && order.tax_cad > 0 ? order.tax_cad : null;
+  const derivedTax =
+    order.total_cad != null && order.total_cad > 0
+      ? Math.max(0, order.total_cad - subtotalBeforeTax)
+      : null;
+  const estimatedGST =
+    persistedTax ?? derivedTax ?? calculateGST(subtotalBeforeTax);
   const totalCharged = order.total_cad ?? subtotalBeforeTax + estimatedGST;
 
   const stripeUrl = order.stripe_payment_intent_id
@@ -389,7 +407,9 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
           </div>
           <div className="flex justify-between" style={{ color: "#e8d5a3" }}>
             <span>
-              {order.tax_cad != null ? "GST" : "Estimated GST (5%)"}
+              {persistedTax !== null || derivedTax !== null
+                ? "GST"
+                : "Estimated GST (5%)"}
             </span>
             <span>{formatCurrency(estimatedGST)}</span>
           </div>
