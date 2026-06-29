@@ -2,18 +2,17 @@ import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { randomBytes } from "crypto";
 
-const PORTAL_URL =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-  "https://portal.avovita.ca";
-
 export interface GuestAccountResult {
   /** Supabase auth user id, ready to attach to orders.account_id. */
   accountId: string;
   /** True when this run created the user; false when an existing user was found. */
   created: boolean;
   /**
-   * Confirmation link for the email-not-yet-confirmed case. Null when the
-   * user already has a confirmed email (no action needed).
+   * Always null. Retained for back-compat with callers that read this
+   * field — magic-link confirmation was removed in favour of the
+   * mandatory set-password gate on the checkout success page.
+   * @deprecated Field is always null and will be removed in a future
+   *   pass once all webhook code paths drop the read.
    */
   confirmationLink: string | null;
   /** True when this account already exists and has a confirmed email. */
@@ -24,16 +23,23 @@ export interface GuestAccountResult {
  * Idempotent guest account provisioning for the auto-create-on-checkout flow.
  *
  * - If no user exists for `email`: create with a server-generated random
- *   password (`email_confirm: false`) and seed an `accounts` profile row.
- *   Return a fresh confirmation link for inclusion in the order email.
- * - If a user exists but is unconfirmed: regenerate the confirmation link.
- * - If a user exists and is confirmed: return their id and signal that no
- *   further action is needed (caller can simply attach the order and prompt
- *   sign-in to track it).
+ *   password the customer never sees, mark the email as confirmed
+ *   (`email_confirm: true`) — having paid is sufficient proof of email
+ *   ownership — and seed an `accounts` profile row. The customer's
+ *   real password is set via /api/auth/set-initial-password on the
+ *   success page (the mandatory gate there is the only path forward
+ *   after checkout).
+ * - If a user exists, regardless of confirmation state, return their id.
+ *   The set-password gate on the success page will overwrite the
+ *   random password with whatever the customer types; if they had a
+ *   prior password it gets replaced. (This is acceptable because the
+ *   gate runs in-session after a successful Stripe payment that
+ *   matches the order's account, so the trust model is the same as
+ *   email-link recovery.)
  *
- * The random password is intentionally never exposed — users activate via
- * the confirmation link and set a password through the optional /portal
- * prompt later.
+ * Magic links are no longer generated — the cron, send-magic-link, and
+ * resend-confirmation endpoints are all stubbed out. Existing
+ * unconfirmed customers without a password recover via /forgot-password.
  */
 export interface GuestAccountOptions {
   /** White-label org the account was created via. Tagged on accounts.org_id. */
@@ -102,31 +108,29 @@ export async function createOrFindGuestAccount(
       }
     }
 
-    if (existing.email_confirmed_at) {
-      return {
-        accountId: existing.id,
-        created: false,
-        confirmationLink: null,
-        alreadyConfirmed: true,
-      };
-    }
-    // Unconfirmed — regenerate a fresh link they can use from the new email
-    const link = await generateConfirmationLink(normEmail);
+    // Existing user — return their id verbatim. We no longer generate
+    // magic links; the set-password gate on the success page is the
+    // only path through after a checkout, and it works whether the
+    // account was confirmed or not (set-initial-password uses the
+    // service-role key and bypasses Supabase's confirmation gate).
     return {
       accountId: existing.id,
       created: false,
-      confirmationLink: link,
-      alreadyConfirmed: false,
+      confirmationLink: null,
+      alreadyConfirmed: !!existing.email_confirmed_at,
     };
   }
 
-  // Brand-new user — random password they never see, no auto email
+  // Brand-new user — random password the customer never sees (the
+  // success-page gate replaces it). email_confirm: true because they
+  // just paid; that's all the proof of ownership we need, and it lets
+  // them sign in immediately after setting their password.
   const tempPassword = randomBytes(24).toString("hex");
   const { data: createdRaw, error: createErr } =
     await service.auth.admin.createUser({
       email: normEmail,
       password: tempPassword,
-      email_confirm: false,
+      email_confirm: true,
     });
 
   if (createErr || !createdRaw?.user) {
@@ -154,25 +158,14 @@ export async function createOrFindGuestAccount(
       { onConflict: "id" }
     );
 
-  const link = await generateConfirmationLink(normEmail);
-
   return {
     accountId,
     created: true,
-    confirmationLink: link,
-    alreadyConfirmed: false,
+    confirmationLink: null,
+    alreadyConfirmed: true,
   };
 }
 
-/**
- * Standalone helper for the cron job — regenerates a confirmation link for
- * an existing unconfirmed user.
- */
-export async function regenerateConfirmationLink(
-  email: string
-): Promise<string> {
-  return generateConfirmationLink(email.trim().toLowerCase());
-}
 
 // ─── Internal helpers ────────────────────────────────────────────────
 
@@ -213,45 +206,3 @@ async function findUserByEmail(
   };
 }
 
-/**
- * Generates an action link the user can click to (a) confirm their email and
- * (b) be signed straight into the portal.
- *
- * Important: we DON'T return Supabase's default `action_link` because that
- * URL goes to Supabase's verify endpoint and redirects with auth tokens in
- * the URL HASH. Hash tokens are only readable by client JS — by the time
- * the browser sets the session, the server-rendered /portal middleware has
- * already redirected to /login because cookies aren't set yet.
- *
- * Instead we build our own URL pointing at /auth/confirm with the
- * `hashed_token` parameter. Our route runs `verifyOtp` server-side, which
- * writes the auth cookies, THEN issues the redirect to /portal — so the
- * middleware sees a valid session on arrival. No client-side race.
- */
-async function generateConfirmationLink(email: string): Promise<string> {
-  const service = createServiceRoleClient();
-  const { data, error } = await service.auth.admin.generateLink({
-    type: "magiclink",
-    email,
-    options: {
-      redirectTo: `${PORTAL_URL}/portal`,
-    },
-  });
-  const props = data?.properties as
-    | {
-        action_link?: string;
-        hashed_token?: string;
-      }
-    | undefined;
-  if (error || !props?.hashed_token) {
-    throw new Error(
-      `auth.admin.generateLink failed: ${error?.message ?? "no hashed_token"}`
-    );
-  }
-  const params = new URLSearchParams({
-    token_hash: props.hashed_token,
-    type: "magiclink",
-    next: "/portal",
-  });
-  return `${PORTAL_URL}/auth/confirm?${params.toString()}`;
-}

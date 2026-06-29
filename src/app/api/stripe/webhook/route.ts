@@ -455,11 +455,12 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const isGuest = !payload.account_user_id;
 
   // ─── 2b. Guest path — auto-create the Supabase account ────────
-  // The new model creates the account immediately at checkout instead
-  // of asking the customer to set a password on the success page. The
-  // confirmation link from createOrFindGuestAccount is embedded in the
-  // order email so the customer can activate with one click.
-  let confirmationLink: string | null = null;
+  // The account is provisioned with email_confirm: true (Stripe payment
+  // is sufficient proof of email ownership) and a random temp password
+  // the customer never sees. The mandatory set-password gate on the
+  // checkout success page replaces the temp password with whatever
+  // the customer types — that gate is the only path through after
+  // payment. No magic links are involved.
   if (isGuest) {
     // Representative (caregiver) flow: the account is provisioned under
     // the rep's contact info, not whichever patient email Stripe happens
@@ -481,7 +482,6 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         phone: rep?.phone ?? null,
       });
       payload.account_user_id = accountResult.accountId;
-      confirmationLink = accountResult.confirmationLink;
       console.log(
         `[stripe-webhook] guest account ${accountResult.accountId} ${
           accountResult.created ? "created" : "linked"
@@ -539,14 +539,16 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
   // ─── 4. Materialise + send confirmation email ──────────────────
   // Single path now — guests went through createOrFindGuestAccount above
-  // so payload.account_user_id is always set by this point.
+  // so payload.account_user_id is always set by this point. No
+  // confirmation link is included in the email; the success-page
+  // gate is where customers set their password and access the portal.
   await materialiseOrder(supabase, orderId, payload, total);
   await sendOrderConfirmationEmail(
     supabase,
     orderId,
     payload,
     session.id,
-    confirmationLink,
+    null,
     total
   );
 
@@ -781,10 +783,12 @@ async function handleCheckoutCompleteV2(
   }
 
   // ─── 6. Guest account provisioning ──────────────────────────────
+  // email_confirm: true at creation time, no magic links. The
+  // mandatory password gate on the success page replaces the temp
+  // password before the customer reaches the portal.
   const total =
     (session.amount_total ?? Math.round(p.total * 100)) / 100;
   const isGuest = !p.account_user_id;
-  let confirmationLink: string | null = null;
 
   if (isGuest) {
     const rep = p.representative ?? null;
@@ -804,7 +808,6 @@ async function handleCheckoutCompleteV2(
       phone: rep?.phone ?? p.contact_phone ?? null,
     });
     p.account_user_id = accountResult.accountId;
-    confirmationLink = accountResult.confirmationLink;
     console.log(
       `[stripe-webhook-v2] guest account ${accountResult.accountId} ${
         accountResult.created ? "created" : "linked"
@@ -889,13 +892,14 @@ async function handleCheckoutCompleteV2(
       );
     }
 
-    // Patient confirmation email for test orders
+    // Patient confirmation email for test orders. No confirmation
+    // link — the success-page password gate replaces the magic link.
     await sendOrderConfirmationEmail(
       supabase,
       orderId,
       v1Payload,
       session.id,
-      confirmationLink,
+      null,
       total,
     );
 
@@ -1093,7 +1097,6 @@ async function handleCheckoutCompleteV2(
     <p style="margin:0 0 8px;font-size:14px;color:#e8d5a3;">${escapeHtml(lineTypeSummary)}</p>
     ${p.has_resources ? '<p style="margin:16px 0 0;font-size:13px;color:#8dc63f;">Your download link(s) will be emailed separately once fulfillment is ready.</p>' : ""}
     ${p.supplement_fulfillment === "coordinated" ? '<p style="margin:16px 0 0;font-size:13px;color:#c4973a;">You selected coordinated delivery — we\'ll be in touch to arrange pickup or delivery.</p>' : ""}
-    ${confirmationLink ? `<p style="margin:24px 0 0;"><a href="${confirmationLink}" style="display:inline-block;background:#c4973a;color:#0a1a0d;padding:12px 28px;text-decoration:none;border-radius:6px;font-weight:700;font-size:14px;">Confirm My Account</a></p><p style="margin:8px 0 0;font-size:11px;color:#6ab04c;">Check your junk folder if the link doesn't arrive.</p>` : ""}
   </td></tr>
   <tr><td style="padding:12px 32px;background:#0f2614;border-top:1px solid #1a3d22;text-align:center;">
     <p style="margin:0;font-size:11px;color:#6ab04c;">AvoVita Wellness Inc. · GST/HST #: 735160749RT0001</p>

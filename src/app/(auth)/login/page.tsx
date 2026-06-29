@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Leaf, Loader2, AlertCircle, Mail, CheckCircle } from "lucide-react";
+import { Leaf, Loader2, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/PasswordInput";
 
@@ -12,8 +12,6 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [magicSent, setMagicSent] = useState(false);
-  const [magicLoading, setMagicLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") ?? "/portal";
@@ -30,14 +28,15 @@ function LoginForm() {
     });
 
     if (authError) {
-      // Auto-created accounts have a random password the user never knows.
-      // When credentials don't match, point them at the email-link option
-      // instead of leaving them stuck on a generic auth error.
+      // Most likely path for legacy customers: they auto-created an
+      // account via checkout before passwords were mandatory and have
+      // never set one. Magic-link sign-in was removed; the only
+      // recovery is /forgot-password.
       const isCredentialError = /invalid.*credential/i.test(authError.message);
       setError(
         isCredentialError
-          ? "Email or password didn't match. If you signed up via an order, you may not have set a password yet — use \"Email me a sign-in link\" below."
-          : authError.message
+          ? "Email or password didn't match. If you haven't set a password yet (older account), use \"Forgot password?\" above to set one."
+          : authError.message,
       );
       setLoading(false);
       return;
@@ -45,32 +44,6 @@ function LoginForm() {
 
     router.push(redirectTo);
     router.refresh();
-  };
-
-  const sendMagicLink = async () => {
-    setError(null);
-    if (!email.trim()) {
-      setError("Enter your email above first, then click the magic link option.");
-      return;
-    }
-    setMagicLoading(true);
-    try {
-      const res = await fetch("/api/auth/send-magic-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Could not send the link. Please try again.");
-        return;
-      }
-      setMagicSent(true);
-    } catch {
-      setError("Network error — please try again.");
-    } finally {
-      setMagicLoading(false);
-    }
   };
 
   return (
@@ -138,52 +111,6 @@ function LoginForm() {
         {loading && <Loader2 className="w-4 h-4 animate-spin" />}
         Sign In
       </button>
-
-      {magicSent ? (
-        <div
-          className="flex items-start gap-2 p-3 rounded-lg text-sm border"
-          style={{
-            backgroundColor: "rgba(141, 198, 63, 0.12)",
-            borderColor: "#8dc63f",
-            color: "#8dc63f",
-          }}
-        >
-          <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>
-            If an account exists for that email, we&apos;ve sent a sign-in link.
-            Check your inbox (and spam folder).
-          </span>
-        </div>
-      ) : (
-        <div
-          className="border-t pt-3 text-center"
-          style={{ borderColor: "#2d6b35" }}
-        >
-          <p className="text-xs mb-2" style={{ color: "#6ab04c" }}>
-            Don&apos;t have a password yet? (Auto-created accounts from a
-            previous order)
-          </p>
-          <button
-            type="button"
-            onClick={sendMagicLink}
-            disabled={magicLoading}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
-            style={{
-              backgroundColor: "transparent",
-              borderColor: "#c4973a",
-              color: "#c4973a",
-              opacity: magicLoading ? 0.6 : 1,
-            }}
-          >
-            {magicLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Mail className="w-4 h-4" />
-            )}
-            Email me a sign-in link
-          </button>
-        </div>
-      )}
 
       <p className="text-center text-sm" style={{ color: "#e8d5a3" }}>
         Don&apos;t have an account?{" "}

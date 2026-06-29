@@ -115,8 +115,9 @@ export function CheckoutSuccessV2({
   dependents,
   representativeRelationship,
   acuityUrl,
-  isOutOfTown = false,
-  outOfTownDropinAddress = null,
+  // isOutOfTown / outOfTownDropinAddress are still accepted by the
+  // props type for prop-shape stability after the OOT revert but the
+  // UI no longer renders OOT-specific copy here, so we don't bind them.
   initialWaiverDone,
   waiverAddendum = null,
   waiverAddendumTitle = null,
@@ -134,6 +135,34 @@ export function CheckoutSuccessV2({
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const hasStabilityWarning = stabilityConstrainedTests.length > 0;
   const [stabilityAcknowledged, setStabilityAcknowledged] = useState(false);
+  // Password is mandatory before the customer can access waiver / booking
+  // / etc. Persist the "done" state in localStorage keyed by Stripe
+  // session id so a refresh of the success URL doesn't re-show the gate.
+  // The initial render is always false to keep server + client markup in
+  // sync; the useEffect below rehydrates from storage post-mount.
+  const passwordStorageKey = `av-password-set-${sessionId}`;
+  const [passwordSet, setPasswordSet] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem(passwordStorageKey) === "1") {
+      // SSR-safe localStorage hydration: first server + client render is
+      // always `false` so markup matches; this effect upgrades to the
+      // stored value on the next client render. One-shot (no loop), so
+      // the cascading-renders warning is over-aggressive here.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPasswordSet(true);
+    }
+  }, [passwordStorageKey]);
+  const handlePasswordSet = () => {
+    setPasswordSet(true);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(passwordStorageKey, "1");
+      } catch {
+        /* ignore */
+      }
+    }
+  };
 
   // Fire the terminal funnel events on mount. The old CheckoutSuccessClient
   // had these but was orphaned when V2 replaced it, which left the admin
@@ -222,15 +251,33 @@ export function CheckoutSuccessV2({
           </div>
         </div>
 
-        <p className="text-sm mb-6 text-center" style={{ color: "#e8d5a3" }}>
-          {hasKitOnlyTests
-            ? "Two quick steps to finish — please complete both below before we send your kit."
-            : "Two quick steps to finish — please complete both below before your collection appointment."}
-        </p>
+        {/* ── Mandatory password gate ───────────────────────────────────
+         *   The customer must set a password before they can reach the
+         *   waiver or booking steps. We dropped the magic-link flow
+         *   entirely so this is the only path to a working portal
+         *   login; without a password the customer can't get back in
+         *   later to read results. Persisted to localStorage so the
+         *   gate doesn't reappear after a page refresh.
+         */}
+        {!passwordSet && (
+          <SetPasswordCard
+            email={email}
+            sessionId={sessionId}
+            onDone={handlePasswordSet}
+          />
+        )}
 
-        {/* ── Waiver + booking/kit steps — waiver for ALL test orders ── */}
-        {hasTests && (<>
-        {/* Step 1 — Waiver */}
+        {passwordSet && (
+          <>
+            <p className="text-sm mb-6 text-center" style={{ color: "#e8d5a3" }}>
+              {hasKitOnlyTests
+                ? "Two quick steps to finish — please complete both below before we send your kit."
+                : "Two quick steps to finish — please complete both below before your collection appointment."}
+            </p>
+
+            {/* ── Waiver + booking/kit steps — waiver for ALL test orders ── */}
+            {hasTests && (<>
+            {/* Step 1 — Waiver */}
         <StepCard
           number={1}
           title={
@@ -259,9 +306,6 @@ export function CheckoutSuccessV2({
             </button>
           )}
         </StepCard>
-
-        {/* Optional — set password between waiver and booking */}
-        <SetPasswordCard email={email} sessionId={sessionId} />
 
         {/* Step 2 — Booking (phlebotomist orders only) OR Kit delivery (kit-only) */}
         {!hasKitOnlyTests ? (
@@ -465,7 +509,11 @@ export function CheckoutSuccessV2({
           </div>
         )}
 
-        {/* Footer */}
+          </>
+        )}
+
+        {/* Footer — always visible, including during the password gate
+         *   so customers always have a support contact in front of them. */}
         <p className="text-center text-xs mt-8" style={{ color: "#6ab04c" }}>
           Questions? Contact{" "}
           <a
@@ -475,12 +523,6 @@ export function CheckoutSuccessV2({
             support@avovita.ca
           </a>
         </p>
-        {hasTests && (
-          <p className="text-center text-xs mt-2" style={{ color: "#6ab04c" }}>
-            We&apos;ve also emailed you a portal sign-in link — use it later to
-            view your results.
-          </p>
-        )}
         <p className="text-center text-[10px] mt-3" style={{ color: "#6ab04c" }}>
           AvoVita Wellness Inc. · GST/HST #: 735160749RT0001
         </p>
@@ -934,47 +976,76 @@ function CheckboxRow({
 function SetPasswordCard({
   email,
   sessionId,
+  onDone,
 }: {
   email: string;
   sessionId: string;
+  /** Notify parent that the password is set so it can reveal the rest
+   *  of the success page. Parent owns the localStorage persistence. */
+  onDone: () => void;
 }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [waitingForAccount, setWaitingForAccount] = useState(false);
 
   const canSubmit =
     password.length >= 8 &&
     password === confirm &&
-    !submitting &&
-    !done;
+    !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     setError(null);
-    try {
-      const res = await fetch("/api/auth/set-initial-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session_id: sessionId,
-          email,
-          password,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error ?? "Failed to set password");
+    setWaitingForAccount(false);
+    // Race vs Stripe webhook: the success-page URL is hit the moment
+    // Stripe redirects, often before the webhook has finished writing
+    // the orders.account_id. The set-initial-password route returns
+    // 425 in that window. Retry every 2s for ~30s while messaging the
+    // wait — almost all webhooks land in <3s.
+    const MAX_ATTEMPTS = 15;
+    const DELAY_MS = 2000;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        const res = await fetch("/api/auth/set-initial-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: sessionId,
+            email,
+            password,
+          }),
+        });
+        if (res.ok) {
+          setSubmitting(false);
+          setWaitingForAccount(false);
+          onDone();
+          return;
+        }
+        if (res.status === 425) {
+          setWaitingForAccount(true);
+          await new Promise((r) => setTimeout(r, DELAY_MS));
+          continue;
+        }
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to set password (HTTP ${res.status})`);
+        setSubmitting(false);
+        setWaitingForAccount(false);
+        return;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to set password");
+        setSubmitting(false);
+        setWaitingForAccount(false);
         return;
       }
-      setDone(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to set password");
-    } finally {
-      setSubmitting(false);
     }
+    setError(
+      "Account is still being set up. Please refresh and try again in a moment — if this persists, email support@avovita.ca.",
+    );
+    setSubmitting(false);
+    setWaitingForAccount(false);
   };
 
   return (
@@ -994,7 +1065,7 @@ function SetPasswordCard({
             className="text-xs font-semibold uppercase tracking-wider"
             style={{ color: "#c4973a" }}
           >
-            Optional
+            Required
           </p>
           <h2
             className="font-heading text-xl sm:text-2xl font-semibold"
@@ -1003,35 +1074,21 @@ function SetPasswordCard({
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            One last thing — secure your account
+            Set your portal password
           </h2>
         </div>
       </div>
 
-      {done ? (
-        <div
-          className="flex items-center gap-2 p-3 rounded-lg border"
-          style={{
-            backgroundColor: "rgba(141, 198, 63, 0.12)",
-            borderColor: "#8dc63f",
-          }}
-        >
-          <CheckCircle
-            className="w-5 h-5 shrink-0"
-            style={{ color: "#8dc63f" }}
-          />
-          <p className="text-sm" style={{ color: "#8dc63f" }}>
-            Password saved. You can now sign in at portal.avovita.ca with{" "}
-            <span className="font-semibold">{email}</span>.
-          </p>
-        </div>
-      ) : (
-        <>
-          <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
-            Set a password so you can sign in later without needing a magic
-            link. You can skip this — we&apos;ll always email you a sign-in
-            link when you need one.
-          </p>
+      <>
+        <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
+          Choose a password so you can sign in at portal.avovita.ca to
+          view your waiver, book your appointment, and read results. Use
+          your email{" "}
+          <span className="font-semibold" style={{ color: "#ffffff" }}>
+            {email}
+          </span>{" "}
+          and the password you set here.
+        </p>
           <div className="space-y-3">
             <div>
               <label
@@ -1091,10 +1148,13 @@ function SetPasswordCard({
             className="mf-btn-primary w-full py-3 mt-4"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {submitting ? "Saving…" : "Set Password"}
+            {waitingForAccount
+              ? "Setting up your account…"
+              : submitting
+                ? "Saving…"
+                : "Set password and continue"}
           </button>
         </>
-      )}
     </div>
   );
 }
