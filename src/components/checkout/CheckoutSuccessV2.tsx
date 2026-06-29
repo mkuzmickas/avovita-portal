@@ -13,6 +13,7 @@ import {
   CheckSquare,
   Square,
   AlertCircle,
+  Info,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { StabilityDisclaimerModal } from "./StabilityDisclaimerModal";
@@ -147,9 +148,7 @@ export function CheckoutSuccessV2({
     if (window.localStorage.getItem(passwordStorageKey) === "1") {
       // SSR-safe localStorage hydration: first server + client render is
       // always `false` so markup matches; this effect upgrades to the
-      // stored value on the next client render. One-shot (no loop), so
-      // the cascading-renders warning is over-aggressive here.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // stored value on the next client render. One-shot, no cascade.
       setPasswordSet(true);
     }
   }, [passwordStorageKey]);
@@ -163,6 +162,83 @@ export function CheckoutSuccessV2({
       }
     }
   };
+
+  // Booking-confirmed gate over the Acuity iframe. Customers were
+  // running into Acuity's "this time is no longer available" message
+  // AFTER they'd already booked — Acuity treats the customer's own
+  // just-taken slot as "taken" on a second submit. They'd panic, pick
+  // another slot, and end up with two confirmed FloLabs appointments.
+  // Locking the iframe behind a manual "I've booked" button (with
+  // postMessage auto-detect as a bonus) eliminates the second-click
+  // window. State persists in localStorage by session id so a refresh
+  // doesn't drop the lock.
+  const appointmentStorageKey = `av-appointment-booked-${sessionId}`;
+  const [appointmentBooked, setAppointmentBooked] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem(appointmentStorageKey) === "1") {
+      setAppointmentBooked(true);
+    }
+  }, [appointmentStorageKey]);
+  const markAppointmentBooked = () => {
+    setAppointmentBooked(true);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(appointmentStorageKey, "1");
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+  const reopenScheduler = () => {
+    setAppointmentBooked(false);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(appointmentStorageKey);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+  // Bonus auto-detect: Acuity's embedded scheduler postMessages the
+  // parent on successful booking. Shapes have varied across Acuity /
+  // Squarespace Scheduling versions — match defensively on
+  // origin + any appointment-related keyword in the payload. False
+  // positives just lock the iframe a little eagerly; the customer
+  // can re-open if they hadn't actually booked yet.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (e: MessageEvent) => {
+      if (
+        !/acuityscheduling\.com|squarespacescheduling\.com|app\.acuity/.test(
+          e.origin,
+        )
+      ) {
+        return;
+      }
+      const data = e.data;
+      const matchesAppointment = (s: unknown) =>
+        typeof s === "string" &&
+        /appointment.*(sched|book|confirm)|booked|confirmed/i.test(s);
+      let booked = false;
+      if (matchesAppointment(data)) {
+        booked = true;
+      } else if (data && typeof data === "object") {
+        const obj = data as Record<string, unknown>;
+        if (
+          matchesAppointment(obj.type) ||
+          matchesAppointment(obj.event) ||
+          matchesAppointment(obj.action)
+        ) {
+          booked = true;
+        }
+      }
+      if (booked) markAppointmentBooked();
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fire the terminal funnel events on mount. The old CheckoutSuccessClient
   // had these but was orphaned when V2 replaced it, which left the admin
@@ -338,56 +414,150 @@ export function CheckoutSuccessV2({
             />
           )}
           {(!hasStabilityWarning || stabilityAcknowledged) && (<>
-          <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
-            Pick the date and time that works best for the in-home
-            visit.
-          </p>
-          <div
-            className="relative rounded-xl border overflow-hidden"
-            style={{
-              backgroundColor: "#0f2614",
-              borderColor: "#2d6b35",
-              minHeight: "700px",
-            }}
-          >
-            {!iframeLoaded && (
+          {appointmentBooked ? (
+            <div
+              className="rounded-xl border p-5"
+              style={{
+                backgroundColor: "rgba(141,198,63,0.08)",
+                borderColor: "#8dc63f",
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <CheckCircle
+                  className="w-6 h-6 shrink-0 mt-0.5"
+                  style={{ color: "#8dc63f" }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="text-base font-semibold"
+                    style={{ color: "#ffffff" }}
+                  >
+                    Appointment booked
+                  </p>
+                  <p
+                    className="text-sm mt-1"
+                    style={{ color: "#e8d5a3" }}
+                  >
+                    Look for a confirmation email from FloLabs in the next
+                    few minutes (check your junk folder if it doesn&apos;t
+                    arrive). If you need to change the time, please email{" "}
+                    <a
+                      href="mailto:support@avovita.ca"
+                      style={{ color: "#c4973a", textDecoration: "underline" }}
+                    >
+                      support@avovita.ca
+                    </a>{" "}
+                    rather than booking a second slot.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={reopenScheduler}
+                    className="text-xs mt-3 underline"
+                    style={{ color: "#6ab04c" }}
+                  >
+                    I didn&apos;t book yet — re-open the scheduler
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm mb-3" style={{ color: "#e8d5a3" }}>
+                Pick the date and time that works best for the in-home
+                visit.
+              </p>
+
+              {/* The "time is no longer available" trap — Acuity treats
+               *   your own just-taken slot as "taken" if you click
+               *   Confirm twice, so customers re-booked another slot
+               *   thinking the first one failed. Prominent banner is
+               *   the cheap mitigation; the lock-after-booking button
+               *   below is the structural fix. */}
               <div
-                className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10"
-                style={{ backgroundColor: "#0f2614" }}
+                className="flex items-start gap-2 rounded-lg border px-3 py-2.5 mb-4"
+                style={{
+                  backgroundColor: "rgba(196,151,58,0.08)",
+                  borderColor: "#c4973a",
+                }}
               >
-                <Loader2
-                  className="w-6 h-6 animate-spin"
+                <Info
+                  className="w-4 h-4 shrink-0 mt-0.5"
                   style={{ color: "#c4973a" }}
                 />
-                <p className="text-xs" style={{ color: "#e8d5a3" }}>
-                  Loading scheduler…
+                <p
+                  className="text-xs leading-relaxed"
+                  style={{ color: "#e8d5a3" }}
+                >
+                  <strong style={{ color: "#ffffff" }}>
+                    Important:
+                  </strong>{" "}
+                  If you see a &ldquo;this time is no longer
+                  available&rdquo; message right after pressing Confirm,
+                  your booking probably DID go through. Check your email
+                  for a FloLabs confirmation before picking another time —
+                  selecting again creates a second appointment that we
+                  have to cancel manually.
                 </p>
               </div>
-            )}
-            <iframe
-              src={acuityUrl}
-              title="Book your collection appointment"
-              onLoad={() => setIframeLoaded(true)}
-              className="w-full block"
-              style={{
-                height: "700px",
-                border: "none",
-                backgroundColor: "transparent",
-              }}
-              allow="payment"
-            />
-          </div>
-          <p className="text-xs mt-3 text-center" style={{ color: "#6ab04c" }}>
-            Trouble loading the scheduler?{" "}
-            <a
-              href={acuityUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "#c4973a", textDecoration: "underline" }}
-            >
-              Open in a new tab <ExternalLink className="inline w-3 h-3" />
-            </a>
-          </p>
+
+              <div
+                className="relative rounded-xl border overflow-hidden"
+                style={{
+                  backgroundColor: "#0f2614",
+                  borderColor: "#2d6b35",
+                  minHeight: "700px",
+                }}
+              >
+                {!iframeLoaded && (
+                  <div
+                    className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10"
+                    style={{ backgroundColor: "#0f2614" }}
+                  >
+                    <Loader2
+                      className="w-6 h-6 animate-spin"
+                      style={{ color: "#c4973a" }}
+                    />
+                    <p className="text-xs" style={{ color: "#e8d5a3" }}>
+                      Loading scheduler…
+                    </p>
+                  </div>
+                )}
+                <iframe
+                  src={acuityUrl}
+                  title="Book your collection appointment"
+                  onLoad={() => setIframeLoaded(true)}
+                  className="w-full block"
+                  style={{
+                    height: "700px",
+                    border: "none",
+                    backgroundColor: "transparent",
+                  }}
+                  allow="payment"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={markAppointmentBooked}
+                className="mf-btn-primary w-full sm:w-auto px-5 py-2.5 mt-4"
+              >
+                <CheckCircle className="w-4 h-4" />
+                I&apos;ve booked my appointment
+              </button>
+
+              <p className="text-xs mt-3 text-center" style={{ color: "#6ab04c" }}>
+                Trouble loading the scheduler?{" "}
+                <a
+                  href={acuityUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#c4973a", textDecoration: "underline" }}
+                >
+                  Open in a new tab <ExternalLink className="inline w-3 h-3" />
+                </a>
+              </p>
+            </>
+          )}
           </>)}
           {hasStabilityWarning && !stabilityAcknowledged && (
             <p className="text-sm" style={{ color: "#6ab04c" }}>
