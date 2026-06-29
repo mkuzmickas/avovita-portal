@@ -56,7 +56,9 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Order lines with product + profile joins
+  // Order lines with product + profile joins. `collection_method`
+  // is pulled so the panel can recompute the kit service fee
+  // (Stripe collects it but it isn't a persisted order column).
   const { data: linesRaw } = await service
     .from("order_lines")
     .select(
@@ -64,7 +66,7 @@ export async function GET(
       id, line_type, test_id, supplement_id, resource_id,
       profile_id, quantity, unit_price_cad,
       custom_description, custom_notes,
-      test:tests(name, sku),
+      test:tests(name, sku, collection_method),
       supplement:supplements(name, sku),
       resource:resources(title),
       profile:patient_profiles(first_name, last_name)
@@ -94,7 +96,11 @@ export async function GET(
     profile_id: string | null;
     quantity: number;
     unit_price_cad: number;
-    test: { name: string; sku: string | null } | null;
+    test: {
+      name: string;
+      sku: string | null;
+      collection_method: "phlebotomist_draw" | "self_collected_kit" | null;
+    } | null;
     supplement: { name: string; sku: string | null } | null;
     resource: { title: string } | null;
     profile: { first_name: string; last_name: string } | null;

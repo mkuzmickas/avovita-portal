@@ -28,7 +28,11 @@ interface OrderLine {
   /** Set when line_type='custom' — admin-only internal note. Never
    *  rendered customer-side. */
   custom_notes: string | null;
-  test: { name: string; sku: string | null } | null;
+  test: {
+    name: string;
+    sku: string | null;
+    collection_method: "phlebotomist_draw" | "self_collected_kit" | null;
+  } | null;
   supplement: { name: string; sku: string | null } | null;
   resource: { title: string } | null;
   profile: { first_name: string; last_name: string } | null;
@@ -160,8 +164,32 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
   );
   const discount = order.discount_cad ?? 0;
   const suppShipping = order.supplement_shipping_fee_cad ?? 0;
+
+  // Self-collected kit service fee. Stripe collects it (it's a separate
+  // line on the Checkout Session) but the orders table has no column
+  // for it — so we recompute from the same rules the cart uses, based
+  // on the tests' collection_method:
+  //   • zero kit tests → $0 (no row)
+  //   • kit only       → $60 (two-way courier)
+  //   • kit + phleb    → $30 (pickup only; phlebotomist drops the kit)
+  // Without this, the subtotal-vs-total gap silently inflates the
+  // derived GST row (e.g. $60 kit fee was being lumped into GST).
+  const testLines = lines.filter((l) => l.line_type === "test" && l.test);
+  const hasKitTests = testLines.some(
+    (l) => l.test?.collection_method === "self_collected_kit",
+  );
+  const hasPhlebTests = testLines.some(
+    (l) =>
+      l.test?.collection_method === "phlebotomist_draw" ||
+      !l.test?.collection_method,
+  );
+  const kitServiceFee = hasKitTests ? (hasPhlebTests ? 30 : 60) : 0;
+  const kitServiceLabel = hasPhlebTests
+    ? "Kit pickup (phlebotomist)"
+    : "Kit delivery & pickup";
+
   const subtotalBeforeTax =
-    linesSubtotal - discount + homeVisitFee + suppShipping;
+    linesSubtotal - discount + homeVisitFee + suppShipping + kitServiceFee;
   // GST resolution, in order of trust:
   //   1. `orders.tax_cad` when it's > 0 — populated by the webhook
   //      from Stripe's authoritative total_details.amount_tax.
@@ -376,6 +404,12 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
             <div className="flex justify-between" style={{ color: "#e8d5a3" }}>
               <span>Supplement shipping</span>
               <span>{formatCurrency(suppShipping)}</span>
+            </div>
+          )}
+          {kitServiceFee > 0 && (
+            <div className="flex justify-between" style={{ color: "#e8d5a3" }}>
+              <span>{kitServiceLabel}</span>
+              <span>{formatCurrency(kitServiceFee)}</span>
             </div>
           )}
           {discount > 0 && (
