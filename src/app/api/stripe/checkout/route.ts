@@ -409,26 +409,28 @@ export async function POST(request: NextRequest) {
       Math.round(promoWholeCartCad * 100);
     const cappedCouponCents = Math.min(rawCouponCents, preCouponLineTotalCents);
     if (cappedCouponCents > 0) {
-      const parts: string[] = [];
-      if (appliedDiscountTotal > 0) {
-        parts.push(
-          `Multi-test discount −$${appliedDiscountTotal.toFixed(2)}`
-        );
-      }
+      // Coupon name has a 40-character ceiling in Stripe's API. Pick
+      // the shortest label that still tells the customer what they
+      // got, in this order of specificity:
+      //   • both quote + multi-test → "AvoVita — Quote discount"
+      //   • quote alone             → "AvoVita — Quote discount"
+      //   • promo alone             → truncated promo label
+      //   • multi-test alone        → "AvoVita — Multi-test discount"
+      //   • fallback                → "AvoVita discount"
+      // The full breakdown lives on the coupon's metadata for our
+      // records / reconciliation.
+      const clampCouponName = (s: string) =>
+        s.length <= 40 ? s : `${s.slice(0, 37)}…`;
+      let couponName: string;
       if (quoteDiscountCad > 0) {
-        parts.push(
-          quoteNumber
-            ? `Quote ${quoteNumber} −$${quoteDiscountCad.toFixed(2)}`
-            : `Quote discount −$${quoteDiscountCad.toFixed(2)}`
-        );
+        couponName = "AvoVita — Quote discount";
+      } else if (promoWholeCartCad > 0 && promoLabel) {
+        couponName = clampCouponName(`AvoVita — ${promoLabel}`);
+      } else if (appliedDiscountTotal > 0) {
+        couponName = "AvoVita — Multi-test discount";
+      } else {
+        couponName = "AvoVita discount";
       }
-      if (promoWholeCartCad > 0) {
-        parts.push(
-          `${promoLabel ?? "Promo"} −$${promoWholeCartCad.toFixed(2)}`
-        );
-      }
-      const couponName =
-        parts.length > 0 ? `AvoVita — ${parts.join(" + ")}` : "AvoVita discount";
       const coupon = await stripe.coupons.create({
         amount_off: cappedCouponCents,
         currency: "cad",
