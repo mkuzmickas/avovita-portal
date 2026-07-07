@@ -3,6 +3,7 @@ import { stripe } from "@/lib/stripe";
 import { applyPromoCode } from "@/lib/promo/promoCodes";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { computeDiscount } from "@/lib/checkout/discount";
+import { getGstTaxRate } from "@/lib/stripe/getGstTaxRate";
 import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
 
 /**
@@ -422,12 +423,21 @@ export async function POST(request: NextRequest) {
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
 
+    // Fixed 5% GST via a Stripe TaxRate applied to every line item.
+    // See src/app/api/stripe/checkout/route.ts for the rationale —
+    // AvoVita's rate is uniform 5% Alberta GST so we don't need
+    // Stripe's automatic_tax address prompt.
+    const gstRateId = await getGstTaxRate();
+    const lineItemsWithTax = lineItems.map((li) => ({
+      ...li,
+      tax_rates: [gstRateId],
+    }));
+
     // ─── Create Stripe Checkout Session ───────────────────────────
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "cad",
-      automatic_tax: { enabled: true },
-      line_items: lineItems,
+      line_items: lineItemsWithTax,
       success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/checkout`,
       customer_email: customerEmail,

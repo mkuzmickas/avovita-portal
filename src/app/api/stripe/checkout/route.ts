@@ -4,6 +4,7 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { resolveManualDiscount } from "@/lib/quotes/totals";
 import { applyPromoCode } from "@/lib/promo/promoCodes";
+import { getGstTaxRate } from "@/lib/stripe/getGstTaxRate";
 import type { CheckoutPayload } from "@/lib/checkout/types";
 
 /**
@@ -519,11 +520,21 @@ export async function POST(request: NextRequest) {
       metadata[`chunk_${i}`] = c;
     });
 
+    // Fixed 5% GST via a Stripe TaxRate applied as default_tax_rates
+    // on every line item. AvoVita is Alberta-based and charges 5% GST
+    // regardless of the customer's billing address (Alberta has no
+    // PST). Using automatic_tax: true made Stripe ask for a billing
+    // address to compute the rate; default_tax_rates makes it fixed
+    // and skips the address prompt entirely.
+    const gstRateId = await getGstTaxRate();
+    const lineItemsWithTax = lineItems.map((li) => ({
+      ...li,
+      tax_rates: [gstRateId],
+    }));
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "cad",
-      automatic_tax: { enabled: true },
-      line_items: lineItems,
+      line_items: lineItemsWithTax,
       success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/checkout`,
       customer_email: customerEmail,
