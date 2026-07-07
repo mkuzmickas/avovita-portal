@@ -40,6 +40,13 @@ export interface OrderConfirmationProps {
   subtotal: number;
   /** Multi-test discount total. 0 or undefined to hide the row. */
   discountTotal?: number;
+  /** Admin-entered quote discount + whole-cart promo, applied at
+   *  Stripe as an amount_off coupon. Rendered as its own row after
+   *  the multi-test discount when > 0. */
+  additionalDiscountCad?: number;
+  /** GST (Stripe-authoritative). Rendered as its own row above the
+   *  Total. Omit / 0 to hide. */
+  taxCad?: number;
   visitFeeBase: number;
   visitFeeAdditional: number;
   visitFeeTotal: number;
@@ -90,6 +97,8 @@ export function renderOrderConfirmationEmail(
     tests,
     subtotal,
     discountTotal,
+    additionalDiscountCad,
+    taxCad,
     visitFeeBase,
     visitFeeAdditional,
     visitFeeTotal,
@@ -108,7 +117,16 @@ export function renderOrderConfirmationEmail(
   } = props;
 
   const hasPromo = promoDiscount > 0;
-  const finalTotal = Math.max(0, total - (hasPromo ? promoDiscount : 0));
+  // `total` is the pre-tax net-of-discounts figure carried from the
+  // payload; add GST + subtract promo to land on the actual charged
+  // amount so the confirmation email matches the Stripe receipt
+  // instead of showing $70+ less than the customer was billed.
+  const tax = taxCad ?? 0;
+  const additionalDiscount = additionalDiscountCad ?? 0;
+  const finalTotal = Math.max(
+    0,
+    total - (hasPromo ? promoDiscount : 0) + tax,
+  );
 
   const waiverUrl = stripeSessionId
     ? `${portalUrl}/checkout/success?session_id=${encodeURIComponent(stripeSessionId)}`
@@ -149,16 +167,15 @@ export function renderOrderConfirmationEmail(
   void visitFeeAdditional;
 
   const hasDiscount = (discountTotal ?? 0) > 0;
-  const subtotalAfterDiscount = subtotal - (discountTotal ?? 0);
+  // Multi-test discount only. Dropped the intermediate "Subtotal after
+  // discount" row — it was confusing when additional discount / GST
+  // rows also stacked below, and the final Total makes the arithmetic
+  // clear anyway.
   const discountRowsHtml = hasDiscount
     ? `
         <tr>
           <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">Multi-test discount ($20 off per test)</td>
           <td style="padding: 6px 0; text-align: right; color: #6fa030; font-size: 13px; font-weight: 600;">−${formatCurrency(discountTotal ?? 0)}</td>
-        </tr>
-        <tr>
-          <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Subtotal after discount</td>
-          <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(subtotalAfterDiscount)}</td>
         </tr>
       `
     : "";
@@ -218,6 +235,15 @@ export function renderOrderConfirmationEmail(
                 </tr>
                 ${discountRowsHtml}
                 ${
+                  additionalDiscount > 0
+                    ? `
+                <tr>
+                  <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">Additional discount</td>
+                  <td style="padding: 6px 0; text-align: right; color: #6fa030; font-size: 13px; font-weight: 600;">−${formatCurrency(additionalDiscount)}</td>
+                </tr>`
+                    : ""
+                }
+                ${
                   hasPhlebotomistTests && visitFeeTotal > 0
                     ? `
                 <tr>
@@ -257,6 +283,15 @@ export function renderOrderConfirmationEmail(
                 <tr>
                   <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">${escapeHtml(promoDiscountLabel(promoCode ?? null))}</td>
                   <td style="padding: 6px 0; text-align: right; color: #6fa030; font-size: 13px; font-weight: 600;">−${formatCurrency(promoDiscount)}</td>
+                </tr>`
+                    : ""
+                }
+                ${
+                  tax > 0
+                    ? `
+                <tr>
+                  <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">GST 5%</td>
+                  <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(tax)}</td>
                 </tr>`
                     : ""
                 }

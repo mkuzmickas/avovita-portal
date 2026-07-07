@@ -382,12 +382,25 @@ export async function sendOrderConfirmationEmail(
       (m) => m === "self_collected_kit",
     );
 
+    // GST derivation. `payload.total` is the pre-tax net-of-discounts
+    // figure (subtotal − multi-test discount − additional discount +
+    // visit fee); `totalPaidCad` is the Stripe-authoritative charged
+    // amount which includes GST. The difference is the tax we render
+    // in its own row. Falls back to 0 for legacy callers that don't
+    // pass the paid total — those emails just skip the GST row and
+    // show a pre-tax total (same as the old behaviour).
+    const taxCad =
+      totalPaidCad != null
+        ? Math.max(0, totalPaidCad - payload.total)
+        : 0;
     const html = renderOrderConfirmationEmail({
       firstName,
       orderIdShort,
       tests: emailTests,
       subtotal: payload.subtotal,
       discountTotal: payload.discount_cad ?? 0,
+      additionalDiscountCad: payload.additional_discount_cad ?? 0,
+      taxCad,
       visitFeeBase: payload.visit_fees.base,
       visitFeeAdditional:
         payload.visit_fees.additional_per_person *
@@ -512,6 +525,13 @@ export async function sendGuestOrderConfirmationEmail(
       promoCode && typeof totalPaidCad === "number"
         ? Math.max(0, payload.total - totalPaidCad)
         : 0;
+    // GST derivation — see the sibling call site above for the same
+    // calculation. Difference between Stripe-authoritative paid total
+    // and our pre-tax payload total.
+    const taxCad =
+      totalPaidCad != null
+        ? Math.max(0, totalPaidCad - payload.total)
+        : 0;
 
     const html = renderOrderConfirmationEmail({
       firstName,
@@ -519,6 +539,8 @@ export async function sendGuestOrderConfirmationEmail(
       tests: emailTests,
       subtotal: payload.subtotal,
       discountTotal: payload.discount_cad ?? 0,
+      additionalDiscountCad: payload.additional_discount_cad ?? 0,
+      taxCad,
       visitFeeBase: payload.visit_fees.base,
       visitFeeAdditional:
         payload.visit_fees.additional_per_person *
