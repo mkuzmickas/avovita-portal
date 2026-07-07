@@ -90,8 +90,16 @@ const RIGHT_X = PAGE_W - MARGIN;
 
 const COLOR_TEXT = rgb(0.08, 0.1, 0.05); // near-black
 const COLOR_MUTED = rgb(0.4, 0.42, 0.38);
-const COLOR_ACCENT = rgb(0.77, 0.59, 0.23); // gold #c4973a
+const COLOR_ACCENT = rgb(0.77, 0.59, 0.23); // gold #c4973a — brand primary
+const COLOR_BRAND_DEEP = rgb(0.06, 0.15, 0.08); // #0f2614 — deep brand green
+const COLOR_BRAND_GREEN = rgb(0.18, 0.42, 0.21); // #2d6b35 — mid brand green
+const COLOR_ACCENT_GREEN = rgb(0.42, 0.69, 0.3); // #6ab04c — "paid" green
+const COLOR_HEADER_BAND = rgb(0.94, 0.95, 0.92); // light green tint for the
+// table-header band. Very light so black-and-white printers don't ghost.
+const COLOR_ON_BAND = rgb(0.06, 0.15, 0.08); // deep green on light band
 const COLOR_RULE = rgb(0.85, 0.85, 0.83);
+const COLOR_RULE_GREEN = rgb(0.18, 0.42, 0.21); // brand green ruled line
+
 
 const SIZE_TITLE = 22;
 const SIZE_H2 = 11;
@@ -195,8 +203,16 @@ export async function generateInvoicePdf(
   let y = PAGE_H - MARGIN;
 
   // ── Header: business identity (left) + INVOICE label (right) ──
-  text("AvoVita Wellness", MARGIN, y, { size: 18, bold: true, color: COLOR_ACCENT });
-  textRight("INVOICE", RIGHT_X, y, { size: SIZE_TITLE, bold: true });
+  text("AvoVita Wellness", MARGIN, y, {
+    size: 18,
+    bold: true,
+    color: COLOR_ACCENT,
+  });
+  textRight("INVOICE", RIGHT_X, y, {
+    size: SIZE_TITLE,
+    bold: true,
+    color: COLOR_BRAND_DEEP,
+  });
   y -= 18;
   text("204 Cougartown Close SW, Calgary, AB T3H 0B2", MARGIN, y, {
     size: SIZE_SMALL,
@@ -213,7 +229,9 @@ export async function generateInvoicePdf(
     color: COLOR_MUTED,
   });
   y -= 18;
-  y = rule(y);
+  // Green rule under the header ties the brand palette to the top
+  // of the page without needing a full-width band.
+  y = rule(y, COLOR_RULE_GREEN);
 
   // ── Order identification block (left) + dates (right) ──
   const orderBlockY = y;
@@ -226,9 +244,13 @@ export async function generateInvoicePdf(
     size: 14,
     bold: true,
   });
+  // Status colour: "Paid" reads green; anything else stays in the
+  // brand gold so unpaid/pending status still pops without pretending
+  // to be complete.
+  const paidLike = /paid|complete/i.test(invoice.statusLabel);
   text(invoice.statusLabel, MARGIN, orderBlockY - 28, {
     size: SIZE_BODY,
-    color: COLOR_ACCENT,
+    color: paidLike ? COLOR_ACCENT_GREEN : COLOR_ACCENT,
     bold: true,
   });
 
@@ -252,7 +274,7 @@ export async function generateInvoicePdf(
   text("Client Information", MARGIN, y, {
     size: SIZE_H2,
     bold: true,
-    color: COLOR_ACCENT,
+    color: COLOR_BRAND_GREEN,
   });
   y -= 14;
   text(invoice.clientName, MARGIN, y, { bold: true });
@@ -291,28 +313,40 @@ export async function generateInvoicePdf(
   const COL_TOTAL_X = RIGHT_X;
   const COL_DESC_W = 290;
 
-  text("Description", COL_DESC_X, y, {
+  // Subtle green band behind the column headers to brand the table
+  // without overwhelming the invoice. Draw first, then place text
+  // vertically centered on the band.
+  const bandY = y - 14;
+  const bandH = 18;
+  page.drawRectangle({
+    x: MARGIN - 6,
+    y: bandY,
+    width: RIGHT_X - MARGIN + 12,
+    height: bandH,
+    color: COLOR_HEADER_BAND,
+  });
+  const headerTextY = bandY + 5;
+  text("Description", COL_DESC_X, headerTextY, {
     size: SIZE_SMALL,
     bold: true,
-    color: COLOR_MUTED,
+    color: COLOR_ON_BAND,
   });
-  textRight("Qty", COL_QTY_X + 25, y, {
+  textRight("Qty", COL_QTY_X + 25, headerTextY, {
     size: SIZE_SMALL,
     bold: true,
-    color: COLOR_MUTED,
+    color: COLOR_ON_BAND,
   });
-  textRight("Unit", COL_PRICE_X + 50, y, {
+  textRight("Unit", COL_PRICE_X + 50, headerTextY, {
     size: SIZE_SMALL,
     bold: true,
-    color: COLOR_MUTED,
+    color: COLOR_ON_BAND,
   });
-  textRight("Line Total", COL_TOTAL_X, y, {
+  textRight("Line Total", COL_TOTAL_X, headerTextY, {
     size: SIZE_SMALL,
     bold: true,
-    color: COLOR_MUTED,
+    color: COLOR_ON_BAND,
   });
-  y -= 6;
-  y = rule(y);
+  y = bandY - 4;
 
   for (const line of invoice.lines) {
     const lineTotal = line.unitPriceCad * line.quantity;
@@ -350,9 +384,27 @@ export async function generateInvoicePdf(
   const totalsLeftX = MARGIN + 340;
   const rowH = 14;
   let totalsY = y - 6;
-  const totalRow = (label: string, value: string, opts: { bold?: boolean } = {}) => {
-    text(label, totalsLeftX, totalsY, { size: SIZE_BODY, bold: opts.bold, color: opts.bold ? COLOR_TEXT : COLOR_MUTED });
-    textRight(value, COL_TOTAL_X, totalsY, { size: SIZE_BODY, bold: opts.bold });
+  const totalRow = (
+    label: string,
+    value: string,
+    opts: { bold?: boolean; accent?: boolean } = {},
+  ) => {
+    const labelColor = opts.accent
+      ? COLOR_BRAND_DEEP
+      : opts.bold
+        ? COLOR_TEXT
+        : COLOR_MUTED;
+    const valueColor = opts.accent ? COLOR_ACCENT : COLOR_TEXT;
+    text(label, totalsLeftX, totalsY, {
+      size: SIZE_BODY,
+      bold: opts.bold,
+      color: labelColor,
+    });
+    textRight(value, COL_TOTAL_X, totalsY, {
+      size: SIZE_BODY,
+      bold: opts.bold,
+      color: valueColor,
+    });
     totalsY -= rowH;
   };
   totalRow("Subtotal", fmtMoney(invoice.subtotalCad));
@@ -376,9 +428,12 @@ export async function generateInvoicePdf(
     start: { x: totalsLeftX, y: totalsY + 6 },
     end: { x: RIGHT_X, y: totalsY + 6 },
     thickness: 0.75,
-    color: COLOR_RULE,
+    color: COLOR_RULE_GREEN,
   });
-  totalRow("Total Paid", fmtMoney(invoice.totalCad), { bold: true });
+  totalRow("Total Paid", fmtMoney(invoice.totalCad), {
+    bold: true,
+    accent: true,
+  });
   totalRow("Balance Owing", fmtMoney(0));
 
   // ── Payment + footer ──
@@ -389,6 +444,7 @@ export async function generateInvoicePdf(
   text("Thank you for choosing AvoVita Wellness.", MARGIN, y, {
     size: SIZE_BODY,
     bold: true,
+    color: COLOR_BRAND_GREEN,
   });
   y -= 12;
   text(
