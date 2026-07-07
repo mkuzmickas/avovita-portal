@@ -60,7 +60,8 @@ export async function GET(
       .from("orders")
       .select(
         `id, status, account_id,
-         subtotal_cad, discount_cad, home_visit_fee_cad, tax_cad,
+         subtotal_cad, discount_cad, additional_discount_cad,
+         home_visit_fee_cad, tax_cad,
          total_cad, appointment_date, created_at,
          stripe_payment_intent_id,
          account:accounts(email),
@@ -125,6 +126,7 @@ export async function GET(
       account_id: string | null;
       subtotal_cad: number | null;
       discount_cad: number | null;
+      additional_discount_cad: number | null;
       home_visit_fee_cad: number | null;
       tax_cad: number | null;
       total_cad: number | null;
@@ -272,10 +274,18 @@ export async function GET(
     // a proper invoice with the GST line broken out.
     const subtotal = order.subtotal_cad ?? 0;
     const discount = order.discount_cad ?? 0;
+    // Admin-entered quote discount + whole-cart promo (persisted in
+    // migration 027). Legacy pre-fix orders have this at 0 and had
+    // the discount baked into subtotal instead — their totals still
+    // reconcile, they just don't show the breakdown row.
+    const additionalDiscount = order.additional_discount_cad ?? 0;
     const homeVisit = order.home_visit_fee_cad ?? 0;
     const total = order.total_cad ?? 0;
     const storedTax = order.tax_cad ?? 0;
-    const derivedTax = Math.max(0, total - (subtotal - discount + homeVisit));
+    const derivedTax = Math.max(
+      0,
+      total - (subtotal - discount - additionalDiscount + homeVisit),
+    );
     const taxCad =
       storedTax > 0 ? storedTax : Math.round(derivedTax * 100) / 100;
 
@@ -296,6 +306,7 @@ export async function GET(
 
       subtotalCad: subtotal,
       discountCad: discount,
+      additionalDiscountCad: additionalDiscount,
       homeVisitFeeCad: homeVisit,
       taxCad,
       totalCad: total,

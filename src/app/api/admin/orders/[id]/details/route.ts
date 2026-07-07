@@ -40,8 +40,9 @@ export async function GET(
     .from("orders")
     .select(
       `
-      id, status, subtotal_cad, discount_cad, home_visit_fee_cad,
-      tax_cad, total_cad, notes, stripe_payment_intent_id,
+      id, status, subtotal_cad, discount_cad, additional_discount_cad,
+      home_visit_fee_cad, tax_cad, total_cad, notes,
+      stripe_payment_intent_id,
       stripe_session_id, has_supplements, supplement_fulfillment,
       supplement_shipping_fee_cad, supplement_shipping_address,
       fedex_tracking_number, shipped_at, appointment_date,

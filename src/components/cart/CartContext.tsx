@@ -224,6 +224,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [pendingScheduleAck, setPendingScheduleAck] =
     useState<CartItemTest | null>(null);
+  // Every schedule-restricted item that arrived before the ack modal
+  // was answered. Committed as a batch on confirm; discarded on cancel.
+  // Fixes the quote-accept bug where two CBCs from one quote arrived
+  // in the same sync tick and the second was silently dropped.
+  const [queuedForAck, setQueuedForAck] = useState<CartItemTest[]>([]);
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -264,10 +269,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     (item: CartItem) => {
       // Schedule-restricted gate. Triggers the ack modal when adding
       // any entry in SCHEDULE_ACK_TESTS UNLESS the cart already contains
-      // one — that ack covers the second add. Functional setPendingAck
-      // and setCart (in commitAdd) avoid the stale-closure bug we
-      // caught earlier: a clearCart() + addItem() sequence sees the
-      // freshly-cleared cart, not the pre-clear one.
+      // one — that ack covers the second add.
+      //
+      // `queuedForAck` is an ARRAY, not a slot: the quote-accept loop
+      // in CheckoutClient calls addItem synchronously for every quote
+      // line, so multiple schedule-restricted items can arrive in the
+      // same React tick with an empty `prev` cart. A single-slot queue
+      // silently discarded every item after the first. Now every
+      // pending item is collected; on modal confirm we commit them all.
+      // The modal's copy is driven by the first item (they'd all be
+      // the same restricted test in practice).
       if (item.line_type === "test" && scheduleAckEntryFor(item)) {
         setCart((prev) => {
           const alreadyAcked = prev.some(hasScheduleAck);
@@ -278,8 +289,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             if (prev.some((c) => cartItemId(c) === id)) return prev;
             return [...prev, item];
           }
-          // Need ack — queue the item, modal will commit on confirm.
+          // Not acked yet — queue for the batch. First item drives
+          // the modal; rest ride along and commit on the same
+          // confirm click.
           setPendingScheduleAck((cur) => cur ?? item);
+          setQueuedForAck((cur) => [...cur, item]);
           return prev;
         });
         return;
@@ -347,10 +361,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         <ScheduleAckModal
           item={pendingScheduleAck}
           onConfirm={() => {
-            commitAdd(pendingScheduleAck);
+            // Commit the whole queue so multiple same-tick adds
+            // (quote accept with 2 CBCs, etc.) all survive the ack.
+            queuedForAck.forEach(commitAdd);
+            setQueuedForAck([]);
             setPendingScheduleAck(null);
           }}
-          onCancel={() => setPendingScheduleAck(null)}
+          onCancel={() => {
+            setQueuedForAck([]);
+            setPendingScheduleAck(null);
+          }}
         />
       )}
     </CartContext.Provider>

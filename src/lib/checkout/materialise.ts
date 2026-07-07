@@ -51,6 +51,14 @@ export interface OrderMetadataPayload {
   subtotal: number;
   /** Multi-test discount total ($20 × line count, 0 if under threshold). */
   discount_cad: number;
+  /**
+   * Sum of the admin-entered quote discount + whole-cart promo code,
+   * applied at Stripe as a single amount_off coupon. Kept separate
+   * from `discount_cad` so the invoice PDF can render a distinct
+   * "Additional discount" row. Optional for back-compat with any
+   * pre-fix sessions still in flight.
+   */
+  additional_discount_cad?: number;
   total: number;
   /** Customer-facing Stripe Promotion Code applied at checkout, if any. */
   promo_code?: string | null;

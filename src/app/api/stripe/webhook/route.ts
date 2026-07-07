@@ -507,6 +507,11 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     status: "confirmed" as const,
     subtotal_cad: payload.subtotal,
     discount_cad: payload.discount_cad ?? 0,
+    // Admin-entered quote discount + whole-cart promo code, summed and
+    // applied at Stripe as a single amount_off coupon. Kept separate
+    // from `discount_cad` (which is only the per-line multi-test
+    // discount) so the invoice PDF can display them as their own row.
+    additional_discount_cad: payload.additional_discount_cad ?? 0,
     home_visit_fee_cad: payload.visit_fees.total,
     // Stripe Tax (automatic_tax: true on the Checkout Session) computes
     // GST and adds it to the customer total. Persist the authoritative

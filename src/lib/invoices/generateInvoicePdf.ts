@@ -59,9 +59,18 @@ export interface InvoiceInput {
   /** Pre-discount, pre-tax subtotal of all lines + visit fee.
    *  Caller passes whatever lives on the order. */
   subtotalCad: number;
-  /** Combined multi-test + promo discount as a positive number. 0 when
-   *  none. */
+  /** Multi-test discount ($20 × line count) as a positive number. 0
+   *  when the cart didn't hit the threshold. Rendered as its own row.
+   */
   discountCad: number;
+  /** Admin-entered quote discount + whole-cart promo, applied at
+   *  checkout as a Stripe amount_off coupon. Kept separate from
+   *  `discountCad` so the PDF can render "Additional discount −$X"
+   *  as its own row below the multi-test discount. Optional / 0
+   *  for legacy orders that pre-date the coupon path (their
+   *  additional discount was baked into subtotal so the totals still
+   *  reconcile). */
+  additionalDiscountCad?: number;
   /** Home-visit / collection fee as on orders.home_visit_fee_cad. */
   homeVisitFeeCad: number;
   /** GST as stored on orders.tax_cad. */
@@ -345,7 +354,13 @@ export async function generateInvoicePdf(
   };
   totalRow("Subtotal", fmtMoney(invoice.subtotalCad));
   if (invoice.discountCad > 0) {
-    totalRow("Discount", `-${fmtMoney(invoice.discountCad)}`);
+    totalRow("Multi-test discount", `-${fmtMoney(invoice.discountCad)}`);
+  }
+  if ((invoice.additionalDiscountCad ?? 0) > 0) {
+    totalRow(
+      "Additional discount",
+      `-${fmtMoney(invoice.additionalDiscountCad ?? 0)}`,
+    );
   }
   if (invoice.homeVisitFeeCad > 0) {
     totalRow("Home visit fee", fmtMoney(invoice.homeVisitFeeCad));

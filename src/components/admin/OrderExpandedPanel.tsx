@@ -56,6 +56,7 @@ interface OrderDetails {
     id: string;
     subtotal_cad: number | null;
     discount_cad: number | null;
+    additional_discount_cad: number | null;
     home_visit_fee_cad: number | null;
     tax_cad: number | null;
     total_cad: number | null;
@@ -163,6 +164,10 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
     0,
   );
   const discount = order.discount_cad ?? 0;
+  // Quote/promo additional discount, applied as a Stripe amount_off
+  // coupon at checkout time. Migration 027 introduced the column;
+  // pre-fix orders have 0 here.
+  const additionalDiscount = order.additional_discount_cad ?? 0;
   const suppShipping = order.supplement_shipping_fee_cad ?? 0;
 
   // Self-collected kit service fee. Stripe collects it (it's a separate
@@ -189,7 +194,12 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
     : "Kit delivery & pickup";
 
   const subtotalBeforeTax =
-    linesSubtotal - discount + homeVisitFee + suppShipping + kitServiceFee;
+    linesSubtotal -
+    discount -
+    additionalDiscount +
+    homeVisitFee +
+    suppShipping +
+    kitServiceFee;
   // GST resolution, in order of trust:
   //   1. `orders.tax_cad` when it's > 0 — populated by the webhook
   //      from Stripe's authoritative total_details.amount_tax.
@@ -424,6 +434,15 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
                   : ""}
               </span>
               <span>−{formatCurrency(discount)}</span>
+            </div>
+          )}
+          {additionalDiscount > 0 && (
+            <div
+              className="flex justify-between font-medium"
+              style={{ color: "#8dc63f" }}
+            >
+              <span>Additional discount (quote / promo)</span>
+              <span>−{formatCurrency(additionalDiscount)}</span>
             </div>
           )}
         </div>

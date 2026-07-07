@@ -240,7 +240,26 @@ export async function POST(request: NextRequest) {
       quantity: 1,
     });
 
-    // ─── Build metadata payload ───────────────────────────────────
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
+
+    // ─── Resolve customer email for Stripe ─────────────────────────
+    const accountHolder = body.persons.find((p) => p.is_account_holder);
+    let customerEmail: string | undefined;
+    if (body.account_user_id) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user?.email) customerEmail = user.email;
+    }
+    // Caregiver flow: pre-fill Stripe with the rep's email rather than
+    // asking them for it again at checkout (the webhook uses the same
+    // value to provision their account).
+    if (!customerEmail && body.representative?.email) {
+      customerEmail = body.representative.email.trim().toLowerCase();
+    }
+    void accountHolder; // We collect email at success-page time for guests
+
     // Resolve the org affinity (set by /org/[slug] persistence). Slug
     // → id is done server-side so the client can't forge an arbitrary
     // org_id. If the slug doesn't match an active org, we silently
@@ -251,8 +270,171 @@ export async function POST(request: NextRequest) {
       resolvedOrgId = await getOrgIdBySlug(body.org_slug.trim());
     }
 
-    // We serialise the order data into a single JSON string and split it
-    // across numbered metadata keys (each ≤ 500 chars per Stripe limit).
+    // ─── Handle accepted quote's additional discount ─────────────
+    // Server-side lookup pinned to the quote (not the cart) so the
+    // customer sees exactly what the email promised — the admin's
+    // entered discount, resolved against the quote's snapshotted
+    // subtotal / visit fee / multi-test discount.
+    //
+    // Applied as a Stripe `amount_off` coupon (see the block after the
+    // promo check) rather than by mutating per-line unit_amount. The
+    // old per-line "eat from top" loop routinely zeroed the first
+    // line when the discount was larger than a single line's price
+    // (customer receipt showed a $499 test at $0.00). A coupon shows
+    // as its own line on the receipt and the invoice PDF, and gets
+    // persisted as `orders.additional_discount_cad` for the PDF to
+    // display separately from the multi-test discount.
+    const quoteNumber: string =
+      typeof body.quote_number === "string" ? body.quote_number.trim() : "";
+    let quoteDiscountCad = 0;
+    if (quoteNumber) {
+      const { data: quoteRow } = await createServiceRoleClient()
+        .from("quotes")
+        .select(
+          "status, expires_at, subtotal_cad, discount_cad, visit_fee_cad, manual_discount_value, manual_discount_type"
+        )
+        .eq("quote_number", quoteNumber)
+        .maybeSingle();
+      type QuoteRow = {
+        status: string;
+        expires_at: string | null;
+        subtotal_cad: number;
+        discount_cad: number;
+        visit_fee_cad: number;
+        manual_discount_value: number | null;
+        manual_discount_type: "amount" | "percent" | null;
+      };
+      const q = quoteRow as QuoteRow | null;
+      const allowedStatus = ["draft", "sent", "accepted"];
+      const expired =
+        !!q?.expires_at && new Date(q.expires_at) <= new Date();
+      if (q && allowedStatus.includes(q.status) && !expired) {
+        quoteDiscountCad = resolveManualDiscount(
+          Number(q.subtotal_cad),
+          Number(q.discount_cad),
+          Number(q.visit_fee_cad),
+          {
+            value: Number(q.manual_discount_value ?? 0),
+            type: q.manual_discount_type ?? "amount",
+          }
+        );
+      }
+    }
+
+    // ─── Handle promo code via the shared registry ────────────────
+    // Resolved fresh against src/lib/promo/promoCodes.ts so the client
+    // can't tamper with the discount amount. The registry is the one
+    // place that defines discount shape (whole-cart vs fee-line) and
+    // display label; this route just asks where to subtract from.
+    //
+    // Whole-cart promos now go into the same coupon as the quote
+    // discount below. The flolabs-base-fee variant still mutates the
+    // visit-fee line's unit_amount directly — the discount amount is
+    // small ($85 max) and clamped to the line total, so no zeroing
+    // risk, and it preserves the "specifically waives the base fee"
+    // wording on the Stripe receipt.
+    let promoWholeCartCad = 0;
+    let promoLabel: string | null = null;
+    const rawPromoCode: string =
+      typeof body.promo_code === "string" ? body.promo_code.trim() : "";
+    if (rawPromoCode) {
+      const preTaxCartDollars =
+        lineItems.reduce((s, li) => s + li.price_data.unit_amount, 0) / 100;
+      const result = applyPromoCode(rawPromoCode, {
+        visitFeeCad: visitFeeTotal,
+        preTaxCartCad: preTaxCartDollars,
+      });
+      if (result.valid) {
+        if (result.applied_to_line === "flolabs_base_fee") {
+          const visitLine = lineItems.find(
+            (li) => li.price_data.product_data.name === "FloLabs Home Visit Fee"
+          );
+          if (visitLine) {
+            const takeCents = Math.min(
+              Math.round(result.discount_cad * 100),
+              visitLine.price_data.unit_amount
+            );
+            visitLine.price_data.unit_amount -= takeCents;
+            if (takeCents > 0) {
+              visitLine.price_data.product_data.description =
+                (visitLine.price_data.product_data.description ?? "") +
+                ` · ${result.display_label} −$${(takeCents / 100).toFixed(2)}`;
+            }
+          }
+        } else {
+          // Whole-cart — feed into the coupon path below so the
+          // Stripe receipt shows the promo as its own line and no
+          // per-item unit_amount gets clobbered.
+          const preTaxLineTotalCents = lineItems.reduce(
+            (s, li) => s + li.price_data.unit_amount,
+            0
+          );
+          const cappedCents = Math.min(
+            Math.round(result.discount_cad * 100),
+            preTaxLineTotalCents
+          );
+          promoWholeCartCad = cappedCents / 100;
+          promoLabel = result.display_label;
+        }
+      }
+    }
+
+    // ─── Build a single Stripe coupon for quote + whole-cart promo ─
+    // Stripe Checkout accepts at most one coupon per session; we sum
+    // both amounts into one coupon so the receipt reads as a single
+    // "AvoVita adjustment" line rather than mystery per-line price
+    // cuts. The coupon is created dynamically per session (Stripe
+    // supports up to 10 000 by default; we log-only cleanup can come
+    // later if we hit the ceiling).
+    let sessionDiscounts:
+      | Array<{ coupon: string }>
+      | undefined = undefined;
+    const preCouponLineTotalCents = lineItems.reduce(
+      (s, li) => s + li.price_data.unit_amount,
+      0
+    );
+    const rawCouponCents =
+      Math.round(quoteDiscountCad * 100) + Math.round(promoWholeCartCad * 100);
+    const cappedCouponCents = Math.min(rawCouponCents, preCouponLineTotalCents);
+    if (cappedCouponCents > 0) {
+      const parts: string[] = [];
+      if (quoteDiscountCad > 0) {
+        parts.push(
+          quoteNumber
+            ? `Quote ${quoteNumber} −$${quoteDiscountCad.toFixed(2)}`
+            : `Quote discount −$${quoteDiscountCad.toFixed(2)}`
+        );
+      }
+      if (promoWholeCartCad > 0) {
+        parts.push(
+          `${promoLabel ?? "Promo"} −$${promoWholeCartCad.toFixed(2)}`
+        );
+      }
+      const couponName =
+        parts.length > 0 ? `AvoVita — ${parts.join(" + ")}` : "AvoVita discount";
+      const coupon = await stripe.coupons.create({
+        amount_off: cappedCouponCents,
+        currency: "cad",
+        duration: "once",
+        name: couponName,
+        metadata: {
+          avovita_quote_discount_cad: quoteDiscountCad.toFixed(2),
+          avovita_promo_discount_cad: promoWholeCartCad.toFixed(2),
+          avovita_quote_number: quoteNumber || "",
+        },
+      });
+      sessionDiscounts = [{ coupon: coupon.id }];
+    }
+    // Track the total additional discount so the webhook can persist
+    // it on orders.additional_discount_cad. The invoice PDF renders it
+    // as its own row separate from the per-line multi-test discount.
+    const additionalDiscountCad = cappedCouponCents / 100;
+
+    // ─── Build metadata payload ───────────────────────────────────
+    // Deferred until here so `additional_discount_cad` (computed from
+    // the coupon logic above) can ride along in the webhook metadata.
+    // We serialise the order data into a single JSON string and split
+    // it across numbered metadata keys (each ≤ 500 chars per Stripe).
     const orderPayload = {
       version: 1,
       account_user_id: body.account_user_id,
@@ -282,7 +464,12 @@ export async function POST(request: NextRequest) {
       },
       subtotal: serverSubtotal,
       discount_cad: appliedDiscountTotal,
-      total: serverSubtotal - appliedDiscountTotal + visitFeeTotal,
+      additional_discount_cad: additionalDiscountCad,
+      total:
+        serverSubtotal -
+        appliedDiscountTotal -
+        additionalDiscountCad +
+        visitFeeTotal,
       promo_code: body.promo_code?.trim().toUpperCase() || null,
       org_id: resolvedOrgId,
       representative: body.representative
@@ -313,147 +500,6 @@ export async function POST(request: NextRequest) {
       metadata[`chunk_${i}`] = c;
     });
 
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
-
-    // ─── Resolve customer email for Stripe ─────────────────────────
-    const accountHolder = body.persons.find((p) => p.is_account_holder);
-    let customerEmail: string | undefined;
-    if (body.account_user_id) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user?.email) customerEmail = user.email;
-    }
-    // Caregiver flow: pre-fill Stripe with the rep's email rather than
-    // asking them for it again at checkout (the webhook uses the same
-    // value to provision their account).
-    if (!customerEmail && body.representative?.email) {
-      customerEmail = body.representative.email.trim().toLowerCase();
-    }
-    void accountHolder; // We collect email at success-page time for guests
-
-    // ─── Handle accepted quote's additional discount ─────────────
-    // Server-side lookup pinned to the quote (not the cart) so the
-    // customer sees exactly what the email promised — the admin's
-    // entered discount, resolved against the quote's snapshotted
-    // subtotal / visit fee / multi-test discount.
-    const quoteNumber: string =
-      typeof body.quote_number === "string" ? body.quote_number.trim() : "";
-    if (quoteNumber) {
-      const { data: quoteRow } = await createServiceRoleClient()
-        .from("quotes")
-        .select(
-          "status, expires_at, subtotal_cad, discount_cad, visit_fee_cad, manual_discount_value, manual_discount_type"
-        )
-        .eq("quote_number", quoteNumber)
-        .maybeSingle();
-      type QuoteRow = {
-        status: string;
-        expires_at: string | null;
-        subtotal_cad: number;
-        discount_cad: number;
-        visit_fee_cad: number;
-        manual_discount_value: number | null;
-        manual_discount_type: "amount" | "percent" | null;
-      };
-      const q = quoteRow as QuoteRow | null;
-      const allowedStatus = ["draft", "sent", "accepted"];
-      const expired =
-        !!q?.expires_at && new Date(q.expires_at) <= new Date();
-      if (q && allowedStatus.includes(q.status) && !expired) {
-        const quoteDiscountCad = resolveManualDiscount(
-          Number(q.subtotal_cad),
-          Number(q.discount_cad),
-          Number(q.visit_fee_cad),
-          {
-            value: Number(q.manual_discount_value ?? 0),
-            type: q.manual_discount_type ?? "amount",
-          }
-        );
-        let remainingCents = Math.round(quoteDiscountCad * 100);
-        const preDiscountCents = lineItems.reduce(
-          (s, li) => s + li.price_data.unit_amount,
-          0
-        );
-        remainingCents = Math.min(remainingCents, preDiscountCents);
-        for (const li of lineItems) {
-          if (remainingCents <= 0) break;
-          const take = Math.min(li.price_data.unit_amount, remainingCents);
-          li.price_data.unit_amount -= take;
-          remainingCents -= take;
-          if (take > 0) {
-            const suffix = ` · Quote ${quoteNumber} −$${(take / 100).toFixed(2)}`;
-            li.price_data.product_data.description =
-              (li.price_data.product_data.description ?? "") + suffix;
-          }
-        }
-      }
-    }
-
-    // ─── Handle promo code via the shared registry ────────────────
-    // Resolved fresh against src/lib/promo/promoCodes.ts so the client
-    // can't tamper with the discount amount. The registry is the one
-    // place that defines discount shape (whole-cart vs fee-line) and
-    // display label; this route just asks where to subtract from.
-    const rawPromoCode: string =
-      typeof body.promo_code === "string" ? body.promo_code.trim() : "";
-    if (rawPromoCode) {
-      const preTaxCartDollars =
-        lineItems.reduce((s, li) => s + li.price_data.unit_amount, 0) / 100;
-      const result = applyPromoCode(rawPromoCode, {
-        visitFeeCad: visitFeeTotal,
-        preTaxCartCad: preTaxCartDollars,
-      });
-      if (result.valid) {
-        const labelSuffix = ` · ${result.display_label}`;
-        if (result.applied_to_line === "flolabs_base_fee") {
-          // Subtract exclusively from the FloLabs Home Visit Fee line —
-          // the $55/additional-person surcharges live in the same line
-          // total so the cap at line.unit_amount handles the "only
-          // waive the base" behaviour: discount is registry amount
-          // clamped to what the line actually charges.
-          const visitLine = lineItems.find(
-            (li) => li.price_data.product_data.name === "FloLabs Home Visit Fee"
-          );
-          if (visitLine) {
-            const takeCents = Math.min(
-              Math.round(result.discount_cad * 100),
-              visitLine.price_data.unit_amount
-            );
-            visitLine.price_data.unit_amount -= takeCents;
-            if (takeCents > 0) {
-              visitLine.price_data.product_data.description =
-                (visitLine.price_data.product_data.description ?? "") +
-                labelSuffix +
-                ` −$${(takeCents / 100).toFixed(2)}`;
-            }
-          }
-        } else {
-          // Whole-cart: walk every line_item subtracting until the
-          // discount is exhausted. Same mechanism as multi-test.
-          let remainingCents = Math.round(result.discount_cad * 100);
-          const preDiscountCents = lineItems.reduce(
-            (s, li) => s + li.price_data.unit_amount,
-            0
-          );
-          remainingCents = Math.min(remainingCents, preDiscountCents);
-          for (const li of lineItems) {
-            if (remainingCents <= 0) break;
-            const take = Math.min(li.price_data.unit_amount, remainingCents);
-            li.price_data.unit_amount -= take;
-            remainingCents -= take;
-            if (take > 0) {
-              li.price_data.product_data.description =
-                (li.price_data.product_data.description ?? "") +
-                labelSuffix +
-                ` −$${(take / 100).toFixed(2)}`;
-            }
-          }
-        }
-      }
-    }
-
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "cad",
@@ -463,6 +509,7 @@ export async function POST(request: NextRequest) {
       cancel_url: `${appUrl}/checkout`,
       customer_email: customerEmail,
       metadata,
+      discounts: sessionDiscounts,
       payment_intent_data: {
         metadata: {
           version: "1",
