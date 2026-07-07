@@ -136,6 +136,77 @@ export async function GET(
     (a, b) => (typeOrder[a.line_type] ?? 9) - (typeOrder[b.line_type] ?? 9),
   );
 
+  // Products-order fallback. When an order was auto-created from a
+  // paid Stripe invoice (order_type='products') AND the webhook was
+  // unable to mirror the invoice's line items onto order_lines (early
+  // versions of the webhook skipped the mirror when the invoice had
+  // no profile_id — orders like #CE1A6C4F ended up with 0 order_lines
+  // even though $354 of stuff was paid for), render from
+  // invoice_line_items via the invoice link. This makes the admin
+  // panel show the same items the customer paid for without needing
+  // a backfill.
+  if (lines.length === 0) {
+    const { data: invoiceRow } = await service
+      .from("invoices")
+      .select("id, invoice_number")
+      .eq("order_id", id)
+      .maybeSingle();
+    const invoice = invoiceRow as {
+      id: string;
+      invoice_number: string;
+    } | null;
+    if (invoice) {
+      const { data: invoiceLinesRaw } = await service
+        .from("invoice_line_items")
+        .select(
+          `line_type, test_id, supplement_id, description,
+           quantity, unit_price_cad, line_total_cad, sort_order,
+           test:tests(name, sku, collection_method),
+           supplement:supplements(name, sku)`,
+        )
+        .eq("invoice_id", invoice.id)
+        .order("sort_order", { ascending: true });
+      const invoiceLines = (
+        (invoiceLinesRaw ?? []) as unknown as Array<Record<string, unknown>>
+      ).map((l, i) => {
+        const normalize = (v: unknown) =>
+          Array.isArray(v) ? v[0] ?? null : v ?? null;
+        return {
+          id: `invoice-${invoice.id}-${i}`,
+          line_type:
+            l.line_type === "test" || l.line_type === "supplement"
+              ? (l.line_type as string)
+              : "resource",
+          test_id: (l.test_id as string | null) ?? null,
+          supplement_id: (l.supplement_id as string | null) ?? null,
+          resource_id: null,
+          profile_id: null,
+          quantity: l.quantity as number,
+          unit_price_cad: l.unit_price_cad as number,
+          custom_description:
+            l.line_type === "test" || l.line_type === "supplement"
+              ? null
+              : (l.description as string),
+          custom_notes: null,
+          test: normalize(l.test),
+          supplement: normalize(l.supplement),
+          resource: null,
+          profile: null,
+        } as Line;
+      });
+      // Discounts already fold into the order-level totals; skip
+      // them here so we don't render a negative row twice.
+      const nonDiscount = invoiceLines.filter(
+        (l) => (l as unknown as { line_type: string }).line_type !== "discount",
+      );
+      lines.push(...nonDiscount);
+      lines.sort(
+        (a, b) =>
+          (typeOrder[a.line_type] ?? 9) - (typeOrder[b.line_type] ?? 9),
+      );
+    }
+  }
+
   const order = orderRaw as Record<string, unknown>;
   const account = Array.isArray(order.account)
     ? order.account[0]

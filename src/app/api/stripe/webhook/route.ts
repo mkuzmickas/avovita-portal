@@ -1296,7 +1296,26 @@ async function handleInvoicePaid(stripeInvoice: Stripe.Invoice) {
 
     // Mirror the invoice lines onto order_lines so the portal renders
     // the same items. Each is paid by definition.
-    if (lineRows.length > 0 && row.profile_id) {
+    //
+    // profile_id is NOT NULL on order_lines. Invoices don't always
+    // carry one (Flow B standalone invoices for a walk-in supplement
+    // purchase have no assigned profile); fall back to the account's
+    // primary profile so the mirror still runs. If neither is set,
+    // skip the mirror and let the details API render from
+    // invoice_line_items instead — order.subtotal_cad + total_cad
+    // still reconcile without order_lines.
+    let profileIdForLines = row.profile_id;
+    if (!profileIdForLines) {
+      const { data: primaryProfile } = await supabase
+        .from("patient_profiles")
+        .select("id")
+        .eq("account_id", row.account_id)
+        .eq("is_primary", true)
+        .maybeSingle();
+      profileIdForLines =
+        (primaryProfile as { id: string } | null)?.id ?? null;
+    }
+    if (lineRows.length > 0 && profileIdForLines) {
       const orderLineInserts = lineRows
         .filter((l) => l.line_type !== "discount") // discounts already in totals
         .map((l) => {
@@ -1314,7 +1333,7 @@ async function handleInvoicePaid(stripeInvoice: Stripe.Invoice) {
             test_id: l.line_type === "test" ? l.test_id : null,
             supplement_id:
               l.line_type === "supplement" ? l.supplement_id : null,
-            profile_id: row.profile_id,
+            profile_id: profileIdForLines,
             quantity: l.quantity,
             unit_price_cad: l.unit_price_cad,
             custom_description:

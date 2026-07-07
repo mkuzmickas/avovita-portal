@@ -158,11 +158,18 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
     homeVisitFee > 0 &&
     Math.abs(homeVisitFee - zoneInfo.expectedFee) > 0.01;
 
-  // Line totals
-  const linesSubtotal = lines.reduce(
+  // Line totals. If order_lines came back empty AND the invoice-line
+  // fallback in /details also returned nothing, fall back to the
+  // persisted orders.subtotal_cad so the GST derivation and Total
+  // row don't attribute the whole payment to tax.
+  const linesRawSubtotal = lines.reduce(
     (s, l) => s + l.unit_price_cad * l.quantity,
     0,
   );
+  const linesSubtotal =
+    linesRawSubtotal > 0
+      ? linesRawSubtotal
+      : (order.subtotal_cad ?? 0);
   const discount = order.discount_cad ?? 0;
   // Quote/promo additional discount, applied as a Stripe amount_off
   // coupon at checkout time. Migration 027 introduced the column;

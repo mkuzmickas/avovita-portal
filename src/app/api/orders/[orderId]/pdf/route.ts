@@ -226,7 +226,12 @@ export async function GET(
       : null;
 
     // ── Build line items ──
-    const invoiceLines: InvoiceLine[] = lines.map((l) => {
+    // Products orders (auto-created from a paid Stripe invoice)
+    // sometimes have no order_lines — early versions of the webhook
+    // skipped the mirror when invoice.profile_id was null. Fall back
+    // to invoice_line_items via the invoice's order_id backlink so
+    // the PDF renders the items the customer actually paid for.
+    let invoiceLines: InvoiceLine[] = lines.map((l) => {
       const test = Array.isArray(l.test) ? l.test[0] : l.test;
       const supplement = Array.isArray(l.supplement)
         ? l.supplement[0]
@@ -256,6 +261,59 @@ export async function GET(
         quantity: l.quantity,
       };
     });
+
+    if (invoiceLines.length === 0) {
+      const { data: linkedInvoice } = await service
+        .from("invoices")
+        .select("id")
+        .eq("order_id", order.id)
+        .maybeSingle();
+      const linkedId = (linkedInvoice as { id: string } | null)?.id ?? null;
+      if (linkedId) {
+        const { data: ilRaw } = await service
+          .from("invoice_line_items")
+          .select(
+            `line_type, description, quantity, unit_price_cad, sort_order,
+             test:tests(name, sku),
+             supplement:supplements(name, sku)`,
+          )
+          .eq("invoice_id", linkedId)
+          .order("sort_order", { ascending: true });
+        type ILine = {
+          line_type: string;
+          description: string;
+          quantity: number;
+          unit_price_cad: number;
+          test: { name: string; sku: string | null } | null;
+          supplement: { name: string; sku: string | null } | null;
+        };
+        const iLines = (ilRaw ?? []) as unknown as ILine[];
+        invoiceLines = iLines
+          .filter((l) => l.line_type !== "discount")
+          .map((l) => {
+            const test = Array.isArray(l.test) ? l.test[0] : l.test;
+            const supplement = Array.isArray(l.supplement)
+              ? l.supplement[0]
+              : l.supplement;
+            let description = l.description || "Item";
+            let sku: string | null = null;
+            if (l.line_type === "test" && test) {
+              description = test.name;
+              sku = test.sku ?? null;
+            } else if (l.line_type === "supplement" && supplement) {
+              description = supplement.name;
+              sku = supplement.sku ?? null;
+            }
+            return {
+              description,
+              sku,
+              assignedToName: null,
+              unitPriceCad: l.unit_price_cad,
+              quantity: l.quantity,
+            };
+          });
+      }
+    }
 
     const STATUS_LABEL: Record<string, string> = {
       confirmed: "Confirmed · Paid",
