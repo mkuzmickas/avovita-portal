@@ -172,27 +172,33 @@ export async function POST(request: NextRequest) {
           `Person ${assignment.assigned_to_person + 1}`
         : "Patient";
 
-      // Clamp reduction to the test's own price so unit_amount can never
-      // go negative (Stripe rejects negative amounts).
-      const lineReduction = discount.applies
-        ? Math.min(discount.per_line, test.price_cad)
-        : 0;
-      const effectivePrice = test.price_cad - lineReduction;
-
+      // Line items keep their sticker unit price so the Stripe checkout
+      // page matches the AvoVita review page line-for-line. The multi-
+      // test discount is applied at the bottom as part of the same
+      // Stripe amount_off coupon that carries quote + whole-cart-promo
+      // adjustments — one line-item at the bottom labelled "AvoVita
+      // — Multi-test discount −$X + Quote discount −$Y" is much easier
+      // for customers to reconcile against the review page than
+      // per-line reductions with tiny italic descriptions.
       lineItems.push({
         price_data: {
           currency: "cad",
           product_data: {
             name: test.name,
-            description: discount.applies
-              ? `For: ${personName} · Multi-test discount −$${lineReduction.toFixed(2)}`
-              : `For: ${personName}`,
+            description: `For: ${personName}`,
           },
-          unit_amount: Math.round(effectivePrice * 100),
+          unit_amount: Math.round(test.price_cad * 100),
         },
         quantity: 1,
       });
 
+      // Track the per-line reduction on the server so the invoice PDF
+      // and OrderExpandedPanel keep rendering "Multi-test discount
+      // −$X" as its own row. The value still gets persisted on
+      // orders.discount_cad and flows to the coupon amount below.
+      const lineReduction = discount.applies
+        ? Math.min(discount.per_line, test.price_cad)
+        : 0;
       serverSubtotal += test.price_cad;
       appliedDiscountTotal += lineReduction;
     }
@@ -379,13 +385,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ─── Build a single Stripe coupon for quote + whole-cart promo ─
+    // ─── Build a single Stripe coupon for every discount ──────────
     // Stripe Checkout accepts at most one coupon per session; we sum
-    // both amounts into one coupon so the receipt reads as a single
-    // "AvoVita adjustment" line rather than mystery per-line price
-    // cuts. The coupon is created dynamically per session (Stripe
-    // supports up to 10 000 by default; we log-only cleanup can come
-    // later if we hit the ceiling).
+    // multi-test + quote + whole-cart-promo into ONE coupon so the
+    // checkout page and receipt read as their own labelled line
+    // rather than baking reductions into unit_amount and confusing
+    // the customer (who compared sticker prices on the review page
+    // to reduced prices on Stripe and thought numbers were wrong).
+    // Coupons are created dynamically per session (Stripe supports
+    // ~10 000 by default; cleanup can come later if we hit the
+    // ceiling).
     let sessionDiscounts:
       | Array<{ coupon: string }>
       | undefined = undefined;
@@ -394,10 +403,17 @@ export async function POST(request: NextRequest) {
       0
     );
     const rawCouponCents =
-      Math.round(quoteDiscountCad * 100) + Math.round(promoWholeCartCad * 100);
+      Math.round(appliedDiscountTotal * 100) +
+      Math.round(quoteDiscountCad * 100) +
+      Math.round(promoWholeCartCad * 100);
     const cappedCouponCents = Math.min(rawCouponCents, preCouponLineTotalCents);
     if (cappedCouponCents > 0) {
       const parts: string[] = [];
+      if (appliedDiscountTotal > 0) {
+        parts.push(
+          `Multi-test discount −$${appliedDiscountTotal.toFixed(2)}`
+        );
+      }
       if (quoteDiscountCad > 0) {
         parts.push(
           quoteNumber
@@ -418,6 +434,7 @@ export async function POST(request: NextRequest) {
         duration: "once",
         name: couponName,
         metadata: {
+          avovita_multi_test_discount_cad: appliedDiscountTotal.toFixed(2),
           avovita_quote_discount_cad: quoteDiscountCad.toFixed(2),
           avovita_promo_discount_cad: promoWholeCartCad.toFixed(2),
           avovita_quote_number: quoteNumber || "",
@@ -425,10 +442,12 @@ export async function POST(request: NextRequest) {
       });
       sessionDiscounts = [{ coupon: coupon.id }];
     }
-    // Track the total additional discount so the webhook can persist
-    // it on orders.additional_discount_cad. The invoice PDF renders it
-    // as its own row separate from the per-line multi-test discount.
-    const additionalDiscountCad = cappedCouponCents / 100;
+    // Track the additional (quote + whole-cart promo) discount so the
+    // webhook can persist it on orders.additional_discount_cad. Multi-
+    // test stays on orders.discount_cad. The invoice PDF renders both
+    // rows separately.
+    const additionalDiscountCad =
+      quoteDiscountCad + promoWholeCartCad;
 
     // ─── Build metadata payload ───────────────────────────────────
     // Deferred until here so `additional_discount_cad` (computed from
