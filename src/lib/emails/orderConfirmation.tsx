@@ -142,15 +142,11 @@ export function renderOrderConfirmationEmail(
     `
     : "";
 
-  const additionalFeeRow =
-    visitFeeAdditional > 0
-      ? `
-        <tr>
-          <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Additional people</td>
-          <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(visitFeeAdditional)}</td>
-        </tr>
-      `
-      : "";
+  // visitFeeBase / visitFeeAdditional are still accepted on the prop
+  // shape so callers don't have to change, but the confirmation email
+  // now renders one collapsed "Home visit fee" row equal to the total.
+  void visitFeeBase;
+  void visitFeeAdditional;
 
   const hasDiscount = (discountTotal ?? 0) > 0;
   const subtotalAfterDiscount = subtotal - (discountTotal ?? 0);
@@ -225,12 +221,7 @@ export function renderOrderConfirmationEmail(
                   hasPhlebotomistTests && visitFeeTotal > 0
                     ? `
                 <tr>
-                  <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Home visit fee (base)</td>
-                  <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(visitFeeBase)}</td>
-                </tr>
-                ${additionalFeeRow}
-                <tr>
-                  <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Visit fee total</td>
+                  <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Home visit fee</td>
                   <td style="padding: 6px 0; text-align: right; color: #111827; font-size: 13px;">${formatCurrency(visitFeeTotal)}</td>
                 </tr>`
                     : ""
