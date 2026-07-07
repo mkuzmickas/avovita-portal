@@ -91,14 +91,11 @@ const RIGHT_X = PAGE_W - MARGIN;
 const COLOR_TEXT = rgb(0.08, 0.1, 0.05); // near-black
 const COLOR_MUTED = rgb(0.4, 0.42, 0.38);
 const COLOR_ACCENT = rgb(0.77, 0.59, 0.23); // gold #c4973a — brand primary
-const COLOR_BRAND_DEEP = rgb(0.06, 0.15, 0.08); // #0f2614 — deep brand green
-const COLOR_BRAND_GREEN = rgb(0.18, 0.42, 0.21); // #2d6b35 — mid brand green
-const COLOR_ACCENT_GREEN = rgb(0.42, 0.69, 0.3); // #6ab04c — "paid" green
-const COLOR_HEADER_BAND = rgb(0.94, 0.95, 0.92); // light green tint for the
-// table-header band. Very light so black-and-white printers don't ghost.
-const COLOR_ON_BAND = rgb(0.06, 0.15, 0.08); // deep green on light band
+// Single brand green used everywhere the palette calls for green — status
+// pill, section headings, footer, rules. Keeping to one shade avoids the
+// three-tone scattershot look the first pass had.
+const COLOR_BRAND_GREEN = rgb(0.06, 0.15, 0.08); // #0f2614 — deep brand green
 const COLOR_RULE = rgb(0.85, 0.85, 0.83);
-const COLOR_RULE_GREEN = rgb(0.18, 0.42, 0.21); // brand green ruled line
 
 
 const SIZE_TITLE = 22;
@@ -211,7 +208,7 @@ export async function generateInvoicePdf(
   textRight("INVOICE", RIGHT_X, y, {
     size: SIZE_TITLE,
     bold: true,
-    color: COLOR_BRAND_DEEP,
+    color: COLOR_BRAND_GREEN,
   });
   y -= 18;
   text("204 Cougartown Close SW, Calgary, AB T3H 0B2", MARGIN, y, {
@@ -231,7 +228,7 @@ export async function generateInvoicePdf(
   y -= 18;
   // Green rule under the header ties the brand palette to the top
   // of the page without needing a full-width band.
-  y = rule(y, COLOR_RULE_GREEN);
+  y = rule(y, COLOR_BRAND_GREEN);
 
   // ── Order identification block (left) + dates (right) ──
   const orderBlockY = y;
@@ -244,13 +241,13 @@ export async function generateInvoicePdf(
     size: 14,
     bold: true,
   });
-  // Status colour: "Paid" reads green; anything else stays in the
-  // brand gold so unpaid/pending status still pops without pretending
-  // to be complete.
+  // Status colour: brand green when paid/complete; gold otherwise so
+  // unpaid or pending still pops without visually pretending to be
+  // paid.
   const paidLike = /paid|complete/i.test(invoice.statusLabel);
   text(invoice.statusLabel, MARGIN, orderBlockY - 28, {
     size: SIZE_BODY,
-    color: paidLike ? COLOR_ACCENT_GREEN : COLOR_ACCENT,
+    color: paidLike ? COLOR_BRAND_GREEN : COLOR_ACCENT,
     bold: true,
   });
 
@@ -313,40 +310,32 @@ export async function generateInvoicePdf(
   const COL_TOTAL_X = RIGHT_X;
   const COL_DESC_W = 290;
 
-  // Subtle green band behind the column headers to brand the table
-  // without overwhelming the invoice. Draw first, then place text
-  // vertically centered on the band.
-  const bandY = y - 14;
-  const bandH = 18;
-  page.drawRectangle({
-    x: MARGIN - 6,
-    y: bandY,
-    width: RIGHT_X - MARGIN + 12,
-    height: bandH,
-    color: COLOR_HEADER_BAND,
-  });
-  const headerTextY = bandY + 5;
-  text("Description", COL_DESC_X, headerTextY, {
+  // Column headers in deep brand green with an underline of the same
+  // colour. Skipping the light background band avoids the spacing
+  // problem where the first line item overlapped the tint region.
+  text("Description", COL_DESC_X, y, {
     size: SIZE_SMALL,
     bold: true,
-    color: COLOR_ON_BAND,
+    color: COLOR_BRAND_GREEN,
   });
-  textRight("Qty", COL_QTY_X + 25, headerTextY, {
+  textRight("Qty", COL_QTY_X + 25, y, {
     size: SIZE_SMALL,
     bold: true,
-    color: COLOR_ON_BAND,
+    color: COLOR_BRAND_GREEN,
   });
-  textRight("Unit", COL_PRICE_X + 50, headerTextY, {
+  textRight("Unit", COL_PRICE_X + 50, y, {
     size: SIZE_SMALL,
     bold: true,
-    color: COLOR_ON_BAND,
+    color: COLOR_BRAND_GREEN,
   });
-  textRight("Line Total", COL_TOTAL_X, headerTextY, {
+  textRight("Line Total", COL_TOTAL_X, y, {
     size: SIZE_SMALL,
     bold: true,
-    color: COLOR_ON_BAND,
+    color: COLOR_BRAND_GREEN,
   });
-  y = bandY - 4;
+  y -= 6;
+  y = rule(y, COLOR_BRAND_GREEN);
+  y -= 8; // breathing room before the first line item
 
   for (const line of invoice.lines) {
     const lineTotal = line.unitPriceCad * line.quantity;
@@ -390,7 +379,7 @@ export async function generateInvoicePdf(
     opts: { bold?: boolean; accent?: boolean } = {},
   ) => {
     const labelColor = opts.accent
-      ? COLOR_BRAND_DEEP
+      ? COLOR_BRAND_GREEN
       : opts.bold
         ? COLOR_TEXT
         : COLOR_MUTED;
@@ -423,13 +412,17 @@ export async function generateInvoicePdf(
   if (invoice.taxCad > 0) {
     totalRow("GST 5%", fmtMoney(invoice.taxCad));
   }
-  totalsY -= 4;
+  // Extra breathing room between the last content row and the rule
+  // so the deep-green line doesn't cut through the Total Paid glyphs
+  // (which extend up from the baseline by about 8 units).
+  totalsY -= 8;
   page.drawLine({
-    start: { x: totalsLeftX, y: totalsY + 6 },
-    end: { x: RIGHT_X, y: totalsY + 6 },
+    start: { x: totalsLeftX, y: totalsY + 10 },
+    end: { x: RIGHT_X, y: totalsY + 10 },
     thickness: 0.75,
-    color: COLOR_RULE_GREEN,
+    color: COLOR_BRAND_GREEN,
   });
+  totalsY -= 4;
   totalRow("Total Paid", fmtMoney(invoice.totalCad), {
     bold: true,
     accent: true,
