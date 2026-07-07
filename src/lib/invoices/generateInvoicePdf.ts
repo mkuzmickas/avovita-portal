@@ -258,7 +258,10 @@ export async function generateInvoicePdf(
   text(invoice.clientName, MARGIN, y, { bold: true });
   y -= 12;
   const clientLines: string[] = [];
-  if (invoice.clientDob) clientLines.push(`DOB ${fmtDate(invoice.clientDob)}`);
+  // DOB deliberately omitted from the invoice PDF — it's PHI that
+  // doesn't belong on a billing document. Kept on `clientDob` in the
+  // props for callers so we don't force a signature change and so a
+  // future variant can opt in if needed.
   if (invoice.clientEmail) clientLines.push(invoice.clientEmail);
   if (invoice.clientPhone) clientLines.push(invoice.clientPhone);
   for (const line of clientLines) {
