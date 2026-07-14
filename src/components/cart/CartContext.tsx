@@ -28,7 +28,7 @@ const STORAGE_KEY = "avovita-cart-v1";
 // silently so one ack covers the rest of the session.
 //
 // Each entry carries its OWN modal copy so the Mayo-bound Tuesday-only
-// tests (CBC, DCTR) and the R&E-bound Monday-or-Tuesday test (MELISA)
+// tests (CBC, DCTR, KS) and the R&E-bound Monday-or-Tuesday test (MELISA)
 // can describe their day constraint + destination lab accurately
 // without ifs in the modal body.
 //
@@ -50,7 +50,7 @@ interface ScheduleAckEntry {
   bullets: string[];
 }
 
-// CBC + DCTR ship same-day to Mayo on Tuesday or the specimen times out.
+// CBC + DCTR + KS ship same-day to Mayo on Tuesday or the specimen times out.
 // Shared copy because the operational risk is identical.
 const TUESDAY_MAYO_INTRO =
   "requires a Tuesday collection only. The specimen has a 48-hour stability window and must ship same-day to Mayo Clinic Laboratories to meet stability requirements.";
@@ -71,6 +71,13 @@ const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
   {
     sku: "DCTR",
     display: "Direct Antiglobulin Test (DCTR)",
+    headline: "Important — Tuesday-Only Collection Notice",
+    intro: TUESDAY_MAYO_INTRO,
+    bullets: TUESDAY_MAYO_BULLETS,
+  },
+  {
+    sku: "KS",
+    display: "Potassium (KS)",
     headline: "Important — Tuesday-Only Collection Notice",
     intro: TUESDAY_MAYO_INTRO,
     bullets: TUESDAY_MAYO_BULLETS,
@@ -214,7 +221,7 @@ const CartContext = createContext<CartContextValue | null>(null);
  * reads localStorage. Legacy items without line_type are backfilled
  * to 'test' on hydration.
  *
- * Special case: schedule-restricted tests (CBC + DCTR Tuesday-only,
+ * Special case: schedule-restricted tests (CBC + DCTR + KS Tuesday-only,
  * MELISA Monday-or-Tuesday) require an acknowledgement modal before
  * the item lands in the cart. One modal per cart-add cycle — if any
  * such test is already in the cart the subsequent add commits silently.
