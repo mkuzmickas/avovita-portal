@@ -64,7 +64,37 @@ export async function GET(request: NextRequest) {
     created_at: string;
     profiles: Array<{ first_name: string; is_primary: boolean }>;
   };
-  const accounts = (accountsRaw ?? []) as unknown as AccountRow[];
+  const rawAccounts = (accountsRaw ?? []) as unknown as AccountRow[];
+
+  // Filter down to accounts that actually have a non-cancelled order
+  // with a phlebotomist-draw test line. Without this, supplement-only
+  // customers (auto-created accounts from a Flow B invoice payment)
+  // get told to "book FloLabs" for a test collection they never
+  // ordered. Self-collected-kit-only orders also don't need FloLabs,
+  // so we specifically gate on collection_method = 'phlebotomist_draw'.
+  const candidateIds = rawAccounts.map((a) => a.id);
+  const eligibleAccountIds = new Set<string>();
+  if (candidateIds.length > 0) {
+    const { data: qualifyingLinesRaw } = await supabase
+      .from("order_lines")
+      .select(
+        `order:orders!inner(account_id, status),
+         test:tests!inner(collection_method)`,
+      )
+      .eq("line_type", "test")
+      .eq("test.collection_method", "phlebotomist_draw")
+      .in("order.account_id", candidateIds)
+      .neq("order.status", "cancelled");
+    type QLine = {
+      order: { account_id: string; status: string } | null;
+      test: { collection_method: string } | null;
+    };
+    for (const l of ((qualifyingLinesRaw ?? []) as unknown) as QLine[]) {
+      const acct = l.order?.account_id;
+      if (acct) eligibleAccountIds.add(acct);
+    }
+  }
+  const accounts = rawAccounts.filter((a) => eligibleAccountIds.has(a.id));
 
   let sentCount = 0;
   const portalUrl =
@@ -115,11 +145,12 @@ export async function GET(request: NextRequest) {
   }
 
   console.log(
-    `[waiver-reminder] checked ${accounts.length} accounts, sent ${sentCount} reminders`
+    `[waiver-reminder] scanned ${rawAccounts.length} accounts, ${accounts.length} had qualifying phlebotomist-draw orders, sent ${sentCount} reminders`
   );
 
   return NextResponse.json({
-    checked: accounts.length,
+    scanned: rawAccounts.length,
+    eligible: accounts.length,
     sent: sentCount,
   });
 }
