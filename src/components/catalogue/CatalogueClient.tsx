@@ -245,6 +245,44 @@ export function CatalogueClient({
 
       {/* Page title */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-6">
+        {/* Limited-availability advisory — auto-hides after the window
+         *   ends so this doesn't need a follow-up removal PR. Change or
+         *   drop AVAILABILITY_BANNER_UNTIL when the next date window
+         *   comes up. */}
+        {(() => {
+          const bannerUntil = new Date("2026-08-17T00:00:00-06:00");
+          if (Date.now() >= bannerUntil.getTime()) return null;
+          return (
+            <div
+              className="mb-6 rounded-xl border px-4 sm:px-5 py-3 sm:py-4 flex items-start gap-3"
+              style={{
+                backgroundColor: "rgba(196, 151, 58, 0.10)",
+                borderColor: "#c4973a",
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{ color: "#c4973a", fontSize: "18px", lineHeight: 1 }}
+              >
+                ⚠
+              </span>
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: "#e8d5a3" }}
+              >
+                <strong style={{ color: "#c4973a" }}>Please note:</strong>{" "}
+                appointment availability will be very limited between{" "}
+                <strong style={{ color: "#ffffff" }}>
+                  August 3 and August 16
+                </strong>
+                . We recommend planning to book for{" "}
+                <strong style={{ color: "#ffffff" }}>August 17</strong> or
+                later before completing checkout.
+              </p>
+            </div>
+          );
+        })()}
+
         <h1
           className="font-heading text-4xl md:text-5xl font-semibold mb-2"
           style={{
