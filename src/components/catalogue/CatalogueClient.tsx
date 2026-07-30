@@ -248,37 +248,72 @@ export function CatalogueClient({
         {/* Limited-availability advisory — auto-hides after the window
          *   ends so this doesn't need a follow-up removal PR. Change or
          *   drop AVAILABILITY_BANNER_UNTIL when the next date window
-         *   comes up. */}
+         *   comes up. Styled loud on purpose: solid amber fill, thick
+         *   border, large ⚠ icon, big padding — customers were missing
+         *   the softer version and booking into the constrained window
+         *   anyway. */}
         {(() => {
           const bannerUntil = new Date("2026-08-17T00:00:00-06:00");
           if (Date.now() >= bannerUntil.getTime()) return null;
           return (
             <div
-              className="mb-6 rounded-xl border px-4 sm:px-5 py-3 sm:py-4 flex items-start gap-3"
+              className="mb-8 rounded-2xl border-2 px-5 sm:px-8 py-6 sm:py-7 flex items-start gap-4 sm:gap-5"
               style={{
-                backgroundColor: "rgba(196, 151, 58, 0.10)",
-                borderColor: "#c4973a",
+                backgroundColor: "#c4973a",
+                borderColor: "#8dc63f",
+                boxShadow: "0 4px 20px rgba(196,151,58,0.35)",
               }}
             >
               <span
                 aria-hidden="true"
-                style={{ color: "#c4973a", fontSize: "18px", lineHeight: 1 }}
+                className="shrink-0"
+                style={{
+                  color: "#0a1a0d",
+                  fontSize: "36px",
+                  lineHeight: 1,
+                  fontWeight: 700,
+                }}
               >
                 ⚠
               </span>
-              <p
-                className="text-sm leading-relaxed"
-                style={{ color: "#e8d5a3" }}
-              >
-                <strong style={{ color: "#c4973a" }}>Please note:</strong>{" "}
-                appointment availability will be very limited between{" "}
-                <strong style={{ color: "#ffffff" }}>
-                  August 3 and August 16
-                </strong>
-                . We recommend planning to book for{" "}
-                <strong style={{ color: "#ffffff" }}>August 17</strong> or
-                later before completing checkout.
-              </p>
+              <div className="flex-1 min-w-0">
+                <p
+                  className="uppercase tracking-widest font-bold text-xs sm:text-sm mb-1"
+                  style={{ color: "#0a1a0d" }}
+                >
+                  Limited Appointment Availability
+                </p>
+                <p
+                  className="text-base sm:text-lg leading-snug font-semibold"
+                  style={{ color: "#0a1a0d" }}
+                >
+                  Appointment availability is{" "}
+                  <span style={{ textDecoration: "underline" }}>very limited</span>{" "}
+                  between{" "}
+                  <span
+                    style={{
+                      backgroundColor: "#0a1a0d",
+                      color: "#ffffff",
+                      padding: "0 6px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    August 3 – August 16
+                  </span>
+                  . Please plan to book for{" "}
+                  <span
+                    style={{
+                      backgroundColor: "#0a1a0d",
+                      color: "#8dc63f",
+                      padding: "0 6px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    August 17 or later
+                  </span>{" "}
+                  before completing checkout.
+                </p>
+              </div>
             </div>
           );
         })()}
