@@ -7,12 +7,25 @@ export const runtime = "nodejs";
  * POST /api/admin/accounts/new-client
  *
  * Admin shortcut to create a brand-new customer record from inside the
- * New Invoice form. Creates an auth user + accounts row + primary
- * patient_profiles row. The customer doesn't get a welcome email yet —
- * the invoice notification email sent immediately afterwards covers
- * first contact.
+ * New Invoice form.
  *
- * Body: { email, first_name, last_name, phone, date_of_birth? }.
+ *   Full mode (default): creates auth user + accounts row + primary
+ *     patient_profiles row. Used when the invoice includes tests —
+ *     the profile is needed for the collection workflow.
+ *
+ *   Minimal mode ({ minimal: true }): creates auth user + accounts
+ *     row only, no patient_profile. Used for supplement-only invoices
+ *     where the customer never has to log into the portal or book a
+ *     collection. First / last name and phone are optional; only
+ *     email is required. Downstream: invoice.paid webhook skips the
+ *     order-line mirror (needs a profile_id) and details API / PDF
+ *     fall back to invoice_line_items — nothing else is affected.
+ *
+ * The customer doesn't get a welcome email either way — the invoice
+ * notification email sent immediately afterwards covers first contact.
+ *
+ * Body:
+ *   { email, first_name, last_name, phone, date_of_birth?, minimal? }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -36,6 +49,7 @@ export async function POST(request: NextRequest) {
     if (!body) {
       return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
+    const minimal = body.minimal === true;
     const email = String(body.email ?? "").trim().toLowerCase();
     const firstName = String(body.first_name ?? "").trim();
     const lastName = String(body.last_name ?? "").trim();
@@ -48,13 +62,13 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    if (!firstName || !lastName) {
+    if (!minimal && (!firstName || !lastName)) {
       return NextResponse.json(
         { error: "First and last name are required" },
         { status: 400 },
       );
     }
-    if (!phone) {
+    if (!minimal && !phone) {
       return NextResponse.json(
         { error: "Phone is required for SMS notification" },
         { status: 400 },
@@ -104,46 +118,51 @@ export async function POST(request: NextRequest) {
     }
     const authUserId = createUserData.user.id;
 
-    // The handle_new_user trigger should have inserted the accounts row.
-    // Insert/upsert the primary profile.
-    const { data: profileInsertRaw, error: profileErr } = await service
-      .from("patient_profiles")
-      .insert({
-        account_id: authUserId,
-        first_name: firstName,
-        last_name: lastName,
-        date_of_birth: dob ?? "1900-01-01",
-        biological_sex: "intersex", // placeholder; admin updates if known
-        phone,
-        is_primary: true,
-        is_dependent: false,
-        relationship: "account_holder",
-      })
-      .select("id")
-      .single();
-    if (profileErr || !profileInsertRaw) {
-      return NextResponse.json(
-        {
-          error: `Failed to create profile: ${profileErr?.message ?? "unknown"}`,
-        },
-        { status: 500 },
-      );
+    // Full mode inserts the primary patient_profiles row. Minimal
+    // mode (supplement-only invoice) skips this entirely — the
+    // customer never touches the collection workflow.
+    let profileId: string | null = null;
+    if (!minimal) {
+      const { data: profileInsertRaw, error: profileErr } = await service
+        .from("patient_profiles")
+        .insert({
+          account_id: authUserId,
+          first_name: firstName,
+          last_name: lastName,
+          date_of_birth: dob ?? "1900-01-01",
+          biological_sex: "intersex", // placeholder; admin updates if known
+          phone,
+          is_primary: true,
+          is_dependent: false,
+          relationship: "account_holder",
+        })
+        .select("id")
+        .single();
+      if (profileErr || !profileInsertRaw) {
+        return NextResponse.json(
+          {
+            error: `Failed to create profile: ${profileErr?.message ?? "unknown"}`,
+          },
+          { status: 500 },
+        );
+      }
+      profileId = (profileInsertRaw as { id: string }).id;
     }
 
-    // Make sure the accounts row carries the email + phone too, in case
-    // the trigger didn't populate them.
-    await service
-      .from("accounts")
-      .update({ email, phone })
-      .eq("id", authUserId);
+    // Make sure the accounts row carries the email + phone. Skip phone
+    // in minimal mode when the admin didn't supply one.
+    const accountsPatch: Record<string, string> = { email };
+    if (phone) accountsPatch.phone = phone;
+    await service.from("accounts").update(accountsPatch).eq("id", authUserId);
 
     return NextResponse.json({
       account_id: authUserId,
-      profile_id: (profileInsertRaw as { id: string }).id,
+      profile_id: profileId,
       email,
-      first_name: firstName,
-      last_name: lastName,
-      phone,
+      first_name: firstName || null,
+      last_name: lastName || null,
+      phone: phone || null,
+      minimal,
     });
   } catch (err) {
     console.error("[accounts:new-client]", err);

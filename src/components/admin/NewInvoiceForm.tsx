@@ -129,6 +129,19 @@ export function NewInvoiceForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Supplement-only invoice detection. When every non-discount line is
+  // a supplement (or the invoice is empty and the admin only ever
+  // intends to bill for supplements), we drop the full patient-profile
+  // onboarding on new-client creation — just email is required. The
+  // customer never has to log into the portal or book a collection so
+  // storing DOB / phone / full name serves no purpose. Falls back to
+  // full onboarding the moment any test line is added.
+  const isSupplementOnly = useMemo(() => {
+    const billed = lines.filter((l) => l.line_type !== "discount");
+    if (billed.length === 0) return false;
+    return billed.every((l) => l.line_type === "supplement");
+  }, [lines]);
+
   // ─── Customer search ───────────────────────────────────────────
   useEffect(() => {
     if (customer || showNewClientForm) return;
@@ -170,11 +183,15 @@ export function NewInvoiceForm({
 
   const handleCreateNewClient = async () => {
     setClientError(null);
+    if (!newClient.email) {
+      setClientError("Email is required.");
+      return;
+    }
+    // Full mode still needs the whole set. Minimal mode (supplement
+    // only) only asks for email so the customer never has to sign in.
     if (
-      !newClient.email ||
-      !newClient.first_name ||
-      !newClient.last_name ||
-      !newClient.phone
+      !isSupplementOnly &&
+      (!newClient.first_name || !newClient.last_name || !newClient.phone)
     ) {
       setClientError("Email, first name, last name, and phone are required.");
       return;
@@ -184,7 +201,7 @@ export function NewInvoiceForm({
       const res = await fetch("/api/admin/accounts/new-client", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newClient),
+        body: JSON.stringify({ ...newClient, minimal: isSupplementOnly }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -414,6 +431,22 @@ export function NewInvoiceForm({
           </div>
         ) : showNewClientForm ? (
           <div className="space-y-3">
+            {isSupplementOnly && (
+              <p
+                className="text-xs leading-relaxed rounded-lg border px-3 py-2"
+                style={{
+                  backgroundColor: "rgba(196, 151, 58, 0.10)",
+                  borderColor: "#c4973a",
+                  color: "#e8d5a3",
+                }}
+              >
+                <strong style={{ color: "#c4973a" }}>Quick-invoice mode.</strong>{" "}
+                All line items are supplements — no waiver, portal login,
+                or collection appointment is required. Email is all we
+                need; first name is optional (used only to personalise the
+                invoice email greeting).
+              </p>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input
                 type="email"
@@ -425,44 +458,50 @@ export function NewInvoiceForm({
                 className="mf-input text-sm"
               />
               <input
-                type="tel"
-                placeholder="Phone (for SMS) *"
-                value={newClient.phone}
-                onChange={(e) =>
-                  setNewClient({ ...newClient, phone: e.target.value })
-                }
-                className="mf-input text-sm"
-              />
-              <input
                 type="text"
-                placeholder="First name *"
+                placeholder={
+                  isSupplementOnly ? "First name (optional)" : "First name *"
+                }
                 value={newClient.first_name}
                 onChange={(e) =>
                   setNewClient({ ...newClient, first_name: e.target.value })
                 }
                 className="mf-input text-sm"
               />
-              <input
-                type="text"
-                placeholder="Last name *"
-                value={newClient.last_name}
-                onChange={(e) =>
-                  setNewClient({ ...newClient, last_name: e.target.value })
-                }
-                className="mf-input text-sm"
-              />
-              <input
-                type="date"
-                placeholder="Date of birth (optional)"
-                value={newClient.date_of_birth}
-                onChange={(e) =>
-                  setNewClient({
-                    ...newClient,
-                    date_of_birth: e.target.value,
-                  })
-                }
-                className="mf-input text-sm"
-              />
+              {!isSupplementOnly && (
+                <>
+                  <input
+                    type="tel"
+                    placeholder="Phone (for SMS) *"
+                    value={newClient.phone}
+                    onChange={(e) =>
+                      setNewClient({ ...newClient, phone: e.target.value })
+                    }
+                    className="mf-input text-sm"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Last name *"
+                    value={newClient.last_name}
+                    onChange={(e) =>
+                      setNewClient({ ...newClient, last_name: e.target.value })
+                    }
+                    className="mf-input text-sm"
+                  />
+                  <input
+                    type="date"
+                    placeholder="Date of birth (optional)"
+                    value={newClient.date_of_birth}
+                    onChange={(e) =>
+                      setNewClient({
+                        ...newClient,
+                        date_of_birth: e.target.value,
+                      })
+                    }
+                    className="mf-input text-sm"
+                  />
+                </>
+              )}
             </div>
             {clientError && (
               <p
