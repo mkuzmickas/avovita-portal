@@ -75,7 +75,24 @@ async function CatalogueData() {
     }
   );
 
-  const featuredTests = allTests.filter((t) => t.featured);
+  // Featured tests, sorted so no-requisition tests always lead. This is
+  // ORDER BY, NOT WHERE — a requisition-required test can still be
+  // featured (admin campaigns for FRAT / EpiSeek / etc.), it just
+  // can't be the OPENER on /tests. The opening impression must not be
+  // "you need a doctor's note" — that's the single most common reason
+  // a first-timer bounces from private-lab-testing. DO NOT convert
+  // this into a filter (`filter(t => !t.requisition_url)`) — you'd
+  // silently make it impossible to promote requisition-required tests
+  // from the admin UI and six months from now nobody will remember
+  // why the featured flag "doesn't work" for FRAT.
+  const featuredTests = allTests
+    .filter((t) => t.featured)
+    .sort((a, b) => {
+      const aReq = !!a.requisition_url;
+      const bReq = !!b.requisition_url;
+      if (aReq !== bReq) return aReq ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    });
   const panelTests = pickPanels(allTests);
 
   const categories = Array.from(
