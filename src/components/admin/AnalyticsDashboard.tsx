@@ -1615,12 +1615,12 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
             </table>
           </Section>
 
-          {/* ─── AI TEST FINDER ──────────────────────────────────────── */}
-          <Section title="AI Test Finder">
+          {/* ─── ASK AVOVITA ─────────────────────────────────────────── */}
+          <Section title="Ask AvoVita">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <MiniStat label="Times Opened" value={fmt(aiOpened)} />
               <MiniStat
-                label="Tests Added (AI Finder)"
+                label="Tests Added (Ask AvoVita)"
                 value={fmt(aiAdded)}
               />
               <MiniStat

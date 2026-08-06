@@ -348,7 +348,7 @@ export function CatalogueClient({
           </p>
         </div>
 
-        {/* AI Test Finder card */}
+        {/* Ask AvoVita card — was "AI Test Finder" until Aug 2026 rename */}
         <div
           className="mt-5 rounded-xl border px-4 sm:px-6 py-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-6"
           style={{
@@ -365,7 +365,7 @@ export function CatalogueClient({
                 letterSpacing: "0.15em",
               }}
             >
-              AI-POWERED TEST RECOMMENDATIONS
+              AI-POWERED ASSISTANT
             </p>
             <h3
               className="font-heading mb-1.5"
@@ -375,10 +375,11 @@ export function CatalogueClient({
                 fontSize: "22px",
               }}
             >
-              Not sure where to start?
+              Ask AvoVita
             </h3>
             <p style={{ color: "#e8d5a3", fontSize: "14px" }}>
-              Describe your symptoms to our AI assistant and get personalised test recommendations from our catalogue.
+              Tests, pricing, and how it all works — describe your symptoms
+              or ask us anything about the service.
             </p>
           </div>
           <button
@@ -387,8 +388,8 @@ export function CatalogueClient({
             className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg text-base font-semibold transition-colors shrink-0 w-full md:w-auto"
             style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
           >
-            <span aria-hidden>🔍</span>
-            Try AI Test Finder
+            <span aria-hidden>💬</span>
+            Ask AvoVita
             <span aria-hidden>→</span>
           </button>
         </div>

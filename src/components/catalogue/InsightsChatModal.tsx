@@ -33,7 +33,7 @@ interface CatalogueLookupTest {
 const INTRO_MESSAGE: ChatMessage = {
   role: "assistant",
   content:
-    "Hi — I'm AvoVita's AI Test Finder. Tell me what symptoms you're experiencing or what you're hoping to learn about your health, and I'll suggest relevant tests from our catalogue.",
+    "Hi — I'm Ask AvoVita, your AI assistant. Describe your symptoms and I'll suggest relevant tests from our catalogue, or ask me anything about how AvoVita works — shipping, requisitions, booking, insurance, results.",
 };
 
 export function InsightsChatModal({
@@ -205,7 +205,7 @@ export function InsightsChatModal({
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
               }}
             >
-              AI Test Finder
+              Ask AvoVita
             </h2>
           </div>
           <button

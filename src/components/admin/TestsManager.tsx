@@ -404,7 +404,7 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
           }}
         >
           <Sparkles className="w-4 h-4" />
-          AI Test Finder
+          Ask AvoVita
         </button>
         <button
           onClick={() => setCreating((v) => !v)}
