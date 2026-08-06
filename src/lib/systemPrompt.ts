@@ -49,7 +49,6 @@ Tests below MUST be booked on the days listed — they have short specimen-stabi
 - Hereditary Breast / Gynecologic Cancer Panel (BRGYP) — Tuesday only.
 - CD20 on B Cells (CD20B) — Tuesday only.
 - Acetoacetate (FACES) — Monday or Tuesday only.
-- MELISA — Monday (non-holiday) or Tuesday only. Ships to Western University in London, Ontario via R&E Diagnostics.
 - LabCorp NMR Lipoprotein Profile — Saturday through Tuesday only (7-day stability window).
 
 For any other test, do not state a day restriction. If a client asks and the test isn't on this list, say "This one doesn't have a day-of-week restriction — you can pick any FloLabs appointment slot."

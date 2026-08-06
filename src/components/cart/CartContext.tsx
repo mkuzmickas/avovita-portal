@@ -28,9 +28,10 @@ const STORAGE_KEY = "avovita-cart-v1";
 // silently so one ack covers the rest of the session.
 //
 // Each entry carries its OWN modal copy so the Mayo-bound Tuesday-only
-// tests (CBC, DCTR, KS) and the R&E-bound Monday-or-Tuesday test (MELISA)
-// can describe their day constraint + destination lab accurately
-// without ifs in the modal body.
+// tests (CBC, DCTR, KS) can describe their day constraint + destination
+// lab accurately without ifs in the modal body. Historically also held
+// MELISA (R&E Diagnostics, Mon/Tue) but that test was pulled from the
+// catalogue in Aug 2026 due to lab-logistics issues on R&E's side.
 //
 // Identifying by SKU keeps the registry readable; CBC stays on its
 // historical test_id because nothing in code knows its SKU yet (the
@@ -81,17 +82,6 @@ const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
     headline: "Important — Tuesday-Only Collection Notice",
     intro: TUESDAY_MAYO_INTRO,
     bullets: TUESDAY_MAYO_BULLETS,
-  },
-  {
-    sku: "MELISA",
-    display: "MELISA",
-    headline: "Important — Monday or Tuesday Collection Notice",
-    intro:
-      "requires a Monday (non-holiday) or Tuesday collection only. The specimen ships to Western University in London, Ontario — the reference lab that runs MELISA testing on behalf of R&E Diagnostics — and must arrive within its stability window.",
-    bullets: [
-      "Your FloLabs appointment must be booked on a Monday (excluding statutory holidays) or Tuesday",
-      "Shipping delays can cause the specimen to time out before reaching the lab — if this occurs, this test fee will be refunded but the home visit fee is non-refundable",
-    ],
   },
 ];
 
@@ -221,10 +211,10 @@ const CartContext = createContext<CartContextValue | null>(null);
  * reads localStorage. Legacy items without line_type are backfilled
  * to 'test' on hydration.
  *
- * Special case: schedule-restricted tests (CBC + DCTR + KS Tuesday-only,
- * MELISA Monday-or-Tuesday) require an acknowledgement modal before
- * the item lands in the cart. One modal per cart-add cycle — if any
- * such test is already in the cart the subsequent add commits silently.
+ * Special case: schedule-restricted tests (CBC + DCTR + KS Tuesday-only)
+ * require an acknowledgement modal before the item lands in the cart.
+ * One modal per cart-add cycle — if any such test is already in the
+ * cart the subsequent add commits silently.
  */
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -396,11 +386,11 @@ export function useCart(): CartContextValue {
 //
 // One modal renders any of the tests in SCHEDULE_ACK_TESTS. Headline,
 // intro paragraph, and bullets all come from the matched entry so
-// MELISA (Monday-or-Tuesday, R&E Diagnostics) and CBC/DCTR (Tuesday-
-// only, Mayo) can each speak accurately about their own day
-// constraint without conditionals here. If the customer has already
-// added one of these tests in this session, the second add commits
-// silently without re-showing.
+// each Tuesday-only Mayo-bound test (CBC / DCTR / KS) can speak
+// accurately about its own day constraint + destination lab without
+// conditionals here. If the customer has already added one of these
+// tests in this session, the second add commits silently without
+// re-showing.
 
 function ScheduleAckModal({
   item,
