@@ -7,25 +7,27 @@ import {
   useState,
 } from "react";
 import { usePathname } from "next/navigation";
-import { Calendar, X, Loader2, Info } from "lucide-react";
+import { Calendar, X, Loader2, Info, ExternalLink } from "lucide-react";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 
 /**
- * Floating "Check availability" button + preview-only Acuity modal.
+ * Floating "Check availability" button + preview-only calendar modal.
  *
- * Catches hesitating shoppers before they bounce: lets them eyeball the
- * FloLabs collection calendar without committing to checkout. The iframe
- * is the real Acuity widget (Acuity has no native read-only mode) — the
- * amber notice makes the preview-only nature explicit, and any booking
- * made here is operationally orphaned (no order, no payment, no FloLabs
- * notification) so it triggers nothing. See PR notes re: future
- * Acuity-API availability rendering if orphaned-booking spam appears.
+ * Catches hesitating shoppers before they bounce: lets them eyeball
+ * FloLabs collection availability without committing to checkout.
+ *
+ * Under the hood: /api/availability/preview hits FloLabs' Acuity
+ * public JSON endpoint server-side, aggregates 14 days into a compact
+ * per-day summary, caches it, and we render the resulting grid here.
+ * No iframe, no interactive booking possible from this widget.
+ * (Previous versions embedded Acuity's booking iframe with
+ * pointer-events:none — too clunky and hard to read.)
  *
  * Hidden on the checkout wizard (any /checkout* path — the customer sees
- * the real widget at the Collection step) and on /admin.
+ * the real booking widget at the Collection step) and on /admin.
  */
 
-const ACUITY_EMBED_URL =
+const FLOLABS_FULL_URL =
   process.env.NEXT_PUBLIC_ACUITY_EMBED_URL ??
   "https://flolabsbooking.as.me/?appointmentType=84416067";
 
@@ -39,11 +41,27 @@ function shouldHide(pathname: string | null): boolean {
   return false;
 }
 
+interface DaySummary {
+  date: string;
+  weekday: string;
+  slotCount: number;
+  firstTime: string | null;
+  lastTime: string | null;
+}
+
+interface PreviewData {
+  fetchedAt: string;
+  days: DaySummary[];
+  cached: boolean;
+}
+
 export function PreviewAvailabilityFab() {
   const pathname = usePathname();
   const { trackEvent } = useAnalytics();
   const [open, setOpen] = useState(false);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [data, setData] = useState<PreviewData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fabRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -63,14 +81,41 @@ export function PreviewAvailabilityFab() {
     if (open) setOpen(false);
   }
 
+  const fetchAvailability = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/availability/preview", { cache: "no-store" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(
+          body.error ??
+            "Availability preview is temporarily unavailable — you can still see full availability on the FloLabs page.",
+        );
+        return;
+      }
+      const json = (await res.json()) as PreviewData;
+      setData(json);
+    } catch {
+      setError(
+        "Couldn't reach availability preview. Try again in a moment or open the FloLabs page for the full calendar.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const openModal = useCallback(() => {
-    setIframeLoaded(false);
     setOpen(true);
+    // Don't refetch if we already have fresh data from an earlier open
+    // in the same page session — server-side is already cached 10min,
+    // but sparing the round-trip is nice UX.
+    if (!data) fetchAvailability();
     trackEvent("availability_preview_opened", {
       page_path:
         typeof window !== "undefined" ? window.location.pathname : pathname,
     });
-  }, [trackEvent, pathname]);
+  }, [trackEvent, pathname, data, fetchAvailability]);
 
   const closeModal = useCallback(() => {
     setOpen(false);
@@ -147,7 +192,7 @@ export function PreviewAvailabilityFab() {
         }}
       >
         <Calendar className="w-4 h-4 shrink-0" />
-        <span>Check Availability (Limited View)</span>
+        <span>Preview Availability (Not a Booking)</span>
       </button>
 
       {/* ── Preview modal ──────────────────────────────────────────── */}
@@ -188,16 +233,24 @@ export function PreviewAvailabilityFab() {
                 >
                   <Calendar className="w-5 h-5" style={{ color: "#c4973a" }} />
                 </div>
-                <h2
-                  id="availability-preview-title"
-                  className="font-heading text-xl font-semibold"
-                  style={{
-                    color: "#ffffff",
-                    fontFamily: '"Cormorant Garamond", Georgia, serif',
-                  }}
-                >
-                  Collection Availability
-                </h2>
+                <div>
+                  <h2
+                    id="availability-preview-title"
+                    className="font-heading text-xl font-semibold leading-tight"
+                    style={{
+                      color: "#ffffff",
+                      fontFamily: '"Cormorant Garamond", Georgia, serif',
+                    }}
+                  >
+                    Availability Preview
+                  </h2>
+                  <p
+                    className="text-xs uppercase tracking-wider font-semibold mt-0.5"
+                    style={{ color: "#c4973a" }}
+                  >
+                    Not a booking · Book after checkout
+                  </p>
+                </div>
               </div>
               <button
                 ref={closeBtnRef}
@@ -211,143 +264,185 @@ export function PreviewAvailabilityFab() {
               </button>
             </div>
 
-            {/* Scrollable body — flex-1 + min-h-0 are mandatory: without
-                them, the body's flex child can't shrink below its
-                natural content height (the 2000px iframe + banners), so
-                overflow-y:auto never engages and the bottom of the
-                calendar sits below the viewport. The explicit
-                maxHeight is belt-and-suspenders. */}
+            {/* Scrollable body */}
             <div
               ref={bodyRef}
               className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
               style={{ maxHeight: "calc(100vh - 12rem)" }}
             >
-              {/* Amber preview-only notice */}
+              {/* Loud "no booking here" banner — payment must happen
+                  BEFORE the appointment can be booked. Prominent solid
+                  amber so a hesitating shopper reads it before scrolling
+                  the calendar. */}
               <div
-                className="flex gap-3 rounded-lg border p-4"
+                className="rounded-xl border-2 p-4 sm:p-5"
                 style={{
-                  backgroundColor: "rgba(217,169,57,0.12)",
+                  backgroundColor: "#c4973a",
+                  borderColor: "#0a1a0d",
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="shrink-0"
+                    style={{
+                      color: "#0a1a0d",
+                      fontSize: "28px",
+                      lineHeight: 1,
+                      fontWeight: 700,
+                    }}
+                  >
+                    ⚠
+                  </span>
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <p
+                      className="uppercase tracking-widest font-bold text-xs"
+                      style={{ color: "#0a1a0d" }}
+                    >
+                      This View Is Preview Only — You Cannot Book Here
+                    </p>
+                    <p
+                      className="text-sm leading-snug font-semibold"
+                      style={{ color: "#0a1a0d" }}
+                    >
+                      Your collection appointment is booked{" "}
+                      <span style={{ textDecoration: "underline" }}>
+                        after
+                      </span>{" "}
+                      you complete checkout, so the appointment is linked
+                      to your paid tests. We work this way because a
+                      booked appointment with no paid tests attached
+                      leaves us with an orphaned slot that no phlebotomist
+                      can fulfill — everyone loses the time.
+                    </p>
+                    <p className="text-xs" style={{ color: "#0a1a0d" }}>
+                      Use this view to gauge how busy the next two weeks
+                      look. Real booking happens on the confirmation page
+                      right after payment.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Secondary note — stability-window / fasting nuance. */}
+              <div
+                className="flex gap-3 rounded-lg border p-3"
+                style={{
+                  backgroundColor: "rgba(217,169,57,0.10)",
                   borderColor: "#d4a84a",
                 }}
               >
                 <Info
-                  className="w-5 h-5 shrink-0 mt-0.5"
+                  className="w-4 h-4 shrink-0 mt-0.5"
                   style={{ color: "#d4a84a" }}
                 />
                 <p
-                  className="text-sm leading-relaxed"
+                  className="text-xs leading-relaxed"
                   style={{ color: "#e8d5a3" }}
                 >
-                  This is a preview only. Your actual appointment will be
-                  booked during checkout after you complete your order. If
-                  your cart includes any tests with short stability windows
-                  (such as Complete Blood Count, Direct Antiglobulin Test,
-                  Basic Metabolic Panel, or other panels containing
-                  potassium), booking will be restricted to a Tuesday morning
-                  collection. Some tests with longer stability allow Saturday
-                  to Tuesday only. Tests requiring fasting or specific timing
-                  may also have additional booking constraints — these will be
-                  confirmed at checkout.
+                  Tests with short stability windows (CBC, Basic Metabolic
+                  Panel, potassium panels, etc.) are Tuesday-only; other
+                  tests may have fasting or timing requirements confirmed
+                  at checkout.
                 </p>
               </div>
 
-              {/* Restating banner — sits flush above the iframe so the
-                  customer sees "preview only" right where they're about
-                  to try to click. The amber notice above gives the long
-                  version; this short one reinforces it visually now
-                  that interaction is actually blocked. */}
-              <div
-                className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs"
-                style={{
-                  backgroundColor: "rgba(196,151,58,0.10)",
-                  borderColor: "#c4973a",
-                  color: "#c4973a",
-                }}
-              >
-                <Info className="w-4 h-4 shrink-0" />
-                <span>
-                  <strong>Preview only</strong> — scroll within this modal
-                  to view the full calendar. Your appointment is booked
-                  after you complete your order.
-                </span>
-              </div>
-
-              {/* Acuity iframe — strictly read-only.
-                  pointer-events: none on the iframe is the real guard:
-                  no click, tap, mousedown, or touchstart can reach the
-                  Acuity widget, so no booking can be initiated from the
-                  preview. Cross-origin iframes can't be scrolled by the
-                  parent, so we sidestep that limit by rendering the
-                  iframe at its full Acuity content height (2000px,
-                  intentionally over-tall) with scrolling="no" so the
-                  iframe never adds its own scrollbar. The outer modal
-                  body scrolls to expose the full height. Wheel and
-                  touchmove events pass through pointer-events:none and
-                  bubble to that body's overflow-y:auto.
-                  DO NOT replicate on the real booking step in
-                  CheckoutSuccessV2 — that one must stay interactive. */}
-              <div
-                className="relative rounded-lg overflow-hidden border"
-                style={{
-                  borderColor: "#2d6b35",
-                  backgroundColor: "#0f2614",
-                  cursor: "not-allowed",
-                }}
-              >
-                {!iframeLoaded && (
-                  <div
-                    className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10"
-                    style={{ backgroundColor: "#0f2614" }}
-                  >
-                    <Loader2
-                      className="w-6 h-6 animate-spin"
-                      style={{ color: "#c4973a" }}
-                    />
-                    <p className="text-xs" style={{ color: "#e8d5a3" }}>
-                      Loading scheduler…
-                    </p>
-                  </div>
-                )}
-                <iframe
-                  src={ACUITY_EMBED_URL}
-                  title="FloLabs collection availability preview"
-                  onLoad={() => {
-                    setIframeLoaded(true);
-                    // Land the customer on the calendar instead of the
-                    // intro text. We can't read positions inside the
-                    // cross-origin Acuity iframe, so scroll our own
-                    // container by a fixed offset that's been tuned to
-                    // land roughly on the month grid. setTimeout lets
-                    // Acuity finish painting (which often happens after
-                    // onLoad) so the scrollHeight is correct.
-                    setTimeout(() => {
-                      bodyRef.current?.scrollTo({
-                        top: 550,
-                        behavior: "smooth",
-                      });
-                    }, 300);
-                  }}
-                  scrolling="no"
-                  className="w-full block"
+              {/* Calendar body */}
+              {loading && !data && (
+                <div className="flex flex-col items-center gap-2 py-12">
+                  <Loader2
+                    className="w-6 h-6 animate-spin"
+                    style={{ color: "#c4973a" }}
+                  />
+                  <p className="text-xs" style={{ color: "#e8d5a3" }}>
+                    Loading availability…
+                  </p>
+                </div>
+              )}
+              {error && !loading && (
+                <div
+                  className="rounded-lg border p-4 space-y-3"
                   style={{
-                    height: "2000px",
-                    border: "none",
-                    backgroundColor: "transparent",
-                    pointerEvents: "none",
+                    backgroundColor: "rgba(224,82,82,0.10)",
+                    borderColor: "#e05252",
                   }}
-                />
-              </div>
+                >
+                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                    {error}
+                  </p>
+                  <a
+                    href={FLOLABS_FULL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold"
+                    style={{ color: "#c4973a" }}
+                  >
+                    Open FloLabs booking page
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+              {data && data.days.length > 0 && (
+                <>
+                  {/* Legend */}
+                  <div className="flex flex-wrap items-center gap-3 text-xs">
+                    <LegendSwatch color="#8dc63f" label="Good availability" />
+                    <LegendSwatch color="#d4a84a" label="Limited" />
+                    <LegendSwatch color="#4a5563" label="Fully booked" />
+                  </div>
+
+                  {/* 2-week grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-7 gap-2">
+                    {data.days.map((day) => (
+                      <DayCell key={day.date} day={day} />
+                    ))}
+                  </div>
+
+                  {/* Timestamp + refresh */}
+                  <div
+                    className="flex items-center justify-between text-xs pt-2 border-t"
+                    style={{ borderColor: "#2d6b35", color: "#6ab04c" }}
+                  >
+                    <span>
+                      Snapshot from FloLabs · updated{" "}
+                      {new Date(data.fetchedAt).toLocaleTimeString("en-CA", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={fetchAvailability}
+                      disabled={loading}
+                      className="underline disabled:opacity-50"
+                      style={{ color: "#c4973a" }}
+                    >
+                      {loading ? "Refreshing…" : "Refresh"}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Footer */}
             <div
-              className="p-5 border-t shrink-0"
+              className="p-5 border-t shrink-0 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between"
               style={{ borderColor: "#2d6b35" }}
             >
+              <a
+                href={FLOLABS_FULL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold"
+                style={{ color: "#c4973a" }}
+              >
+                Open FloLabs booking page
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
               <button
                 type="button"
                 onClick={closeModal}
-                className="w-full sm:w-auto sm:ml-auto sm:flex inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                 style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
               >
                 Close
@@ -357,5 +452,105 @@ export function PreviewAvailabilityFab() {
         </div>
       )}
     </>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────
+
+function LegendSwatch({ color, label }: { color: string; label: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5"
+      style={{ color: "#e8d5a3" }}
+    >
+      <span
+        aria-hidden="true"
+        className="inline-block w-3 h-3 rounded-sm border"
+        style={{ backgroundColor: color, borderColor: color }}
+      />
+      {label}
+    </span>
+  );
+}
+
+function DayCell({ day }: { day: DaySummary }) {
+  // Bucket by slot count. "Good" = 6+, "Limited" = 1–5, "Fully booked"
+  // = 0. Numbers tuned to FloLabs' typical daily capacity — if their
+  // scheduling changes materially the thresholds may need re-tuning.
+  const bucket: "good" | "limited" | "none" =
+    day.slotCount >= 6 ? "good" : day.slotCount > 0 ? "limited" : "none";
+
+  const palette = {
+    good: {
+      bg: "rgba(141,198,63,0.12)",
+      border: "#8dc63f",
+      accent: "#8dc63f",
+      count: "#ffffff",
+    },
+    limited: {
+      bg: "rgba(217,169,57,0.12)",
+      border: "#d4a84a",
+      accent: "#d4a84a",
+      count: "#ffffff",
+    },
+    none: {
+      bg: "rgba(74,85,99,0.12)",
+      border: "#2d6b35",
+      accent: "#6ab04c",
+      count: "#6ab04c",
+    },
+  }[bucket];
+
+  // "Aug 11" style. Constructed via UTC noon so the tz offset can't
+  // flip the label onto the wrong day.
+  const [y, m, d] = day.date.split("-").map(Number);
+  const dayLabel = new Intl.DateTimeFormat("en-CA", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(Date.UTC(y, m - 1, d, 12, 0, 0)));
+
+  const rangeLabel =
+    day.firstTime && day.lastTime
+      ? day.firstTime === day.lastTime
+        ? day.firstTime
+        : `${day.firstTime} – ${day.lastTime}`
+      : null;
+
+  const countLabel =
+    day.slotCount === 0
+      ? "Fully booked"
+      : day.slotCount === 1
+        ? "1 slot"
+        : `${day.slotCount} slots`;
+
+  return (
+    <div
+      className="rounded-lg border p-2.5 flex flex-col gap-1"
+      style={{ backgroundColor: palette.bg, borderColor: palette.border }}
+    >
+      <p
+        className="text-[10px] uppercase tracking-wider font-semibold"
+        style={{ color: palette.accent }}
+      >
+        {day.weekday}
+      </p>
+      <p
+        className="text-sm font-semibold leading-tight"
+        style={{ color: "#ffffff" }}
+      >
+        {dayLabel}
+      </p>
+      <p
+        className="text-xs font-semibold"
+        style={{ color: palette.count }}
+      >
+        {countLabel}
+      </p>
+      {rangeLabel && (
+        <p className="text-[10px]" style={{ color: "#e8d5a3" }}>
+          {rangeLabel}
+        </p>
+      )}
+    </div>
   );
 }
