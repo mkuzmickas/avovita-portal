@@ -384,11 +384,14 @@ export function PreviewAvailabilityFab() {
               )}
               {data && data.days.length > 0 && (
                 <>
-                  {/* Legend */}
+                  {/* Legend — green = available, amber = limited slots
+                      running out, muted gray = nothing left. Fully-booked
+                      cells are deliberately dulled so a wall of empty
+                      days doesn't visually read as "everything's fine". */}
                   <div className="flex flex-wrap items-center gap-3 text-xs">
-                    <LegendSwatch color="#8dc63f" label="Good availability" />
-                    <LegendSwatch color="#d4a84a" label="Limited" />
-                    <LegendSwatch color="#4a5563" label="Fully booked" />
+                    <LegendSwatch color="#8dc63f" label="Available" />
+                    <LegendSwatch color="#d4a84a" label="Almost full" />
+                    <LegendSwatch color="#3a4550" label="Fully booked" />
                   </div>
 
                   {/* 2-week grid */}
@@ -474,30 +477,43 @@ function LegendSwatch({ color, label }: { color: string; label: string }) {
 }
 
 function DayCell({ day }: { day: DaySummary }) {
-  // Bucket by slot count. "Good" = 6+, "Limited" = 1–5, "Fully booked"
-  // = 0. Numbers tuned to FloLabs' typical daily capacity — if their
-  // scheduling changes materially the thresholds may need re-tuning.
+  // Bucket by slot count. Numbers tuned to FloLabs' typical daily
+  // capacity — if their scheduling changes materially the thresholds
+  // may need re-tuning. Green = plenty, amber = running out, muted
+  // gray = nothing.
+  //
+  // Fully-booked cells are deliberately DULL: neutral border, muted
+  // text, low-contrast background. Previously they used the brand
+  // green border (#2d6b35) which made "no slots" look positive next
+  // to the amber "limited" cells that ARE available — a wall of empty
+  // days visually read as "everything's fine".
   const bucket: "good" | "limited" | "none" =
     day.slotCount >= 6 ? "good" : day.slotCount > 0 ? "limited" : "none";
 
   const palette = {
     good: {
-      bg: "rgba(141,198,63,0.12)",
+      bg: "rgba(141,198,63,0.14)",
       border: "#8dc63f",
       accent: "#8dc63f",
-      count: "#ffffff",
+      dateColor: "#ffffff",
+      countColor: "#8dc63f",
+      rangeColor: "#e8d5a3",
     },
     limited: {
-      bg: "rgba(217,169,57,0.12)",
+      bg: "rgba(217,169,57,0.14)",
       border: "#d4a84a",
       accent: "#d4a84a",
-      count: "#ffffff",
+      dateColor: "#ffffff",
+      countColor: "#d4a84a",
+      rangeColor: "#e8d5a3",
     },
     none: {
-      bg: "rgba(74,85,99,0.12)",
-      border: "#2d6b35",
-      accent: "#6ab04c",
-      count: "#6ab04c",
+      bg: "rgba(255,255,255,0.02)",
+      border: "#3a4550",
+      accent: "#6b7280",
+      dateColor: "#6b7280",
+      countColor: "#6b7280",
+      rangeColor: "#6b7280",
     },
   }[bucket];
 
@@ -536,18 +552,18 @@ function DayCell({ day }: { day: DaySummary }) {
       </p>
       <p
         className="text-sm font-semibold leading-tight"
-        style={{ color: "#ffffff" }}
+        style={{ color: palette.dateColor }}
       >
         {dayLabel}
       </p>
       <p
         className="text-xs font-semibold"
-        style={{ color: palette.count }}
+        style={{ color: palette.countColor }}
       >
         {countLabel}
       </p>
       {rangeLabel && (
-        <p className="text-[10px]" style={{ color: "#e8d5a3" }}>
+        <p className="text-[10px]" style={{ color: palette.rangeColor }}>
           {rangeLabel}
         </p>
       )}
