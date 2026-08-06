@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
 import { TestCard } from "./TestCard";
 import { TestTable } from "./TestTable";
@@ -258,7 +258,7 @@ export function CatalogueClient({
          */}
 
         <h1
-          className="font-heading text-4xl md:text-5xl font-semibold mb-2"
+          className="font-heading text-4xl md:text-5xl font-semibold mb-3"
           style={{
             color: "#ffffff",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
@@ -266,26 +266,46 @@ export function CatalogueClient({
         >
           Lab Test <span style={{ color: "#c4973a" }}>Catalogue</span>
         </h1>
-        <p style={{ color: "#e8d5a3" }}>
-          Private blood testing in Calgary — in-home collection by FloLabs phlebotomists.
-        </p>
 
-        {/* Discount promo banner */}
-        <div
-          className="mt-4 inline-flex items-start gap-2 rounded-lg border px-4 py-2 max-w-full"
-          style={{
-            backgroundColor: "#1a3d22",
-            borderColor: "#c4973a",
-          }}
+        {/* Three trust facts, inline, above the fold.
+         *   These answer the three objections that stop a first-time
+         *   private-lab visitor cold: "I'm not in Calgary so I can't",
+         *   "I need a doctor's referral", "my results will end up on
+         *   my public record." Rendered as small icon-prefixed lines
+         *   rather than a section heading so a returner scanning for
+         *   the catalogue can eye-skip them without friction.
+         *
+         *   Copy is deliberately NOT the "Private blood testing in
+         *   Calgary" phrasing that avovita.ca uses — the portal is
+         *   noindex-bound and duplicating marketing keywords is what
+         *   put us in the cannibalization hole in the first place.
+         */}
+        <ul
+          className="flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-1.5 text-sm mb-4"
+          style={{ color: "#e8d5a3" }}
         >
-          <span style={{ color: "#c4973a", fontSize: "16px" }}>✦</span>
-          <p
-            className="text-sm font-medium"
-            style={{ color: "#c4973a" }}
-          >
-            Order 2 or more tests and save $20 per test at checkout.
-          </p>
-        </div>
+          <li className="flex items-center gap-2">
+            <Check
+              className="w-4 h-4 shrink-0"
+              style={{ color: "#8dc63f" }}
+            />
+            <span>A FloLabs phlebotomist comes to you, anywhere in Calgary</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Check
+              className="w-4 h-4 shrink-0"
+              style={{ color: "#8dc63f" }}
+            />
+            <span>No physician requisition for most tests</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Check
+              className="w-4 h-4 shrink-0"
+              style={{ color: "#8dc63f" }}
+            />
+            <span>Results delivered to your private client portal</span>
+          </li>
+        </ul>
 
         {/* Ask AvoVita card — was "AI Test Finder" until Aug 2026 rename */}
         <div

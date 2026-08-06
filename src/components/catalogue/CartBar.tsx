@@ -64,6 +64,16 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
     : { applies: false, total: 0 };
   const totalAfterDiscount = totals.cart_total;
 
+  // "Add one more test to save \$20 per test" nudge — surfaces at the
+  // exact moment the customer is one add away from unlocking the
+  // discount. Only when they've got exactly one test in the cart AND
+  // the discount isn't already applied. Previously this lived as a
+  // static pill on /tests where it was invisible at the decision
+  // moment. Test-count = testItems.length (not itemCount, which
+  // counts supplements + resources too).
+  const showSingleTestNudge =
+    !discount.applies && totals.testItems.length === 1;
+
   return (
     <>
     <div
@@ -117,6 +127,27 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
             >
               Multi-test discount applied — $20 off each test · You&apos;re
               saving {formatCurrency(discount.total)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Single-test upsell — one add away from the multi-test discount.
+          Rendered where it's actionable (the cart) rather than as a
+          static promo pill on /tests where nobody was reading it. */}
+      {showSingleTestNudge && (
+        <div
+          className="border-b"
+          style={{ borderColor: "#c4973a", backgroundColor: "#1a3d22" }}
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-2">
+            <Tag className="w-4 h-4 shrink-0" style={{ color: "#c4973a" }} />
+            <p
+              className="text-xs sm:text-sm font-semibold"
+              style={{ color: "#c4973a" }}
+            >
+              Add one more test to save $20 on each — same home visit,
+              same appointment.
             </p>
           </div>
         </div>

@@ -192,7 +192,7 @@ export function PreviewAvailabilityFab() {
         }}
       >
         <Calendar className="w-4 h-4 shrink-0" />
-        <span>Preview Availability (Not a Booking)</span>
+        <span>Check available dates</span>
       </button>
 
       {/* ── Preview modal ──────────────────────────────────────────── */}
