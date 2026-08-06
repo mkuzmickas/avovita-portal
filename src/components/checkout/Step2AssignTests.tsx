@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { X, Users, ArrowRight, ArrowLeft, Info, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { computeDiscount } from "@/lib/checkout/discount";
+import { useRepeatClient } from "@/components/account/RepeatClientContext";
 import { DiscountBanner } from "./DiscountBanner";
 import type { CatalogueCartItem } from "@/components/catalogue/types";
 
@@ -156,7 +157,9 @@ export function Step2AssignTests({
   );
   // Discount preview based on cart line count so it reflects the true
   // billable lines (a Vitamin D for two people counts as two lines).
-  const discount = computeDiscount(cart.length);
+  // Repeat-client gated — guests + first-timers see full subtotal.
+  const repeatClient = useRepeatClient();
+  const discount = computeDiscount(cart.length, repeatClient.eligible);
   const cartAfterDiscount = cartSubtotal - discount.total;
 
   /**
@@ -513,7 +516,7 @@ export function Step2AssignTests({
               style={{ color: "#8dc63f" }}
             >
               <span>
-                Multi-test discount ({discount.line_count} × $
+                Repeat-client discount ({discount.line_count} × $
                 {discount.per_line.toFixed(2)})
               </span>
               <span>−{formatCurrency(discount.total)}</span>

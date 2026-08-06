@@ -17,6 +17,7 @@ import type {
 import { cartItemId } from "@/components/catalogue/types";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
+import { useRepeatClient } from "@/components/account/RepeatClientContext";
 
 const STORAGE_KEY = "avovita-cart-v1";
 
@@ -115,7 +116,10 @@ export interface CartTotals {
   cart_total: number;
 }
 
-function computeCartTotals(cart: CartItem[]): CartTotals {
+function computeCartTotals(
+  cart: CartItem[],
+  isRepeatClient: boolean,
+): CartTotals {
   const testItems = cart.filter(
     (i): i is CartItemTest => i.line_type === "test",
   );
@@ -136,7 +140,7 @@ function computeCartTotals(cart: CartItem[]): CartTotals {
   );
 
   const test_count = testItems.length;
-  const discount = computeDiscount(test_count);
+  const discount = computeDiscount(test_count, isRepeatClient);
   const test_discount = discount.total;
   const kitFee = computeKitServiceFee(cart);
 
@@ -336,7 +340,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const totals = useMemo(() => computeCartTotals(cart), [cart]);
+  const repeatClient = useRepeatClient();
+  const totals = useMemo(
+    () => computeCartTotals(cart, repeatClient.eligible),
+    [cart, repeatClient.eligible],
+  );
 
   const value = useMemo<CartContextValue>(
     () => ({

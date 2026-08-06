@@ -31,6 +31,12 @@ export interface TotalsInput {
    *  combined total. Stripe gets one line item per entry; the webhook
    *  persists each into order_lines with line_type='custom'. */
   customLineAmounts?: number[];
+  /** Repeat-client discount gate. When true, the multi-test $20/line
+   *  discount is applied on 2+ test lines. When false (default —
+   *  guests, first-time customers), the discount is zero. Server-side
+   *  routes re-validate against Supabase; this flag is only how the
+   *  caller communicates the decision. */
+  isRepeatClient?: boolean;
 }
 
 export interface Totals {
@@ -71,9 +77,13 @@ export function calculateTotals({
   kitServiceFee = 0,
   quoteDiscount = 0,
   customLineAmounts = [],
+  isRepeatClient = false,
 }: TotalsInput): Totals {
   const testsSubtotal = testLinePrices.reduce((s, p) => s + p, 0);
-  const multiTestDiscount = computeDiscount(testLinePrices.length).total;
+  const multiTestDiscount = computeDiscount(
+    testLinePrices.length,
+    isRepeatClient,
+  ).total;
   const subtotalAfterDiscount = Math.max(0, testsSubtotal - multiTestDiscount);
 
   const customLinesTotal = customLineAmounts.reduce(

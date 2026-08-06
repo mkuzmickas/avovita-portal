@@ -72,7 +72,13 @@ export function computeQuoteTotals(
   customLines: CustomLineForTotals[] = []
 ): QuoteTotals {
   const subtotal = lines.reduce((s, l) => s + (l.unit_price_cad ?? 0), 0);
-  const discount = computeDiscount(lines.length).total;
+  // Quote flow: admin generates quotes with full context about the
+  // customer, so the repeat-client eligibility gate that the direct
+  // checkout flow uses does NOT apply here. Multi-test discount is
+  // applied automatically on 2+ lines regardless of prior-order
+  // history. Admin can zero it via the manual discount lever if the
+  // pricing doesn't work for a given quote.
+  const discount = computeDiscount(lines.length, true).total;
   const visitFee = computeVisitFees(Math.max(1, personCount)).total;
   const customLinesTotal = customLines.reduce(
     (s, c) => s + (Number.isFinite(c.amount_cad) ? c.amount_cad : 0),

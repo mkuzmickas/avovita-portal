@@ -83,6 +83,10 @@ describe("d) Customer accepts quote — cart preserves locked custom-line prices
     // The /api/quotes/[number] route filters customer-facing custom lines
     // to { description, amount_cad } — see route.ts. Notes never cross
     // the wire. Verify the calculator accepts that shape unchanged.
+    // isRepeatClient: true mirrors the quote-acceptance branch — quotes
+    // always price in the multi-test discount, so the checkout-side
+    // calc must honor it regardless of the customer's order history.
+    // See src/app/api/stripe/checkout/route.ts (acceptingQuote OR-branch).
     const customer = [
       { description: "Travel — 240km @ $1.25/km", amount_cad: 300 },
     ];
@@ -90,9 +94,11 @@ describe("d) Customer accepts quote — cart preserves locked custom-line prices
       testLinePrices: [200, 200],
       visitFee: 85,
       customLineAmounts: customer.map((c) => c.amount_cad),
+      isRepeatClient: true,
     });
     expect(totals.customLinesTotal).toBe(300);
     // Locked at $300 — calculator never recomputes the price.
+    // 400 tests − 40 multi-test discount + 85 visit + 300 custom = 745.
     expect(totals.subtotalBeforeTax).toBeCloseTo(745, 2);
   });
 });

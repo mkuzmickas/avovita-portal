@@ -148,7 +148,7 @@ export function renderOrderConfirmationEmail(
   const discountRowsHtml = hasDiscount
     ? `
         <tr>
-          <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">Multi-test discount ($20 off per test)</td>
+          <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">Repeat-client discount ($20 off per test)</td>
           <td style="padding: 6px 0; text-align: right; color: #6fa030; font-size: 13px; font-weight: 600;">−${formatCurrency(discountTotal ?? 0)}</td>
         </tr>
       `

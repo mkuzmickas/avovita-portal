@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/components/cart/CartContext";
+import { useRepeatClient } from "@/components/account/RepeatClientContext";
 import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
 import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
 import type {
@@ -107,6 +108,12 @@ export function Step4Review({
   isOutOfTown = false,
 }: Step4Props) {
   const { cart } = useCart();
+  const repeatClient = useRepeatClient();
+  // Same rule as the server + CheckoutCartSummary: repeat client OR
+  // quote acceptance unlocks the multi-test discount. See
+  // src/app/api/stripe/checkout/route.ts.
+  const discountEligible =
+    repeatClient.eligible || !!acceptedQuoteNumber;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shippingRiskAcknowledged, setShippingRiskAcknowledged] =
@@ -168,13 +175,14 @@ export function Step4Review({
         kitServiceFee: kitFee.amount,
         quoteDiscount: quoteDiscountCad,
         customLineAmounts,
+        isRepeatClient: discountEligible,
       }),
-    [assignments, visitFees.total, supplementSubtotal, resourceSubtotal, suppShippingFee, kitFee.amount, quoteDiscountCad, customLineAmounts]
+    [assignments, visitFees.total, supplementSubtotal, resourceSubtotal, suppShippingFee, kitFee.amount, quoteDiscountCad, customLineAmounts, discountEligible]
   );
   const subtotal = totals.testsSubtotal;
   const discount = useMemo(
-    () => computeDiscount(assignments.length),
-    [assignments.length]
+    () => computeDiscount(assignments.length, discountEligible),
+    [assignments.length, discountEligible]
   );
   const subtotalAfterDiscount = totals.subtotalAfterDiscount;
   const total = totals.grandTotal;
@@ -587,7 +595,7 @@ export function Step4Review({
                 className="flex justify-between font-medium"
                 style={{ color: "#8dc63f" }}
               >
-                <span>Multi-test discount ($20 off per test)</span>
+                <span>Repeat-client discount ($20 off per test)</span>
                 <span>−{formatCurrency(discount.total)}</span>
               </div>
               <div

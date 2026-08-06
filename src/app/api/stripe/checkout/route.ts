@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { computeDiscount } from "@/lib/checkout/discount";
+import { isRepeatClient } from "@/lib/checkout/repeatClientEligibility";
 import { resolveManualDiscount } from "@/lib/quotes/totals";
 import { getGstTaxRate } from "@/lib/stripe/getGstTaxRate";
 import type { CheckoutPayload } from "@/lib/checkout/types";
@@ -139,7 +140,20 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Compute discount (recomputed server-side — never trust client) ──
-    // Multi-test discount: $20 off each order line when there are 2+ lines.
+    // Multi-test discount: $20 off each order line when there are 2+ lines,
+    // GATED on repeat-client eligibility. Guests + first-time accounts
+    // (no prior paid orders) see catalogue price parity; repeat clients
+    // get the reward. Eligibility is recomputed here from Supabase so the
+    // client can't spoof it — the RepeatClient context on the front end
+    // is display-only.
+    //
+    // Quote acceptances are an OR-branch: an admin-generated quote has
+    // already priced in the multi-test discount (see src/lib/quotes/
+    // totals.ts — quotes always apply it), so a first-time customer
+    // clicking Accept on a quote must not have that discount silently
+    // stripped at checkout time. `body.quote_number` being non-empty is
+    // the reliable signal; the quote row is validated for status +
+    // expiry further down before the manual-discount coupon is applied.
     //
     // Stripe Checkout Sessions do NOT support negative line items and we
     // were told not to use coupons or promotion codes, so the discount is
@@ -148,7 +162,19 @@ export async function POST(request: NextRequest) {
     // the discount is visible on Stripe's native checkout and receipt
     // pages, and our own branded confirmation email + portal UI show the
     // full breakdown with a dedicated "Multi-test discount" line.
-    const discount = computeDiscount(body.assignments.length);
+    const acceptingQuote =
+      typeof body.quote_number === "string" &&
+      body.quote_number.trim().length > 0;
+    const eligibleForMultiTest =
+      acceptingQuote ||
+      (await isRepeatClient(
+        createServiceRoleClient(),
+        body.account_user_id,
+      ));
+    const discount = computeDiscount(
+      body.assignments.length,
+      eligibleForMultiTest,
+    );
 
     // ─── Build Stripe line items ──────────────────────────────────
     type StripeLineItem = {

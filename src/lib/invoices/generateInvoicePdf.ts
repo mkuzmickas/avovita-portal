@@ -398,7 +398,7 @@ export async function generateInvoicePdf(
   };
   totalRow("Subtotal", fmtMoney(invoice.subtotalCad));
   if (invoice.discountCad > 0) {
-    totalRow("Multi-test discount", `-${fmtMoney(invoice.discountCad)}`);
+    totalRow("Repeat-client discount", `-${fmtMoney(invoice.discountCad)}`);
   }
   if ((invoice.additionalDiscountCad ?? 0) > 0) {
     totalRow(

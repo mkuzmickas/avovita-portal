@@ -3,6 +3,7 @@ import "./globals.css";
 import { CartProvider } from "@/components/cart/CartContext";
 import { AnalyticsProvider } from "@/lib/analytics/useAnalytics";
 import { PreviewAvailabilityFab } from "@/components/PreviewAvailabilityFab";
+import { RepeatClientProvider } from "@/components/account/RepeatClientContext";
 
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
@@ -87,12 +88,14 @@ export default function RootLayout({
         className="min-h-full flex flex-col antialiased"
         style={{ backgroundColor: "#0a1a0d", color: "#e8d5a3" }}
       >
-        <CartProvider>
-          <AnalyticsProvider>
-            {children}
-            <PreviewAvailabilityFab />
-          </AnalyticsProvider>
-        </CartProvider>
+        <RepeatClientProvider>
+          <CartProvider>
+            <AnalyticsProvider>
+              {children}
+              <PreviewAvailabilityFab />
+            </AnalyticsProvider>
+          </CartProvider>
+        </RepeatClientProvider>
       </body>
     </html>
   );

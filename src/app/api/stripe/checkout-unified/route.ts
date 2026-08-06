@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { computeDiscount } from "@/lib/checkout/discount";
+import { isRepeatClient } from "@/lib/checkout/repeatClientEligibility";
 import { getGstTaxRate } from "@/lib/stripe/getGstTaxRate";
 import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
 
@@ -104,8 +105,16 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Multi-test discount — ONLY for test lines
-      const testDiscount = computeDiscount(payload.test_assignments.length);
+      // Multi-test discount — ONLY for test lines, and gated on
+      // repeat-client eligibility. See src/lib/checkout/discount.ts.
+      const eligibleForMultiTest = await isRepeatClient(
+        service,
+        payload.account_user_id ?? null,
+      );
+      const testDiscount = computeDiscount(
+        payload.test_assignments.length,
+        eligibleForMultiTest,
+      );
 
       for (const assignment of payload.test_assignments) {
         const test = testMap.get(assignment.test_id)!;

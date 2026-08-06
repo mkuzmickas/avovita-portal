@@ -6,6 +6,7 @@ import { computeDiscount } from "@/lib/checkout/discount";
 import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
 import { DiscountBanner } from "./DiscountBanner";
 import { useCart } from "@/components/cart/CartContext";
+import { useRepeatClient } from "@/components/account/RepeatClientContext";
 import { cartItemId, cartItemName } from "@/components/catalogue/types";
 import type { CartItem } from "@/components/catalogue/types";
 import type { VisitFees } from "@/lib/checkout/types";
@@ -49,12 +50,18 @@ export function CheckoutCartSummary({
   acceptedQuoteNumber = null,
 }: CheckoutCartSummaryProps) {
   const { removeItem } = useCart();
+  const repeatClient = useRepeatClient();
   const testCount = cart.filter((i) => i.line_type === "test").length;
   const effectiveLineCount = lineCount ?? testCount;
+  // Discount eligibility here mirrors the server: repeat client OR
+  // customer accepting an admin-generated quote (quotes always price
+  // in the multi-test discount, so we must not silently strip it at
+  // checkout time). See src/app/api/stripe/checkout/route.ts.
+  const discountEligible = repeatClient.eligible || !!acceptedQuoteNumber;
   // For the per-line discount annotation we still need the discount
   // shape (per_line / applies). The authoritative totals come from
   // calculateTotals — same function the Step 4 pane uses.
-  const discount = computeDiscount(effectiveLineCount);
+  const discount = computeDiscount(effectiveLineCount, discountEligible);
 
   // Build a synthetic test-line price array so calculateTotals receives
   // the same shape regardless of caller. On Step 1 (before the user
@@ -95,6 +102,7 @@ export function CheckoutCartSummary({
     kitServiceFee: kitFee.amount,
     quoteDiscount: quoteDiscountCad,
     customLineAmounts,
+    isRepeatClient: discountEligible,
   });
 
   const subtotal = totals.testsSubtotal;
@@ -215,7 +223,7 @@ export function CheckoutCartSummary({
                   style={{ color: "#8dc63f" }}
                 >
                   <span>
-                    Multi-test discount ({discount.line_count} ×{" "}
+                    Repeat-client discount ({discount.line_count} ×{" "}
                     {formatCurrency(discount.per_line)})
                   </span>
                   <span>−{formatCurrency(discount.total)}</span>
