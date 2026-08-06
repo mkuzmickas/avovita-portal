@@ -5,8 +5,13 @@ export type VisitZone = "zone1" | "zone2" | "unserved";
 // ─── Postal-code zone classification ──────────────────────────────────────
 //
 // Zone 1 — Calgary proper ($85 base)
-// Zone 2 — Surrounding areas ($134 base — $85 + $49 surcharge)
+// Zone 2 — Surrounding areas ($135 base — $85 + $50 extended-range surcharge)
 // Unserved — everywhere else: block the user, show a support CTA.
+//
+// Additional-person fee ($55) is FLAT regardless of zone — the extended-
+// range surcharge is a once-per-appointment cost, not per-person, so a
+// two-person Airdrie collection is $85 + $50 + $55 = $190, not $135 + $55
+// treating the surcharge as embedded.
 //
 // The lists are based on Canada Post FSA prefixes (first three characters
 // of a postal code). Comparison is case-insensitive and ignores spaces.
@@ -21,7 +26,8 @@ const ZONE1_FSAS = new Set([
 ]);
 
 const ZONE2_FSAS = new Set([
-  "T1X", // Chestermere
+  "T1S", // Okotoks
+  "T1X", // Chestermere (confirm with Mike whether this stays served)
   "T4A", // Airdrie
   "T4B", // Airdrie
   "T4C", // Cochrane
@@ -68,7 +74,7 @@ export function computeVisitFees(
 
   const zone1Base = Number(process.env.NEXT_PUBLIC_HOME_VISIT_FEE_BASE ?? 85);
   const zone2Base = Number(
-    process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ZONE2 ?? 134
+    process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ZONE2 ?? 135
   );
   const additionalRate = Number(
     process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ADDITIONAL ?? 55
