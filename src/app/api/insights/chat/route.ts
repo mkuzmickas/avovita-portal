@@ -42,13 +42,17 @@ function corsHeadersFor(origin: string | null): Record<string, string> {
 
 /**
  * Preflight handler. Browsers issue OPTIONS before any cross-origin
- * POST with a non-simple content type. Returns 204 + CORS headers
- * for allowlisted origins, 403 otherwise.
+ * POST with a non-simple content type. Origin is required and must
+ * be in the allowlist; missing / bad origins get 403 (no CORS
+ * headers) so the caller's browser refuses the subsequent POST.
  */
 export async function OPTIONS(request: NextRequest) {
   const origin = request.headers.get("origin");
-  if (origin && !ALLOWED_ORIGINS.has(origin)) {
-    return NextResponse.json({ error: "Origin not allowed" }, { status: 403 });
+  if (!origin || !ALLOWED_ORIGINS.has(origin)) {
+    return NextResponse.json(
+      { error: origin ? "Origin not allowed" : "Origin header required" },
+      { status: 403 },
+    );
   }
   return new NextResponse(null, {
     status: 204,
@@ -56,13 +60,31 @@ export async function OPTIONS(request: NextRequest) {
   });
 }
 
-// ─── Per-IP rate limiting ──────────────────────────────────────────
-// In-memory sliding window: 10 requests per hour per IP. The map resets
-// on serverless cold start which is acceptable for this scale; for a
-// stricter cap swap to Upstash Redis or similar.
-const RATE_LIMIT_MAX = 10;
+// ─── Rate limiting ─────────────────────────────────────────────────
+// Two layers stacked:
+//
+//   1. Global daily cap. In-memory sliding window across the whole
+//      endpoint. This is the real defense against per-IP rotation
+//      (which defeats any per-IP limit no matter how low). Set well
+//      above honest daily traffic — its only job is to stop a bad
+//      night from becoming a bad Anthropic invoice. In-memory means
+//      it resets on serverless cold starts, which is acceptable for
+//      a safety net.
+//
+//   2. Per-IP hourly cap. Prevents a single bad actor from burning
+//      through the global cap before it can trip. Raised from 10/hr
+//      to 30/hr now that we also require Origin — a NAT'd household
+//      or office sharing one public IP has room to use the widget.
+//
+// Both are in-memory sliding windows; maps reset on cold start. For
+// a stricter absolute cap swap to Upstash Redis or Vercel KV later.
+const RATE_LIMIT_MAX = 30;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const ipHits = new Map<string, number[]>();
+
+const DAILY_CAP_MAX = 2000;
+const DAILY_CAP_WINDOW_MS = 24 * 60 * 60 * 1000;
+let dailyHits: number[] = [];
 
 function clientIp(request: NextRequest): string {
   return (
@@ -89,6 +111,22 @@ function checkRateLimit(ip: string): {
   }
   arr.push(now);
   ipHits.set(ip, arr);
+  return { ok: true, retryAfterSec: 0 };
+}
+
+function checkDailyCap(): { ok: boolean; retryAfterSec: number } {
+  const now = Date.now();
+  const cutoff = now - DAILY_CAP_WINDOW_MS;
+  dailyHits = dailyHits.filter((t) => t > cutoff);
+  if (dailyHits.length >= DAILY_CAP_MAX) {
+    const oldest = dailyHits[0];
+    const retryAfterSec = Math.max(
+      1,
+      Math.ceil((oldest + DAILY_CAP_WINDOW_MS - now) / 1000),
+    );
+    return { ok: false, retryAfterSec };
+  }
+  dailyHits.push(now);
   return { ok: true, retryAfterSec: 0 };
 }
 
@@ -161,19 +199,46 @@ interface ChatMessage {
 
 export async function POST(request: NextRequest) {
   // ─── Origin allowlist ────────────────────────────────────────────
-  // If Origin is present (browser request), it must be in the
-  // allowlist. Missing Origin = server-to-server call, which we still
-  // allow (existing IP rate limit is the guard there).
+  // Required. Same-origin browser POSTs (portal's own Ask AvoVita)
+  // send an Origin header; the marketing-site widget will too. The
+  // only category we'd cut off by requiring it is server-to-server
+  // callers with no legitimate purpose on this route (uptime
+  // monitors don't POST here). Making it mandatory closes the
+  // "just skip the Origin header" bypass that per-IP rate limits
+  // can't stop.
   const origin = request.headers.get("origin");
-  const cors = corsHeadersFor(origin);
-  if (origin && !ALLOWED_ORIGINS.has(origin)) {
+  if (!origin || !ALLOWED_ORIGINS.has(origin)) {
     return NextResponse.json(
-      { error: "Origin not allowed" },
+      { error: origin ? "Origin not allowed" : "Origin header required" },
       { status: 403 },
     );
   }
+  const cors = corsHeadersFor(origin);
 
-  // Public endpoint — gated by per-IP rate limit instead of auth.
+  // ─── Global daily cap ───────────────────────────────────────────
+  // Absolute ceiling on total requests across ALL IPs in a 24h
+  // rolling window. Defeats per-IP rotation, which the per-IP cap
+  // below can't. Set well above honest traffic; only exists to stop
+  // an incident from becoming a bad Anthropic invoice.
+  const dc = checkDailyCap();
+  if (!dc.ok) {
+    return NextResponse.json(
+      {
+        error:
+          "Ask AvoVita is temporarily paused due to unusually high usage. Please try again later or email support@avovita.ca for help.",
+      },
+      {
+        status: 429,
+        headers: {
+          ...cors,
+          "Retry-After": String(dc.retryAfterSec),
+          "X-RateLimit-Scope": "endpoint-daily",
+        },
+      },
+    );
+  }
+
+  // ─── Per-IP hourly cap ─────────────────────────────────────────
   const ip = clientIp(request);
   const rl = checkRateLimit(ip);
   if (!rl.ok) {
@@ -188,6 +253,7 @@ export async function POST(request: NextRequest) {
           "Retry-After": String(rl.retryAfterSec),
           "X-RateLimit-Limit": String(RATE_LIMIT_MAX),
           "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Scope": "per-ip-hourly",
         },
       }
     );
