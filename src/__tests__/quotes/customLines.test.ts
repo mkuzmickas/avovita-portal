@@ -70,7 +70,6 @@ describe("c) Multiple custom lines (positive + negative mixed) sum correctly", (
     const totals = calculateTotals({
       testLinePrices: [300],
       visitFee: 85,
-      appliedPromo: null,
       customLineAmounts: [300, -50, 10],
     });
     expect(totals.customLinesTotal).toBe(260);
@@ -90,7 +89,6 @@ describe("d) Customer accepts quote — cart preserves locked custom-line prices
     const totals = calculateTotals({
       testLinePrices: [200, 200],
       visitFee: 85,
-      appliedPromo: null,
       customLineAmounts: customer.map((c) => c.amount_cad),
     });
     expect(totals.customLinesTotal).toBe(300);

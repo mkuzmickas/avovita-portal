@@ -8,7 +8,7 @@ import { DiscountBanner } from "./DiscountBanner";
 import { useCart } from "@/components/cart/CartContext";
 import { cartItemId, cartItemName } from "@/components/catalogue/types";
 import type { CartItem } from "@/components/catalogue/types";
-import type { VisitFees, AppliedPromo } from "@/lib/checkout/types";
+import type { VisitFees } from "@/lib/checkout/types";
 import { calculateTotals } from "@/lib/checkout/totals";
 
 interface CheckoutCartSummaryProps {
@@ -26,8 +26,6 @@ interface CheckoutCartSummaryProps {
    * computed from assignments (one billed line per assignment).
    */
   subtotalOverride?: number;
-  /** Resolved Stripe promotion code applied to the order, if any. */
-  appliedPromo?: AppliedPromo | null;
   /** Quote-acceptance flow: admin-entered additional discount, CAD
    *  dollars. 0 / undefined when not a quote acceptance. */
   quoteDiscountCad?: number;
@@ -47,7 +45,6 @@ export function CheckoutCartSummary({
   visitFees,
   lineCount,
   subtotalOverride,
-  appliedPromo = null,
   quoteDiscountCad = 0,
   acceptedQuoteNumber = null,
 }: CheckoutCartSummaryProps) {
@@ -77,8 +74,8 @@ export function CheckoutCartSummary({
         )
       : cartLinePrices;
 
-  // Supplement + resource subtotals — computed before calculateTotals
-  // so the promo discount base includes all line types.
+  // Supplement + resource subtotals — folded into calculateTotals so
+  // GST recalcs on the combined pre-tax subtotal.
   const supplementSubtotal = cart
     .filter((i) => i.line_type === "supplement")
     .reduce((s, i) => s + i.price_cad * i.quantity, 0);
@@ -93,7 +90,6 @@ export function CheckoutCartSummary({
   const totals = calculateTotals({
     testLinePrices,
     visitFee: visitFees?.total ?? 0,
-    appliedPromo: appliedPromo ?? null,
     supplementSubtotal,
     resourceSubtotal,
     kitServiceFee: kitFee.amount,
@@ -103,13 +99,6 @@ export function CheckoutCartSummary({
 
   const subtotal = totals.testsSubtotal;
   const subtotalAfterDiscount = totals.subtotalAfterDiscount;
-  const promoDiscount = totals.promoDiscount;
-
-  const grossTotal =
-    subtotalAfterDiscount +
-    (visitFees?.total ?? 0) +
-    supplementSubtotal +
-    resourceSubtotal;
   const total = totals.grandTotal;
 
   return (
@@ -337,21 +326,6 @@ export function CheckoutCartSummary({
                 <span>−{formatCurrency(totals.quoteDiscount)}</span>
               </div>
             )}
-
-            {appliedPromo &&
-              (promoDiscount > 0 || appliedPromo.notice) && (
-                <div
-                  className="flex justify-between text-sm font-medium pt-2 mt-1 border-t"
-                  style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
-                >
-                  <span>{appliedPromo.displayLabel}</span>
-                  <span>
-                    {appliedPromo.notice
-                      ? appliedPromo.notice
-                      : `−${formatCurrency(promoDiscount)}`}
-                  </span>
-                </div>
-              )}
 
             {totals.estimatedGST > 0 && (
               <div

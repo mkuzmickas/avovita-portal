@@ -3,7 +3,6 @@ import { stripe } from "@/lib/stripe";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { resolveManualDiscount } from "@/lib/quotes/totals";
-import { applyPromoCode } from "@/lib/promo/promoCodes";
 import { getGstTaxRate } from "@/lib/stripe/getGstTaxRate";
 import type { CheckoutPayload } from "@/lib/checkout/types";
 
@@ -331,74 +330,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ─── Handle promo code via the shared registry ────────────────
-    // Resolved fresh against src/lib/promo/promoCodes.ts so the client
-    // can't tamper with the discount amount. The registry is the one
-    // place that defines discount shape (whole-cart vs fee-line) and
-    // display label; this route just asks where to subtract from.
-    //
-    // Whole-cart promos now go into the same coupon as the quote
-    // discount below. The flolabs-base-fee variant still mutates the
-    // visit-fee line's unit_amount directly — the discount amount is
-    // small ($85 max) and clamped to the line total, so no zeroing
-    // risk, and it preserves the "specifically waives the base fee"
-    // wording on the Stripe receipt.
-    let promoWholeCartCad = 0;
-    let promoLabel: string | null = null;
-    const rawPromoCode: string =
-      typeof body.promo_code === "string" ? body.promo_code.trim() : "";
-    if (rawPromoCode) {
-      const preTaxCartDollars =
-        lineItems.reduce((s, li) => s + li.price_data.unit_amount, 0) / 100;
-      const result = applyPromoCode(rawPromoCode, {
-        visitFeeCad: visitFeeTotal,
-        preTaxCartCad: preTaxCartDollars,
-      });
-      if (result.valid) {
-        if (result.applied_to_line === "flolabs_base_fee") {
-          const visitLine = lineItems.find(
-            (li) => li.price_data.product_data.name === "FloLabs Home Visit Fee"
-          );
-          if (visitLine) {
-            const takeCents = Math.min(
-              Math.round(result.discount_cad * 100),
-              visitLine.price_data.unit_amount
-            );
-            visitLine.price_data.unit_amount -= takeCents;
-            if (takeCents > 0) {
-              visitLine.price_data.product_data.description =
-                (visitLine.price_data.product_data.description ?? "") +
-                ` · ${result.display_label} −$${(takeCents / 100).toFixed(2)}`;
-            }
-          }
-        } else {
-          // Whole-cart — feed into the coupon path below so the
-          // Stripe receipt shows the promo as its own line and no
-          // per-item unit_amount gets clobbered.
-          const preTaxLineTotalCents = lineItems.reduce(
-            (s, li) => s + li.price_data.unit_amount,
-            0
-          );
-          const cappedCents = Math.min(
-            Math.round(result.discount_cad * 100),
-            preTaxLineTotalCents
-          );
-          promoWholeCartCad = cappedCents / 100;
-          promoLabel = result.display_label;
-        }
-      }
-    }
-
     // ─── Build a single Stripe coupon for every discount ──────────
     // Stripe Checkout accepts at most one coupon per session; we sum
-    // multi-test + quote + whole-cart-promo into ONE coupon so the
-    // checkout page and receipt read as their own labelled line
-    // rather than baking reductions into unit_amount and confusing
-    // the customer (who compared sticker prices on the review page
-    // to reduced prices on Stripe and thought numbers were wrong).
+    // multi-test + quote discount into ONE coupon so the checkout
+    // page and receipt read as their own labelled line rather than
+    // baking reductions into unit_amount and confusing the customer
+    // (who compared sticker prices on the review page to reduced
+    // prices on Stripe and thought numbers were wrong).
     // Coupons are created dynamically per session (Stripe supports
     // ~10 000 by default; cleanup can come later if we hit the
-    // ceiling).
+    // ceiling). Customer-facing promo codes were removed in the
+    // Aug-2026 pruning pass — the only "additional discount" left
+    // is the admin-entered one from an accepted quote.
     let sessionDiscounts:
       | Array<{ coupon: string }>
       | undefined = undefined;
@@ -408,27 +351,20 @@ export async function POST(request: NextRequest) {
     );
     const rawCouponCents =
       Math.round(appliedDiscountTotal * 100) +
-      Math.round(quoteDiscountCad * 100) +
-      Math.round(promoWholeCartCad * 100);
+      Math.round(quoteDiscountCad * 100);
     const cappedCouponCents = Math.min(rawCouponCents, preCouponLineTotalCents);
     if (cappedCouponCents > 0) {
       // Coupon name has a 40-character ceiling in Stripe's API. Pick
       // the shortest label that still tells the customer what they
       // got, in this order of specificity:
-      //   • both quote + multi-test → "AvoVita — Quote discount"
-      //   • quote alone             → "AvoVita — Quote discount"
-      //   • promo alone             → truncated promo label
+      //   • quote present           → "AvoVita — Quote discount"
       //   • multi-test alone        → "AvoVita — Multi-test discount"
       //   • fallback                → "AvoVita discount"
       // The full breakdown lives on the coupon's metadata for our
       // records / reconciliation.
-      const clampCouponName = (s: string) =>
-        s.length <= 40 ? s : `${s.slice(0, 37)}…`;
       let couponName: string;
       if (quoteDiscountCad > 0) {
         couponName = "AvoVita — Quote discount";
-      } else if (promoWholeCartCad > 0 && promoLabel) {
-        couponName = clampCouponName(`AvoVita — ${promoLabel}`);
       } else if (appliedDiscountTotal > 0) {
         couponName = "AvoVita — Multi-test discount";
       } else {
@@ -442,18 +378,16 @@ export async function POST(request: NextRequest) {
         metadata: {
           avovita_multi_test_discount_cad: appliedDiscountTotal.toFixed(2),
           avovita_quote_discount_cad: quoteDiscountCad.toFixed(2),
-          avovita_promo_discount_cad: promoWholeCartCad.toFixed(2),
           avovita_quote_number: quoteNumber || "",
         },
       });
       sessionDiscounts = [{ coupon: coupon.id }];
     }
-    // Track the additional (quote + whole-cart promo) discount so the
-    // webhook can persist it on orders.additional_discount_cad. Multi-
-    // test stays on orders.discount_cad. The invoice PDF renders both
-    // rows separately.
-    const additionalDiscountCad =
-      quoteDiscountCad + promoWholeCartCad;
+    // Track the quote-only additional discount so the webhook can
+    // persist it on orders.additional_discount_cad. Multi-test stays
+    // on orders.discount_cad. The invoice PDF renders both rows
+    // separately.
+    const additionalDiscountCad = quoteDiscountCad;
 
     // ─── Build metadata payload ───────────────────────────────────
     // Deferred until here so `additional_discount_cad` (computed from
@@ -495,7 +429,6 @@ export async function POST(request: NextRequest) {
         appliedDiscountTotal -
         additionalDiscountCad +
         visitFeeTotal,
-      promo_code: body.promo_code?.trim().toUpperCase() || null,
       org_id: resolvedOrgId,
       representative: body.representative
         ? {

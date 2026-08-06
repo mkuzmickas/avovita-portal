@@ -883,7 +883,6 @@ async function handleCheckoutCompleteV2(
       subtotal: p.subtotal_tests,
       discount_cad: p.test_discount,
       total: p.total,
-      promo_code: p.promo_code ?? null,
       org_id: p.org_id ?? null,
       representative: p.representative ?? null,
       custom_lines: p.custom_lines ?? [],

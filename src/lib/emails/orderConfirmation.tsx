@@ -8,22 +8,6 @@
  * pulling the full @react-email/render toolchain into the build.
  */
 
-import { PROMO_REGISTRY } from "@/lib/promo/promoCodes";
-
-/**
- * Looks up the customer-facing label for a promo code (e.g., the
- * FloLabs fee-waiver shows "FloLabs Fee Promo (FREEMOBILE26)" instead
- * of the generic "Promo discount (FREEMOBILE26)"). Falls back to the
- * generic label for unknown / legacy codes so we never break existing
- * order confirmations.
- */
-function promoDiscountLabel(code: string | null): string {
-  if (!code) return "Promo discount";
-  const def = PROMO_REGISTRY.find((p) => p.code === code.toUpperCase());
-  if (def) return def.displayLabel;
-  return `Promo discount (${code})`;
-}
-
 export interface OrderConfirmationTest {
   name: string;
   /** Catalogue SKU — rendered as "(SKU)" after the test name. */
@@ -40,7 +24,7 @@ export interface OrderConfirmationProps {
   subtotal: number;
   /** Multi-test discount total. 0 or undefined to hide the row. */
   discountTotal?: number;
-  /** Admin-entered quote discount + whole-cart promo, applied at
+  /** Admin-entered quote discount (from an accepted quote), applied at
    *  Stripe as an amount_off coupon. Rendered as its own row after
    *  the multi-test discount when > 0. */
   additionalDiscountCad?: number;
@@ -58,10 +42,6 @@ export interface OrderConfirmationProps {
   floLabsUrl?: string;
   /** Stripe session ID — used to build the waiver completion link. */
   stripeSessionId?: string;
-  /** Customer-facing Stripe Promotion Code applied at checkout. */
-  promoCode?: string | null;
-  /** Discount amount the promo took off, CAD. 0 or undefined to hide. */
-  promoDiscount?: number;
   /**
    * If present, an "Account created — confirm your email" section is rendered
    * with this URL as the CTA. Pass null/undefined for already-confirmed
@@ -106,8 +86,6 @@ export function renderOrderConfirmationEmail(
     portalUrl,
     floLabsUrl = FLO_LABS_URL,
     stripeSessionId,
-    promoCode,
-    promoDiscount = 0,
     confirmationLink,
     hasPhlebotomistTests = true,
     hasKitTests = false,
@@ -116,17 +94,13 @@ export function renderOrderConfirmationEmail(
     customLines = [],
   } = props;
 
-  const hasPromo = promoDiscount > 0;
   // `total` is the pre-tax net-of-discounts figure carried from the
-  // payload; add GST + subtract promo to land on the actual charged
-  // amount so the confirmation email matches the Stripe receipt
-  // instead of showing $70+ less than the customer was billed.
+  // payload; add GST to land on the actual charged amount so the
+  // confirmation email matches the Stripe receipt instead of showing
+  // less than the customer was billed.
   const tax = taxCad ?? 0;
   const additionalDiscount = additionalDiscountCad ?? 0;
-  const finalTotal = Math.max(
-    0,
-    total - (hasPromo ? promoDiscount : 0) + tax,
-  );
+  const finalTotal = Math.max(0, total + tax);
 
   const waiverUrl = stripeSessionId
     ? `${portalUrl}/checkout/success?session_id=${encodeURIComponent(stripeSessionId)}`
@@ -278,15 +252,6 @@ export function renderOrderConfirmationEmail(
                   })
                   .join("")}
                 ${
-                  hasPromo
-                    ? `
-                <tr>
-                  <td style="padding: 6px 0; color: #6fa030; font-size: 13px; font-weight: 600;">${escapeHtml(promoDiscountLabel(promoCode ?? null))}</td>
-                  <td style="padding: 6px 0; text-align: right; color: #6fa030; font-size: 13px; font-weight: 600;">−${formatCurrency(promoDiscount)}</td>
-                </tr>`
-                    : ""
-                }
-                ${
                   tax > 0
                     ? `
                 <tr>
@@ -298,11 +263,7 @@ export function renderOrderConfirmationEmail(
                 <tr>
                   <td style="padding: 12px 0; border-top: 2px solid #e5e7eb; font-size: 16px; color: #111827; font-weight: 700;">Total</td>
                   <td style="padding: 12px 0; border-top: 2px solid #e5e7eb; text-align: right; font-size: 16px; color: #c4973a; font-weight: 700;">
-                    ${
-                      hasPromo
-                        ? `<span style="text-decoration: line-through; color: #9ca3af; font-weight: 500; font-size: 13px; margin-right: 8px;">${formatCurrency(total)}</span>`
-                        : ""
-                    }${formatCurrency(finalTotal)}
+                    ${formatCurrency(finalTotal)}
                   </td>
                 </tr>
               </table>

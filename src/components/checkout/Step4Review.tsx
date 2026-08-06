@@ -9,17 +9,12 @@ import {
   Lock,
   AlertCircle,
   AlertTriangle,
-  ChevronDown,
-  Tag,
-  CheckCircle,
   CheckSquare,
   Square,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import { useCart } from "@/components/cart/CartContext";
 import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
-import type { CartItem } from "@/components/catalogue/types";
 import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
 import type {
   SupplementFulfillment,
@@ -32,7 +27,6 @@ import type {
   CheckoutPayload,
   RepresentativeBlock,
   TestAssignment,
-  AppliedPromo,
 } from "@/lib/checkout/types";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
 import { computeDiscount } from "@/lib/checkout/discount";
@@ -47,9 +41,6 @@ interface Step4Props {
   assignments: PersonAssignmentEntry[];
   accountUserId: string | null;
   onBack: () => void;
-  /** Promo state lifted to CheckoutClient so the Order Summary sidebar can react. */
-  appliedPromo: AppliedPromo | null;
-  onPromoChange: (next: AppliedPromo | null) => void;
   orderMode: "self" | "caregiver";
   representative: RepresentativeBlock;
   /** Supplement fulfillment state (from CheckoutClient step 3.5). */
@@ -107,8 +98,6 @@ export function Step4Review({
   assignments,
   accountUserId,
   onBack,
-  appliedPromo,
-  onPromoChange,
   orderMode,
   representative,
   suppFulfillment = null,
@@ -117,14 +106,9 @@ export function Step4Review({
   quoteDiscountCad = 0,
   isOutOfTown = false,
 }: Step4Props) {
-  const { trackEvent } = useAnalytics();
   const { cart } = useCart();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [promoOpen, setPromoOpen] = useState(false);
-  const [promoInput, setPromoInput] = useState("");
-  const [promoError, setPromoError] = useState<string | null>(null);
-  const [promoSubmitting, setPromoSubmitting] = useState(false);
   const [shippingRiskAcknowledged, setShippingRiskAcknowledged] =
     useState(false);
 
@@ -150,10 +134,8 @@ export function Step4Review({
   );
 
   // Single source of truth — same function powers the right-rail summary.
-  // appliedPromo IS in the dep array so a fresh promo recomputes totals
-  // on the very next render.
-  // Supplement + resource subtotals — computed before calculateTotals
-  // so the promo discount base includes all line types.
+  // Supplement + resource subtotals — computed alongside test lines so
+  // GST recalculates on the combined pre-tax subtotal.
   const supplementSubtotal = cart
     .filter((i) => i.line_type === "supplement")
     .reduce((s, i) => s + i.price_cad * i.quantity, 0);
@@ -180,7 +162,6 @@ export function Step4Review({
       calculateTotals({
         testLinePrices: assignments.map((a) => a.price_cad),
         visitFee: visitFees.total,
-        appliedPromo,
         supplementSubtotal,
         resourceSubtotal,
         supplementShippingFee: suppShippingFee,
@@ -188,8 +169,7 @@ export function Step4Review({
         quoteDiscount: quoteDiscountCad,
         customLineAmounts,
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [assignments, visitFees.total, appliedPromo, supplementSubtotal, resourceSubtotal, suppShippingFee, kitFee.amount, quoteDiscountCad, customLineAmounts]
+    [assignments, visitFees.total, supplementSubtotal, resourceSubtotal, suppShippingFee, kitFee.amount, quoteDiscountCad, customLineAmounts]
   );
   const subtotal = totals.testsSubtotal;
   const discount = useMemo(
@@ -197,13 +177,6 @@ export function Step4Review({
     [assignments.length]
   );
   const subtotalAfterDiscount = totals.subtotalAfterDiscount;
-  const promoDiscount = totals.promoDiscount;
-  const grossTotal =
-    subtotalAfterDiscount +
-    visitFees.total +
-    supplementSubtotal +
-    resourceSubtotal +
-    suppShippingFee;
   const total = totals.grandTotal;
 
   const assignmentsByPerson = useMemo(() => {
@@ -232,66 +205,6 @@ export function Step4Review({
     ).length;
     return mayoTestCount === 1; // CBC is the sole Mayo test
   }, [assignments]);
-
-  const handleApplyPromo = async () => {
-    setPromoError(null);
-    const code = promoInput.trim();
-    if (!code) {
-      setPromoError("Enter a promo code.");
-      return;
-    }
-    setPromoSubmitting(true);
-    try {
-      // Pre-compute the cart context so fee-line-targeted codes (e.g.
-      // FREEMOBILE26) can reject up front when the target line isn't
-      // in the cart.
-      const preTaxCartCad =
-        totals.subtotalAfterDiscount +
-        visitFees.total +
-        supplementSubtotal +
-        resourceSubtotal +
-        suppShippingFee +
-        kitFee.amount;
-      const res = await fetch("/api/checkout/validate-promo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code,
-          visitFeeCad: visitFees.total,
-          preTaxCartCad,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setPromoError(data.error ?? "That promo code isn't valid.");
-        onPromoChange(null);
-        return;
-      }
-      const next: AppliedPromo = {
-        code: data.code,
-        type: data.type,
-        displayLabel: data.displayLabel,
-        percentOff:
-          typeof data.percentOff === "number" ? data.percentOff : undefined,
-        amountCad:
-          typeof data.amountCad === "number" ? data.amountCad : undefined,
-        notice: typeof data.notice === "string" ? data.notice : undefined,
-      };
-      onPromoChange(next);
-      trackEvent("promo_code_applied", { code: data.code });
-    } catch {
-      setPromoError("Failed to validate promo code.");
-      onPromoChange(null);
-    } finally {
-      setPromoSubmitting(false);
-    }
-  };
-
-  const handleRemovePromo = () => {
-    onPromoChange(null);
-    setPromoInput("");
-    setPromoError(null);
-  };
 
   const canProceed =
     !submitting && (!showShippingRisk || shippingRiskAcknowledged);
@@ -400,7 +313,6 @@ export function Step4Review({
           order_mode: orderMode,
           representative:
             orderMode === "caregiver" ? representative : null,
-          promo_code: appliedPromo?.code ?? null,
           org_id: orgSlug ?? null, // server resolves slug → id
           supplement_fulfillment: hasSupplements
             ? suppFulfillment
@@ -468,8 +380,6 @@ export function Step4Review({
           discount_cad: discount.total,
           total,
           account_user_id: accountUserId,
-          promo_code: appliedPromo?.code ?? undefined,
-          promotion_code_id: null,
           representative:
             orderMode === "caregiver" ? representative : null,
         };
@@ -712,19 +622,6 @@ export function Step4Review({
               </span>
             </div>
           )}
-          {appliedPromo?.type === "flolabs_base_fee_waiver" && (
-            <div
-              className="flex justify-between font-medium"
-              style={{ color: "#8dc63f" }}
-            >
-              <span>{appliedPromo.displayLabel}</span>
-              <span>
-                {appliedPromo.notice
-                  ? appliedPromo.notice
-                  : `−${formatCurrency(promoDiscount)}`}
-              </span>
-            </div>
-          )}
           {customCartItems.map((c) => (
             <div
               key={c.custom_id}
@@ -794,17 +691,6 @@ export function Step4Review({
               <span>−{formatCurrency(totals.quoteDiscount)}</span>
             </div>
           )}
-          {appliedPromo &&
-            appliedPromo.type !== "flolabs_base_fee_waiver" &&
-            promoDiscount > 0 && (
-              <div
-                className="flex justify-between font-medium pt-2 mt-1 border-t"
-                style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
-              >
-                <span>{appliedPromo.displayLabel}</span>
-                <span>−{formatCurrency(promoDiscount)}</span>
-              </div>
-            )}
           {totals.estimatedGST > 0 && (
             <div
               className="flex justify-between pt-2 mt-1 border-t"
@@ -831,97 +717,6 @@ export function Step4Review({
           </p>
         </div>
       </section>
-
-      {/* Promo code section */}
-      {(
-        <section
-          className="rounded-lg border p-5 mb-5"
-          style={{
-            backgroundColor: "rgba(196, 151, 58, 0.1)",
-            borderColor: "#c4973a",
-          }}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <Tag className="w-4 h-4" style={{ color: "#c4973a" }} />
-            <h4
-              className="text-sm font-semibold"
-              style={{ color: "#c4973a" }}
-            >
-              Promo Code
-            </h4>
-          </div>
-
-          {appliedPromo ? (
-            <div
-              className="flex items-center gap-2 p-3 rounded-lg border"
-              style={{
-                backgroundColor: "rgba(141, 198, 63, 0.12)",
-                borderColor: "#8dc63f",
-              }}
-            >
-              <CheckCircle
-                className="w-5 h-5 shrink-0"
-                style={{ color: "#8dc63f" }}
-              />
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-sm font-semibold"
-                  style={{ color: "#8dc63f" }}
-                >
-                  Promo applied · {appliedPromo.code}
-                  {appliedPromo.percentOff != null
-                    ? ` — ${appliedPromo.percentOff}% off`
-                    : appliedPromo.type === "flolabs_base_fee_waiver"
-                      ? " — FloLabs collection fee waived"
-                      : appliedPromo.amountCad != null
-                        ? ` — $${appliedPromo.amountCad.toFixed(2)} off`
-                        : ""}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: "#6ab04c" }}>
-                  {appliedPromo.notice ?? "Discount will be applied at payment."}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleRemovePromo}
-                className="text-xs underline shrink-0"
-                style={{ color: "#e8d5a3" }}
-              >
-                Remove
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={promoInput}
-                onChange={(e) => {
-                  setPromoInput(e.target.value);
-                  setPromoError(null);
-                }}
-                placeholder="Enter promo code"
-                className="mf-input flex-1"
-              />
-              <button
-                type="button"
-                onClick={handleApplyPromo}
-                disabled={promoSubmitting}
-                className="mf-btn-primary px-5 py-2 shrink-0"
-              >
-                {promoSubmitting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : null}
-                {promoSubmitting ? "Checking…" : "Apply"}
-              </button>
-            </div>
-          )}
-          {promoError && (
-            <p className="text-xs mt-2" style={{ color: "#e05252" }}>
-              {promoError}
-            </p>
-          )}
-        </section>
-      )}
 
       {/* ─── Shipping Risk Disclaimer ──────────────────────────────── */}
       {showShippingRisk && (
@@ -991,8 +786,8 @@ export function Step4Review({
       )}
 
       <p className="text-xs mb-5" style={{ color: "#6ab04c" }}>
-        {appliedPromo && total <= 0
-          ? "Promo zeroes the total — Stripe will record a $0.00 order and all notifications will fire normally."
+        {total <= 0
+          ? "Total is $0.00 — Stripe will record the order and all notifications will fire normally."
           : `Payment is processed securely by Stripe. ${
               accountUserId
                 ? "Your order will be linked to your existing account."

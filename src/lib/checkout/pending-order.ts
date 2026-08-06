@@ -51,7 +51,6 @@ export interface PendingOrderPayload {
   };
   order_mode?: "self" | "caregiver";
   representative?: RepresentativeBlock | null;
-  promo_code?: string | null;
   org_id?: string | null;
 
   // ── Contact fields (supplement-only / resource-only flows) ────

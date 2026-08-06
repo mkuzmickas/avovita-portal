@@ -1,4 +1,3 @@
-import type { AppliedPromo } from "./types";
 import { computeDiscount } from "./discount";
 import { GST_RATE, calculateGST } from "@/lib/tax/gst";
 
@@ -13,8 +12,6 @@ export interface TotalsInput {
   testLinePrices: number[];
   /** Pre-computed home-visit fee in CAD dollars. */
   visitFee: number;
-  /** Resolved Stripe promo, or null. */
-  appliedPromo: AppliedPromo | null;
   /** Supplement subtotal in CAD dollars (default 0). */
   supplementSubtotal?: number;
   /** Resource subtotal in CAD dollars (default 0). */
@@ -24,8 +21,9 @@ export interface TotalsInput {
   /** Self-collected kit service fee in CAD dollars (default 0). */
   kitServiceFee?: number;
   /** Additional discount carried from an accepted quote (resolved CAD
-   *  dollars). Applied alongside the Stripe promo, but independently —
-   *  both can stack. */
+   *  dollars). Reduces the pre-tax subtotal. Only Mike's admin quote
+   *  flow produces this — the removed customer-facing promo path was
+   *  the other one, but we deleted it because nobody used it. */
   quoteDiscount?: number;
   /** Custom-line amounts (CAD dollars) carried from an accepted quote.
    *  Each entry is one line; positives are charges, negatives are
@@ -44,7 +42,6 @@ export interface Totals {
    *  Echoed back so the UI can render a single "Custom charges" rollup
    *  if it wants; per-line rendering walks the input list directly. */
   customLinesTotal: number;
-  promoDiscount: number;
   /** Additional discount from an accepted quote. 0 when not a quote
    *  acceptance flow. */
   quoteDiscount: number;
@@ -64,13 +61,10 @@ export interface Totals {
  *
  * estimatedGST is a display estimate (5% Alberta rate). Stripe Tax
  * (automatic) computes the actual tax on the Stripe checkout page.
- * The estimate matches what most customers (Alberta) will actually
- * pay; out-of-province customers may see a different final amount.
  */
 export function calculateTotals({
   testLinePrices,
   visitFee,
-  appliedPromo,
   supplementSubtotal = 0,
   resourceSubtotal = 0,
   supplementShippingFee = 0,
@@ -96,44 +90,17 @@ export function calculateTotals({
     kitServiceFee +
     customLinesTotal;
 
-  // Quote discount is applied first (it's promised by the quote), then
-  // Stripe promo on top. Both clamp against running remainder so the
-  // pre-tax total can't go below zero.
+  // Quote discount is applied last. Clamps against the running total
+  // so subtotalBeforeTax can't go negative even if the quote's
+  // additional discount was set larger than the cart value.
   const clampedQuoteDiscount = Math.max(
     0,
     Math.min(quoteDiscount, preDiscountTotal)
   );
-  const afterQuoteDiscount = preDiscountTotal - clampedQuoteDiscount;
-
-  // Promo discount — branches on type. All paths clamp so the running
-  // total can't go negative. See src/lib/promo/promoCodes.ts for the
-  // registry and the canonical `applyPromoCode` logic.
-  let promoDiscount = 0;
-  if (appliedPromo) {
-    switch (appliedPromo.type) {
-      case "flolabs_base_fee_waiver": {
-        // Targets only the visit fee line, capped at the line's
-        // current charge. If a quote discount or prior mechanism has
-        // already reduced the visit fee below the target, the effective
-        // discount shrinks to match — mirrors the registry's notice.
-        const target = appliedPromo.amountCad ?? 0;
-        promoDiscount = Math.min(target, Math.max(0, visitFee));
-        break;
-      }
-      case "whole_cart_percent": {
-        promoDiscount =
-          afterQuoteDiscount * ((appliedPromo.percentOff ?? 0) / 100);
-        break;
-      }
-      case "whole_cart_amount": {
-        promoDiscount = appliedPromo.amountCad ?? 0;
-        break;
-      }
-    }
-    promoDiscount = Math.max(0, Math.min(promoDiscount, afterQuoteDiscount));
-  }
-
-  const subtotalBeforeTax = Math.max(0, afterQuoteDiscount - promoDiscount);
+  const subtotalBeforeTax = Math.max(
+    0,
+    preDiscountTotal - clampedQuoteDiscount,
+  );
   const estimatedGST = calculateGST(subtotalBeforeTax);
   const grandTotal = subtotalBeforeTax + estimatedGST;
 
@@ -143,7 +110,6 @@ export function calculateTotals({
     subtotalAfterDiscount,
     visitFee,
     customLinesTotal: Math.round(customLinesTotal * 100) / 100,
-    promoDiscount,
     quoteDiscount: clampedQuoteDiscount,
     subtotalBeforeTax,
     estimatedGST,

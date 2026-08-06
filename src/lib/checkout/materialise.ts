@@ -52,7 +52,7 @@ export interface OrderMetadataPayload {
   /** Multi-test discount total ($20 × line count, 0 if under threshold). */
   discount_cad: number;
   /**
-   * Sum of the admin-entered quote discount + whole-cart promo code,
+   * Admin-entered quote discount (from an accepted quote),
    * applied at Stripe as a single amount_off coupon. Kept separate
    * from `discount_cad` so the invoice PDF can render a distinct
    * "Additional discount" row. Optional for back-compat with any
@@ -60,8 +60,6 @@ export interface OrderMetadataPayload {
    */
   additional_discount_cad?: number;
   total: number;
-  /** Customer-facing Stripe Promotion Code applied at checkout, if any. */
-  promo_code?: string | null;
   /** Tagged organization (white-label partner) the order was placed via. */
   org_id?: string | null;
   /**
@@ -132,8 +130,8 @@ export async function materialiseOrder(
   orderId: string,
   payload: OrderMetadataPayload,
   /** Authoritative amount the customer was charged, in CAD. When
-   *  provided, used to compute the promo discount as
-   *  payload.total − totalPaidCad. */
+   *  provided, used by sendOrderConfirmationEmail to derive the
+   *  actual GST paid (`totalPaidCad − payload.total`). */
   totalPaidCad?: number
 ): Promise<{ profileIdByPersonIndex: Map<number, string> }> {
   const accountId = payload.account_user_id;
@@ -362,15 +360,6 @@ export async function sendOrderConfirmationEmail(
       process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
     const orderIdShort = orderId.slice(0, 8).toUpperCase();
 
-    const promoCode = payload.promo_code ?? null;
-    // Real promo discount = the gap between the pre-promo total in the
-    // payload and the actual amount Stripe charged. Falls back to 0 when
-    // the caller didn't supply totalPaidCad.
-    const promoDiscount =
-      promoCode && typeof totalPaidCad === "number"
-        ? Math.max(0, payload.total - totalPaidCad)
-        : 0;
-
     // Determine cart composition for email sections
     const testMethods = [...testMap.values()].map(
       (t) => t.collection_method ?? "phlebotomist_draw",
@@ -409,8 +398,6 @@ export async function sendOrderConfirmationEmail(
       total: payload.total,
       portalUrl,
       stripeSessionId,
-      promoCode,
-      promoDiscount,
       confirmationLink: confirmationLink ?? null,
       hasPhlebotomistTests,
       hasKitTests,
@@ -517,14 +504,6 @@ export async function sendGuestOrderConfirmationEmail(
       process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
     const orderIdShort = orderId.slice(0, 8).toUpperCase();
 
-    const promoCode = payload.promo_code ?? null;
-    // Real promo discount = the gap between the pre-promo total in the
-    // payload and the actual amount Stripe charged. Falls back to 0 when
-    // the caller didn't supply totalPaidCad.
-    const promoDiscount =
-      promoCode && typeof totalPaidCad === "number"
-        ? Math.max(0, payload.total - totalPaidCad)
-        : 0;
     // GST derivation — see the sibling call site above for the same
     // calculation. Difference between Stripe-authoritative paid total
     // and our pre-tax payload total.
@@ -549,8 +528,6 @@ export async function sendGuestOrderConfirmationEmail(
       total: payload.total,
       portalUrl,
       stripeSessionId,
-      promoCode,
-      promoDiscount,
       customLines: (payload.custom_lines ?? []).map((c) => ({
         description: c.description,
         amount_cad: c.amount_cad,

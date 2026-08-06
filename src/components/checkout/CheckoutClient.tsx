@@ -25,7 +25,6 @@ import type {
   CheckoutPerson,
   CollectionAddress,
   RepresentativeBlock,
-  AppliedPromo,
 } from "@/lib/checkout/types";
 
 interface CheckoutClientProps {
@@ -121,7 +120,6 @@ export function CheckoutClient({
     null,
   );
   const [restored, setRestored] = useState(false);
-  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
   const [orderMode, setOrderMode] = useState<OrderMode>("self");
   const [representative, setRepresentative] = useState<RepresentativeBlock>(
     BLANK_REPRESENTATIVE
@@ -728,8 +726,6 @@ export function CheckoutClient({
                 assignments={assignments}
                 accountUserId={accountUserId}
                 onBack={handleStep4Back}
-                appliedPromo={appliedPromo}
-                onPromoChange={setAppliedPromo}
                 orderMode={orderMode}
                 representative={representative}
                 suppFulfillment={suppFulfillment}
@@ -748,7 +744,6 @@ export function CheckoutClient({
               visitFees={visitFees}
               lineCount={sidebarLineCount}
               subtotalOverride={sidebarSubtotal}
-              appliedPromo={appliedPromo}
               quoteDiscountCad={quoteDiscountCad}
               acceptedQuoteNumber={appliedQuoteNumber}
             />

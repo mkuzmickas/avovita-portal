@@ -15,7 +15,6 @@ import {
   TrendingUp,
   FileText,
   Building2,
-  Tag,
   BarChart3,
   Pill,
   BookOpen,
@@ -50,7 +49,6 @@ const NAV_LINKS: NavLink[] = [
   { href: "/admin/tests", label: "Tests", icon: FlaskConical, key: "tests" },
   { href: "/admin/supplements", label: "Supplements", icon: Pill, key: "supplements" },
   { href: "/admin/resources", label: "Resources", icon: BookOpen, key: "resources" },
-  { href: "/admin/promo-codes", label: "Promo Codes", icon: Tag, key: "promo-codes" },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3, key: "analytics" },
 ];
 
