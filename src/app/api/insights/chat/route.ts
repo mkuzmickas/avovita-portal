@@ -143,7 +143,7 @@ async function buildTestCatalog(): Promise<string> {
     const { data, error } = await supabase
       .from("tests")
       .select(
-        "name, sku, price_cad, turnaround_display, lab:labs(name)",
+        "name, sku, price_cad, turnaround_display, collection_method, lab:labs(name)",
       )
       .eq("active", true)
       .order("name", { ascending: true });
@@ -158,6 +158,7 @@ async function buildTestCatalog(): Promise<string> {
       sku: string | null;
       price_cad: number | null;
       turnaround_display: string | null;
+      collection_method: string | null;
       lab: { name: string } | { name: string }[] | null;
     };
     const rows = (data ?? []) as unknown as Row[];
@@ -169,6 +170,13 @@ async function buildTestCatalog(): Promise<string> {
     // flagged that as one of the two facts the model was missing.
     // Kept to short pipe-separated fields to stay token-cheap on
     // every call (this catalog is re-sent per request).
+    //
+    // A trailing `| KIT` marker is appended to the handful of tests
+    // whose collection_method is 'self_collected_kit'. The prompt
+    // carries the rule ("KIT means no home visit fee, refer to the
+    // test page for courier details"); the marker is the data. All
+    // ~440 phlebotomist_draw rows stay unmarked so we don't waste
+    // tokens repeating the same fact on every request.
     const lines = rows.map((t) => {
       const lab = Array.isArray(t.lab) ? t.lab[0] : t.lab;
       const labName = lab?.name ?? "—";
@@ -177,7 +185,9 @@ async function buildTestCatalog(): Promise<string> {
         t.price_cad != null ? `$${t.price_cad} CAD` : "Contact us for pricing";
       const turnaround = (t.turnaround_display ?? "").trim();
       const turnaroundBit = turnaround ? ` | Turnaround: ${turnaround}` : "";
-      return `- ${t.name} | Code: ${code} | ${price} | Lab: ${labName}${turnaroundBit}`;
+      const kitBit =
+        t.collection_method === "self_collected_kit" ? " | KIT" : "";
+      return `- ${t.name} | Code: ${code} | ${price} | Lab: ${labName}${turnaroundBit}${kitBit}`;
     });
 
     const value =
