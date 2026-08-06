@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { X, Users, ArrowRight, ArrowLeft, Info, AlertCircle } from "lucide-react";
+import { X, Users, ArrowRight, ArrowLeft, Info, AlertCircle, Copy } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { useRepeatClient } from "@/components/account/RepeatClientContext";
@@ -215,6 +215,45 @@ export function Step2AssignTests({
     );
   };
 
+  // ─── "Same tests as me" ───────────────────────────────────────────
+  // The dominant real pattern for a 2-person booking is a couple
+  // ordering identical panels. Copying person 1's assignment set onto
+  // person 2 in one click removes ~N checkbox clicks (N = number of
+  // tests) at what's otherwise the most repetitive part of checkout —
+  // then only name / DOB / sex / consent remain on Step 3.
+  //
+  // Only surfaces when personCount === 2 AND person 2 is missing at
+  // least one test that person 1 has (i.e. there's actually work to
+  // mirror). Nothing happens if everything already matches.
+  const person1TestIds = useMemo(
+    () =>
+      new Set(
+        assignments.filter((a) => a.person_index === 0).map((a) => a.test_id),
+      ),
+    [assignments],
+  );
+  const person2TestIds = useMemo(
+    () =>
+      new Set(
+        assignments.filter((a) => a.person_index === 1).map((a) => a.test_id),
+      ),
+    [assignments],
+  );
+  const testsToMirror = useMemo(() => {
+    if (personCount !== 2) return [];
+    return testGroups.filter(
+      (g) => person1TestIds.has(g.test_id) && !person2TestIds.has(g.test_id),
+    );
+  }, [testGroups, personCount, person1TestIds, person2TestIds]);
+
+  const handleMirrorToPerson2 = () => {
+    if (testsToMirror.length === 0) return;
+    // Batch cart clones and assignment additions so a mirror of N
+    // tests fires one React commit each way. Each togglePersonForTest
+    // uses functional setState so consecutive calls compose cleanly.
+    for (const g of testsToMirror) togglePersonForTest(g, 1);
+  };
+
   return (
     <div
       className="rounded-2xl border p-5 sm:p-7"
@@ -251,6 +290,36 @@ export function Step2AssignTests({
           the checkbox row will be billed and resulted separately.
         </p>
       </div>
+
+      {/* "Same tests as me" — one click mirrors person 1's tests onto
+          person 2. Only when there's actually work to do (person 2
+          missing at least one test person 1 has). Dominant real pattern
+          for 2-person bookings is a couple ordering identical panels. */}
+      {personCount === 2 && testsToMirror.length > 0 && (
+        <div
+          className="flex items-start gap-3 rounded-lg border px-4 py-3 mb-4"
+          style={{
+            backgroundColor: "rgba(196, 151, 58, 0.08)",
+            borderColor: "#c4973a",
+          }}
+        >
+          <Copy className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#c4973a" }} />
+          <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <p className="text-xs leading-relaxed" style={{ color: "#e8d5a3" }}>
+              Ordering the same tests for both people? One click assigns
+              your selection to person 2.
+            </p>
+            <button
+              type="button"
+              onClick={handleMirrorToPerson2}
+              className="mf-btn-secondary px-3 py-1.5 text-xs whitespace-nowrap shrink-0"
+            >
+              Same tests as me
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Multi-test discount banner */}
       {discount.applies && (
