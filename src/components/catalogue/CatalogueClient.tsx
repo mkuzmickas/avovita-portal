@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, Check, X, Info } from "lucide-react";
 import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
 import { TestCard } from "./TestCard";
 import { TestTable } from "./TestTable";
@@ -31,13 +31,15 @@ export function CatalogueClient({
   labs,
   isLoggedIn,
 }: CatalogueClientProps) {
-  const { cart, addItem } = useCart();
+  const router = useRouter();
+  const { cart, addItem, hydrated } = useCart();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedLab, setSelectedLab] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [highlightedTestId, setHighlightedTestId] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const [notFoundBanner, setNotFoundBanner] = useState<string | null>(null);
 
   const handleAdd = (item: CatalogueCartItem) => {
     addItem({ ...item, line_type: "test" });
@@ -115,6 +117,115 @@ export function CatalogueClient({
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─── Cart handoff from Ask AvoVita (and any other src) ────────────
+  // Contract: /tests?add=SKU1,SKU2&src=ask
+  //   - Match each SKU on tests.sku (case-insensitive, trimmed both
+  //     sides — one legacy row has a trailing space in its SKU).
+  //   - Skip quote-only tests (price_cad === null).
+  //   - Add each match to the cart in the given order via the normal
+  //     addItem() path, so Tuesday-only tests still trigger the
+  //     schedule-acknowledgement modal.
+  //   - Fallback for schedule-constrained tests: stay on /tests so
+  //     the ack modal is visible in context. Otherwise redirect to
+  //     /checkout so the customer lands ready to pay.
+  //   - Zero matches → quiet "we couldn't find those tests" banner
+  //     (an assistant that hallucinates a code should cost the
+  //     customer nothing).
+  //   - Strip the query params via router.replace so a refresh or a
+  //     shared link doesn't add the same tests twice.
+  //   - `src` is written to localStorage under 'avovita-order-src' so
+  //     the checkout flow can plumb it through onto orders.src for
+  //     attribution analytics.
+  const handoffProcessed = useRef(false);
+  useEffect(() => {
+    if (!hydrated || handoffProcessed.current) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const addParam = params.get("add");
+    const srcParam = params.get("src");
+    if (!addParam) return;
+    handoffProcessed.current = true;
+
+    if (srcParam) {
+      try {
+        window.localStorage.setItem(
+          "avovita-order-src",
+          srcParam.trim().slice(0, 32),
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const rawSkus = addParam
+      .split(",")
+      .map((s) => {
+        try {
+          return decodeURIComponent(s);
+        } catch {
+          return s;
+        }
+      })
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    // Build a lookup once — normalise both sides (uppercase, trim).
+    // Some catalogue rows carry a stray trailing space (ALBR ), so a
+    // simple .toUpperCase() on both sides isn't enough on its own.
+    const skuIndex = new Map<string, CatalogueTest>();
+    for (const t of allTests) {
+      if (!t.sku) continue;
+      const key = t.sku.trim().toUpperCase();
+      if (key.length > 0) skuIndex.set(key, t);
+    }
+
+    const matches: CatalogueTest[] = [];
+    for (const sku of rawSkus) {
+      const key = sku.trim().toUpperCase();
+      const hit = skuIndex.get(key);
+      if (hit && hit.price_cad != null) matches.push(hit);
+    }
+
+    // Strip the query params either way — a refresh must not re-add.
+    router.replace("/tests", { scroll: false });
+
+    if (matches.length === 0) {
+      setNotFoundBanner(
+        "We couldn't find those tests — here's the full catalogue.",
+      );
+      return;
+    }
+
+    const hasConstrainedTest = matches.some(
+      (t) =>
+        t.sku === "DCTR" ||
+        t.sku === "KS" ||
+        t.id === "8e46bec5-526c-42be-909c-447235e9ecd0",
+    );
+
+    for (const t of matches) {
+      addItem({
+        line_type: "test" as const,
+        test_id: t.id,
+        test_name: t.name,
+        sku: t.sku,
+        price_cad: t.price_cad as number,
+        lab_name: t.lab.name,
+        quantity: 1,
+        collection_method: t.collection_method,
+      });
+    }
+
+    // If none of the incoming SKUs trigger the schedule-ack modal,
+    // send the customer straight to checkout. Otherwise stay on
+    // /tests so the modal renders in familiar context.
+    if (!hasConstrainedTest) {
+      const t = setTimeout(() => router.push("/checkout"), 150);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   // Dev-only sanity log so we can verify in browser devtools that data is
   // actually flowing through to TestTable. Stripped from production builds.
@@ -242,6 +353,41 @@ export function CatalogueClient({
       {/* AccountIndicator inside OrgAwareHeader handles Sign In / account
           dropdown for both logged-in and logged-out visitors. */}
       <OrgAwareHeader />
+
+      {/* Quiet "we couldn't match those SKUs" banner surfaced only
+          after an /tests?add=... handoff produced zero matches. See
+          the URL-add effect above. */}
+      {notFoundBanner && (
+        <div
+          className="max-w-7xl mx-auto px-4 sm:px-6 pt-6"
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            className="flex items-start gap-2.5 rounded-lg border px-4 py-3"
+            style={{
+              backgroundColor: "#1a3d22",
+              borderColor: "#c4973a",
+              color: "#e8d5a3",
+            }}
+          >
+            <Info
+              className="w-4 h-4 shrink-0 mt-0.5"
+              style={{ color: "#c4973a" }}
+            />
+            <p className="text-sm flex-1">{notFoundBanner}</p>
+            <button
+              type="button"
+              onClick={() => setNotFoundBanner(null)}
+              className="p-0.5"
+              style={{ color: "#c4973a" }}
+              aria-label="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Page title */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-6">
