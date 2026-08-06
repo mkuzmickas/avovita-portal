@@ -104,6 +104,10 @@ export interface CheckoutSuccessV2Props {
     postal: string;
     country: string;
   } | null;
+  /** Entry-point attribution slug persisted on orders.src (e.g. "ask"
+   *  for the Ask AvoVita widget). Included in the order_completed
+   *  analytics event so the dashboard can attribute revenue by source. */
+  orderSrc?: string | null;
 }
 
 export function CheckoutSuccessV2({
@@ -130,6 +134,7 @@ export function CheckoutSuccessV2({
   hasResources = false,
   supplementFulfillment = null,
   supplementShippingAddress = null,
+  orderSrc = null,
 }: CheckoutSuccessV2Props) {
   const [waiverDone, setWaiverDone] = useState(initialWaiverDone);
   const [showWaiver, setShowWaiver] = useState(false);
@@ -256,8 +261,9 @@ export function CheckoutSuccessV2({
     trackEvent("order_completed", {
       order_id: orderIdShort,
       total,
+      src: orderSrc,
     });
-  }, [trackEvent, sessionId, orderIdShort, total]);
+  }, [trackEvent, sessionId, orderIdShort, total, orderSrc]);
 
   return (
     <div

@@ -82,6 +82,16 @@ export interface PendingOrderPayload {
     notes?: string | null;
   }>;
 
+  // ── Entry-point attribution ────────────────────────────────────
+  /**
+   * Short opaque slug captured from ?src=... on the /tests handoff
+   * link (Ask AvoVita widget sends src=ask). Persisted to orders.src
+   * so /admin/analytics can measure revenue by entry point. Max 32
+   * chars enforced client-side; NULL when the customer arrived
+   * without a source tag.
+   */
+  src?: string | null;
+
   // ── Computed totals (server-side authoritative) ───────────────
   subtotal_tests: number;
   subtotal_supplements: number;

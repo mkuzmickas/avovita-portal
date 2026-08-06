@@ -70,7 +70,7 @@ export default async function CheckoutSuccessPage({
   const { data: orderRaw } = await service
     .from("orders")
     .select(
-      `id, total_cad, account_id, org_id, is_out_of_town,
+      `id, total_cad, account_id, org_id, is_out_of_town, src,
        account:accounts(email, waiver_completed),
        org:organizations(waiver_addendum, waiver_addendum_title)`
     )
@@ -86,6 +86,7 @@ export default async function CheckoutSuccessPage({
     account_id: string | null;
     org_id: string | null;
     is_out_of_town: boolean | null;
+    src: string | null;
     account:
       | { email: string | null; waiver_completed: boolean }
       | { email: string | null; waiver_completed: boolean }[]
@@ -244,6 +245,7 @@ export default async function CheckoutSuccessPage({
         hasKitOnlyTests={hasKitOnlyTests}
         supplementFulfillment={supplementFulfillment}
         supplementShippingAddress={supplementShippingAddress}
+        orderSrc={order?.src ?? null}
       />
     </>
   );

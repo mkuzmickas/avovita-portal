@@ -701,6 +701,29 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
     [directViews, orderEvents],
   );
 
+  // Attribution breakdown — group order_completed events by their
+  // event_data.src, which the success page fills from orders.src.
+  // Answers "does the Ask AvoVita widget produce revenue?" and any
+  // future entry point tagged with ?src=.
+  const srcBreakdown = useMemo(() => {
+    const map = new Map<string, { orders: number; revenue: number }>();
+    for (const e of orderEvents) {
+      const rawSrc = e.event_data?.src;
+      const key =
+        typeof rawSrc === "string" && rawSrc.trim().length > 0
+          ? rawSrc.trim()
+          : "(direct)";
+      const rev = (e.event_data?.total as number) ?? 0;
+      const cur = map.get(key) ?? { orders: 0, revenue: 0 };
+      cur.orders += 1;
+      cur.revenue += rev;
+      map.set(key, cur);
+    }
+    return [...map.entries()]
+      .sort(([, a], [, b]) => b.revenue - a.revenue)
+      .map(([src, v]) => ({ src, ...v }));
+  }, [orderEvents]);
+
   // Device breakdown
   const deviceBreakdown = useMemo(() => {
     const map = new Map<string, number>();
@@ -1627,6 +1650,62 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
                 label="Tests Added (Catalogue)"
                 value={fmt(catalogueAdded)}
               />
+            </div>
+          </Section>
+
+          {/* ─── ATTRIBUTION BY ENTRY POINT ───────────────────────── */}
+          <Section
+            title="Orders by Entry Point"
+            action={
+              <ExportButton
+                onClick={() =>
+                  downloadCSV(
+                    "attribution.csv",
+                    ["Source", "Orders", "Revenue"],
+                    srcBreakdown.map((r) => [
+                      r.src,
+                      String(r.orders),
+                      fmtCurrency(r.revenue),
+                    ]),
+                  )
+                }
+              />
+            }
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                    <TH>Source (?src=)</TH>
+                    <TH align="right">Orders</TH>
+                    <TH align="right">Revenue</TH>
+                  </tr>
+                </thead>
+                <tbody>
+                  {srcBreakdown.map((r) => (
+                    <tr
+                      key={r.src}
+                      style={{ borderBottom: `1px solid ${BORDER}` }}
+                    >
+                      <TD>
+                        <span
+                          className={r.src === "ask" ? "font-semibold" : ""}
+                          style={{ color: r.src === "ask" ? GOLD : undefined }}
+                        >
+                          {r.src === "ask" ? "Ask AvoVita (ask)" : r.src}
+                        </span>
+                      </TD>
+                      <TD align="right">{fmt(r.orders)}</TD>
+                      <TD align="right">{fmtCurrency(r.revenue)}</TD>
+                    </tr>
+                  ))}
+                  {srcBreakdown.length === 0 && (
+                    <tr>
+                      <TD colSpan={3}>No orders in this range</TD>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </Section>
 

@@ -75,6 +75,12 @@ export interface CheckoutPayload {
    *  re-resolves the admin-entered additional discount from the quote
    *  row and applies it to line items. */
   quote_number?: string | null;
+  /** Entry-point attribution slug (e.g. "ask" for the Ask AvoVita
+   *  widget on the marketing site). Captured client-side from
+   *  localStorage — populated on the /tests?src=... handoff. Server
+   *  persists onto orders.src for analytics. NULL when the customer
+   *  arrived without a source tag. */
+  src?: string | null;
   /**
    * Representative (caregiver / POA) block. When present, `persons` are
    * the DEPENDENT clients being tested and the account is created under

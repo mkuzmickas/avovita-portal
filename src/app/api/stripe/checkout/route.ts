@@ -456,6 +456,10 @@ export async function POST(request: NextRequest) {
         additionalDiscountCad +
         visitFeeTotal,
       org_id: resolvedOrgId,
+      src:
+        typeof body.src === "string" && body.src.trim().length > 0
+          ? body.src.trim().slice(0, 32)
+          : null,
       representative: body.representative
         ? {
             first_name: body.representative.first_name.trim(),

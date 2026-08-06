@@ -521,6 +521,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     total_cad: total,
     notes: null,
     org_id: payload.org_id ?? null,
+    src: payload.src ?? null,
   };
 
   const { data: orderRaw, error: orderErr } = await supabase
@@ -841,6 +842,7 @@ async function handleCheckoutCompleteV2(
     total_cad: total,
     notes: null,
     org_id: p.org_id ?? null,
+    src: p.src ?? null,
     // Supplement fields
     has_supplements: p.has_supplements,
     supplement_fulfillment: p.supplement_fulfillment ?? null,

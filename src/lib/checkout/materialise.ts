@@ -62,6 +62,10 @@ export interface OrderMetadataPayload {
   total: number;
   /** Tagged organization (white-label partner) the order was placed via. */
   org_id?: string | null;
+  /** Entry-point attribution slug ("ask" for the Ask AvoVita widget,
+   *  etc.). Persisted onto orders.src for analytics. Optional so any
+   *  pre-migration sessions still in flight parse cleanly. */
+  src?: string | null;
   /**
    * Representative (caregiver / POA) block, mirrored from CheckoutPayload.
    * When present, every person in `persons[]` is a dependent client and

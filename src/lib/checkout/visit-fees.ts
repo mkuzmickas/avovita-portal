@@ -27,7 +27,7 @@ const ZONE1_FSAS = new Set([
 
 const ZONE2_FSAS = new Set([
   "T1S", // Okotoks
-  "T1X", // Chestermere (confirm with Mike whether this stays served)
+  "T1X", // Chestermere
   "T4A", // Airdrie
   "T4B", // Airdrie
   "T4C", // Cochrane

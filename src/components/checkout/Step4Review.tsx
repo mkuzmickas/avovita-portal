@@ -254,6 +254,22 @@ export function Step4Review({
       /* ignore */
     }
 
+    // Entry-point attribution — written to localStorage by the /tests
+    // ?src=... handoff. Persisted onto orders.src so the analytics
+    // dashboard can measure revenue by entry point (Ask AvoVita widget
+    // sends src=ask). Slice defensively so a runaway URL param can't
+    // blow past the 32-char server clamp.
+    let orderSrc: string | null = null;
+    try {
+      const raw =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("avovita-order-src")
+          : null;
+      orderSrc = raw ? raw.trim().slice(0, 32) || null : null;
+    } catch {
+      /* ignore */
+    }
+
     // Detect if cart has non-test items. If so, route through
     // checkout-unified which handles all three line types.
     const hasSupplements = cart.some((i) => i.line_type === "supplement");
@@ -322,6 +338,7 @@ export function Step4Review({
           representative:
             orderMode === "caregiver" ? representative : null,
           org_id: orgSlug ?? null, // server resolves slug → id
+          src: orderSrc,
           supplement_fulfillment: hasSupplements
             ? suppFulfillment
             : null,
@@ -370,6 +387,14 @@ export function Step4Review({
         if (!stripeRes.ok)
           throw new Error(stripeData.error ?? "Checkout failed");
 
+        // Attribution has been captured on the payload — clear the
+        // localStorage tag so a customer's next visit doesn't
+        // mis-attribute a later order.
+        try {
+          window.localStorage.removeItem("avovita-order-src");
+        } catch {
+          /* ignore */
+        }
         window.location.href = stripeData.url;
       } else {
         // ── Pure test cart path: existing route (unchanged) ──────
@@ -388,6 +413,7 @@ export function Step4Review({
           discount_cad: discount.total,
           total,
           account_user_id: accountUserId,
+          src: orderSrc,
           representative:
             orderMode === "caregiver" ? representative : null,
         };
