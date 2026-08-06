@@ -317,10 +317,23 @@ export async function POST(request: NextRequest) {
 
   try {
     const catalog = await buildTestCatalog();
+    // Prompt caching: mark the system block (SYSTEM_PROMPT + ~10K
+    // token catalogue) as ephemeral so Anthropic caches it for 5
+    // minutes. Cache hits process substantially faster (cutting
+    // time-to-first-token) and cost about a tenth of a normal input
+    // read. Conversation `messages` are NOT cached because they
+    // change every turn. The 5-minute cache lifetime lines up with
+    // our existing buildTestCatalog TTL so both refresh together.
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 1024,
-      system: SYSTEM_PROMPT + catalog,
+      system: [
+        {
+          type: "text",
+          text: SYSTEM_PROMPT + catalog,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
       messages: sanitised,
     });
 
