@@ -245,78 +245,17 @@ export function CatalogueClient({
 
       {/* Page title */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-6">
-        {/* Limited-availability advisory — auto-hides after the window
-         *   ends so this doesn't need a follow-up removal PR. Change or
-         *   drop AVAILABILITY_BANNER_UNTIL when the next date window
-         *   comes up. Styled loud on purpose: solid amber fill, thick
-         *   border, large ⚠ icon, big padding — customers were missing
-         *   the softer version and booking into the constrained window
-         *   anyway. */}
-        {(() => {
-          const bannerUntil = new Date("2026-08-17T00:00:00-06:00");
-          if (Date.now() >= bannerUntil.getTime()) return null;
-          return (
-            <div
-              className="mb-8 rounded-2xl border-2 px-5 sm:px-8 py-6 sm:py-7 flex items-start gap-4 sm:gap-5"
-              style={{
-                backgroundColor: "#c4973a",
-                borderColor: "#8dc63f",
-                boxShadow: "0 4px 20px rgba(196,151,58,0.35)",
-              }}
-            >
-              <span
-                aria-hidden="true"
-                className="shrink-0"
-                style={{
-                  color: "#0a1a0d",
-                  fontSize: "36px",
-                  lineHeight: 1,
-                  fontWeight: 700,
-                }}
-              >
-                ⚠
-              </span>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="uppercase tracking-widest font-bold text-xs sm:text-sm mb-1"
-                  style={{ color: "#0a1a0d" }}
-                >
-                  Limited Appointment Availability
-                </p>
-                <p
-                  className="text-base sm:text-lg leading-snug font-semibold"
-                  style={{ color: "#0a1a0d" }}
-                >
-                  Appointment availability is{" "}
-                  <span style={{ textDecoration: "underline" }}>very limited</span>{" "}
-                  between{" "}
-                  <span
-                    style={{
-                      backgroundColor: "#0a1a0d",
-                      color: "#ffffff",
-                      padding: "0 6px",
-                      borderRadius: 4,
-                    }}
-                  >
-                    August 3 – August 16
-                  </span>
-                  . Please plan to book for{" "}
-                  <span
-                    style={{
-                      backgroundColor: "#0a1a0d",
-                      color: "#8dc63f",
-                      padding: "0 6px",
-                      borderRadius: 4,
-                    }}
-                  >
-                    August 17 or later
-                  </span>{" "}
-                  before completing checkout.
-                </p>
-              </div>
-            </div>
-          );
-        })()}
+        {/* Availability advisory removed from /tests deliberately.
+         *   /tests is the primary landing surface — an apology-shaped
+         *   banner in the highest-impression slot tells first-timers
+         *   "this will be difficult" at the exact moment they're
+         *   deciding whether to bother. The advisory now surfaces on
+         *   the CartBar (when a customer has added a test — they're
+         *   invested, the constraint is now actionable) and stays
+         *   loud on the checkout appointment step. Content is driven
+         *   from the availability_advisories Supabase table so date
+         *   windows are editable in admin, not baked into the deploy.
+         */}
 
         <h1
           className="font-heading text-4xl md:text-5xl font-semibold mb-2"

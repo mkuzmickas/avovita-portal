@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, ArrowRight, Tag } from "lucide-react";
+import { ShoppingBag, ArrowRight, Tag, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/components/cart/CartContext";
 import { useOrg } from "@/components/org/OrgContext";
@@ -15,6 +16,13 @@ interface CartBarProps {
   cart?: CartItem[];
 }
 
+interface ActiveAdvisory {
+  id: string;
+  message: string;
+  headline: string | null;
+  activeUntil: string;
+}
+
 export function CartBar({ cart: cartProp }: CartBarProps) {
   const ctx = useCart();
   const cart = cartProp ?? ctx.cart;
@@ -24,6 +32,27 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
   const checkoutHref = org
     ? `/checkout?org_slug=${encodeURIComponent(org.slug)}`
     : "/checkout";
+
+  // Active availability advisory (holiday closures, coverage gaps, …).
+  // Driven from the availability_advisories Supabase table via
+  // /api/site/advisory. Fetched on mount only — the cart bar re-renders
+  // often as items go in and out, but the advisory itself changes on
+  // the order of hours/days, so one fetch per session is plenty.
+  const [advisory, setAdvisory] = useState<ActiveAdvisory | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/site/advisory")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.advisory) setAdvisory(data.advisory);
+      })
+      .catch(() => {
+        /* silent — advisory display is best-effort */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (cart.length === 0) return null;
 
@@ -44,6 +73,36 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
         borderColor: "#2d6b35",
       }}
     >
+      {/* Amber availability advisory strip — surfaces above the cart
+          summary when an admin has an active advisory window queued
+          in the availability_advisories Supabase table. Rendered here
+          (not on /tests) because the constraint only becomes
+          actionable once the customer has decided to order — before
+          then it's an apology-shaped notice on the landing surface
+          and hurts conversion. */}
+      {advisory && (
+        <div
+          className="border-b"
+          style={{ borderColor: "#c4973a", backgroundColor: "#2a2416" }}
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-start gap-2">
+            <AlertTriangle
+              className="w-4 h-4 shrink-0 mt-0.5"
+              style={{ color: "#c4973a" }}
+            />
+            <p
+              className="text-xs sm:text-sm leading-relaxed"
+              style={{ color: "#e8d5a3" }}
+            >
+              <strong style={{ color: "#c4973a" }}>
+                {advisory.headline ?? "Important"}:
+              </strong>{" "}
+              {advisory.message}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Green discount banner strip — appears above the main bar */}
       {discount.applies && (
         <div
