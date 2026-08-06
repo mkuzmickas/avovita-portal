@@ -7,6 +7,55 @@ export const runtime = "nodejs";
 
 const CATALOG_TTL_MS = 5 * 60 * 1000;
 
+// ─── CORS + Origin allowlist ───────────────────────────────────────
+// Browser widgets on the AvoVita marketing site (avovita.ca) need to
+// call this route directly, so we return CORS headers for known
+// AvoVita origins. Server-to-server callers (no Origin header) are
+// allowed through unchanged — the existing per-IP rate limit is the
+// abuse guard there. Origins outside the allowlist get 403'd so
+// random third-party sites can't burn our Anthropic budget from a
+// browser.
+//
+// Origin is set automatically by the browser and cannot be forged
+// from client JS, so this allowlist meaningfully protects the
+// browser-side attack surface. It does not stop determined server-
+// side scripts (which can send any Origin header); those are still
+// gated by the IP rate limit below.
+const ALLOWED_ORIGINS = new Set<string>([
+  "https://avovita.ca",
+  "https://www.avovita.ca",
+  "https://portal.avovita.ca",
+  "http://localhost:3000", // dev
+  "http://localhost:3001", // dev alt
+]);
+
+function corsHeadersFor(origin: string | null): Record<string, string> {
+  if (!origin || !ALLOWED_ORIGINS.has(origin)) return {};
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
+  };
+}
+
+/**
+ * Preflight handler. Browsers issue OPTIONS before any cross-origin
+ * POST with a non-simple content type. Returns 204 + CORS headers
+ * for allowlisted origins, 403 otherwise.
+ */
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (origin && !ALLOWED_ORIGINS.has(origin)) {
+    return NextResponse.json({ error: "Origin not allowed" }, { status: 403 });
+  }
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeadersFor(origin),
+  });
+}
+
 // ─── Per-IP rate limiting ──────────────────────────────────────────
 // In-memory sliding window: 10 requests per hour per IP. The map resets
 // on serverless cold start which is acceptable for this scale; for a
@@ -111,6 +160,19 @@ interface ChatMessage {
 }
 
 export async function POST(request: NextRequest) {
+  // ─── Origin allowlist ────────────────────────────────────────────
+  // If Origin is present (browser request), it must be in the
+  // allowlist. Missing Origin = server-to-server call, which we still
+  // allow (existing IP rate limit is the guard there).
+  const origin = request.headers.get("origin");
+  const cors = corsHeadersFor(origin);
+  if (origin && !ALLOWED_ORIGINS.has(origin)) {
+    return NextResponse.json(
+      { error: "Origin not allowed" },
+      { status: 403 },
+    );
+  }
+
   // Public endpoint — gated by per-IP rate limit instead of auth.
   const ip = clientIp(request);
   const rl = checkRateLimit(ip);
@@ -122,6 +184,7 @@ export async function POST(request: NextRequest) {
       {
         status: 429,
         headers: {
+          ...cors,
           "Retry-After": String(rl.retryAfterSec),
           "X-RateLimit-Limit": String(RATE_LIMIT_MAX),
           "X-RateLimit-Remaining": "0",
@@ -135,11 +198,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     messages = body.messages;
   } catch {
-    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid request body." },
+      { status: 400, headers: cors },
+    );
   }
 
   if (!Array.isArray(messages) || messages.length === 0) {
-    return NextResponse.json({ error: "Messages array is required." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Messages array is required." },
+      { status: 400, headers: cors },
+    );
   }
 
   const sanitised = messages
@@ -152,7 +221,10 @@ export async function POST(request: NextRequest) {
     .map((m) => ({ role: m.role as "user" | "assistant", content: m.content.trim() }));
 
   if (sanitised.length === 0) {
-    return NextResponse.json({ error: "No valid messages provided." }, { status: 400 });
+    return NextResponse.json(
+      { error: "No valid messages provided." },
+      { status: 400, headers: cors },
+    );
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -161,7 +233,7 @@ export async function POST(request: NextRequest) {
     console.error("[chat] ANTHROPIC_API_KEY is not set — check .env.local and restart the dev server.");
     return NextResponse.json(
       { error: "AI service is not configured. Contact support." },
-      { status: 503 }
+      { status: 503, headers: cors },
     );
   }
 
@@ -181,11 +253,11 @@ export async function POST(request: NextRequest) {
       console.error("[chat] Unexpected response shape:", JSON.stringify(message));
       return NextResponse.json(
         { error: "Received an unexpected response from the AI. Please try again." },
-        { status: 502 }
+        { status: 502, headers: cors },
       );
     }
 
-    return NextResponse.json({ content: text });
+    return NextResponse.json({ content: text }, { headers: cors });
   } catch (err) {
     const apiErr = err as { status?: number; message?: string };
     console.error("[chat] Anthropic SDK error:", apiErr.status, apiErr.message, err);
@@ -193,18 +265,18 @@ export async function POST(request: NextRequest) {
     if (apiErr.status === 429) {
       return NextResponse.json(
         { error: "The AI service is currently busy. Please wait a moment and try again." },
-        { status: 429 }
+        { status: 429, headers: cors },
       );
     }
     if (apiErr.status === 401) {
       return NextResponse.json(
         { error: "AI service authentication failed. Check the API key." },
-        { status: 502 }
+        { status: 502, headers: cors },
       );
     }
     return NextResponse.json(
       { error: `AI service error${apiErr.message ? ": " + apiErr.message : ""}. Please try again.` },
-      { status: 502 }
+      { status: 502, headers: cors },
     );
   }
 }
