@@ -394,11 +394,57 @@ export function PreviewAvailabilityFab() {
                     <LegendSwatch color="#3a4550" label="Fully booked" />
                   </div>
 
-                  {/* 2-week grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-7 gap-2">
+                  {/* Mobile: 2-col sequential list starting today. */}
+                  <div className="grid grid-cols-2 sm:hidden gap-2">
                     {data.days.map((day) => (
                       <DayCell key={day.date} day={day} />
                     ))}
+                  </div>
+
+                  {/* Desktop: 7-col grid aligned Sun→Sat like a real
+                      calendar. Leading + trailing empty cells pad the
+                      first and last rows so the columns stay honest to
+                      day-of-week. Weekday header row above the grid
+                      labels the columns. */}
+                  <div className="hidden sm:block">
+                    <div className="grid grid-cols-7 gap-2 mb-2">
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                        (label) => (
+                          <div
+                            key={label}
+                            className="text-[10px] uppercase tracking-wider font-bold text-center"
+                            style={{ color: "#c4973a" }}
+                          >
+                            {label}
+                          </div>
+                        ),
+                      )}
+                    </div>
+                    <div className="grid grid-cols-7 gap-2">
+                      {(() => {
+                        const first = data.days[0];
+                        const [y, m, d] = first.date.split("-").map(Number);
+                        const firstDate = new Date(
+                          Date.UTC(y, m - 1, d, 12, 0, 0),
+                        );
+                        // 0 = Sunday, 6 = Saturday
+                        const leading = firstDate.getUTCDay();
+                        const trailing =
+                          (7 - ((leading + data.days.length) % 7)) % 7;
+                        const cells: Array<DaySummary | null> = [
+                          ...Array<null>(leading).fill(null),
+                          ...data.days,
+                          ...Array<null>(trailing).fill(null),
+                        ];
+                        return cells.map((cell, i) =>
+                          cell ? (
+                            <DayCell key={cell.date} day={cell} />
+                          ) : (
+                            <div key={`pad-${i}`} aria-hidden="true" />
+                          ),
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   {/* Timestamp + refresh */}
