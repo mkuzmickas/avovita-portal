@@ -11,17 +11,19 @@ interface Step1PeopleProps {
   onOrderModeChange: (mode: OrderMode) => void;
 }
 
+// Reduced from 4 options to 2 in Aug 2026. Zero orders in the 90-day
+// history have >2 people; every additional dropdown row is friction on
+// the first screen of a checkout that already loses 81% of arrivals.
+// Bigger groups still route through support (contact CTA below the
+// selector) — the capability is preserved, it just stops taxing the
+// common case.
 const SELF_OPTIONS = [
-  { value: 1, label: "Just myself" },
-  { value: 2, label: "Myself and 1 other person" },
-  { value: 3, label: "Myself and 2 other people" },
-  { value: 4, label: "Myself and 3 other people" },
+  { value: 1, label: "Just me" },
+  { value: 2, label: "Me and one other person" },
 ];
 const CAREGIVER_OPTIONS = [
   { value: 1, label: "1 client" },
   { value: 2, label: "2 clients" },
-  { value: 3, label: "3 clients" },
-  { value: 4, label: "4 clients" },
 ];
 
 export function Step1People({
@@ -76,10 +78,10 @@ export function Step1People({
         />
       </div>
 
-      <p className="text-sm mb-6" style={{ color: "#e8d5a3" }}>
+      <p className="text-sm mb-3" style={{ color: "#e8d5a3" }}>
         {isCaregiver
           ? "You'll add the representative's contact info and POA confirmation on Step 3. All specimens must be collected at the same address — place a separate order if clients are at different locations."
-          : "AvoVita supports collecting specimens from multiple people in a single home visit. Everyone must share the same collection address."}
+          : "Adding someone else to this appointment costs $55, not another $85 visit — one phlebotomist, one trip, both collections done together."}
       </p>
 
       <label
@@ -91,7 +93,7 @@ export function Step1People({
       <select
         value={personCount}
         onChange={(e) => onPersonCountChange(Number(e.target.value))}
-        className="mf-input cursor-pointer mb-6"
+        className="mf-input cursor-pointer mb-2"
       >
         {options.map((opt) => (
           <option
@@ -103,6 +105,17 @@ export function Step1People({
           </option>
         ))}
       </select>
+      <p className="text-xs mb-6" style={{ color: "#6ab04c" }}>
+        Testing with more than two people?{" "}
+        <a
+          href="mailto:support@avovita.ca?subject=Group%20booking%20—%20more%20than%202%20people"
+          className="underline"
+          style={{ color: "#c4973a" }}
+        >
+          Contact us
+        </a>{" "}
+        and we&apos;ll arrange it.
+      </p>
 
       <button
         type="button"

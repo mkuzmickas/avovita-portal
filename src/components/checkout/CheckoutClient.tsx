@@ -280,10 +280,15 @@ export function CheckoutClient({
       if (raw) {
         const parsed = JSON.parse(raw) as PersistedCheckoutState;
         if (parsed && typeof parsed === "object") {
-          const restoredCount =
+          // Clamp to [1, 2] — Step 1 now offers two options only
+          // (bigger groups route through support); a stale localStorage
+          // value from before that change would leave the select blank
+          // on hydration.
+          const rawCount =
             typeof parsed.personCount === "number" && parsed.personCount > 0
               ? parsed.personCount
               : 1;
+          const restoredCount = Math.min(2, rawCount);
           setPersonCount(restoredCount);
           // Always align persons[] length with personCount on restore.
           // A mismatch (e.g. legacy persisted state with an extra empty
