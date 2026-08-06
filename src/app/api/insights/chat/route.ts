@@ -55,7 +55,9 @@ async function buildTestCatalog(): Promise<string> {
     const supabase = createServiceRoleClient();
     const { data, error } = await supabase
       .from("tests")
-      .select("name, sku, price_cad, lab:labs(name)")
+      .select(
+        "name, sku, price_cad, turnaround_display, lab:labs(name)",
+      )
       .eq("active", true)
       .order("name", { ascending: true });
 
@@ -68,17 +70,27 @@ async function buildTestCatalog(): Promise<string> {
       name: string;
       sku: string | null;
       price_cad: number | null;
+      turnaround_display: string | null;
       lab: { name: string } | { name: string }[] | null;
     };
     const rows = (data ?? []) as unknown as Row[];
 
+    // Short compact line per test so the whole catalogue fits in a
+    // reasonable slice of the prompt window. Turnaround is included
+    // so the AI can answer "how long for results?" without having to
+    // fall back to "check the catalogue page" — the outside advisor
+    // flagged that as one of the two facts the model was missing.
+    // Kept to short pipe-separated fields to stay token-cheap on
+    // every call (this catalog is re-sent per request).
     const lines = rows.map((t) => {
       const lab = Array.isArray(t.lab) ? t.lab[0] : t.lab;
       const labName = lab?.name ?? "—";
       const code = t.sku ?? "—";
       const price =
         t.price_cad != null ? `$${t.price_cad} CAD` : "Contact us for pricing";
-      return `- ${t.name} | Code: ${code} | ${price} | Lab: ${labName}`;
+      const turnaround = (t.turnaround_display ?? "").trim();
+      const turnaroundBit = turnaround ? ` | Turnaround: ${turnaround}` : "";
+      return `- ${t.name} | Code: ${code} | ${price} | Lab: ${labName}${turnaroundBit}`;
     });
 
     const value =
