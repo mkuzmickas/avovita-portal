@@ -4,10 +4,6 @@ import { useState } from "react";
 import { ChevronDown, Clock, ShoppingCart, Check, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { renderInline } from "@/lib/catalogue/renderInline";
-import {
-  formatShipTempLong,
-  formatStability,
-} from "@/lib/tests/shipTempDisplay";
 import { PanelIncludes } from "./PanelIncludes";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import { cartItemId } from "./types";
@@ -343,6 +339,14 @@ function TestTableRow({
                     </p>
                   )}
 
+                  {/* Handling + Stability intentionally removed from
+                      the client-side view — short-stability tests
+                      (CBC, metabolic panels, potassium, etc.) are
+                      already flagged upstream via the schedule-ack
+                      modal on add and dedicated banners at Step 3 +
+                      Step 4. Showing the raw fields on every row was
+                      clutter for the majority of tests where it's
+                      not actionable. */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
                     <DetailField
                       label="SKU"
@@ -351,14 +355,6 @@ function TestTableRow({
                       ariaLabel={
                         test.sku ? `Test code: ${test.sku}` : undefined
                       }
-                    />
-                    <DetailField
-                      label="Handling"
-                      value={formatShipTempLong(test.ship_temp)}
-                    />
-                    <DetailField
-                      label="Stability"
-                      value={formatStability(test)}
                     />
                   </div>
 

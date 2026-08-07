@@ -5,10 +5,6 @@ import Link from "next/link";
 import { Clock, ShoppingCart, Check, ChevronDown, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { renderInline } from "@/lib/catalogue/renderInline";
-import {
-  formatShipTempLong,
-  formatStability,
-} from "@/lib/tests/shipTempDisplay";
 import { PanelIncludes } from "./PanelIncludes";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
@@ -185,16 +181,12 @@ export function TestCard({
               </p>
             )}
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-              <DetailField
-                label="Handling"
-                value={formatShipTempLong(test.ship_temp)}
-              />
-              <DetailField
-                label="Stability"
-                value={formatStability(test)}
-              />
-            </div>
+            {/* Handling + Stability intentionally removed from the
+                client-side view — Tuesday-only / short-stability
+                tests are already flagged upstream (schedule-ack modal
+                on add, dedicated banners on Step 3 + Step 4). Showing
+                the raw fields here just added clutter to every card
+                for the majority of tests where it's not actionable. */}
 
             {test.panel_tests && test.panel_tests.length > 0 && (
               <PanelIncludes panelTests={test.panel_tests} variant="detail" />
