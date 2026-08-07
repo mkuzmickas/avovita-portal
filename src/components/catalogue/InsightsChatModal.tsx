@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X, Send, Sparkles, Loader2, ShoppingCart, Check, ExternalLink, ArrowRight } from "lucide-react";
+import { X, Send, Sparkles, Loader2, ShoppingCart, Check, ExternalLink, ArrowRight, AlertCircle, FileText, Phone } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/components/cart/CartContext";
@@ -28,7 +28,16 @@ interface CatalogueLookupTest {
   sku: string;
   price_cad: number | null;
   lab_name: string;
+  requisition_url: string | null;
 }
+
+// Threshold above which the assistant should append a
+// "specialist test — call us first" nudge. Trigger on the test, not
+// the cart total: a $1,600 cart of cheap panels is healthy margin; a
+// single $980 Neurofilament is $117.50 of margin and worth having a
+// conversation about first. Never gates checkout — someone ready to
+// pay by card right now is the best customer on the site.
+const SPECIALIST_TEST_MIN_PRICE_CAD = 900;
 
 const INTRO_MESSAGE: ChatMessage = {
   role: "assistant",
@@ -64,7 +73,7 @@ export function InsightsChatModal({
     (async () => {
       const { data } = await supabase
         .from("tests")
-        .select("id, name, sku, price_cad, lab:labs(name)")
+        .select("id, name, sku, price_cad, requisition_url, lab:labs(name)")
         .eq("active", true);
       if (cancelled || !data) return;
       type Row = {
@@ -72,6 +81,7 @@ export function InsightsChatModal({
         name: string;
         sku: string | null;
         price_cad: number | null;
+        requisition_url: string | null;
         lab: { name: string } | { name: string }[] | null;
       };
       const map = new Map<string, CatalogueLookupTest>();
@@ -84,6 +94,7 @@ export function InsightsChatModal({
           sku: r.sku,
           price_cad: r.price_cad,
           lab_name: lab?.name ?? "—",
+          requisition_url: r.requisition_url,
         });
       }
       setTestIndex(map);
@@ -402,6 +413,17 @@ const AssistantMessage = ({
     .map((c) => testIndex.get(c))
     .filter((t): t is CatalogueLookupTest => !!t);
 
+  // Specialist test = high-ticket (>= $900) OR requires a physician
+  // requisition. Either flavour triggers a "call us first" nudge under
+  // the recommended-tests block. NEVER gates the Add button — someone
+  // ready to pay right now is the best customer on the site; making
+  // them wait for a callback loses more than a discount ever would.
+  const specialistTests = referencedTests.filter(
+    (t) =>
+      (t.price_cad != null && t.price_cad >= SPECIALIST_TEST_MIN_PRICE_CAD) ||
+      !!t.requisition_url,
+  );
+
   return (
     <div className="flex gap-3">
       {/* AV avatar dot */}
@@ -442,6 +464,20 @@ const AssistantMessage = ({
                         ? `${formatCurrency(t.price_cad)} CAD`
                         : "Contact us"}
                     </span>
+                    {t.requisition_url && (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                        style={{
+                          backgroundColor: "rgba(196,151,58,0.15)",
+                          color: "#c4973a",
+                          border: "1px solid #c4973a",
+                        }}
+                        title="Physician requisition required — must be present at collection"
+                      >
+                        <FileText className="w-2.5 h-2.5" />
+                        Requisition required
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {canAdd ? (
@@ -499,6 +535,46 @@ const AssistantMessage = ({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Specialist-test nudge — appears under the recommended-tests
+            block whenever any recommended test is >= $900 OR requires
+            a physician requisition. Not a gate: Add and Checkout stay
+            fully live. */}
+        {specialistTests.length > 0 && (
+          <div
+            className="mt-3 flex items-start gap-2 rounded-lg border px-3 py-2.5"
+            style={{
+              backgroundColor: "rgba(196,151,58,0.08)",
+              borderColor: "#c4973a",
+            }}
+            role="note"
+          >
+            <AlertCircle
+              className="w-4 h-4 shrink-0 mt-0.5"
+              style={{ color: "#c4973a" }}
+            />
+            <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <p
+                className="text-xs leading-relaxed"
+                style={{ color: "#e8d5a3" }}
+              >
+                {specialistTests.length === 1
+                  ? `${specialistTests[0].name} is a specialist test`
+                  : "These are specialist tests"}{" "}
+                — worth a quick call so we can confirm it&apos;s the right one
+                for you.
+              </p>
+              <a
+                href="tel:1-855-286-8482"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap shrink-0"
+                style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+              >
+                <Phone className="w-3 h-3" />
+                1-855-286-8482
+              </a>
+            </div>
           </div>
         )}
       </div>
