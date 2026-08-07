@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Clock, ShoppingCart, Check, ChevronDown, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { renderInline } from "@/lib/catalogue/renderInline";
 import {
   formatShipTempLong,
   formatStability,
@@ -180,7 +181,7 @@ export function TestCard({
                 className="text-sm leading-relaxed"
                 style={{ color: "#e8d5a3" }}
               >
-                {test.description}
+                {renderInline(test.description)}
               </p>
             )}
 

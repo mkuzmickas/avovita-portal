@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, Clock, ShoppingCart, Check, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { renderInline } from "@/lib/catalogue/renderInline";
 import {
   formatShipTempLong,
   formatStability,
@@ -338,7 +339,7 @@ function TestTableRow({
                       className="text-sm leading-relaxed"
                       style={{ color: "#e8d5a3" }}
                     >
-                      {test.description}
+                      {renderInline(test.description)}
                     </p>
                   )}
 
