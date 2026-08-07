@@ -168,6 +168,18 @@ export function InsightsChatModal({
       test_name: test.name,
       price: test.price_cad,
     });
+    // Attribution: chat-originated adds count toward src=ask so the
+    // "Orders by Entry Point" analytics can tell whether the portal
+    // assistant produces orders. Same slug used by the marketing-
+    // site widget's ?src=ask handoff; a single value covers "AI
+    // added this test" regardless of which surface the AI ran on.
+    // Overwrites any prior src (URL handoff, org tag) — chat is the
+    // more proximate cause of the order once the customer uses it.
+    try {
+      window.localStorage.setItem("avovita-order-src", "ask");
+    } catch {
+      /* ignore */
+    }
   };
 
   if (!open) return null;

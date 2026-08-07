@@ -11,7 +11,9 @@ import { SearchBar } from "./SearchBar";
 import { CategoryFilter } from "./CategoryFilter";
 import { CartBar } from "./CartBar";
 import { InsightsChatModal } from "./InsightsChatModal";
+import { AskPromptLauncher } from "./AskPromptLauncher";
 import { useCart } from "@/components/cart/CartContext";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import type { CatalogueTest, CatalogueCartItem, CartItemTest } from "./types";
 
 interface CatalogueClientProps {
@@ -32,7 +34,8 @@ export function CatalogueClient({
   isLoggedIn,
 }: CatalogueClientProps) {
   const router = useRouter();
-  const { cart, addItem, hydrated } = useCart();
+  const { cart, totals, addItem, hydrated } = useCart();
+  const { trackEvent } = useAnalytics();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedLab, setSelectedLab] = useState<string | null>(null);
@@ -40,6 +43,8 @@ export function CatalogueClient({
   const [highlightedTestId, setHighlightedTestId] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [notFoundBanner, setNotFoundBanner] = useState<string | null>(null);
+  const [askPromptOpen, setAskPromptOpen] = useState(false);
+  const [askPromptTestName, setAskPromptTestName] = useState<string | null>(null);
 
   const handleAdd = (item: CatalogueCartItem) => {
     addItem({ ...item, line_type: "test" });
@@ -137,6 +142,11 @@ export function CatalogueClient({
   //   - `src` is written to localStorage under 'avovita-order-src' so
   //     the checkout flow can plumb it through onto orders.src for
   //     attribution analytics.
+  // URL handoff shares a ref with the post-add launcher so a batch of
+  // ?add= adds doesn't trigger the "want suggestions?" nudge — that
+  // arrival already means the customer's intent was formed elsewhere
+  // (the Ask AvoVita widget on the marketing site, an SMS link, etc.).
+  const handoffAdding = useRef(false);
   const handoffProcessed = useRef(false);
   useEffect(() => {
     if (!hydrated || handoffProcessed.current) return;
@@ -204,6 +214,7 @@ export function CatalogueClient({
         t.id === "8e46bec5-526c-42be-909c-447235e9ecd0",
     );
 
+    handoffAdding.current = true;
     for (const t of matches) {
       addItem({
         line_type: "test" as const,
@@ -216,6 +227,12 @@ export function CatalogueClient({
         collection_method: t.collection_method,
       });
     }
+    // Release the guard after the trailing microtask so the launcher's
+    // cart-size-change effect sees the flag while it processes this
+    // burst of adds.
+    queueMicrotask(() => {
+      handoffAdding.current = false;
+    });
 
     // If none of the incoming SKUs trigger the schedule-ack modal,
     // send the customer straight to checkout. Otherwise stay on
@@ -226,6 +243,85 @@ export function CatalogueClient({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated]);
+
+  // ─── Post-add Ask AvoVita nudge ──────────────────────────────────
+  // Fires when the customer adds a test on /tests. The visit fee is
+  // the most likely cause of the 81% checkout drop-off, and once one
+  // test is in the cart it's a sunk cost — a second test on the same
+  // appointment costs only the test price. Telling the customer that
+  // at the exact moment of the first add turns the biggest surprise
+  // in the funnel into an argument for a second test, where nearly
+  // all the marginal margin is.
+  //
+  // Trigger rules (all must be true):
+  //   - test count strictly increased
+  //   - test count BEFORE the add was < 2 (i.e. 0 → 1 or 1 → 2 —
+  //     someone already at 2+ tests has understood the model)
+  //   - not a ?add= URL handoff (their intent was already formed
+  //     elsewhere)
+  //   - hasn't already fired this browser session
+  //   - hasn't been dismissed this session (sessionStorage sticks)
+  //
+  // Once dismissed we set BOTH refs so a mid-session refresh of the
+  // page doesn't re-arm the prompt — the sessionStorage flag survives
+  // the refresh and the effect skips on cart mount.
+  const prevTestCountRef = useRef<number | null>(null);
+  const askPromptFiredRef = useRef(false);
+  const ASK_DISMISSED_KEY = "avovita-ask-prompt-dismissed";
+  useEffect(() => {
+    if (!hydrated) return;
+    const testCount = totals.testItems.length;
+    const prev = prevTestCountRef.current;
+    prevTestCountRef.current = testCount;
+    // First run after hydration primes the ref without triggering —
+    // whatever was in the cart from a previous session isn't a fresh
+    // add.
+    if (prev === null) return;
+    if (testCount <= prev) return; // removal or no change
+    if (handoffAdding.current) return; // URL handoff burst
+    if (askPromptFiredRef.current) return; // already this session
+    if (prev >= 2) return; // customer already understands the model
+    try {
+      if (
+        typeof window !== "undefined" &&
+        window.sessionStorage.getItem(ASK_DISMISSED_KEY) === "1"
+      ) {
+        askPromptFiredRef.current = true;
+        return;
+      }
+    } catch {
+      /* sessionStorage disabled — no persistence, that's fine */
+    }
+    const newestTest = totals.testItems[totals.testItems.length - 1];
+    setAskPromptTestName(newestTest?.test_name ?? null);
+    setAskPromptOpen(true);
+    askPromptFiredRef.current = true;
+    trackEvent("ask_prompt_shown", {
+      test_name: newestTest?.test_name ?? null,
+      test_count_after: testCount,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, totals.testItems.length]);
+
+  const handleAskPromptAccept = useCallback(() => {
+    setAskPromptOpen(false);
+    setAiOpen(true);
+    trackEvent("ask_prompt_accepted", {
+      test_name: askPromptTestName,
+    });
+  }, [trackEvent, askPromptTestName]);
+
+  const handleAskPromptDismiss = useCallback(() => {
+    setAskPromptOpen(false);
+    try {
+      window.sessionStorage.setItem(ASK_DISMISSED_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    trackEvent("ask_prompt_dismissed", {
+      test_name: askPromptTestName,
+    });
+  }, [trackEvent, askPromptTestName]);
 
   // Dev-only sanity log so we can verify in browser devtools that data is
   // actually flowing through to TestTable. Stripped from production builds.
@@ -621,6 +717,18 @@ export function CatalogueClient({
 
       {/* Sticky cart bar */}
       <CartBar cart={cart} />
+
+      {/* Post-add Ask AvoVita nudge — appears once after the first
+          add of the session, above the CartBar, dismissible. Never
+          obscures Checkout: the launcher yields to the CartBar and
+          uses a fixed offset above it. */}
+      {askPromptOpen && (
+        <AskPromptLauncher
+          testName={askPromptTestName}
+          onAccept={handleAskPromptAccept}
+          onDismiss={handleAskPromptDismiss}
+        />
+      )}
 
       {/* AI Test Finder modal */}
       <InsightsChatModal
