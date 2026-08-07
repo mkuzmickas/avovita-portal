@@ -725,6 +725,7 @@ export function CatalogueClient({
       {askPromptOpen && (
         <AskPromptLauncher
           testName={askPromptTestName}
+          totalTestCount={allTests.length}
           onAccept={handleAskPromptAccept}
           onDismiss={handleAskPromptDismiss}
         />

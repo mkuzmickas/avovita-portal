@@ -3,10 +3,17 @@
 import { X, Sparkles, ArrowRight } from "lucide-react";
 
 interface AskPromptLauncherProps {
-  /** Name of the test the customer just added — surfaced in the copy
-   *  so the prompt reads as attentive rather than automated. Falls
-   *  back to a generic phrasing when the name isn't known. */
+  /** Name of the test the customer just added — surfaced in an
+   *  attentive acknowledgment ("You've added X") rather than used to
+   *  infer what they need next. Falls back to generic phrasing when
+   *  the name isn't known. */
   testName: string | null;
+  /** Catalogue size — surfaced in the offer copy ("I can search all
+   *  445 tests") because "anything else?" alone reads shop-assistant
+   *  and gets a reflex no-thanks. Naming the depth of the catalogue
+   *  tells the customer something they don't know, which is a better
+   *  reason to engage than a suggestion they didn't ask for. */
+  totalTestCount: number;
   onAccept: () => void;
   onDismiss: () => void;
 }
@@ -18,17 +25,27 @@ interface AskPromptLauncherProps {
  * blockage. On mobile it collapses to a compact one-liner because the
  * full card is too much of the viewport at that width.
  *
- * The framing is the point: the visit fee — which is the most likely
- * cause of the 81% checkout drop-off — is now sunk cost. Any further
- * test added to this appointment costs only the test price. This is
- * the highest-value sentence in the funnel and it's said nowhere else.
+ * Copy design:
+ *   1. Acknowledge the test they added by name (attentive, not
+ *      automated) — do NOT infer what they need next.
+ *   2. Fee sentence — the visit fee is the most likely cause of the
+ *      81% checkout drop-off and is now sunk cost. Any further test
+ *      added to this appointment costs only the test price. This is
+ *      the highest-value sentence in the funnel and it's said
+ *      nowhere else.
+ *   3. Open-ended offer that names the catalogue depth ("all N
+ *      tests") — better reason to engage than a "what pairs with?"
+ *      suggestion, which implies clinical recommendation and crosses
+ *      the no-diagnosis line, or a bare "anything else?" which reads
+ *      shop-assistant and gets a reflex no-thanks.
  */
 export function AskPromptLauncher({
   testName,
+  totalTestCount,
   onAccept,
   onDismiss,
 }: AskPromptLauncherProps) {
-  const namedTest = testName ?? "this test";
+  const namedTest = testName ?? "your test";
 
   return (
     <div
@@ -72,6 +89,15 @@ export function AskPromptLauncher({
         </div>
 
         {/* Full copy — desktop / larger phones */}
+        {testName && (
+          <p
+            className="hidden sm:block text-sm mb-2"
+            style={{ color: "#e8d5a3" }}
+          >
+            You&apos;ve added{" "}
+            <span style={{ color: "#ffffff", fontWeight: 600 }}>{namedTest}</span>.
+          </p>
+        )}
         <p
           className="hidden sm:block text-sm leading-relaxed mb-3"
           style={{ color: "#ffffff" }}
@@ -84,8 +110,7 @@ export function AskPromptLauncher({
           className="hidden sm:block text-sm mb-3"
           style={{ color: "#e8d5a3" }}
         >
-          Want me to suggest what pairs well with{" "}
-          <span style={{ color: "#ffffff", fontWeight: 600 }}>{namedTest}</span>?
+          Looking for anything else? I can search all {totalTestCount} tests.
         </p>
 
         {/* Compact copy — mobile */}
@@ -94,8 +119,8 @@ export function AskPromptLauncher({
           style={{ color: "#ffffff" }}
         >
           <strong style={{ color: "#c4973a" }}>Visit fee covered.</strong>{" "}
-          Any test added to this appointment is just the test price. Suggest
-          what pairs with {namedTest}?
+          Any test added to this appointment is just the test price. I can
+          search all {totalTestCount} tests.
         </p>
 
         <div className="flex items-center gap-2">
@@ -105,7 +130,7 @@ export function AskPromptLauncher({
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold"
             style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
           >
-            Yes, show me
+            Yes, help me look
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
           <button
