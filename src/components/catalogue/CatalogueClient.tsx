@@ -320,19 +320,27 @@ export function CatalogueClient({
       }
     }
 
-    // Order: tier ascending, then within each tier sort by
-    // search_priority DESC (only when a query is active — browse /
-    // no-query lists stay in the alphabetical order Supabase returned).
-    // Stable sort preserves alphabetical for same-tier same-priority
-    // entries.
+    // Order when a query is active:
+    //   1. search_priority DESC — admin-boosted rows always jump the
+    //      queue. A bundle at priority 100 whose description contains
+    //      the searched term must beat individual tests at priority 0
+    //      whose names contain the term, otherwise the bundle upsell
+    //      never gets a chance (Fatigue Bundle vs individual Vitamin D
+    //      rows was the case that surfaced this).
+    //   2. tier ASC as tiebreaker — for the ~445 rows that never got a
+    //      priority set (default 0), the old "name/sku hit beats
+    //      description-only hit" ordering still applies.
+    //   3. Stable sort preserves alphabetical for same-priority same-tier.
+    // Browse / no-query lists stay in the alphabetical order Supabase
+    // returned — priority is a search-ranking signal, not a browse one.
     const hasQuery = query !== "";
     scored.sort((a, b) => {
-      if (a.tier !== b.tier) return a.tier - b.tier;
       if (hasQuery) {
         const pDiff =
           (b.test.search_priority ?? 0) - (a.test.search_priority ?? 0);
         if (pDiff !== 0) return pDiff;
       }
+      if (a.tier !== b.tier) return a.tier - b.tier;
       return 0;
     });
     return scored.map((s) => s.test);
