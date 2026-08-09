@@ -76,11 +76,15 @@ function defaultPersons(count: number): CheckoutPerson[] {
 }
 
 const defaultAddress: CollectionAddress = {
+  postal_code: "",
+  // Legacy fields kept as empty strings for downstream compatibility
+  // (webhook / materialise / invoice PDF still expect the property to
+  // exist, they just accept "" now). Full address is collected by
+  // FloLabs when the customer books their collection slot.
   address_line1: "",
   address_line2: "",
-  city: "Calgary",
+  city: "",
   province: "AB",
-  postal_code: "",
 };
 
 export function CheckoutClient({

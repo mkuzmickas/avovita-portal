@@ -35,12 +35,28 @@ export interface CheckoutPerson {
   own_account_email?: string;
 }
 
+/**
+ * Collection address collected during checkout.
+ *
+ * Only `postal_code` is captured pre-payment now — it's the single
+ * field the visit-fee geofence needs (Zone 1 Calgary $85 / Zone 2
+ * Cochrane/Airdrie/Okotoks/Chestermere $135 / Unserved blocked).
+ * FloLabs collects the full street address when the customer books
+ * their collection slot after payment, so asking for it upfront was
+ * redundant data entry that likely contributed to the 81% checkout
+ * drop-off.
+ *
+ * The other four fields remain in the type as optional strings so
+ * downstream systems (webhook, materialise, admin views, invoice
+ * PDF) can keep reading them without null-checks. New orders land
+ * with empty strings; historical orders keep whatever was collected.
+ */
 export interface CollectionAddress {
-  address_line1: string;
-  address_line2: string;
-  city: string;
-  province: string;
   postal_code: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  province?: string;
 }
 
 export interface TestAssignment {

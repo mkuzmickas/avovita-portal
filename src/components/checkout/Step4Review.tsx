@@ -483,24 +483,19 @@ export function Step4Review({
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Collection Address
+            Collection Postal Code
           </h3>
         </div>
         <div
           className="rounded-lg border px-4 py-3"
           style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
         >
-          <p className="text-sm" style={{ color: "#ffffff" }}>
-            {collectionAddress.address_line1}
-          </p>
-          {collectionAddress.address_line2 && (
-            <p className="text-sm" style={{ color: "#ffffff" }}>
-              {collectionAddress.address_line2}
-            </p>
-          )}
-          <p className="text-sm" style={{ color: "#e8d5a3" }}>
-            {collectionAddress.city}, {collectionAddress.province}{" "}
+          <p className="text-sm font-semibold" style={{ color: "#ffffff" }}>
             {collectionAddress.postal_code}
+          </p>
+          <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
+            FloLabs will confirm the full street address when you book
+            your collection slot.
           </p>
         </div>
       </section>

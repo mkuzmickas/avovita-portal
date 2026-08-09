@@ -38,14 +38,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (
-      !body.collection_address?.address_line1 ||
-      !body.collection_address?.city ||
-      !body.collection_address?.province ||
-      !body.collection_address?.postal_code
-    ) {
+    if (!body.collection_address?.postal_code) {
       return NextResponse.json(
-        { error: "Collection address is incomplete" },
+        { error: "Postal code is required" },
         { status: 400 }
       );
     }
@@ -258,10 +253,20 @@ export async function POST(request: NextRequest) {
     const visitFeeTotal =
       visitFeeBase + additionalCount * visitFeeAdditional;
 
+    // The customer only supplies postal code at checkout now; FloLabs
+    // collects the full street address when they book their slot. Show
+    // the FSA (first 3 chars) as a coarse locality marker on the
+    // Stripe receipt so admin can spot the region without needing a
+    // full address string here.
+    const fsa =
+      body.collection_address.postal_code
+        .toUpperCase()
+        .replace(/\s+/g, "")
+        .slice(0, 3) || "AB";
     const visitDescription =
       body.persons.length === 1
-        ? `In-home specimen collection — ${body.collection_address.city}`
-        : `In-home specimen collection (${body.persons.length} people) — ${body.collection_address.city}`;
+        ? `In-home specimen collection — ${fsa} area`
+        : `In-home specimen collection (${body.persons.length} people) — ${fsa} area`;
 
     lineItems.push({
       price_data: {

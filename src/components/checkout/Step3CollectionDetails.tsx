@@ -13,7 +13,6 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
 import { computeVisitFees, classifyPostalZone } from "@/lib/checkout/visit-fees";
-import { AddressAutocompleteInput } from "./AddressAutocompleteInput";
 import { DiscountBanner } from "./DiscountBanner";
 import type {
   CheckoutPerson,
@@ -49,22 +48,6 @@ const REP_RELATIONSHIP_OPTIONS: Array<{
   { value: "spouse_partner", label: "Spouse / Partner" },
   { value: "healthcare_worker", label: "Healthcare Worker" },
   { value: "other", label: "Other" },
-];
-
-const CA_PROVINCES = [
-  "AB",
-  "BC",
-  "MB",
-  "NB",
-  "NL",
-  "NS",
-  "NT",
-  "NU",
-  "ON",
-  "PE",
-  "QC",
-  "SK",
-  "YT",
 ];
 
 const RELATIONSHIP_OPTIONS: Array<{ value: string; label: string }> = [
@@ -160,9 +143,6 @@ export function Step3CollectionDetails({
 
   // Validation
   const addressValid =
-    collectionAddress.address_line1.trim().length > 0 &&
-    collectionAddress.city.trim().length > 0 &&
-    collectionAddress.province.trim().length > 0 &&
     collectionAddress.postal_code.trim().length > 0;
 
   const accountHolder = persons[0];
@@ -398,139 +378,45 @@ export function Step3CollectionDetails({
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          Collection Address
+          Collection Postal Code
         </h2>
-        <p className="text-xs mb-2" style={{ color: "#e8d5a3" }}>
-          This is where your FloLabs phlebotomist will come to collect
-          specimens. This may be your home, a hotel, office, or any
-          Calgary-area address. All people in this order must be at this
-          address at the time of collection.
-        </p>
-        <p className="text-xs mb-5" style={{ color: "#e8d5a3" }}>
-          This is where your FloLabs phlebotomist will attend for your
-          home visit. Please ensure someone will be present at this
-          address at the time of your appointment.
+        <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
+          FloLabs will collect the full street address when you book
+          your collection slot after payment. All we need now is your
+          postal code — it&apos;s how we confirm we can serve your area
+          and calculate the visit fee.
         </p>
 
-        <div className="space-y-3">
-          <div>
-            <label
-              className="block text-sm font-medium mb-1.5"
-              style={labelStyle}
-            >
-              Address Line 1{reqMark}
-            </label>
-            <AddressAutocompleteInput
-              value={collectionAddress.address_line1}
-              onChange={(next) =>
-                onAddressChange({
-                  ...collectionAddress,
-                  address_line1: next,
-                })
-              }
-              onPlaceSelected={(parsed) =>
-                onAddressChange({
-                  ...collectionAddress,
-                  address_line1: parsed.address_line1 || collectionAddress.address_line1,
-                  city: parsed.city || collectionAddress.city,
-                  province: parsed.province || collectionAddress.province,
-                  postal_code:
-                    parsed.postal_code || collectionAddress.postal_code,
-                })
-              }
-              className="mf-input"
-              placeholder="Start typing your address…"
-            />
-          </div>
-          <div>
-            <label
-              className="block text-sm font-medium mb-1.5"
-              style={labelStyle}
-            >
-              Address Line 2
-            </label>
-            <input
-              type="text"
-              value={collectionAddress.address_line2}
-              onChange={(e) =>
-                onAddressChange({
-                  ...collectionAddress,
-                  address_line2: e.target.value,
-                })
-              }
-              className="mf-input"
-              autoComplete="address-line2"
-              placeholder="Suite, Unit, Apt #"
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label
-                className="block text-sm font-medium mb-1.5"
-                style={labelStyle}
-              >
-                City{reqMark}
-              </label>
-              <input
-                type="text"
-                value={collectionAddress.city}
-                onChange={(e) =>
-                  onAddressChange({
-                    ...collectionAddress,
-                    city: e.target.value,
-                  })
-                }
-                className="mf-input"
-                autoComplete="address-level2"
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1.5"
-                style={labelStyle}
-              >
-                Province{reqMark}
-              </label>
-              <select
-                value={collectionAddress.province}
-                onChange={(e) =>
-                  onAddressChange({
-                    ...collectionAddress,
-                    province: e.target.value,
-                  })
-                }
-                className="mf-input cursor-pointer"
-              >
-                {CA_PROVINCES.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1.5"
-                style={labelStyle}
-              >
-                Postal Code{reqMark}
-              </label>
-              <input
-                type="text"
-                value={collectionAddress.postal_code}
-                onChange={(e) =>
-                  onAddressChange({
-                    ...collectionAddress,
-                    postal_code: e.target.value.toUpperCase(),
-                  })
-                }
-                className="mf-input"
-                autoComplete="postal-code"
-                placeholder="T2P 1A1"
-                maxLength={7}
-              />
-            </div>
-          </div>
+        <div className="max-w-xs">
+          <label
+            className="block text-sm font-medium mb-1.5"
+            style={labelStyle}
+          >
+            Postal Code{reqMark}
+          </label>
+          <input
+            type="text"
+            value={collectionAddress.postal_code}
+            onChange={(e) =>
+              onAddressChange({
+                ...collectionAddress,
+                postal_code: e.target.value.toUpperCase(),
+              })
+            }
+            className="mf-input"
+            autoComplete="postal-code"
+            placeholder="T2P 1A1"
+            maxLength={7}
+            aria-describedby="postal-code-help"
+          />
+          <p
+            id="postal-code-help"
+            className="text-xs mt-1.5"
+            style={{ color: "#6ab04c" }}
+          >
+            Calgary and surrounding communities (Cochrane, Airdrie,
+            Okotoks, Chestermere).
+          </p>
         </div>
 
         {/* Zone validation feedback */}

@@ -19,11 +19,11 @@ export interface OrderMetadataPayload {
   version: number;
   account_user_id: string | null;
   collection_address: {
-    address_line1: string;
-    address_line2: string;
-    city: string;
-    province: string;
     postal_code: string;
+    address_line1?: string;
+    address_line2?: string;
+    city?: string;
+    province?: string;
   };
   persons: Array<{
     index: number;
@@ -214,10 +214,10 @@ export async function materialiseOrder(
         date_of_birth: person.date_of_birth,
         biological_sex: person.biological_sex,
         phone: isDependent ? null : (person.phone ?? null),
-        address_line1: payload.collection_address.address_line1,
+        address_line1: payload.collection_address.address_line1 ?? "",
         address_line2: payload.collection_address.address_line2 || null,
-        city: payload.collection_address.city,
-        province: payload.collection_address.province,
+        city: payload.collection_address.city ?? "",
+        province: payload.collection_address.province ?? "AB",
         postal_code: payload.collection_address.postal_code,
         is_minor: false,
         is_primary: isDependent ? false : person.is_account_holder,

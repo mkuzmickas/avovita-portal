@@ -34,21 +34,27 @@ export function SupplementFulfillmentStep({
 }: SupplementFulfillmentStepProps) {
   const [sameAsMain, setSameAsMain] = useState(true);
 
+  // Full street address is no longer collected at checkout — only
+  // postal code — so the "same as collection address" auto-prefill
+  // has nothing meaningful to copy across for street/city/province.
+  // Postal code alone still gets prefilled since that's the one
+  // field we do have. If the customer wants a truly identical
+  // address to what FloLabs will pick up, they type it here or
+  // supplement shipping goes to a different address entirely.
   const hasMainAddress =
-    collectionAddress &&
-    collectionAddress.address_line1.trim().length > 0;
+    !!collectionAddress &&
+    (collectionAddress.address_line1?.trim().length ?? 0) > 0;
 
   const handleSelectShipping = () => {
     onFulfillmentChange("shipping");
-    if (hasMainAddress && sameAsMain) {
+    if (collectionAddress && sameAsMain) {
+      const line1 = collectionAddress.address_line1 ?? "";
+      const line2 = collectionAddress.address_line2 ?? "";
       onShippingAddressChange({
         name: "",
-        street: collectionAddress.address_line1 +
-          (collectionAddress.address_line2
-            ? `, ${collectionAddress.address_line2}`
-            : ""),
-        city: collectionAddress.city,
-        province: collectionAddress.province,
+        street: line1 + (line2 ? `, ${line2}` : ""),
+        city: collectionAddress.city ?? "",
+        province: collectionAddress.province ?? "AB",
         postal: collectionAddress.postal_code,
         country: "Canada",
       });
@@ -132,12 +138,12 @@ export function SupplementFulfillmentStep({
                       onShippingAddressChange({
                         name: "",
                         street:
-                          collectionAddress.address_line1 +
+                          (collectionAddress.address_line1 ?? "") +
                           (collectionAddress.address_line2
                             ? `, ${collectionAddress.address_line2}`
                             : ""),
-                        city: collectionAddress.city,
-                        province: collectionAddress.province,
+                        city: collectionAddress.city ?? "",
+                        province: collectionAddress.province ?? "AB",
                         postal: collectionAddress.postal_code,
                         country: "Canada",
                       });
