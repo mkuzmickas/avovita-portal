@@ -193,11 +193,9 @@ function TestTableRow({
       quantity: 1,
       collection_method: test.collection_method,
     });
-    trackEvent("test_added_to_cart", {
-      test_id: test.id,
-      test_name: test.name,
-      price: test.price_cad,
-    });
+    // test_added_to_cart event is fired from CartContext.commitAdd
+    // (single source of truth) so every add path counts — dropped
+    // the local trackEvent here in the funnel-bug fix.
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1500);
   };

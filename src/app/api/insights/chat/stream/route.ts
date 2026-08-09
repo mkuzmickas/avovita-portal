@@ -9,8 +9,10 @@ import {
   checkRateLimit,
   clientIp,
   corsHeadersFor,
+  extractSessionMetadata,
   handleOptions,
   parseChatBody,
+  recordWidgetChatEvent,
 } from "@/lib/insights/chat-common";
 
 export const runtime = "nodejs";
@@ -109,6 +111,12 @@ export async function POST(request: NextRequest) {
   const parsed = await parseChatBody(request, cors);
   if (!parsed.ok) return parsed.response;
   const sanitised = parsed.messages;
+
+  // Widget-side analytics — same insert-once-per-request pattern the
+  // non-streaming route uses. Portal traffic skips (client-side
+  // trackEvent handles it).
+  const { session_id, message_index } = extractSessionMetadata(parsed.raw);
+  void recordWidgetChatEvent(origin, session_id, message_index);
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {

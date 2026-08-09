@@ -18,6 +18,7 @@ import { cartItemId } from "@/components/catalogue/types";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
 import { useRepeatClient } from "@/components/account/RepeatClientContext";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
 
 const STORAGE_KEY = "avovita-cart-v1";
 
@@ -258,13 +259,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [cart, hydrated]);
 
-  const commitAdd = useCallback((item: CartItem) => {
-    const id = cartItemId(item);
-    setCart((prev) => {
-      if (prev.some((c) => cartItemId(c) === id)) return prev;
-      return [...prev, item];
-    });
-  }, []);
+  const { trackEvent } = useAnalytics();
+  const commitAdd = useCallback(
+    (item: CartItem) => {
+      const id = cartItemId(item);
+      let actuallyAdded = false;
+      setCart((prev) => {
+        if (prev.some((c) => cartItemId(c) === id)) return prev;
+        actuallyAdded = true;
+        return [...prev, item];
+      });
+      // Fire a single canonical cart-add event from here, the one
+      // path every add flows through (catalogue card, catalogue row,
+      // chat modal, ?add= URL handoff, quote acceptance loop). Prior
+      // to this the event fired only from TestTable's Add button,
+      // undercounting adds and making checkout-started numerically
+      // exceed cart-adds in the funnel. Callers that need
+      // surface-specific attribution (e.g. chat) fire an ADDITIONAL
+      // named event on top of this one.
+      if (actuallyAdded && item.line_type === "test") {
+        trackEvent("test_added_to_cart", {
+          test_id: item.test_id,
+          test_name: item.test_name,
+          sku: item.sku ?? null,
+          price: item.price_cad,
+        });
+      }
+    },
+    [trackEvent],
+  );
 
   const addItem = useCallback(
     (item: CartItem) => {

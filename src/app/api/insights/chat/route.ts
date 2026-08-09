@@ -7,8 +7,10 @@ import {
   checkRateLimit,
   clientIp,
   corsHeadersFor,
+  extractSessionMetadata,
   handleOptions,
   parseChatBody,
+  recordWidgetChatEvent,
   ALLOWED_ORIGINS,
   RATE_LIMIT_MAX,
 } from "@/lib/insights/chat-common";
@@ -81,6 +83,14 @@ export async function POST(request: NextRequest) {
   const parsed = await parseChatBody(request, cors);
   if (!parsed.ok) return parsed.response;
   const sanitised = parsed.messages;
+
+  // Fire-and-forget: record widget chat traffic in analytics_events so
+  // the dashboard can count unique sessions per day + avg messages
+  // per session. Portal chat traffic already fires ai_message_sent
+  // client-side (via useAnalytics hook), so recordWidgetChatEvent
+  // skips portal.avovita.ca origins to avoid double-counting.
+  const { session_id, message_index } = extractSessionMetadata(parsed.raw);
+  void recordWidgetChatEvent(origin, session_id, message_index);
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {

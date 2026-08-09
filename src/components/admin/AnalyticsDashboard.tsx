@@ -678,6 +678,63 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
   const aiAdded = useMemo(() => eventsByType("ai_finder_test_added").length, [eventsByType]);
   const catalogueAdded = testAddedEvents.length - aiAdded;
 
+  // Chat Bot engagement — messages (both portal + widget) all land in
+  // ai_message_sent. Portal sends fire client-side with surface:
+  // "portal"; widget sends are inserted server-side from
+  // /api/insights/chat with surface: "widget" (see chat-common.ts).
+  // A "session" = a unique session_id that fired at least one
+  // ai_message_sent OR ai_finder_opened event.
+  const chatMessages = useMemo(
+    () => eventsByType("ai_message_sent"),
+    [eventsByType],
+  );
+  const chatStats = useMemo(() => {
+    const sessions = new Set<string>();
+    const messagesBySurface: Record<string, number> = { portal: 0, widget: 0 };
+    let widgetMessages = 0;
+    let portalMessages = 0;
+    for (const e of chatMessages) {
+      const sid = e.session_id;
+      if (sid) sessions.add(sid);
+      const surface =
+        (e.event_data?.surface as string | undefined) ?? "unknown";
+      if (surface === "portal") portalMessages += 1;
+      else if (surface === "widget") widgetMessages += 1;
+      messagesBySurface[surface] = (messagesBySurface[surface] ?? 0) + 1;
+    }
+    // Include ai_finder_opened sessions too — a session that opened
+    // chat but sent zero messages still counts as engagement worth
+    // knowing about (bounces).
+    for (const e of eventsByType("ai_finder_opened")) {
+      if (e.session_id) sessions.add(e.session_id);
+    }
+    const totalMessages = portalMessages + widgetMessages;
+    const uniqueSessions = sessions.size;
+    const avgMessagesPerSession =
+      uniqueSessions > 0 ? totalMessages / uniqueSessions : 0;
+    // Unique sessions per day — takes the full analytics window and
+    // averages across the number of days it covers so admin can eyeball
+    // "typical" volume regardless of the picker range.
+    const daysCovered = (() => {
+      if (chatMessages.length === 0) return 1;
+      const timestamps = chatMessages
+        .map((e) => new Date(e.created_at).getTime())
+        .filter((t) => Number.isFinite(t));
+      if (timestamps.length === 0) return 1;
+      const spanMs = Math.max(...timestamps) - Math.min(...timestamps);
+      return Math.max(1, Math.round(spanMs / (24 * 60 * 60 * 1000)));
+    })();
+    const uniqueSessionsPerDay = uniqueSessions / daysCovered;
+    return {
+      uniqueSessions,
+      uniqueSessionsPerDay,
+      totalMessages,
+      portalMessages,
+      widgetMessages,
+      avgMessagesPerSession,
+    };
+  }, [chatMessages, eventsByType]);
+
   // Org breakdown
   const orgBreakdown = useMemo(() => {
     return organizations.map((org) => {
@@ -1649,6 +1706,38 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
               <MiniStat
                 label="Tests Added (Catalogue)"
                 value={fmt(catalogueAdded)}
+              />
+            </div>
+          </Section>
+
+          {/* ─── CHAT BOT ENGAGEMENT ─────────────────────────────── */}
+          <Section title="Chat Bot Engagement">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+              <MiniStat
+                label="Unique Sessions"
+                value={fmt(chatStats.uniqueSessions)}
+              />
+              <MiniStat
+                label="Unique Sessions / Day"
+                value={chatStats.uniqueSessionsPerDay.toFixed(1)}
+              />
+              <MiniStat
+                label="Avg. Messages / Session"
+                value={chatStats.avgMessagesPerSession.toFixed(1)}
+              />
+              <MiniStat
+                label="Total Messages"
+                value={fmt(chatStats.totalMessages)}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <MiniStat
+                label="Portal Modal Messages"
+                value={fmt(chatStats.portalMessages)}
+              />
+              <MiniStat
+                label="Marketing Widget Messages"
+                value={fmt(chatStats.widgetMessages)}
               />
             </div>
           </Section>

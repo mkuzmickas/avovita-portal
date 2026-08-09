@@ -186,7 +186,7 @@ export async function parseChatBody(
   request: NextRequest,
   cors: Record<string, string>,
 ): Promise<
-  | { ok: true; messages: ChatMessage[] }
+  | { ok: true; messages: ChatMessage[]; raw: unknown }
   | { ok: false; response: NextResponse }
 > {
   let raw: unknown;
@@ -235,5 +235,74 @@ export async function parseChatBody(
     };
   }
 
-  return { ok: true, messages: sanitised };
+  return { ok: true, messages: sanitised, raw };
+}
+
+/**
+ * Parse the incoming body one level deeper — pull the widget's
+ * session_id and (for engagement metrics) the message index. Both
+ * are optional; portal traffic doesn't provide them because it uses
+ * the client-side trackEvent path which already stamps session_id
+ * from AnalyticsProvider.
+ *
+ * Kept as its own small parse because parseChatBody early-returns on
+ * error and consumes the JSON body — we can't re-read it.
+ */
+export function extractSessionMetadata(
+  raw: unknown,
+): { session_id: string | null; message_index: number | null } {
+  if (!raw || typeof raw !== "object") {
+    return { session_id: null, message_index: null };
+  }
+  const body = raw as { session_id?: unknown; messages?: unknown };
+  const session_id =
+    typeof body.session_id === "string" && body.session_id.trim().length > 0
+      ? body.session_id.trim().slice(0, 64)
+      : null;
+  const message_index = Array.isArray(body.messages)
+    ? body.messages.length
+    : null;
+  return { session_id, message_index };
+}
+
+/**
+ * Fire-and-forget analytics_events insert for widget chat traffic.
+ * Portal chat traffic uses the client-side trackEvent hook instead —
+ * this exists so the marketing-site widget (cross-origin, no shared
+ * React analytics context) still shows up in the same dashboard
+ * bucket. `surface: "widget"` distinguishes the two in queries.
+ *
+ * Never throws — analytics failures must not fail a chat request.
+ */
+export async function recordWidgetChatEvent(
+  origin: string | null,
+  sessionId: string | null,
+  messageIndex: number | null,
+): Promise<void> {
+  // Skip when the request came from the portal itself — the portal
+  // modal fires its own client-side ai_message_sent with surface:
+  // "portal", so inserting a server-side duplicate here would
+  // double-count. Anything from avovita.ca (or any other allowed
+  // widget origin) gets logged.
+  if (!origin) return;
+  if (origin.includes("portal.avovita.ca")) return;
+  if (!sessionId) return;
+
+  try {
+    const supabase = createServiceRoleClient();
+    await supabase.from("analytics_events").insert({
+      event_type: "ai_message_sent",
+      event_data: {
+        surface: "widget",
+        message_index: messageIndex,
+        origin,
+      },
+      path: null,
+      session_id: sessionId,
+      org_id: null,
+      account_id: null,
+    });
+  } catch (err) {
+    console.warn("[chat-common] recordWidgetChatEvent failed:", err);
+  }
 }

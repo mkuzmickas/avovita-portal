@@ -89,12 +89,18 @@ export default function RootLayout({
         style={{ backgroundColor: "#0a1a0d", color: "#e8d5a3" }}
       >
         <RepeatClientProvider>
-          <CartProvider>
-            <AnalyticsProvider>
+          {/* AnalyticsProvider outside CartProvider so CartContext
+              can call useAnalytics() when firing test_added_to_cart
+              from the single source of truth (commitAdd). Fixes the
+              funnel-counting bug where the event fired from only one
+              of ~5 cart-add call sites, undercounting adds and
+              making checkout-started appear to exceed cart-adds. */}
+          <AnalyticsProvider>
+            <CartProvider>
               {children}
               <PreviewAvailabilityFab />
-            </AnalyticsProvider>
-          </CartProvider>
+            </CartProvider>
+          </AnalyticsProvider>
         </RepeatClientProvider>
       </body>
     </html>

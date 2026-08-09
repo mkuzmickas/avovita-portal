@@ -139,6 +139,17 @@ export function InsightsChatModal({
     setInput("");
     setSending(true);
 
+    // Per-message analytics — combined with ai_finder_opened this
+    // gives us unique sessions per day and average messages per
+    // session in the dashboard. Marketing-widget messages are
+    // logged server-side from /api/insights/chat so both surfaces
+    // land in the same bucket, distinguishable via the `surface`
+    // field.
+    trackEvent("ai_message_sent", {
+      surface: "portal",
+      message_index: next.length,
+    });
+
     try {
       const res = await fetch("/api/insights/chat", {
         method: "POST",

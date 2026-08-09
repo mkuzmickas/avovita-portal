@@ -320,7 +320,7 @@
       fetch(CONFIG.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history })
+        body: JSON.stringify({ messages: history, session_id: sessionId() })
       }).then(function (res) {
         return res.json().catch(function () { return {}; }).then(function (data) {
           return { status: res.status, retry: res.headers.get('Retry-After'), data: data };
@@ -558,5 +558,24 @@
 
   function save(h) {
     try { sessionStorage.setItem(CONFIG.storageKey, JSON.stringify(h)); } catch (e) {}
+  }
+
+  /* Session id — persists per browser tab so the portal-side analytics
+     can count unique widget sessions per day and average messages per
+     session. Rebuilt on tab close (sessionStorage lifetime), fine for
+     conversion measurement — nothing here is used for identity. */
+  function sessionId() {
+    var key = CONFIG.storageKey + '_sid';
+    try {
+      var existing = sessionStorage.getItem(key);
+      if (existing) return existing;
+      var sid = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'sid-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+      sessionStorage.setItem(key, sid);
+      return sid;
+    } catch (e) {
+      return null;
+    }
   }
 })();
