@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, Clock, ShoppingCart, Check, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { renderInline } from "@/lib/catalogue/renderInline";
+import { CollectionFeeQualifier } from "./CollectionFeeQualifier";
 import { PanelIncludes } from "./PanelIncludes";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import { cartItemId } from "./types";
@@ -269,10 +270,16 @@ function TestTableRow({
           {test.category ?? "—"}
         </td>
         <td
-          className="px-5 py-4 font-semibold whitespace-nowrap"
+          className="px-5 py-4 font-semibold"
           style={{ color: "#c4973a" }}
         >
-          {hasPrice ? formatCurrency(test.price_cad as number) : "Contact us"}
+          <div className="whitespace-nowrap">
+            {hasPrice ? formatCurrency(test.price_cad as number) : "Contact us"}
+          </div>
+          <CollectionFeeQualifier
+            hasPrice={hasPrice}
+            collectionMethod={test.collection_method}
+          />
         </td>
         <td
           className="hidden sm:table-cell px-5 py-4"
@@ -412,6 +419,10 @@ function TestTableRow({
                       {hasPrice ? "CAD · " : ""}
                       {test.lab.name}
                     </p>
+                    <CollectionFeeQualifier
+                      hasPrice={hasPrice}
+                      collectionMethod={test.collection_method}
+                    />
                   </div>
                   {hasPrice ? (
                     <button

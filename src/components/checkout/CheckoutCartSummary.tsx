@@ -263,6 +263,26 @@ export function CheckoutCartSummary({
                     </span>
                   </div>
                 )}
+                {/* "Already covered" reframe — same fact as the
+                    catalogue's "+ from $85 collection fee" qualifier,
+                    but opposite emotional weight: in the cart the
+                    fee has been decided on and adding another test
+                    doesn't repeat it. Only when the customer has
+                    exactly one test line — with 2+ the argument
+                    would be preaching to the choir. Never on
+                    kit-only carts (no visit fee to be covered). */}
+                {testCount === 1 && (
+                  <p
+                    className="text-xs italic mt-1 pt-1"
+                    style={{
+                      color: "#8dc63f",
+                      borderTop: "1px dashed #2d6b35",
+                    }}
+                  >
+                    Your collection fee is already covered — add another
+                    test and you pay only the test price.
+                  </p>
+                )}
               </>
             ) : !kitFee.hasKitTests || kitFee.hasPhlebotomistTests ? (
               <p

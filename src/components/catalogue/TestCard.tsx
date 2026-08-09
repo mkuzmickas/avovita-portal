@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Clock, ShoppingCart, Check, ChevronDown, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { renderInline } from "@/lib/catalogue/renderInline";
+import { CollectionFeeQualifier } from "./CollectionFeeQualifier";
 import { PanelIncludes } from "./PanelIncludes";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
@@ -105,7 +106,7 @@ export function TestCard({
 
         {/* Price */}
         <p
-          className="font-semibold mb-2"
+          className="font-semibold mb-1"
           style={{ color: "#c4973a", fontSize: "26px" }}
         >
           {hasPrice ? (
@@ -122,6 +123,11 @@ export function TestCard({
             <span style={{ fontSize: "18px" }}>Contact us for pricing</span>
           )}
         </p>
+        <CollectionFeeQualifier
+          hasPrice={hasPrice}
+          collectionMethod={test.collection_method}
+          className="mb-2"
+        />
 
         {/* Requisition required notice */}
         {test.requisition_url && (
