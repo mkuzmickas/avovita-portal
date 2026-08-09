@@ -427,6 +427,14 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
             if (typeof tid === "string") s.addedTestIds.push(tid);
           }
           break;
+        case "cart_restored":
+          // Returning-tab session with items already in the cart
+          // from a previous session's localStorage. Counts as
+          // "added to cart" for funnel purposes — otherwise the
+          // funnel showed checkout_started > test_added_to_cart
+          // because the current session never fired a fresh add.
+          s.addedToCart = true;
+          break;
         case "checkout_started":
           s.startedCheckout = true;
           if (s.checkoutStartedAt === null || ts < s.checkoutStartedAt) {

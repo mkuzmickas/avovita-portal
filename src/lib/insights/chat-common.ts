@@ -286,8 +286,13 @@ export async function recordWidgetChatEvent(
   // widget origin) gets logged.
   if (!origin) return;
   if (origin.includes("portal.avovita.ca")) return;
-  if (!sessionId) return;
 
+  // Session_id is optional. Older widget code (pre-020f3e7) doesn't
+  // send one — insert the event anyway with a null session_id so the
+  // dashboard total-messages counter still reflects usage. Unique-
+  // sessions-per-day will slightly undercount widget traffic until
+  // the CDN serves the updated widget code, but the total-messages
+  // metric stays accurate.
   try {
     const supabase = createServiceRoleClient();
     await supabase.from("analytics_events").insert({

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { AlertTriangle } from "lucide-react";
@@ -232,7 +233,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // in the same sync tick and the second was silently dropped.
   const [queuedForAck, setQueuedForAck] = useState<CartItemTest[]>([]);
 
-  // Hydrate from localStorage on mount
+  // Hydrate from localStorage on mount. When a returning-tab session
+  // arrives with items already in the cart (from a previous session's
+  // localStorage), fire cart_restored so the funnel's session-based
+  // "test_added_to_cart" stage counts them. Without this the funnel
+  // shows checkout_started > test_added_to_cart, because the current
+  // session never fired a fresh add — the customer just picked up
+  // where they left off in an earlier session.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -240,7 +247,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          setCart(migrateCartItems(parsed));
+          const migrated = migrateCartItems(parsed);
+          setCart(migrated);
+          const testCount = migrated.filter((i) => i.line_type === "test").length;
+          if (testCount > 0) {
+            trackEventRef.current("cart_restored", {
+              test_count: testCount,
+              total_items: migrated.length,
+            });
+          }
         }
       }
     } catch {
@@ -260,6 +275,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [cart, hydrated]);
 
   const { trackEvent } = useAnalytics();
+  // Ref-mirror so the mount effect (which must not re-run on every
+  // trackEvent identity change) can fire cart_restored on hydration
+  // without adding trackEvent to its dep array.
+  const trackEventRef = useRef(trackEvent);
+  useEffect(() => {
+    trackEventRef.current = trackEvent;
+  }, [trackEvent]);
+
   const commitAdd = useCallback(
     (item: CartItem) => {
       const id = cartItemId(item);
