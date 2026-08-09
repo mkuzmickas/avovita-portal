@@ -182,17 +182,17 @@ export function Step3CollectionDetails({
   const zoneUnserved = postalEntered && postalZone === "unserved";
 
   const isCaregiver = orderMode === "caregiver";
-  const representativeValid =
-    !isCaregiver ||
-    (representative.first_name.trim().length > 0 &&
-      representative.last_name.trim().length > 0 &&
-      isEmailValid(representative.email) &&
-      representative.phone.trim().length > 0 &&
-      representative.poa_confirmed);
+  // Rep collection was removed from Step 3 in Aug 2026 — Step 1 now
+  // captures a simple permission acknowledgement instead of the POA
+  // form, and per-person identity (name / DOB / sex) moves to
+  // post-payment onboarding in the follow-up phase. Kept the variable
+  // name so nothing downstream needs updating; it just always resolves
+  // to true now.
+  const representativeValid = true;
 
-  // In caregiver mode, "persons" are dependents — they don't need phone
-  // (notifications go to the rep) and don't need to tick consent for
-  // others because the rep's POA checkbox covers legal authority.
+  // Same reasoning — dependents (in caregiver mode) are validated in
+  // the post-payment onboarding step, not here. Old orders in flight
+  // with pre-populated dependent data still validate cleanly.
   const dependentsValid =
     !isCaregiver ||
     persons.every(
@@ -220,16 +220,8 @@ export function Step3CollectionDetails({
   if (!isOutOfTown && zoneUnserved)
     missingFields.push("a serviced postal code");
   if (isCaregiver) {
-    if (!representativeValid) {
-      const repMissing: string[] = [];
-      if (!representative.first_name.trim()) repMissing.push("first name");
-      if (!representative.last_name.trim()) repMissing.push("last name");
-      if (!isEmailValid(representative.email)) repMissing.push("email");
-      if (!representative.phone.trim()) repMissing.push("mobile number");
-      if (!representative.poa_confirmed)
-        repMissing.push("POA acknowledgement");
-      missingFields.push(`representative ${repMissing.join(", ")}`);
-    }
+    // Rep validation dropped — Step 1 permission ack replaces it,
+    // client identity moves to post-payment onboarding.
     if (!dependentsValid) {
       missingFields.push("client first/last name, DOB, biological sex");
     }
@@ -500,12 +492,12 @@ export function Step3CollectionDetails({
           </p>
         </div>
       )}
-      {isCaregiver && (
-        <RepresentativeSection
-          rep={representative}
-          onChange={onRepresentativeChange}
-        />
-      )}
+      {/* RepresentativeSection removed in Aug 2026 — Step 1's simple
+          "I have permission to order testing" checkbox replaces the
+          POA / caregiver / healthcare-worker form and its associated
+          contact + relationship fields. When the customer picked
+          "Someone else" they see a post-payment reminder to use the
+          tested person's name + DOB during account setup. */}
       {accountHolder && (
         <PersonSection
           title={isCaregiver ? "Client 1" : "Your Information"}

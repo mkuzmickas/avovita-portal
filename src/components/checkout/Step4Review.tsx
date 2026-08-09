@@ -335,8 +335,11 @@ export function Step4Review({
             total: visitFees.total,
           },
           order_mode: orderMode,
-          representative:
-            orderMode === "caregiver" ? representative : null,
+          // Representative block deprecated in Aug 2026 — Step 1's
+          // permission acknowledgement replaced it. Always null now
+          // for new orders; webhook still handles populated reps for
+          // any pre-migration sessions still in flight.
+          representative: null,
           org_id: orgSlug ?? null, // server resolves slug → id
           src: orderSrc,
           supplement_fulfillment: hasSupplements
@@ -414,8 +417,11 @@ export function Step4Review({
           total,
           account_user_id: accountUserId,
           src: orderSrc,
-          representative:
-            orderMode === "caregiver" ? representative : null,
+          // Representative block deprecated in Aug 2026 — Step 1's
+          // permission acknowledgement replaced it. Always null now
+          // for new orders; webhook still handles populated reps for
+          // any pre-migration sessions still in flight.
+          representative: null,
         };
 
         const res = await fetch("/api/stripe/checkout", {

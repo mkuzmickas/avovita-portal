@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowRight, Users, Heart } from "lucide-react";
+import { ArrowRight, User, Users, UserCheck } from "lucide-react";
 import type { OrderMode } from "./CheckoutClient";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
 
 interface Step1PeopleProps {
   personCount: number;
@@ -9,22 +10,51 @@ interface Step1PeopleProps {
   onContinue: () => void;
   orderMode: OrderMode;
   onOrderModeChange: (mode: OrderMode) => void;
+  permissionAcknowledged: boolean;
+  onPermissionChange: (checked: boolean) => void;
 }
 
-// Reduced from 4 options to 2 in Aug 2026. Zero orders in the 90-day
-// history have >2 people; every additional dropdown row is friction on
-// the first screen of a checkout that already loses 81% of arrivals.
-// Bigger groups still route through support (contact CTA below the
-// selector) — the capability is preserved, it just stops taxing the
-// common case.
-const SELF_OPTIONS = [
-  { value: 1, label: "Just me" },
-  { value: 2, label: "Me and one other person" },
-];
-const CAREGIVER_OPTIONS = [
-  { value: 1, label: "1 client" },
-  { value: 2, label: "2 clients" },
-];
+/**
+ * Step 1 — who's this order for?
+ *
+ * Three mutually-exclusive pickers driven by the combination of
+ * (orderMode, personCount):
+ *
+ *   pick             orderMode    personCount
+ *   -------------    ---------    -----------
+ *   Just myself      self         1
+ *   Me + someone     self         2
+ *   Someone else     caregiver    1
+ *
+ * The "someone else" flavour used to be gated behind a POA / caregiver
+ * / healthcare-worker representative form on Step 3. That's gone —
+ * Mike wants a lighter model: a single "I have permission" checkbox
+ * that covers us legally, plus a note reminding the customer that the
+ * post-payment account will be set up in the tested person's name
+ * (not the orderer's), so results attribute correctly.
+ *
+ * When "Me + someone" or "Someone else" is picked, the permission ack
+ * is required; Continue is disabled until it's checked. When "Someone
+ * else" is picked, an additional note surfaces about account naming.
+ */
+type Pick = "self_only" | "self_plus" | "other_only";
+
+function pickForState(orderMode: OrderMode, personCount: number): Pick {
+  if (orderMode === "caregiver") return "other_only";
+  if (personCount >= 2) return "self_plus";
+  return "self_only";
+}
+
+function stateForPick(pick: Pick): { mode: OrderMode; count: number } {
+  switch (pick) {
+    case "self_only":
+      return { mode: "self", count: 1 };
+    case "self_plus":
+      return { mode: "self", count: 2 };
+    case "other_only":
+      return { mode: "caregiver", count: 1 };
+  }
+}
 
 export function Step1People({
   personCount,
@@ -32,9 +62,35 @@ export function Step1People({
   onContinue,
   orderMode,
   onOrderModeChange,
+  permissionAcknowledged,
+  onPermissionChange,
 }: Step1PeopleProps) {
-  const isCaregiver = orderMode === "caregiver";
-  const options = isCaregiver ? CAREGIVER_OPTIONS : SELF_OPTIONS;
+  const { trackEvent } = useAnalytics();
+  const pick = pickForState(orderMode, personCount);
+  const needsPermission = pick === "self_plus" || pick === "other_only";
+  const isOtherOnly = pick === "other_only";
+  const canContinue = !needsPermission || permissionAcknowledged;
+
+  const handlePermissionChange = (checked: boolean) => {
+    onPermissionChange(checked);
+    // Auditable event — the events table records timestamp + session,
+    // giving a defensible legal record that the customer ticked the
+    // acknowledgement box for this specific order mode. A proper
+    // orders column lands in the DOB/sex post-payment phase.
+    if (checked) {
+      trackEvent("order_permission_acknowledged", { pick });
+    }
+  };
+
+  const setPick = (next: Pick) => {
+    const { mode, count } = stateForPick(next);
+    onOrderModeChange(mode);
+    onPersonCountChange(count);
+    // Reset the permission ack on any pick change so a customer who
+    // ticks it, switches to Just myself, then switches back doesn't
+    // silently re-consent without re-reading.
+    if (next !== pick) onPermissionChange(false);
+  };
 
   return (
     <div
@@ -61,50 +117,94 @@ export function Step1People({
         Who is this <span style={{ color: "#c4973a" }}>order for?</span>
       </h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-        <ModeOption
-          active={!isCaregiver}
-          onClick={() => onOrderModeChange("self")}
-          icon={<Users className="w-5 h-5" />}
-          title="Myself"
-          subtitle="I'm the person being tested (or ordering alongside family at the same address)."
+      <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
+        Adding someone else to this appointment costs $55, not another
+        $85 visit — one phlebotomist, one trip, both collections done
+        together.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        <PickOption
+          active={pick === "self_only"}
+          onClick={() => setPick("self_only")}
+          icon={<User className="w-5 h-5" />}
+          title="Just myself"
+          subtitle="I'm the one being tested."
         />
-        <ModeOption
-          active={isCaregiver}
-          onClick={() => onOrderModeChange("caregiver")}
-          icon={<Heart className="w-5 h-5" />}
-          title="Someone in my care"
-          subtitle="I'm a caregiver, POA, parent/guardian or healthcare worker ordering on behalf of a client."
+        <PickOption
+          active={pick === "self_plus"}
+          onClick={() => setPick("self_plus")}
+          icon={<Users className="w-5 h-5" />}
+          title="Myself and someone else"
+          subtitle="Two people, one collection appointment at the same address."
+        />
+        <PickOption
+          active={pick === "other_only"}
+          onClick={() => setPick("other_only")}
+          icon={<UserCheck className="w-5 h-5" />}
+          title="Someone else"
+          subtitle="I'm ordering on their behalf."
         />
       </div>
 
-      <p className="text-sm mb-3" style={{ color: "#e8d5a3" }}>
-        {isCaregiver
-          ? "You'll add the representative's contact info and POA confirmation on Step 3. All specimens must be collected at the same address — place a separate order if clients are at different locations."
-          : "Adding someone else to this appointment costs $55, not another $85 visit — one phlebotomist, one trip, both collections done together."}
-      </p>
-
-      <label
-        className="block text-sm font-medium mb-1.5"
-        style={{ color: "#e8d5a3" }}
-      >
-        {isCaregiver ? "Number of clients" : "Number of people"}
-      </label>
-      <select
-        value={personCount}
-        onChange={(e) => onPersonCountChange(Number(e.target.value))}
-        className="mf-input cursor-pointer mb-2"
-      >
-        {options.map((opt) => (
-          <option
-            key={opt.value}
-            value={opt.value}
-            style={{ backgroundColor: "#0f2614", color: "#ffffff" }}
+      {/* Permission acknowledgement — required when someone other than
+          the account holder is being tested. Reset on every pick change
+          so it can't be inherited from a previous selection. */}
+      {needsPermission && (
+        <label
+          className="flex items-start gap-2.5 p-3 mb-4 rounded-lg border cursor-pointer"
+          style={{
+            backgroundColor: permissionAcknowledged
+              ? "rgba(141, 198, 63, 0.08)"
+              : "#0f2614",
+            borderColor: permissionAcknowledged ? "#8dc63f" : "#2d6b35",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={permissionAcknowledged}
+            onChange={(e) => handlePermissionChange(e.target.checked)}
+            className="mt-0.5 shrink-0 cursor-pointer"
+          />
+          <span
+            className="text-sm leading-relaxed"
+            style={{
+              color: permissionAcknowledged ? "#8dc63f" : "#e8d5a3",
+            }}
           >
-            {opt.label}
-          </option>
-        ))}
-      </select>
+            I confirm I have permission to order testing and receive
+            results for {pick === "self_plus" ? "the other person" : "this person"}.
+          </span>
+        </label>
+      )}
+
+      {/* Note for "someone else" only — the post-payment account will
+          be set up in the tested person's name so lab results attribute
+          correctly. Doesn't show for "myself + someone" because the
+          account holder is still one of the people being tested. */}
+      {isOtherOnly && (
+        <div
+          className="flex items-start gap-2 rounded-lg border px-3 py-2.5 mb-4"
+          style={{
+            backgroundColor: "rgba(196, 151, 58, 0.08)",
+            borderColor: "#c4973a",
+          }}
+        >
+          <UserCheck
+            className="w-4 h-4 shrink-0 mt-0.5"
+            style={{ color: "#c4973a" }}
+          />
+          <p className="text-xs leading-relaxed" style={{ color: "#e8d5a3" }}>
+            After payment we&apos;ll create the account in{" "}
+            <strong style={{ color: "#ffffff" }}>
+              the name and date of birth of the person being tested
+            </strong>{" "}
+            — that&apos;s how results are matched to the right person on
+            the portal.
+          </p>
+        </div>
+      )}
+
       <p className="text-xs mb-6" style={{ color: "#6ab04c" }}>
         Testing with more than two people?{" "}
         <a
@@ -120,7 +220,9 @@ export function Step1People({
       <button
         type="button"
         onClick={onContinue}
+        disabled={!canContinue}
         className="mf-btn-primary w-full sm:w-auto px-6 py-3"
+        style={{ opacity: canContinue ? 1 : 0.5, cursor: canContinue ? "pointer" : "not-allowed" }}
       >
         Continue
         <ArrowRight className="w-4 h-4" />
@@ -129,7 +231,7 @@ export function Step1People({
   );
 }
 
-function ModeOption({
+function PickOption({
   active,
   onClick,
   icon,
@@ -146,7 +248,7 @@ function ModeOption({
     <button
       type="button"
       onClick={onClick}
-      className="text-left rounded-xl border px-4 py-3 transition-colors"
+      className="text-left rounded-xl border px-4 py-3 transition-colors h-full"
       style={{
         backgroundColor: active ? "rgba(196,151,58,0.12)" : "#0f2614",
         borderColor: active ? "#c4973a" : "#2d6b35",

@@ -128,6 +128,11 @@ export function CheckoutClient({
   const [representative, setRepresentative] = useState<RepresentativeBlock>(
     BLANK_REPRESENTATIVE
   );
+  // Permission-to-order acknowledgement — captured on Step 1 whenever
+  // the order is on behalf of someone other than the account holder
+  // (mode picks "Myself and someone else" or "Someone else"). Persisted
+  // downstream so it's an auditable record, not just a UI gate.
+  const [permissionAcknowledged, setPermissionAcknowledged] = useState(false);
   // Supplement fulfillment state — only used when showSupplementFulfillmentStep
   const [suppFulfillment, setSuppFulfillment] =
     useState<SupplementFulfillment | null>(null);
@@ -670,6 +675,8 @@ export function CheckoutClient({
                 onContinue={handleStep1Continue}
                 orderMode={orderMode}
                 onOrderModeChange={setOrderMode}
+                permissionAcknowledged={permissionAcknowledged}
+                onPermissionChange={setPermissionAcknowledged}
               />
             )}
             {step === 2 && (
