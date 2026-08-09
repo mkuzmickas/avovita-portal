@@ -546,14 +546,18 @@ export function CheckoutClient({
   const visitFees = useMemo(
     () => {
       if (isKitOnly) return null;
-      // On step 1 we normally hide the visit fee because the user hasn't
-      // picked a person count yet. When the flow was kicked off by a
-      // quote-accept link we already know the person count from the
-      // quote, so show the fee from step 1 to match the emailed quote.
-      if (step === 1 && !appliedQuoteNumber) return null;
+      // Person count is known from Step 1 (the three-button picker
+      // sets it before Continue), so compute the fee from Step 1
+      // onward — hiding it until later was a leftover from the old
+      // pre-Step-1-picker flow. Postal code isn't known until Step 3;
+      // computeVisitFees falls back to Zone 1 pricing ($85 base +
+      // $55 per additional person) when postal is empty, which
+      // matches the majority-of-orders default. The number bumps to
+      // Zone 2 ($135 base) automatically once the customer enters a
+      // Cochrane/Airdrie/Okotoks/Chestermere postal code on Step 3.
       return computeVisitFees(personCount, collectionAddress.postal_code);
     },
-    [personCount, step, collectionAddress.postal_code, isKitOnly, appliedQuoteNumber]
+    [personCount, collectionAddress.postal_code, isKitOnly]
   );
 
   // Sidebar always reflects the cart, never the partial assignment state.
