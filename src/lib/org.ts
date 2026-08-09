@@ -11,8 +11,9 @@ export const ORGS_FEATURE_ENABLED =
  *   - no row matches the slug
  *   - the row exists but is inactive
  *
- * Slug match is case-sensitive — the seed uses "AlwaysBestCare"
- * (CamelCase) deliberately for branding.
+ * Slug match is case-sensitive — partners are free to use CamelCase
+ * in their slug for branding. Missing slug → returns null → route
+ * renders as an ordinary AvoVita page (no org branding).
  */
 export async function getOrgBySlug(
   slug: string

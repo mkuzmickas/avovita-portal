@@ -360,21 +360,12 @@ export function CheckoutClient({
       // Ignore parse errors — start fresh
     }
 
-    // Org-aware default: Always Best Care almost always orders on behalf
-    // of a resident, so pre-select the caregiver flow. Users can still
-    // flip to "Myself" if they wish. We only set this when there's no
-    // persisted value to avoid overriding a deliberate earlier choice.
-    try {
-      const orgSlug = window.localStorage.getItem("avovita-org-slug");
-      const persistedRaw = window.localStorage.getItem(STORAGE_KEY);
-      const hadPersistedMode =
-        !!persistedRaw && /"orderMode"/.test(persistedRaw);
-      if (orgSlug === "AlwaysBestCare" && !hadPersistedMode) {
-        setOrderMode("caregiver");
-      }
-    } catch {
-      /* ignore */
-    }
+    // Historically we pre-selected the caregiver flow for a specific
+    // white-label org partner whose customers almost always ordered
+    // on behalf of a resident. That org was decommissioned in Aug
+    // 2026; the block is retained as a hook — if a future org
+    // partner wants a caregiver-first default, add their slug here.
+    // Otherwise the customer picks their own mode on Step 1.
 
     setRestored(true);
   }, []);

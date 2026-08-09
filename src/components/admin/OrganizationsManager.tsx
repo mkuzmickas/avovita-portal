@@ -151,7 +151,7 @@ export function OrganizationsManager({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="mf-input"
-                placeholder="Always Best Care"
+                placeholder="Partner name"
               />
             </Field>
             <Field
@@ -164,7 +164,7 @@ export function OrganizationsManager({
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
                 className="mf-input"
-                placeholder="AlwaysBestCare"
+                placeholder="partner-slug"
               />
             </Field>
             <Field label="Primary colour">
