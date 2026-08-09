@@ -12,14 +12,25 @@
  *     no phlebotomist visit, so no home-visit fee applies. These
  *     have their own courier arrangements described in the individual
  *     test's description.
- *   - Everything else: "+ from $85 collection fee — charged once per
- *     appointment, not per test."
+ *   - Everything else: the qualifier line. Two variants:
+ *       - Mobile (< sm, ~380px):
+ *           "+ from $85 collection fee — once per appointment"
+ *       - Desktop (>= sm):
+ *           "+ from $85 collection fee — charged once per appointment,
+ *            not per test"
+ *
+ * Mike's other Claude flagged the full desktop copy wrapping to
+ * THREE lines under every price on a phone — 61% of our traffic
+ * is mobile, so that was clarifying-turned-shouting. The mobile
+ * variant keeps both punches (the $85 number + "once per
+ * appointment" reframe) in a single sentence that fits on 1-2
+ * lines at 380px.
  *
  * "From $85" not "$85" so extended-range postal codes
  * (Cochrane / Airdrie / Okotoks / Chestermere at $135) don't see a
- * jump-scare on Step 3. "Once per appointment, not per test" is the
- * language that makes the fee feel fair rather than hidden — do not
- * shorten to "one-time" (reads as introductory).
+ * jump-scare on Step 3. "Once per appointment" is the language
+ * that makes the fee feel fair rather than hidden — do not shorten
+ * to "one-time" (reads as introductory).
  */
 interface CollectionFeeQualifierProps {
   hasPrice: boolean;
@@ -40,7 +51,12 @@ export function CollectionFeeQualifier({
       className={`text-xs mt-1 leading-snug ${className ?? ""}`}
       style={{ color: "#6ab04c" }}
     >
-      + from $85 collection fee — charged once per appointment, not per test
+      <span className="sm:hidden">
+        + from $85 collection fee — once per appointment
+      </span>
+      <span className="hidden sm:inline">
+        + from $85 collection fee — charged once per appointment, not per test
+      </span>
     </p>
   );
 }

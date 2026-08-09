@@ -504,6 +504,43 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
     }));
   }, [sessions]);
 
+  // Same funnel, split by device — mobile is 61% of traffic and the
+  // dominant story for checkout drop-off. Blended numbers hide where
+  // the fixes should be aimed. "Unknown" bucket catches sessions
+  // that never fired a page_view (analytics-only entry), rare but
+  // worth showing so the totals reconcile.
+  const funnelByDevice = useMemo(() => {
+    const stagesFor = (bucket: string) => {
+      const bucketSessions = sessions.filter(
+        (s) => (s.deviceType ?? "unknown") === bucket,
+      );
+      const total = bucketSessions.length;
+      const catalogue = bucketSessions.filter((s) => s.viewedCatalogue).length;
+      const test = bucketSessions.filter((s) => s.viewedTest).length;
+      const cart = bucketSessions.filter((s) => s.addedToCart).length;
+      const checkout = bucketSessions.filter((s) => s.startedCheckout).length;
+      const completed = bucketSessions.filter((s) => s.orderCompleted).length;
+      return {
+        bucket,
+        total,
+        catalogue,
+        test,
+        cart,
+        checkout,
+        completed,
+        completionRate: total > 0 ? (completed / total) * 100 : 0,
+        cartToCheckout: cart > 0 ? (checkout / cart) * 100 : 0,
+        checkoutToComplete:
+          checkout > 0 ? (completed / checkout) * 100 : 0,
+      };
+    };
+    return ["mobile", "tablet", "desktop", "unknown"]
+      .map(stagesFor)
+      // Only show buckets with actual traffic — no need to render a
+      // row of zeros for a device class no one used in the window.
+      .filter((row) => row.total > 0);
+  }, [sessions]);
+
   // Summary conversion rates.
   const conversionRates = useMemo(() => {
     const total = sessions.length;
@@ -1312,6 +1349,108 @@ export function AnalyticsDashboard({ organizations }: AnalyticsDashboardProps) {
                   value={`${conversionRates.checkoutCompletion.toFixed(2)}%`}
                 />
               </div>
+
+              {/* 2b. Funnel split by device — mobile is 61% of traffic
+                     and where the drop-off actually happens. Blended
+                     numbers hide where the fix effort should land. */}
+              {funnelByDevice.length > 0 && (
+                <Section
+                  title="Funnel by Device"
+                  action={
+                    <ExportButton
+                      onClick={() =>
+                        downloadCSV(
+                          "funnel-by-device.csv",
+                          [
+                            "Device",
+                            "Sessions",
+                            "Catalogue",
+                            "Test viewed",
+                            "Cart",
+                            "Checkout started",
+                            "Completed",
+                            "Overall %",
+                            "Cart → Checkout %",
+                            "Checkout → Complete %",
+                          ],
+                          funnelByDevice.map((r) => [
+                            r.bucket,
+                            String(r.total),
+                            String(r.catalogue),
+                            String(r.test),
+                            String(r.cart),
+                            String(r.checkout),
+                            String(r.completed),
+                            `${r.completionRate.toFixed(2)}%`,
+                            `${r.cartToCheckout.toFixed(2)}%`,
+                            `${r.checkoutToComplete.toFixed(2)}%`,
+                          ]),
+                        )
+                      }
+                    />
+                  }
+                >
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                          <TH>Device</TH>
+                          <TH align="right">Sessions</TH>
+                          <TH align="right">Catalogue</TH>
+                          <TH align="right">Test viewed</TH>
+                          <TH align="right">Cart</TH>
+                          <TH align="right">Checkout</TH>
+                          <TH align="right">Completed</TH>
+                          <TH align="right">Overall %</TH>
+                          <TH align="right">Cart → Checkout</TH>
+                          <TH align="right">Checkout → Complete</TH>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {funnelByDevice.map((r) => (
+                          <tr
+                            key={r.bucket}
+                            style={{ borderBottom: `1px solid ${BORDER}` }}
+                          >
+                            <TD>
+                              <span
+                                className={
+                                  r.bucket === "mobile"
+                                    ? "font-semibold"
+                                    : ""
+                                }
+                                style={{
+                                  color:
+                                    r.bucket === "mobile"
+                                      ? GOLD
+                                      : undefined,
+                                }}
+                              >
+                                {r.bucket}
+                              </span>
+                            </TD>
+                            <TD align="right">{fmt(r.total)}</TD>
+                            <TD align="right">{fmt(r.catalogue)}</TD>
+                            <TD align="right">{fmt(r.test)}</TD>
+                            <TD align="right">{fmt(r.cart)}</TD>
+                            <TD align="right">{fmt(r.checkout)}</TD>
+                            <TD align="right">{fmt(r.completed)}</TD>
+                            <TD align="right">
+                              {r.completionRate.toFixed(2)}%
+                            </TD>
+                            <TD align="right">
+                              {r.cartToCheckout.toFixed(2)}%
+                            </TD>
+                            <TD align="right">
+                              {r.checkoutToComplete.toFixed(2)}%
+                            </TD>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Section>
+              )}
 
               {/* 3. Session journey table — incomplete sessions */}
               <Section
