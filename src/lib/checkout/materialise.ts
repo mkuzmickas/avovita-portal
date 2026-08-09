@@ -205,14 +205,27 @@ export async function materialiseOrder(
       ? rep.relationship
       : person.relationship;
 
+    // Identity fields (first_name / last_name / date_of_birth /
+    // biological_sex) were moved to post-payment onboarding in
+    // Aug 2026 — the customer fills them in via ProfileForm before
+    // booking their FloLabs slot. Migration 030 relaxed the NOT NULL
+    // constraints so the webhook can insert an anchor row that the
+    // account_id + order_lines can point at while onboarding runs.
+    // Empty strings coming from the payload get coerced to NULL here
+    // so patient_profiles_incomplete correctly flags them.
+    const firstName = person.first_name?.trim() || null;
+    const lastName = person.last_name?.trim() || null;
+    const dob = person.date_of_birth?.trim() || null;
+    const sex = person.biological_sex || null;
+
     const { data: insertedRaw, error: profileErr } = await supabase
       .from("patient_profiles")
       .insert({
         account_id: accountId,
-        first_name: person.first_name,
-        last_name: person.last_name,
-        date_of_birth: person.date_of_birth,
-        biological_sex: person.biological_sex,
+        first_name: firstName,
+        last_name: lastName,
+        date_of_birth: dob,
+        biological_sex: sex,
         phone: isDependent ? null : (person.phone ?? null),
         address_line1: payload.collection_address.address_line1 ?? "",
         address_line2: payload.collection_address.address_line2 || null,
@@ -232,7 +245,7 @@ export async function materialiseOrder(
 
     if (profileErr || !insertedRaw) {
       throw new Error(
-        `Failed to create profile for ${person.first_name}: ${profileErr?.message}`
+        `Failed to create profile for person ${person.index + 1}: ${profileErr?.message}`
       );
     }
     profileIdByPersonIndex.set(

@@ -59,22 +59,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Verify additional people consents
+    // Verify additional people setup. Identity fields (first/last
+    // name, DOB, biological sex) moved to post-payment onboarding in
+    // Aug 2026 — the webhook inserts profiles with NULL/empty values
+    // and PostPurchaseOnboarding gates FloLabs booking on profile
+    // completion. So we don't validate those here anymore. The
+    // permission acknowledgement captured on Step 1 replaces the
+    // per-person consent gate that used to live here.
     for (const p of body.persons) {
-      if (!p.is_account_holder && !p.consent_acknowledged) {
-        return NextResponse.json(
-          {
-            error: `${p.first_name || "Additional person"} must consent to sharing the account`,
-          },
-          { status: 400 }
-        );
-      }
-      if (!p.first_name || !p.last_name || !p.date_of_birth || !p.biological_sex) {
-        return NextResponse.json(
-          { error: `Person ${p.index + 1} has missing required fields` },
-          { status: 400 }
-        );
-      }
       if (!p.is_account_holder && !p.relationship) {
         return NextResponse.json(
           { error: `Person ${p.index + 1} is missing a relationship` },

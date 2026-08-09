@@ -19,6 +19,16 @@ export type Sex = "male" | "female" | "intersex";
 export interface CheckoutPerson {
   index: number;
   is_account_holder: boolean;
+  /**
+   * Identity fields moved to post-payment onboarding in Aug 2026.
+   * They stay in the type as empty strings during checkout so nothing
+   * in the persisted-state / hydration paths breaks, but Step 3 no
+   * longer collects them — PostPurchaseOnboarding does, keyed off the
+   * account_id materialised at webhook time. Kept required (not
+   * optional) because so many downstream call sites destructure them;
+   * the webhook simply inserts NULL into patient_profiles when the
+   * strings are empty.
+   */
   first_name: string;
   last_name: string;
   date_of_birth: string;
@@ -27,7 +37,8 @@ export interface CheckoutPerson {
   phone?: string | null;
   /** Required for additional people, null for the account holder. */
   relationship: Relationship | null;
-  /** Mandatory for additional people; ignored for account holder. */
+  /** Superseded by Step 1's permission acknowledgement — kept for
+   *  backwards-compat with in-flight sessions. */
   consent_acknowledged: boolean;
   /** True when the additional person wants their own portal account. */
   wants_own_account?: boolean;

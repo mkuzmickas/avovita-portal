@@ -52,6 +52,12 @@ export interface OnboardingCollectionAddress {
 
 export interface OnboardingSummary {
   sessionId: string;
+  /** Full UUID for the underlying order — needed so
+   *  /api/checkout/complete-profile can re-fire the FloLabs
+   *  requisition once every profile row has been filled. Optional
+   *  for backwards-compat: legacy pre-Aug-2026 orders may not have
+   *  this set on the success page. */
+  orderId?: string | null;
   orderIdShort: string;
   total: number;
   prefilledEmail: string;
@@ -198,6 +204,7 @@ export function PostPurchaseOnboarding({
                 (p) => p.is_account_holder
               )}
               collectionAddress={summary.collectionAddress}
+              orderId={summary.orderId ?? null}
               onComplete={() => setStep(3)}
             />
           )}
@@ -386,19 +393,51 @@ function Step1CreateAccount({
   );
 }
 
-// ─── Step 2: Your Information ───────────────────────────────────────
+// ─── Step 2: Complete Profile(s) ────────────────────────────────────
+//
+// The webhook creates one patient_profiles row per person on the order
+// with NULL name/DOB/sex fields (migration 030). This step walks the
+// customer through completing each of those rows one at a time. When
+// the last row saves, we POST to /api/checkout/complete-profile which
+// re-fires the FloLabs requisition email (deferred from webhook time)
+// and unlocks the FloLabs booking step.
+//
+// Single-person orders see one form; two-person orders see two forms
+// in sequence with a "Person 1 of 2" header. Order-holder profile
+// (is_primary) is always presented first.
+
+interface IncompleteProfile {
+  id: string;
+  is_primary: boolean;
+  is_dependent: boolean;
+  relationship: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  date_of_birth: string | null;
+  biological_sex: "male" | "female" | "intersex" | null;
+  phone: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  province: string | null;
+  postal_code: string | null;
+}
 
 function Step2YourInfo({
-  accountHolderPerson,
-  collectionAddress,
+  orderId,
   onComplete,
 }: {
   accountHolderPerson: OnboardingPerson | undefined;
   collectionAddress: OnboardingCollectionAddress;
+  orderId: string | null;
   onComplete: () => void;
 }) {
   const [userId, setUserId] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<IncompleteProfile[]>([]);
+  const [currentIdx, setCurrentIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [finalising, setFinalising] = useState(false);
+  const [finaliseError, setFinaliseError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -407,36 +446,62 @@ function Step2YourInfo({
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      setUserId(user?.id ?? null);
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      setUserId(user.id);
+
+      const { data } = await supabase
+        .from("patient_profiles")
+        .select(
+          "id, is_primary, is_dependent, relationship, first_name, last_name, date_of_birth, biological_sex, phone, address_line1, address_line2, city, province, postal_code",
+        )
+        .eq("account_id", user.id)
+        // Primary (account-holder) profile first, then dependents in
+        // creation order — matches the person-index ordering the
+        // checkout used before Phase 2.
+        .order("is_primary", { ascending: false })
+        .order("created_at", { ascending: true });
+      setProfiles((data ?? []) as unknown as IncompleteProfile[]);
       setLoading(false);
     };
     load();
   }, []);
 
-  // Build prefill data from the checkout metadata so the patient
-  // doesn't have to re-enter their name / DOB / sex / address.
-  const hasPrefill = !!(
-    accountHolderPerson?.first_name && accountHolderPerson?.last_name
-  );
+  const finaliseAndAdvance = async () => {
+    setFinalising(true);
+    setFinaliseError(null);
+    // Fire the deferred FloLabs requisition — best-effort, we don't
+    // block the customer from proceeding if it fails. Non-blocking is
+    // safe because the endpoint is idempotent and admin can re-run it
+    // manually if this attempt gets missed.
+    if (orderId) {
+      try {
+        await fetch("/api/checkout/complete-profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order_id: orderId }),
+        });
+      } catch (err) {
+        console.warn("[onboarding] complete-profile call failed:", err);
+        setFinaliseError(
+          "We saved your information but had trouble notifying the lab. Your booking still works — email support@avovita.ca if you don't hear from FloLabs within an hour.",
+        );
+      }
+    }
+    setFinalising(false);
+    onComplete();
+  };
 
-  const prefillProfile = useMemo(() => {
-    if (!accountHolderPerson) return undefined;
-    return {
-      first_name: accountHolderPerson.first_name,
-      last_name: accountHolderPerson.last_name,
-      date_of_birth: accountHolderPerson.date_of_birth,
-      biological_sex: accountHolderPerson.biological_sex as
-        | "male"
-        | "female"
-        | "intersex",
-      phone: accountHolderPerson.phone ?? null,
-      address_line1: collectionAddress.address_line1 || null,
-      address_line2: collectionAddress.address_line2 || null,
-      city: collectionAddress.city || null,
-      province: collectionAddress.province || "AB",
-      postal_code: collectionAddress.postal_code || null,
-    };
-  }, [accountHolderPerson, collectionAddress]);
+  const handleSaved = async () => {
+    // If more profiles remain, advance to the next; otherwise finalise.
+    if (currentIdx + 1 < profiles.length) {
+      setCurrentIdx((i) => i + 1);
+    } else {
+      await finaliseAndAdvance();
+    }
+  };
 
   if (loading || !userId) {
     return (
@@ -452,9 +517,47 @@ function Step2YourInfo({
     );
   }
 
+  if (profiles.length === 0) {
+    // Edge case: account has no profile rows yet (webhook still
+    // running). Show a soft loader; a page refresh will re-hydrate.
+    return (
+      <div className="px-8 py-12 text-center">
+        <Loader2
+          className="w-6 h-6 animate-spin mx-auto mb-2"
+          style={{ color: "#c4973a" }}
+        />
+        <p className="text-sm" style={{ color: "#6ab04c" }}>
+          Preparing your profile — one moment…
+        </p>
+      </div>
+    );
+  }
+
+  const current = profiles[currentIdx];
+  const isLast = currentIdx + 1 === profiles.length;
+  const isMulti = profiles.length > 1;
+
+  // Compose the "who is this profile for" label from what we know
+  // about the row's role on the order.
+  const roleLabel = current.is_primary
+    ? "yourself"
+    : current.relationship
+      ? `${current.relationship.replace(/_/g, " ")} (Person ${currentIdx + 1})`
+      : `Person ${currentIdx + 1}`;
+
+  const stepBadge = isMulti
+    ? `Profile ${currentIdx + 1} of ${profiles.length}`
+    : "Your Profile";
+
   return (
     <div className="px-5 sm:px-8 py-6 sm:py-8">
       <div className="mb-6">
+        <p
+          className="text-xs uppercase tracking-wider font-semibold mb-2"
+          style={{ color: "#c4973a", letterSpacing: "0.1em" }}
+        >
+          {stepBadge}
+        </p>
         <h2
           className="font-heading text-2xl sm:text-3xl font-semibold mb-2"
           style={{
@@ -462,40 +565,50 @@ function Step2YourInfo({
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          Tell us about <span style={{ color: "#c4973a" }}>yourself</span>
+          Tell us about{" "}
+          <span style={{ color: "#c4973a" }}>{roleLabel}</span>
         </h2>
         <p className="text-sm" style={{ color: "#e8d5a3" }}>
-          This information is used for specimen collection and your lab
-          results.
+          Name, date of birth and biological sex go on the lab
+          requisition. Results are matched to this information on the
+          portal, so make sure it&apos;s exactly the name you want on
+          record.
         </p>
       </div>
 
-      {/* Pre-fill banner */}
-      {hasPrefill && (
+      {finaliseError && (
         <div
           className="flex items-start gap-2.5 rounded-lg border px-4 py-3 mb-5"
           style={{
-            backgroundColor: "#1a3d22",
-            borderColor: "#2d6b35",
+            backgroundColor: "rgba(224, 82, 82, 0.12)",
+            borderColor: "#e05252",
           }}
         >
-          <CheckCircle
+          <AlertCircle
             className="w-4 h-4 shrink-0 mt-0.5"
-            style={{ color: "#8dc63f" }}
+            style={{ color: "#e05252" }}
           />
-          <p className="text-sm" style={{ color: "#e8d5a3" }}>
-            We&apos;ve pre-filled your information from your order — please
-            review and confirm.
+          <p className="text-sm" style={{ color: "#e05252" }}>
+            {finaliseError}
           </p>
         </div>
       )}
 
       <ProfileForm
+        // Re-key on the profile id so state resets cleanly between
+        // successive profiles.
+        key={current.id}
         accountId={userId}
-        isPrimary
-        prefillData={prefillProfile}
-        submitLabel={hasPrefill ? "Confirm and Continue" : undefined}
-        onSuccess={() => onComplete()}
+        isPrimary={current.is_primary}
+        existingProfile={current as unknown as import("@/types/database").PatientProfile}
+        submitLabel={
+          finalising
+            ? "Finalising…"
+            : isLast
+              ? "Save and Continue"
+              : "Save and Next Person"
+        }
+        onSuccess={() => handleSaved()}
       />
     </div>
   );

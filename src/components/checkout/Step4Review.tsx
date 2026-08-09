@@ -539,7 +539,12 @@ export function Step4Review({
                       className="text-sm font-semibold"
                       style={{ color: "#ffffff" }}
                     >
-                      {person.first_name} {person.last_name}
+                      {/* Names moved to post-payment onboarding —
+                          show a generic label with account-holder /
+                          relationship badge for context. */}
+                      {person.is_account_holder
+                        ? "You"
+                        : `Person ${person.index + 1}`}
                       {!person.is_account_holder && person.relationship && (
                         <span
                           className="text-xs font-normal ml-2"
@@ -553,7 +558,7 @@ export function Step4Review({
                           className="text-xs font-normal ml-2"
                           style={{ color: "#6ab04c" }}
                         >
-                          · Account holder (you)
+                          · Account holder
                         </span>
                       )}
                     </p>

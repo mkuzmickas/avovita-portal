@@ -145,104 +145,23 @@ export function Step3CollectionDetails({
   const addressValid =
     collectionAddress.postal_code.trim().length > 0;
 
-  const accountHolder = persons[0];
-  const accountHolderValid =
-    accountHolder?.first_name.trim().length > 0 &&
-    accountHolder?.last_name.trim().length > 0 &&
-    accountHolder?.date_of_birth.length > 0 &&
-    accountHolder?.biological_sex !== "" &&
-    !!accountHolder?.phone &&
-    accountHolder.phone.trim().length > 0;
-
-  const additionalPersons = persons.slice(1);
-  const additionalAllValid = additionalPersons.every(
-    (p) =>
-      p.first_name.trim().length > 0 &&
-      p.last_name.trim().length > 0 &&
-      p.date_of_birth.length > 0 &&
-      p.biological_sex !== "" &&
-      p.relationship !== null
-  );
-
-  const isEmailValid = (email: string | undefined) =>
-    !!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-  const allConsentsObtained = additionalPersons.every(
-    (p) =>
-      p.consent_acknowledged ||
-      (p.wants_own_account && isEmailValid(p.own_account_email))
-  );
-
+  // Per-person identity validation removed in Aug 2026 — name, DOB,
+  // biological sex, and mobile number all move to post-payment
+  // onboarding (PostPurchaseOnboarding + ProfileForm), where the
+  // customer fills each profile before booking their FloLabs slot.
+  // Step 3 now only needs a serviced postal code to continue.
   const postalZone = classifyPostalZone(collectionAddress.postal_code);
-  // Only treat as "unserved error" once the user has typed a full-ish
-  // postal code — showing the error while they're typing the first letter
-  // is noisy. Three chars is the full FSA prefix.
   const postalEntered =
     collectionAddress.postal_code.replace(/\s+/g, "").length >= 3;
   const zoneUnserved = postalEntered && postalZone === "unserved";
 
-  const isCaregiver = orderMode === "caregiver";
-  // Rep collection was removed from Step 3 in Aug 2026 — Step 1 now
-  // captures a simple permission acknowledgement instead of the POA
-  // form, and per-person identity (name / DOB / sex) moves to
-  // post-payment onboarding in the follow-up phase. Kept the variable
-  // name so nothing downstream needs updating; it just always resolves
-  // to true now.
-  const representativeValid = true;
-
-  // Same reasoning — dependents (in caregiver mode) are validated in
-  // the post-payment onboarding step, not here. Old orders in flight
-  // with pre-populated dependent data still validate cleanly.
-  const dependentsValid =
-    !isCaregiver ||
-    persons.every(
-      (p) =>
-        p.first_name.trim().length > 0 &&
-        p.last_name.trim().length > 0 &&
-        p.date_of_birth.length > 0 &&
-        p.biological_sex !== ""
-    );
-
-  // Collection mode must be picked first. In-area requires a valid
-  // address + serviced postal code. Out-of-town is a hard contact-us
-  // gate — the customer can't proceed to payment; they must email
-  // AvoVita first and we'll handle them out-of-band.
-  const peopleValid = isCaregiver
-    ? representativeValid && dependentsValid
-    : accountHolderValid && additionalAllValid && allConsentsObtained;
   const canContinue =
-    !isOutOfTown && addressValid && peopleValid && !zoneUnserved;
+    !isOutOfTown && addressValid && !zoneUnserved;
 
-  // Compute a human-readable list of what's still missing so the
-  // greyed-out Continue button isn't a mystery.
   const missingFields: string[] = [];
-  if (!isOutOfTown && !addressValid) missingFields.push("collection address");
+  if (!isOutOfTown && !addressValid) missingFields.push("your postal code");
   if (!isOutOfTown && zoneUnserved)
     missingFields.push("a serviced postal code");
-  if (isCaregiver) {
-    // Rep validation dropped — Step 1 permission ack replaces it,
-    // client identity moves to post-payment onboarding.
-    if (!dependentsValid) {
-      missingFields.push("client first/last name, DOB, biological sex");
-    }
-  } else {
-    if (!accountHolderValid) {
-      const ahMissing: string[] = [];
-      if (!accountHolder?.first_name.trim()) ahMissing.push("first name");
-      if (!accountHolder?.last_name.trim()) ahMissing.push("last name");
-      if (!accountHolder?.date_of_birth) ahMissing.push("date of birth");
-      if (!accountHolder?.biological_sex) ahMissing.push("biological sex");
-      if (!accountHolder?.phone || !accountHolder.phone.trim())
-        ahMissing.push("mobile number");
-      missingFields.push(`your ${ahMissing.join(", ")}`);
-    }
-    if (!additionalAllValid) {
-      missingFields.push("each additional person's name, DOB, sex, relationship");
-    }
-    if (!allConsentsObtained && additionalPersons.length > 0) {
-      missingFields.push("consent for additional people");
-    }
-  }
 
   const labelStyle = { color: "#e8d5a3" };
   const reqMark = <span style={{ color: "#e05252" }}> *</span>;
@@ -478,72 +397,26 @@ export function Step3CollectionDetails({
       )}
 
       {/* ─── Person 1 (You) ────────────────────────────────────── */}
-      {profilePrefilled && (
-        <div
-          className="flex items-start gap-2.5 rounded-lg border px-4 py-3 mb-4"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
-        >
-          <CheckCircle
-            className="w-4 h-4 shrink-0 mt-0.5"
-            style={{ color: "#8dc63f" }}
-          />
-          <p className="text-sm" style={{ color: "#e8d5a3" }}>
-            We&apos;ve pre-filled your information from your profile.
-          </p>
-        </div>
-      )}
-      {/* RepresentativeSection removed in Aug 2026 — Step 1's simple
-          "I have permission to order testing" checkbox replaces the
-          POA / caregiver / healthcare-worker form and its associated
-          contact + relationship fields. When the customer picked
-          "Someone else" they see a post-payment reminder to use the
-          tested person's name + DOB during account setup. */}
-      {accountHolder && (
-        <PersonSection
-          title={isCaregiver ? "Client 1" : "Your Information"}
-          subtitle={
-            isCaregiver
-              ? "Primary client being tested. Results will be filed under this client's profile."
-              : "These fields will be used to create your client profile after checkout."
-          }
-          person={accountHolder}
-          onChange={(patch) => updatePerson(0, patch)}
-          isAccountHolder
-          hideContactFields={isCaregiver}
-          assignments={assignments.filter((a) => a.person_index === 0)}
-          showRelationship={false}
-          showConsent={false}
-        />
-      )}
-
-      {/* ─── Additional People ─── (or dependent clients, if caregiver) */}
-      {additionalPersons.map((person) => {
-        const personAssignments = assignments.filter(
-          (a) => a.person_index === person.index
-        );
-        const testNamesPreview =
-          personAssignments.length > 0
-            ? ` — ${personAssignments.map((a) => a.test_name).join(", ")}`
-            : "";
-        const title = isCaregiver
-          ? `Client ${person.index + 1}${testNamesPreview}`
-          : `Person ${person.index + 1}${testNamesPreview}`;
-        return (
-          <PersonSection
-            key={person.index}
-            title={title}
-            subtitle={null}
-            person={person}
-            onChange={(patch) => updatePerson(person.index, patch)}
-            isAccountHolder={false}
-            hideContactFields={isCaregiver}
-            assignments={personAssignments}
-            showRelationship={!isCaregiver}
-            showConsent={!isCaregiver}
-            accountHolderFirstName={accountHolder?.first_name}
-          />
-        );
-      })}
+      {/* Per-person identity forms (PersonSection + Representative-
+          Section) removed in Aug 2026. The customer fills in their
+          own name / DOB / biological sex — and, if they added
+          someone else, that person's identity too — during the
+          post-payment onboarding flow (PostPurchaseOnboarding →
+          ProfileForm), gated before they can book their FloLabs
+          collection slot. Step 3 is now purely: postal code + a
+          heads-up about the FloLabs booking. */}
+      <div
+        className="rounded-lg border p-4 mb-4"
+        style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+      >
+        <p className="text-sm leading-relaxed" style={{ color: "#e8d5a3" }}>
+          <strong style={{ color: "#ffffff" }}>Next steps after payment:</strong>{" "}
+          you&apos;ll finish setting up your account, enter your name
+          and date of birth (needed for the lab requisition), sign
+          the client waiver, and book your FloLabs collection slot —
+          FloLabs takes your full street address at booking.
+        </p>
+      </div>
 
       {/* ─── Visit fee preview ─────────────────────────────────── */}
       <section
@@ -605,23 +478,10 @@ export function Step3CollectionDetails({
         className="mt-6 pt-5 border-t"
         style={{ borderColor: "#2d6b35" }}
       >
-        {!allConsentsObtained && additionalPersons.length > 0 && (
-          <div
-            className="flex items-start gap-2 rounded-lg border px-4 py-3 mb-4 text-sm"
-            style={{
-              backgroundColor: "rgba(224, 82, 82, 0.12)",
-              borderColor: "#e05252",
-              color: "#e05252",
-            }}
-          >
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>
-              All additional people must consent to sharing your account
-              before you can proceed. If individual accounts are required,
-              please place separate orders.
-            </span>
-          </div>
-        )}
+        {/* Per-person consent block dropped in Aug 2026 — the Step 1
+            permission acknowledgement (captured before this step)
+            replaces it, and per-person account routing decisions
+            happen in the post-payment onboarding flow. */}
 
         {!canContinue && missingFields.length > 0 && (
           <div
