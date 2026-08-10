@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { resend } from "@/lib/resend";
+import { FLOLABS_BOOKING_URL as FLO_LABS_URL } from "@/lib/config/booking";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const FLO_LABS_URL =
-  "https://flolabsbooking.as.me/?appointmentType=84416067";
 
 /**
  * GET /api/cron/waiver-reminder

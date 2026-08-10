@@ -9,6 +9,7 @@ import {
 import { usePathname } from "next/navigation";
 import { Calendar, X, Loader2, Info, ExternalLink } from "lucide-react";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
+import { FLOLABS_BOOKING_URL as FLOLABS_FULL_URL } from "@/lib/config/booking";
 
 /**
  * Floating "Check availability" button + preview-only calendar modal.
@@ -26,10 +27,6 @@ import { useAnalytics } from "@/lib/analytics/useAnalytics";
  * Hidden on the checkout wizard (any /checkout* path — the customer sees
  * the real booking widget at the Collection step) and on /admin.
  */
-
-const FLOLABS_FULL_URL =
-  process.env.NEXT_PUBLIC_ACUITY_EMBED_URL ??
-  "https://flolabsbooking.as.me/?appointmentType=84416067";
 
 function shouldHide(pathname: string | null): boolean {
   if (!pathname) return false;

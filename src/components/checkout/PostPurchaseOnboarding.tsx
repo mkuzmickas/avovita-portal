@@ -20,9 +20,7 @@ import { formatCurrency } from "@/lib/utils";
 import { ProfileForm } from "@/components/portal/ProfileForm";
 import { WaiverForm } from "@/components/portal/WaiverForm";
 import { PasswordInput } from "@/components/PasswordInput";
-
-const FLO_LABS_URL =
-  "https://flolabsbooking.as.me/?appointmentType=84416067";
+import { FLOLABS_BOOKING_URL as FLO_LABS_URL } from "@/lib/config/booking";
 
 export interface OnboardingPerson {
   first_name: string;

@@ -6,12 +6,9 @@ import { CheckoutSuccessV2 } from "@/components/checkout/CheckoutSuccessV2";
 import { ClearCartOnMount } from "@/components/checkout/ClearCartOnMount";
 import { findStabilityConstrainedTests } from "@/lib/checkout/stability";
 import type { PendingOrderPayload } from "@/lib/checkout/pending-order";
+import { FLOLABS_BOOKING_URL as ACUITY_URL } from "@/lib/config/booking";
 
 export const dynamic = "force-dynamic";
-
-const ACUITY_URL =
-  process.env.NEXT_PUBLIC_ACUITY_EMBED_URL ??
-  "https://flolabsbooking.as.me/?appointmentType=84416067";
 // Out-of-town reverted to a soft contact-us gate on Step 3 — the
 // customer can't proceed to payment in that mode, so the success page
 // no longer needs a dedicated calendar or drop-in address. The

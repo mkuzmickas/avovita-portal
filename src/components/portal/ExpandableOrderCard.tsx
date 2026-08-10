@@ -14,8 +14,9 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { OrderTimeline } from "./OrderTimeline";
 import type { OrderStatus } from "@/types/database";
+import { FLOLABS_BOOKING_URL } from "@/lib/config/booking";
 
-const FLO_LABS_URL = "https://flo-labs.janeapp.com/";
+const FLO_LABS_URL = FLOLABS_BOOKING_URL;
 
 export type PortalOrderLine = {
   id: string;

@@ -58,7 +58,7 @@ export interface OrderConfirmationProps {
   customLines?: Array<{ description: string; amount_cad: number }>;
 }
 
-const FLO_LABS_URL = "https://flolabsbooking.as.me/?appointmentType=84416067";
+import { FLOLABS_BOOKING_URL as FLO_LABS_URL } from "@/lib/config/booking";
 
 function formatCurrency(amount: number): string {
   return `$${amount.toFixed(2)} CAD`;
