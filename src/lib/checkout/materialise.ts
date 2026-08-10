@@ -337,7 +337,13 @@ export async function sendOrderConfirmationEmail(
     if (!account?.email) return;
 
     const accountHolder = payload.persons.find((p) => p.is_account_holder);
-    const firstName = accountHolder?.first_name || "there";
+    // Empty string when no name is available so the email template
+    // shows a generic "Thank you for your order" instead of the
+    // literal fallback string. Post-Phase-2 payloads have empty
+    // person names at webhook time — the customer fills those in
+    // via ProfileCompletionCard afterward. Historical pre-Phase-2
+    // payloads carry real names and greet by name as before.
+    const firstName = accountHolder?.first_name?.trim() || "";
 
     const testIds = [...new Set(payload.assignments.map((a) => a.test_id))];
     const { data: testsRaw } = await supabase
@@ -481,7 +487,13 @@ export async function sendGuestOrderConfirmationEmail(
 ): Promise<void> {
   try {
     const accountHolder = payload.persons.find((p) => p.is_account_holder);
-    const firstName = accountHolder?.first_name || "there";
+    // Empty string when no name is available so the email template
+    // shows a generic "Thank you for your order" instead of the
+    // literal fallback string. Post-Phase-2 payloads have empty
+    // person names at webhook time — the customer fills those in
+    // via ProfileCompletionCard afterward. Historical pre-Phase-2
+    // payloads carry real names and greet by name as before.
+    const firstName = accountHolder?.first_name?.trim() || "";
 
     const testIds = [...new Set(payload.assignments.map((a) => a.test_id))];
     const { data: testsRaw } = await supabase

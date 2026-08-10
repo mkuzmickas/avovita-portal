@@ -95,10 +95,32 @@ export function ProfileCompletionCard({
       setCurrentIdx(firstIncomplete);
     }
     setLoading(false);
+    return rows.length;
   }, []);
 
+  // Webhook creates the patient_profiles row asynchronously — if the
+  // customer hits the success page seconds after Stripe redirect, the
+  // row may not exist yet and the query returns []. Without a retry
+  // the card would stick on "Preparing your profile — one moment…"
+  // and the booking StepCard below would stay gated forever. Poll
+  // every 3s for up to 30s until at least one row shows up, then
+  // stop.
   useEffect(() => {
-    load();
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+    const tick = async () => {
+      if (cancelled) return;
+      const count = await load();
+      attempts += 1;
+      if (!cancelled && (count ?? 0) === 0 && attempts < maxAttempts) {
+        setTimeout(tick, 3000);
+      }
+    };
+    tick();
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
 
   // Once all profiles are complete, notify parent so booking unlocks.

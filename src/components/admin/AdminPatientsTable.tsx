@@ -87,8 +87,11 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
       if (p.primaryName.toLowerCase().includes(q)) return true;
       if (p.email?.toLowerCase().includes(q)) return true;
       for (const profile of p.profiles) {
-        const full = `${profile.first_name} ${profile.last_name}`.toLowerCase();
-        if (full.includes(q)) return true;
+        const full =
+          `${profile.first_name ?? ""} ${profile.last_name ?? ""}`
+            .trim()
+            .toLowerCase();
+        if (full && full.includes(q)) return true;
       }
       return false;
     });
@@ -532,7 +535,10 @@ function ProfileCard({ profile }: { profile: AdminPatientProfile }) {
     >
       <div className="flex items-center gap-2 flex-wrap mb-2">
         <h4 className="font-semibold" style={{ color: "#ffffff" }}>
-          {profile.first_name} {profile.last_name}
+          {(profile.first_name ?? "").trim() ||
+          (profile.last_name ?? "").trim()
+            ? `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim()
+            : "Profile pending"}
         </h4>
         {profile.is_primary && (
           <span

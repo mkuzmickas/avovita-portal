@@ -107,20 +107,29 @@ export default async function AdminPatientsPage() {
     // the dependents they're caring for (or fall back to email).
     const primary =
       account.profiles.find((p) => p.is_primary) ?? account.profiles[0];
+    // Post-Phase-2 profiles can have NULL first/last name until the
+    // customer completes ProfileCompletionCard. Falls back to a
+    // "Profile pending" label so admin sees the row without a
+    // literal "null null" rendered.
+    const nameOrPending = (p: { first_name: string | null; last_name: string | null } | undefined) => {
+      if (!p) return "—";
+      const f = (p.first_name ?? "").trim();
+      const l = (p.last_name ?? "").trim();
+      if (!f && !l) return "Profile pending";
+      return `${f} ${l}`.trim();
+    };
     let primaryName: string;
     if (isRep) {
       const dependents = account.profiles.filter((p) => p.is_dependent);
       if (dependents.length === 0) {
         primaryName = "—";
       } else if (dependents.length === 1) {
-        primaryName = `${dependents[0].first_name} ${dependents[0].last_name}`;
+        primaryName = nameOrPending(dependents[0]);
       } else {
-        primaryName = `${dependents[0].first_name} ${dependents[0].last_name} +${dependents.length - 1}`;
+        primaryName = `${nameOrPending(dependents[0])} +${dependents.length - 1}`;
       }
     } else {
-      primaryName = primary
-        ? `${primary.first_name} ${primary.last_name}`
-        : "—";
+      primaryName = nameOrPending(primary);
     }
     const org = Array.isArray(account.org) ? account.org[0] : account.org;
     return {

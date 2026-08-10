@@ -182,7 +182,9 @@ export function renderOrderConfirmationEmail(
           <tr>
             <td style="padding: 36px 32px 16px 32px;">
               <h2 style="margin: 0 0 8px 0; font-size: 24px; font-family: Georgia, 'Cormorant Garamond', serif; color: #111827; font-weight: 600;">
-                Thank you, ${escapeHtml(firstName)}
+                ${firstName && firstName.trim().length > 0
+                  ? `Thank you, ${escapeHtml(firstName)}`
+                  : "Thank you for your order"}
               </h2>
               <p style="margin: 0 0 20px 0; font-size: 15px; color: #4b5563; line-height: 1.5;">
                 Your order <strong style="color: #111827;">#${escapeHtml(orderIdShort)}</strong> has been confirmed. Here's what you ordered:
@@ -281,7 +283,10 @@ export function renderOrderConfirmationEmail(
                   Your AvoVita account is ready
                 </p>
                 <p style="margin: 0 0 14px 0; font-size: 14px; color: #4b5563; line-height: 1.5;">
-                  We've created an account for <strong style="color: #111827;">${escapeHtml(props.firstName)}</strong> at <strong style="color: #111827;">${escapeHtml(hostName(portalUrl))}</strong>. Confirm your email to access your secure portal where you'll receive your results.
+                  ${props.firstName && props.firstName.trim().length > 0
+                    ? `We've created an account for <strong style="color: #111827;">${escapeHtml(props.firstName)}</strong> at <strong style="color: #111827;">${escapeHtml(hostName(portalUrl))}</strong>.`
+                    : `We've created your account at <strong style="color: #111827;">${escapeHtml(hostName(portalUrl))}</strong>.`}
+                  Confirm your email to access your secure portal where you'll receive your results.
                 </p>
                 <a href="${confirmationLink}" target="_blank" style="display: inline-block; background: #c4973a; color: #0a1a0d; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 14px;">
                   Confirm Email & Access Portal
