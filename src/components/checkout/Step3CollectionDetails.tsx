@@ -145,23 +145,44 @@ export function Step3CollectionDetails({
   const addressValid =
     collectionAddress.postal_code.trim().length > 0;
 
-  // Per-person identity validation removed in Aug 2026 — name, DOB,
-  // biological sex, and mobile number all move to post-payment
-  // onboarding (PostPurchaseOnboarding + ProfileForm), where the
-  // customer fills each profile before booking their FloLabs slot.
-  // Step 3 now only needs a serviced postal code to continue.
+  // Name is required pre-payment so confirmation emails, admin SMS,
+  // patient list, and Mayo requisition all have a real name from the
+  // start. Phase 2 originally moved this to post-payment onboarding
+  // but that broke every downstream notification — the fields are
+  // back here, DOB + biological sex still land in onboarding since
+  // those aren't needed for greetings or SMS.
+  const namesValid = persons.every(
+    (p) =>
+      (p.first_name?.trim().length ?? 0) > 0 &&
+      (p.last_name?.trim().length ?? 0) > 0,
+  );
+
   const postalZone = classifyPostalZone(collectionAddress.postal_code);
   const postalEntered =
     collectionAddress.postal_code.replace(/\s+/g, "").length >= 3;
   const zoneUnserved = postalEntered && postalZone === "unserved";
 
   const canContinue =
-    !isOutOfTown && addressValid && !zoneUnserved;
+    !isOutOfTown && addressValid && namesValid && !zoneUnserved;
 
   const missingFields: string[] = [];
   if (!isOutOfTown && !addressValid) missingFields.push("your postal code");
   if (!isOutOfTown && zoneUnserved)
     missingFields.push("a serviced postal code");
+  if (!namesValid) {
+    const missing: string[] = [];
+    for (const p of persons) {
+      if (
+        (p.first_name?.trim().length ?? 0) === 0 ||
+        (p.last_name?.trim().length ?? 0) === 0
+      ) {
+        missing.push(
+          p.is_account_holder ? "your name" : `person ${p.index + 1}'s name`,
+        );
+      }
+    }
+    missingFields.push(missing.join(", "));
+  }
 
   const labelStyle = { color: "#e8d5a3" };
   const reqMark = <span style={{ color: "#e05252" }}> *</span>;
@@ -396,25 +417,102 @@ export function Step3CollectionDetails({
       </section>
       )}
 
-      {/* ─── Person 1 (You) ────────────────────────────────────── */}
-      {/* Per-person identity forms (PersonSection + Representative-
-          Section) removed in Aug 2026. The customer fills in their
-          own name / DOB / biological sex — and, if they added
-          someone else, that person's identity too — during the
-          post-payment onboarding flow (PostPurchaseOnboarding →
-          ProfileForm), gated before they can book their FloLabs
-          collection slot. Step 3 is now purely: postal code + a
-          heads-up about the FloLabs booking. */}
+      {/* ─── Names per person (required pre-payment) ────────────
+          DOB + biological sex still get collected after payment via
+          PostPurchaseOnboarding → ProfileForm. Only NAME is here
+          because every confirmation email, admin SMS, and admin
+          patient view needs it at webhook time, and the Phase 2
+          "move everything to post-payment" experiment made those
+          all show "there" / gmail-root instead of the customer's
+          actual name. */}
+      <section className="mb-6">
+        <h2
+          className="font-heading text-xl font-semibold mb-2"
+          style={{
+            color: "#ffffff",
+            fontFamily: '"Cormorant Garamond", Georgia, serif',
+          }}
+        >
+          {persons.length === 1 ? "Your Name" : "Names"}
+        </h2>
+        <p className="text-xs mb-4" style={{ color: "#e8d5a3" }}>
+          As it should appear on the lab requisition and your account.
+        </p>
+        <div className="space-y-4">
+          {persons.map((person) => (
+            <div
+              key={person.index}
+              className="rounded-lg border p-4"
+              style={{
+                backgroundColor: "#0f2614",
+                borderColor: "#2d6b35",
+              }}
+            >
+              {persons.length > 1 && (
+                <p
+                  className="text-xs font-semibold mb-2 uppercase tracking-wider"
+                  style={{ color: "#c4973a", letterSpacing: "0.1em" }}
+                >
+                  {person.is_account_holder
+                    ? "You"
+                    : `Person ${person.index + 1}`}
+                </p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-1.5"
+                    style={labelStyle}
+                  >
+                    First name{reqMark}
+                  </label>
+                  <input
+                    type="text"
+                    value={person.first_name ?? ""}
+                    onChange={(e) =>
+                      updatePerson(person.index, { first_name: e.target.value })
+                    }
+                    className="mf-input"
+                    autoComplete={
+                      person.is_account_holder ? "given-name" : "off"
+                    }
+                  />
+                </div>
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-1.5"
+                    style={labelStyle}
+                  >
+                    Last name{reqMark}
+                  </label>
+                  <input
+                    type="text"
+                    value={person.last_name ?? ""}
+                    onChange={(e) =>
+                      updatePerson(person.index, { last_name: e.target.value })
+                    }
+                    className="mf-input"
+                    autoComplete={
+                      person.is_account_holder ? "family-name" : "off"
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <div
         className="rounded-lg border p-4 mb-4"
         style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
       >
         <p className="text-sm leading-relaxed" style={{ color: "#e8d5a3" }}>
-          <strong style={{ color: "#ffffff" }}>Next steps after payment:</strong>{" "}
-          you&apos;ll finish setting up your account, enter your name
-          and date of birth (needed for the lab requisition), sign
-          the client waiver, and book your FloLabs collection slot —
-          FloLabs takes your full street address at booking.
+          <strong style={{ color: "#ffffff" }}>After payment:</strong>{" "}
+          you&apos;ll finish setting up your account with date of birth
+          (needed for the lab requisition), sign the client waiver, and
+          book your FloLabs collection slot — FloLabs takes your full
+          street address at booking.
         </p>
       </div>
 

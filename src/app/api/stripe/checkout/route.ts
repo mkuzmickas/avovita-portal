@@ -59,14 +59,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Verify additional people setup. Identity fields (first/last
-    // name, DOB, biological sex) moved to post-payment onboarding in
-    // Aug 2026 — the webhook inserts profiles with NULL/empty values
-    // and PostPurchaseOnboarding gates FloLabs booking on profile
-    // completion. So we don't validate those here anymore. The
-    // permission acknowledgement captured on Step 1 replaces the
-    // per-person consent gate that used to live here.
+    // Verify per-person setup. Name (first + last) is required
+    // pre-payment so confirmation emails, admin SMS, and admin views
+    // all have a real name at webhook time — Phase 2 originally
+    // moved this to post-payment onboarding but that broke every
+    // notification. DOB + biological sex still get captured post-
+    // payment (they're not needed for greetings, only for the lab
+    // requisition which fires later from /api/checkout/complete-profile).
     for (const p of body.persons) {
+      if (!p.first_name?.trim() || !p.last_name?.trim()) {
+        return NextResponse.json(
+          { error: `Person ${p.index + 1} is missing their name` },
+          { status: 400 }
+        );
+      }
       if (!p.is_account_holder && !p.relationship) {
         return NextResponse.json(
           { error: `Person ${p.index + 1} is missing a relationship` },
