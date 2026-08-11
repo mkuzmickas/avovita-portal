@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle, Loader2, User, AlertCircle } from "lucide-react";
+import { CheckCircle, Loader2, User, AlertCircle, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ProfileForm } from "@/components/portal/ProfileForm";
+import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import type { PatientProfile } from "@/types/database";
 
 interface ProfileCompletionCardProps {
@@ -65,6 +66,8 @@ export function ProfileCompletionCard({
   const [finalising, setFinalising] = useState(false);
   const [finaliseError, setFinaliseError] = useState<string | null>(null);
   const [allComplete, setAllComplete] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const { trackEvent } = useAnalytics();
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -100,28 +103,38 @@ export function ProfileCompletionCard({
 
   // Webhook creates the patient_profiles row asynchronously — if the
   // customer hits the success page seconds after Stripe redirect, the
-  // row may not exist yet and the query returns []. Without a retry
-  // the card would stick on "Preparing your profile — one moment…"
-  // and the booking StepCard below would stay gated forever. Poll
-  // every 3s for up to 30s until at least one row shows up, then
-  // stop.
+  // row may not exist yet and the query returns []. Poll every 3s for
+  // up to 60s (20 attempts) — long enough to cover Vercel cold starts
+  // + Supabase auth cookie propagation + webhook execution. If we hit
+  // the ceiling without a profile appearing, flip to a timeout state
+  // that shows a refresh CTA + booking-via-email fallback, and log an
+  // analytics event so we can measure how often this happens.
   useEffect(() => {
     let cancelled = false;
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 20;
     const tick = async () => {
       if (cancelled) return;
       const count = await load();
       attempts += 1;
-      if (!cancelled && (count ?? 0) === 0 && attempts < maxAttempts) {
-        setTimeout(tick, 3000);
+      if (!cancelled && (count ?? 0) === 0) {
+        if (attempts < maxAttempts) {
+          setTimeout(tick, 3000);
+        } else {
+          setTimedOut(true);
+          setLoading(false);
+          trackEvent("profile_completion_load_timeout", {
+            attempts,
+            order_id: orderId,
+          });
+        }
       }
     };
     tick();
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [load, orderId, trackEvent]);
 
   // Once all profiles are complete, notify parent so booking unlocks.
   // Guard against double-firing during finalisation state churn.
@@ -225,6 +238,56 @@ export function ProfileCompletionCard({
     );
   }
 
+  if (timedOut) {
+    // Retry ceiling hit — probably a slow webhook or transient
+    // Supabase issue. Show an actionable state instead of leaving
+    // the card frozen. Customer can refresh (usually resolves it)
+    // or fall back to the FloLabs link in their confirmation email.
+    return (
+      <div
+        className="rounded-2xl border p-5 sm:p-6 mb-6"
+        style={{
+          backgroundColor: "rgba(196,151,58,0.08)",
+          borderColor: "#c4973a",
+        }}
+      >
+        <div className="flex items-start gap-2.5 mb-3">
+          <AlertCircle
+            className="w-5 h-5 shrink-0 mt-0.5"
+            style={{ color: "#c4973a" }}
+          />
+          <div>
+            <h3
+              className="font-heading text-lg font-semibold mb-1"
+              style={{
+                color: "#ffffff",
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+              }}
+            >
+              We&apos;re still setting up your profile
+            </h3>
+            <p className="text-sm leading-relaxed" style={{ color: "#e8d5a3" }}>
+              This usually finishes in a few seconds — sometimes it takes
+              a little longer. Refresh the page below to check again. If
+              it still isn&apos;t ready, your order confirmation email
+              has a booking link you can use — email support@avovita.ca
+              if you have any trouble.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
+          style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Refresh
+        </button>
+      </div>
+    );
+  }
+
   if (profiles.length === 0 || !accountId) {
     return (
       <div
@@ -234,7 +297,7 @@ export function ProfileCompletionCard({
         <div className="flex items-center gap-2" style={{ color: "#e8d5a3" }}>
           <Loader2 className="w-4 h-4 animate-spin" />
           <span className="text-sm">
-            Preparing your profile — one moment…
+            Preparing your profile — this usually takes a few seconds…
           </span>
         </div>
       </div>

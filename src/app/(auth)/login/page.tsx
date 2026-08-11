@@ -114,8 +114,8 @@ function LoginForm() {
 
       <p className="text-center text-sm" style={{ color: "#e8d5a3" }}>
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="font-medium" style={{ color: "#c4973a" }}>
-          Create account
+        <Link href="/tests" className="font-medium" style={{ color: "#c4973a" }}>
+          Browse tests to get started
         </Link>
       </p>
     </form>
