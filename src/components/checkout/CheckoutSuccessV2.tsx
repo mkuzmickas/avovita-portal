@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { StabilityDisclaimerModal } from "./StabilityDisclaimerModal";
-import { ProfileCompletionCard } from "./ProfileCompletionCard";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 
 const WAIVER_TEXT = `AVOVITA WELLNESS CLIENT CONSENT, RELEASE OF LIABILITY, AND INDEMNIFICATION AGREEMENT
@@ -142,14 +141,6 @@ export function CheckoutSuccessV2({
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const hasStabilityWarning = stabilityConstrainedTests.length > 0;
   const [stabilityAcknowledged, setStabilityAcknowledged] = useState(false);
-  // Profile completion gate — since Aug 2026 checkout no longer
-  // captures name/DOB/sex before payment. ProfileCompletionCard
-  // handles the multi-profile walk-through and flips this true when
-  // every patient_profiles row for this account has full identity
-  // fields. The booking StepCard stays disabled until then, because
-  // the FloLabs requisition (fired inside that same completion path)
-  // must go out with populated patient info.
-  const [profilesComplete, setProfilesComplete] = useState(false);
   // Password is mandatory before the customer can access waiver / booking
   // / etc. Persist the "done" state in localStorage keyed by Stripe
   // session id so a refresh of the success URL doesn't re-show the gate.
@@ -366,19 +357,10 @@ export function CheckoutSuccessV2({
                 : "Two quick steps to finish — please complete both below before your collection appointment."}
             </p>
 
-            {/* ── Profile completion (new Aug 2026) ─────────────────
-                Fills the patient_profiles rows created empty by the
-                webhook. Blocks the booking StepCard below until
-                every profile is complete, so the FloLabs requisition
-                fires with full patient info. Auto-skips (renders
-                collapsed) if the account already has complete
-                profiles from a prior order. */}
-            {hasTests && (
-              <ProfileCompletionCard
-                orderId={orderId}
-                onComplete={() => setProfilesComplete(true)}
-              />
-            )}
+            {/* Profile completion card removed — patient identity
+                (name / DOB / biological sex) is captured pre-payment
+                on Step 3 again. Post-payment is just password + waiver
+                + booking; nothing to fetch, nothing to hang on. */}
 
             {/* ── Waiver + booking/kit steps — waiver for ALL test orders ── */}
             {hasTests && (<>
@@ -412,10 +394,7 @@ export function CheckoutSuccessV2({
           )}
         </StepCard>
 
-        {/* Step 2 — Booking (phlebotomist orders only) OR Kit delivery (kit-only)
-            Locked behind profile completion (new Aug 2026 gate) so the
-            FloLabs requisition — fired inside the profile-completion
-            endpoint — has patient info to include on the email. */}
+        {/* Step 2 — Booking (phlebotomist orders only) OR Kit delivery (kit-only) */}
         {!hasKitOnlyTests ? (
         <StepCard
           number={2}
@@ -423,26 +402,6 @@ export function CheckoutSuccessV2({
           icon={Calendar}
           done={false}
         >
-          {!profilesComplete && (
-            <div
-              className="flex items-start gap-2.5 rounded-lg border px-4 py-3"
-              style={{
-                backgroundColor: "rgba(196,151,58,0.08)",
-                borderColor: "#c4973a",
-              }}
-            >
-              <Info
-                className="w-4 h-4 shrink-0 mt-0.5"
-                style={{ color: "#c4973a" }}
-              />
-              <p className="text-sm" style={{ color: "#e8d5a3" }}>
-                Finish the profile step above first — FloLabs needs
-                the patient details on file before we can book your
-                collection slot.
-              </p>
-            </div>
-          )}
-          {profilesComplete && (<>
           {/* Stability disclaimer gate — blocks iframe until acknowledged */}
           {hasStabilityWarning && !stabilityAcknowledged && (
             <StabilityDisclaimerModal
@@ -616,7 +575,6 @@ export function CheckoutSuccessV2({
               Please review the scheduling note above to continue.
             </p>
           )}
-          </>)}
         </StepCard>
         ) : (
         <StepCard

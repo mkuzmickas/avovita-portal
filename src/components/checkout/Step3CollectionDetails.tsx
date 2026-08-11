@@ -145,17 +145,22 @@ export function Step3CollectionDetails({
   const addressValid =
     collectionAddress.postal_code.trim().length > 0;
 
-  // Name is required pre-payment so confirmation emails, admin SMS,
-  // patient list, and Mayo requisition all have a real name from the
-  // start. Phase 2 originally moved this to post-payment onboarding
-  // but that broke every downstream notification — the fields are
-  // back here, DOB + biological sex still land in onboarding since
-  // those aren't needed for greetings or SMS.
-  const namesValid = persons.every(
-    (p) =>
-      (p.first_name?.trim().length ?? 0) > 0 &&
-      (p.last_name?.trim().length ?? 0) > 0,
-  );
+  // Full patient identity is required pre-payment (name + DOB +
+  // biological sex) so post-payment is just password + waiver +
+  // booking — no separate profile-completion step that could hang.
+  // Phase 2 tried to split this and it broke enough downstream
+  // things (notifications lost names, some customers hung at the
+  // profile step and bailed) that it was net-negative. Postal code
+  // stays as the ONE remaining pre-payment simplification (Phase 1)
+  // because address collection is genuinely redundant — FloLabs
+  // takes the full street address at booking.
+  const identityComplete = (p: (typeof persons)[number]) =>
+    (p.first_name?.trim().length ?? 0) > 0 &&
+    (p.last_name?.trim().length ?? 0) > 0 &&
+    (p.date_of_birth?.trim().length ?? 0) > 0 &&
+    p.biological_sex !== "" &&
+    p.biological_sex != null;
+  const namesValid = persons.every(identityComplete);
 
   const postalZone = classifyPostalZone(collectionAddress.postal_code);
   const postalEntered =
@@ -172,12 +177,11 @@ export function Step3CollectionDetails({
   if (!namesValid) {
     const missing: string[] = [];
     for (const p of persons) {
-      if (
-        (p.first_name?.trim().length ?? 0) === 0 ||
-        (p.last_name?.trim().length ?? 0) === 0
-      ) {
+      if (!identityComplete(p)) {
         missing.push(
-          p.is_account_holder ? "your name" : `person ${p.index + 1}'s name`,
+          p.is_account_holder
+            ? "your details"
+            : `person ${p.index + 1}'s details`,
         );
       }
     }
@@ -417,14 +421,14 @@ export function Step3CollectionDetails({
       </section>
       )}
 
-      {/* ─── Names per person (required pre-payment) ────────────
-          DOB + biological sex still get collected after payment via
-          PostPurchaseOnboarding → ProfileForm. Only NAME is here
-          because every confirmation email, admin SMS, and admin
-          patient view needs it at webhook time, and the Phase 2
-          "move everything to post-payment" experiment made those
-          all show "there" / gmail-root instead of the customer's
-          actual name. */}
+      {/* ─── Patient details per person (required pre-payment) ──
+          Name / DOB / biological sex all live here so post-payment
+          is just password + waiver + booking — no extra "profile
+          completion" step that could hang. Phase 2 tried to move
+          this post-payment; the added step wasn't worth the friction
+          reduction, so it's back. Every downstream surface (Mayo
+          requisition, admin SMS, confirmation email) has full patient
+          data at webhook time. */}
       <section className="mb-6">
         <h2
           className="font-heading text-xl font-semibold mb-2"
@@ -433,10 +437,11 @@ export function Step3CollectionDetails({
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          {persons.length === 1 ? "Your Name" : "Names"}
+          {persons.length === 1 ? "Your Details" : "Patient Details"}
         </h2>
         <p className="text-xs mb-4" style={{ color: "#e8d5a3" }}>
-          As it should appear on the lab requisition and your account.
+          As they should appear on the lab requisition and your account.
+          Date of birth and biological sex are required by the lab.
         </p>
         <div className="space-y-4">
           {persons.map((person) => (
@@ -458,7 +463,7 @@ export function Step3CollectionDetails({
                     : `Person ${person.index + 1}`}
                 </p>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                 <div>
                   <label
                     className="block text-sm font-medium mb-1.5"
@@ -498,23 +503,60 @@ export function Step3CollectionDetails({
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-1.5"
+                    style={labelStyle}
+                  >
+                    Date of birth{reqMark}
+                  </label>
+                  <input
+                    type="date"
+                    value={person.date_of_birth ?? ""}
+                    onChange={(e) =>
+                      updatePerson(person.index, {
+                        date_of_birth: e.target.value,
+                      })
+                    }
+                    className="mf-input"
+                    max={new Date().toISOString().slice(0, 10)}
+                    autoComplete={
+                      person.is_account_holder ? "bday" : "off"
+                    }
+                  />
+                </div>
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-1.5"
+                    style={labelStyle}
+                  >
+                    Biological sex{reqMark}
+                  </label>
+                  <select
+                    value={person.biological_sex ?? ""}
+                    onChange={(e) =>
+                      updatePerson(person.index, {
+                        biological_sex: e.target.value as
+                          | "male"
+                          | "female"
+                          | "intersex"
+                          | "",
+                      })
+                    }
+                    className="mf-input cursor-pointer"
+                  >
+                    <option value="">Select…</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                    <option value="intersex">Intersex</option>
+                  </select>
+                </div>
+              </div>
             </div>
           ))}
         </div>
       </section>
-
-      <div
-        className="rounded-lg border p-4 mb-4"
-        style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
-      >
-        <p className="text-sm leading-relaxed" style={{ color: "#e8d5a3" }}>
-          <strong style={{ color: "#ffffff" }}>After payment:</strong>{" "}
-          you&apos;ll finish setting up your account with date of birth
-          (needed for the lab requisition), sign the client waiver, and
-          book your FloLabs collection slot — FloLabs takes your full
-          street address at booking.
-        </p>
-      </div>
 
       {/* ─── Visit fee preview ─────────────────────────────────── */}
       <section

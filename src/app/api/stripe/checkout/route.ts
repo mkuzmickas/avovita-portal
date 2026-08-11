@@ -59,17 +59,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Verify per-person setup. Name (first + last) is required
-    // pre-payment so confirmation emails, admin SMS, and admin views
-    // all have a real name at webhook time — Phase 2 originally
-    // moved this to post-payment onboarding but that broke every
-    // notification. DOB + biological sex still get captured post-
-    // payment (they're not needed for greetings, only for the lab
-    // requisition which fires later from /api/checkout/complete-profile).
+    // Verify per-person setup. Full patient identity — name (first +
+    // last), DOB, biological sex — is required pre-payment so
+    // post-payment is just password + waiver + booking. Nothing to
+    // hang on, no separate profile-completion step, all downstream
+    // surfaces (Mayo requisition, admin SMS, confirmation email) have
+    // full data at webhook time. Phase 2 tried to split this and it
+    // was a net loss.
     for (const p of body.persons) {
       if (!p.first_name?.trim() || !p.last_name?.trim()) {
         return NextResponse.json(
           { error: `Person ${p.index + 1} is missing their name` },
+          { status: 400 }
+        );
+      }
+      if (!p.date_of_birth?.trim() || !p.biological_sex) {
+        return NextResponse.json(
+          { error: `Person ${p.index + 1} is missing date of birth or biological sex` },
           { status: 400 }
         );
       }

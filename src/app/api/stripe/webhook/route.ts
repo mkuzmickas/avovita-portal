@@ -562,20 +562,10 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     total
   );
 
-  // FloLabs requisition email — gated behind feature flag AND behind
-  // "all persons have identity fields populated" (Aug 2026 change:
-  // per-person name/DOB/sex moved to post-payment onboarding, so at
-  // webhook time this data is typically empty). If any person is
-  // missing identity, the /api/checkout/complete-profile endpoint
-  // re-fires this send once the customer has filled ProfileForm.
-  const allProfilesComplete = payload.persons.every(
-    (p) =>
-      (p.first_name?.trim().length ?? 0) > 0 &&
-      (p.last_name?.trim().length ?? 0) > 0 &&
-      (p.date_of_birth?.trim().length ?? 0) > 0 &&
-      !!p.biological_sex,
-  );
-  if (FLOLABS_NOTIFICATIONS_ENABLED && allProfilesComplete) {
+  // FloLabs requisition email — fires immediately since patient
+  // identity (name/DOB/sex) is now captured pre-payment on Step 3
+  // again. No profile-completion gate needed.
+  if (FLOLABS_NOTIFICATIONS_ENABLED) {
     try {
       const { sendFloLabsRequisition } = await import(
         "@/lib/emails/floLabsRequisition"
@@ -587,10 +577,6 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         err
       );
     }
-  } else if (FLOLABS_NOTIFICATIONS_ENABLED) {
-    console.log(
-      `[stripe-webhook] FloLabs requisition deferred for order ${orderId} — awaiting profile completion`,
-    );
   }
 }
 
@@ -930,17 +916,9 @@ async function handleCheckoutCompleteV2(
       total,
     );
 
-    // FloLabs requisition email — same profile-completion gate as
-    // the V1 webhook above. New (Aug 2026+) orders defer this until
-    // /api/checkout/complete-profile fires post-onboarding.
-    const v2AllProfilesComplete = v1Payload.persons.every(
-      (per) =>
-        (per.first_name?.trim().length ?? 0) > 0 &&
-        (per.last_name?.trim().length ?? 0) > 0 &&
-        (per.date_of_birth?.trim().length ?? 0) > 0 &&
-        !!per.biological_sex,
-    );
-    if (FLOLABS_NOTIFICATIONS_ENABLED && v2AllProfilesComplete) {
+    // FloLabs requisition — fires immediately now that patient
+    // identity is captured pre-payment.
+    if (FLOLABS_NOTIFICATIONS_ENABLED) {
       try {
         const { sendFloLabsRequisition } = await import(
           "@/lib/emails/floLabsRequisition"
@@ -952,10 +930,6 @@ async function handleCheckoutCompleteV2(
           err,
         );
       }
-    } else if (FLOLABS_NOTIFICATIONS_ENABLED) {
-      console.log(
-        `[stripe-webhook-v2] FloLabs requisition deferred for order ${orderId} — awaiting profile completion`,
-      );
     }
   }
 
