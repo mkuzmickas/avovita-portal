@@ -364,21 +364,44 @@ function extractResult(response: ShipApiResponse): ShipApiResult {
   }
 
   const packageDocs = shipment.pieceResponses?.[0]?.packageDocuments ?? [];
-  const labelDoc = packageDocs.find(
-    (d) => d.contentType?.toLowerCase() === "label" || d.docType?.toLowerCase() === "label",
-  ) ?? packageDocs[0];
+  // First LABEL doc = the master AWB that gets affixed to the box.
+  const labelDoc =
+    packageDocs.find(
+      (d) =>
+        d.contentType?.toLowerCase() === "label" ||
+        d.docType?.toLowerCase() === "label",
+    ) ?? packageDocs[0];
   const labelPdfBase64 = labelDoc?.encodedLabel ?? "";
 
   // In FedEx's schema: contentType = document type
-  // (COMMERCIAL_INVOICE), docType = file format (PDF). We record
-  // contentType because the shipper cares about the doc, not the
-  // format. copiesToPrint defaults to 3 for CI — falls back if the
-  // API omits it.
-  const additionalDocs: ShipmentDocument[] = (shipment.shipmentDocuments ?? []).map((d) => ({
-    contentType: d.contentType ?? "UNKNOWN",
-    copiesToPrint: d.copiesToPrint ?? 3,
-    pdfBase64: d.encodedLabel ?? "",
-  }));
+  // (COMMERCIAL_INVOICE / AUXILIARY_LABEL), docType = file format
+  // (PDF). We record contentType because the shipper cares about
+  // the doc, not the format. copiesToPrint defaults to 3 for CI
+  // and 1 for auxiliary docs — falls back if the API omits it.
+  const additionalDocs: ShipmentDocument[] = [];
+
+  // Auxiliary / secondary AWB labels — FedEx returns these in
+  // packageDocuments alongside the master label for international
+  // shipments. Include everything that isn't the master label so
+  // the shipper prints them too (FedEx's Label Analysis Group also
+  // requires them in the certification submission).
+  for (const doc of packageDocs) {
+    if (doc === labelDoc) continue;
+    additionalDocs.push({
+      contentType: doc.contentType ?? "AUXILIARY_LABEL",
+      copiesToPrint: 1,
+      pdfBase64: doc.encodedLabel ?? "",
+    });
+  }
+
+  // Shipment-level docs (auto-generated commercial invoice, etc.).
+  for (const d of shipment.shipmentDocuments ?? []) {
+    additionalDocs.push({
+      contentType: d.contentType ?? "UNKNOWN",
+      copiesToPrint: d.copiesToPrint ?? 3,
+      pdfBase64: d.encodedLabel ?? "",
+    });
+  }
 
   return {
     trackingNumber,
