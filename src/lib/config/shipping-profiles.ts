@@ -132,7 +132,7 @@ export const MAYO_FROZEN: ShippingProfile = {
   kind: "mayo_frozen",
   displayLabel: "Ship Mayo Frozen",
   displaySubtitle:
-    "Dry-ice package to Mayo Clinic Laboratories · International Priority Express",
+    "Dry-ice package to Mayo Clinic Laboratories · International Priority",
   recipient: {
     contactName: "Global Logistics",
     company: "Mayo Clinic Laboratories",
@@ -148,7 +148,7 @@ export const MAYO_FROZEN: ShippingProfile = {
     },
     residential: false,
   },
-  serviceType: "INTERNATIONAL_PRIORITY_EXPRESS",
+  serviceType: "INTERNATIONAL_PRIORITY",
   currency: "USD",
   package: {
     weightLb: 15,
@@ -209,7 +209,7 @@ export const ARMIN_LABS: ShippingProfile = {
   kind: "armin_labs",
   displayLabel: "Ship Armin Labs Package",
   displaySubtitle:
-    "Ambient FedEx Pak to Armin Labs, Germany · International Priority Express",
+    "Ambient FedEx Pak to Armin Labs, Germany · International Priority",
   recipient: {
     contactName: "Markus Berger",
     company: "Armin Labs",
@@ -229,7 +229,7 @@ export const ARMIN_LABS: ShippingProfile = {
     },
     residential: false,
   },
-  serviceType: "INTERNATIONAL_PRIORITY_EXPRESS",
+  serviceType: "INTERNATIONAL_PRIORITY",
   currency: "EUR",
   package: {
     weightLb: 2,
@@ -287,7 +287,7 @@ export const EPISEEK: ShippingProfile = {
   kind: "episeek",
   displayLabel: "Ship EpiSeek Package",
   displaySubtitle:
-    "Ambient FedEx Pak to Precision Epigenomics, Tucson AZ · International Priority Express",
+    "Ambient FedEx Pak to Precision Epigenomics, Tucson AZ · International Priority",
   recipient: {
     contactName: "Laboratory Processing",
     company: "Precision Epigenomics",
@@ -303,7 +303,7 @@ export const EPISEEK: ShippingProfile = {
     },
     residential: false,
   },
-  serviceType: "INTERNATIONAL_PRIORITY_EXPRESS",
+  serviceType: "INTERNATIONAL_PRIORITY",
   currency: "USD",
   package: {
     weightLb: 1,
