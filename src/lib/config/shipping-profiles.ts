@@ -242,9 +242,11 @@ export const MAYO_FROZEN: ShippingProfile = {
     signatureOverlay: undefined,
   },
   etdDocumentPaths: [
-    // Mike uploads: mayo-cdc-permits.pdf (6 pages — the 2 CDC import
-    // permits, extracted from the original 7-page combined file).
-    "mayo-cdc-permits.pdf",
+    // Existing 7-page combined PDF (Mayo declaration + 2 CDC import
+    // permits). Printed 1× as supplementary paperwork. Slight overlap
+    // with the 3× CI (declaration appears in both) — customs accepts
+    // this and it avoids Mike having to maintain two split files.
+    "mayo-cdc-paperwork.pdf",
   ],
 };
 
