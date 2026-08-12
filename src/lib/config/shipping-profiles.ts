@@ -230,28 +230,21 @@ export const MAYO_FROZEN: ShippingProfile = {
   commercialInvoice: {
     // Mike uploads: mayo-commercial-invoice.pdf (1 page — Commercial
     // Invoice template with blank INTERNATIONAL AIRWAYBILL NO. + DATE
-    // OF EXPORTATION cells at top, and a signature/date block at the
-    // bottom.
+    // OF EXPORTATION cells at top, and a Date: field at the bottom.
+    // Template comes pre-signed so no signature overlay needed.
     templatePath: "mayo-commercial-invoice.pdf",
     trackingNumberOverlays: [
       // Top-left cell "INTERNATIONAL AIRWAYBILL NO." — blank line just
       // below the label.
-      { pageIndex: 0, x: 50, y: 705, fontSize: 12 },
+      { pageIndex: 0, x: 90, y: 685, fontSize: 12 },
     ],
     dateOverlays: [
       // Top-right cell "DATE OF EXPORTATION".
-      { pageIndex: 0, x: 320, y: 705, fontSize: 12, format: "iso" },
-      // "Date:" label under the signature block.
-      { pageIndex: 0, x: 80, y: 112, fontSize: 10, format: "iso" },
+      { pageIndex: 0, x: 340, y: 685, fontSize: 12, format: "iso" },
+      // "Date:" label just under the signature block.
+      { pageIndex: 0, x: 80, y: 148, fontSize: 10, format: "iso" },
     ],
-    signatureOverlay: {
-      // "Signature of shipper/exporter" block at the bottom-left.
-      pageIndex: 0,
-      x: 50,
-      y: 145,
-      width: 170,
-      height: 32,
-    },
+    signatureOverlay: undefined,
   },
   etdDocumentPaths: [
     // Existing 7-page combined PDF (Mayo declaration + 2 CDC import
