@@ -234,15 +234,16 @@ export const MAYO_FROZEN: ShippingProfile = {
     // Template comes pre-signed so no signature overlay needed.
     templatePath: "mayo-commercial-invoice.pdf",
     trackingNumberOverlays: [
-      // Top-left cell "INTERNATIONAL AIRWAYBILL NO." — blank line just
-      // below the label.
-      { pageIndex: 0, x: 90, y: 685, fontSize: 12 },
+      // Top-left cell "INTERNATIONAL AIRWAYBILL NO." — blank line
+      // between the label (~y=705) and the SHIPPER row (~y=685).
+      { pageIndex: 0, x: 90, y: 695, fontSize: 12 },
     ],
     dateOverlays: [
-      // Top-right cell "DATE OF EXPORTATION".
-      { pageIndex: 0, x: 340, y: 685, fontSize: 12, format: "iso" },
-      // "Date:" label just under the signature block.
-      { pageIndex: 0, x: 80, y: 148, fontSize: 10, format: "iso" },
+      // Top-right cell "DATE OF EXPORTATION" — same blank line height.
+      { pageIndex: 0, x: 340, y: 695, fontSize: 12, format: "iso" },
+      // "Date:" label just under the signature block. (Line 1/2/3
+      // bullets start below.)
+      { pageIndex: 0, x: 80, y: 170, fontSize: 10, format: "iso" },
     ],
     signatureOverlay: undefined,
   },
