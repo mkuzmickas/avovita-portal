@@ -228,18 +228,30 @@ export const MAYO_FROZEN: ShippingProfile = {
     events: ["ON_TENDER", "ON_EXCEPTION"],
   },
   commercialInvoice: {
-    // Mike uploads: mayo-commercial-invoice.pdf (1 page — Mayo Clinic
-    // Labs declaration page with blank Tracking Number field). We stamp
-    // the tracking number in on ship. Template is pre-signed by Morice,
-    // so no signature overlay needed.
+    // Mike uploads: mayo-commercial-invoice.pdf (1 page — Commercial
+    // Invoice template with blank INTERNATIONAL AIRWAYBILL NO. + DATE
+    // OF EXPORTATION cells at top, and a signature/date block at the
+    // bottom.
     templatePath: "mayo-commercial-invoice.pdf",
     trackingNumberOverlays: [
-      // Best guess: "Tracking Number:" label sits around mid-page,
-      // number lands to the right of it. Iterate visually.
-      { pageIndex: 0, x: 160, y: 340, fontSize: 11 },
+      // Top-left cell "INTERNATIONAL AIRWAYBILL NO." — blank line just
+      // below the label.
+      { pageIndex: 0, x: 50, y: 705, fontSize: 12 },
     ],
-    dateOverlays: [],
-    signatureOverlay: undefined,
+    dateOverlays: [
+      // Top-right cell "DATE OF EXPORTATION".
+      { pageIndex: 0, x: 320, y: 705, fontSize: 12, format: "iso" },
+      // "Date:" label under the signature block.
+      { pageIndex: 0, x: 80, y: 112, fontSize: 10, format: "iso" },
+    ],
+    signatureOverlay: {
+      // "Signature of shipper/exporter" block at the bottom-left.
+      pageIndex: 0,
+      x: 50,
+      y: 145,
+      width: 170,
+      height: 32,
+    },
   },
   etdDocumentPaths: [
     // Existing 7-page combined PDF (Mayo declaration + 2 CDC import

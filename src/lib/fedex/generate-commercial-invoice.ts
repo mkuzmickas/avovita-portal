@@ -46,6 +46,10 @@ export async function generateCommercialInvoice(params: {
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const black = rgb(0, 0, 0);
 
+  console.log(
+    `[commercial-invoice] Overlaying ${overlay.trackingNumberOverlays.length} tracking#, ${overlay.dateOverlays.length} date, ${overlay.signatureOverlay ? 1 : 0} signature on ${overlay.templatePath} (${pdf.getPageCount()} pages)`,
+  );
+
   // Stamp tracking number wherever the profile says
   for (const spot of overlay.trackingNumberOverlays) {
     const page = pdf.getPage(spot.pageIndex);
