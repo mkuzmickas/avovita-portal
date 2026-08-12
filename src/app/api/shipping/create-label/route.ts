@@ -190,6 +190,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const ciBytes = await generateCommercialInvoice({
+      supabase,
       profile,
       trackingNumber: ship.trackingNumber,
       shipDate: new Date(),
