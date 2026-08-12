@@ -10,9 +10,7 @@ interface Shipment {
   service_type: string | null;
   label_url: string | null;
   weight_lb: number | null;
-  notes: string | null;
   environment: string;
-  shipped_by_name: string | null;
   created_at: string;
 }
 
@@ -24,8 +22,6 @@ interface Props {
 /**
  * Standalone shipping console for FloLabs. Simple layout:
  *   - Prominent shipping buttons (one per profile)
- *   - Optional "your name" + "notes" inputs so the audit trail has
- *     attribution when multiple people share the URL
  *   - Recent shipments table so a shipper can see what they and
  *     others sent today, download labels, get tracking numbers
  *
@@ -41,8 +37,6 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
     labelUrl: string | null;
     environment: string;
   } | null>(null);
-  const [shipperName, setShipperName] = useState("");
-  const [notes, setNotes] = useState("");
   const [shipments, setShipments] = useState(recentShipments);
 
   const handleShip = async (kind: string) => {
@@ -57,11 +51,7 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
           "Content-Type": "application/json",
           "x-shipping-token": token,
         },
-        body: JSON.stringify({
-          kind,
-          notes: notes.trim() || undefined,
-          shipped_by_name: shipperName.trim() || undefined,
-        }),
+        body: JSON.stringify({ kind }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -73,7 +63,6 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
         labelUrl: data.label_url,
         environment: data.environment,
       });
-      setNotes("");
       // Optimistically prepend to shipments list; full accuracy comes
       // on next page refresh.
       setShipments((prev) =>
@@ -85,9 +74,7 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
             service_type: SHIPPING_PROFILES[kind]?.serviceType ?? null,
             label_url: data.label_url,
             weight_lb: SHIPPING_PROFILES[kind]?.package.weightLb ?? null,
-            notes: notes.trim() || null,
             environment: data.environment,
-            shipped_by_name: shipperName.trim() || null,
             created_at: new Date().toISOString(),
           },
           ...prev,
@@ -134,67 +121,6 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
             )}
           </p>
         </header>
-
-        {/* Shipper attribution — optional but recommended */}
-        <section style={{ marginBottom: "24px" }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 2fr",
-              gap: "12px",
-              backgroundColor: "#1a3d22",
-              border: "1px solid #2d6b35",
-              borderRadius: "12px",
-              padding: "16px",
-            }}
-          >
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  marginBottom: "6px",
-                  color: "#c4973a",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  fontWeight: 600,
-                }}
-              >
-                Your name
-              </label>
-              <input
-                type="text"
-                value={shipperName}
-                onChange={(e) => setShipperName(e.target.value)}
-                placeholder="e.g. Sarah"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  marginBottom: "6px",
-                  color: "#c4973a",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  fontWeight: 600,
-                }}
-              >
-                Notes (optional, shown on airway bill reference)
-              </label>
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="e.g. Wilson + Jarvis specimens"
-                maxLength={40}
-                style={inputStyle}
-              />
-            </div>
-          </div>
-        </section>
 
         {/* Buttons */}
         <section
@@ -348,8 +274,6 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
                     <th style={thStyle}>When</th>
                     <th style={thStyle}>Kind</th>
                     <th style={thStyle}>Tracking</th>
-                    <th style={thStyle}>By</th>
-                    <th style={thStyle}>Notes</th>
                     <th style={thStyle}>Label</th>
                   </tr>
                 </thead>
@@ -392,8 +316,6 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
                       >
                         {s.tracking_number}
                       </td>
-                      <td style={tdStyle}>{s.shipped_by_name ?? "—"}</td>
-                      <td style={tdStyle}>{s.notes ?? ""}</td>
                       <td style={tdStyle}>
                         {s.label_url ? (
                           <a
@@ -419,17 +341,6 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 12px",
-  border: "1px solid #2d6b35",
-  borderRadius: "8px",
-  backgroundColor: "#0f2614",
-  color: "#ffffff",
-  fontSize: "14px",
-  fontFamily: "inherit",
-};
 
 const thStyle: React.CSSProperties = {
   textAlign: "left",

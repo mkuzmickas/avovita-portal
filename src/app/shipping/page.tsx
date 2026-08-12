@@ -66,7 +66,7 @@ export default async function ShippingPage({
   const { data: shipmentsRaw } = await supabase
     .from("manual_shipments")
     .select(
-      "id, profile_kind, tracking_number, service_type, label_url, weight_lb, notes, environment, shipped_by_name, created_at",
+      "id, profile_kind, tracking_number, service_type, label_url, weight_lb, environment, created_at",
     )
     .order("created_at", { ascending: false })
     .limit(20);
@@ -78,9 +78,7 @@ export default async function ShippingPage({
     service_type: string | null;
     label_url: string | null;
     weight_lb: number | null;
-    notes: string | null;
     environment: string;
-    shipped_by_name: string | null;
     created_at: string;
   };
 

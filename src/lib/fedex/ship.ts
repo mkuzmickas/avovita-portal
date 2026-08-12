@@ -35,85 +35,23 @@ export interface ShipApiResult {
 }
 
 /**
- * Upload a supplementary PDF (CDC paperwork, etc.) via FedEx
- * Electronic Trade Documents (ETD). Returns a documentId that gets
- * referenced in the Ship API call so FedEx merges/attaches it.
- *
- * Called before createShipment when the profile has etdDocumentPaths.
+ * Attached-document payload for the Ship API's etdDetail block.
+ * We inline the PDF bytes base64-encoded rather than pre-uploading
+ * via the separate ETD upload API — the pre-upload endpoint lives
+ * on a different subdomain that isn't reachable from apis-sandbox
+ * (returns 404), and inlining works uniformly across sandbox +
+ * production without hostname juggling.
  */
-export async function uploadEtdDocument(
-  fileBytes: Uint8Array,
-  fileName: string,
-  documentType:
-    | "COMMERCIAL_INVOICE"
-    | "CERTIFICATE_OF_ORIGIN"
-    | "PRO_FORMA_INVOICE"
-    | "OTHER",
-): Promise<string> {
-  const config = readFedExConfig();
-  const token = await getFedExAccessToken(config);
+export interface InlineAttachedDocument {
+  fileName: string;
+  bytes: Uint8Array;
+}
 
-  // ETD endpoint uses multipart/form-data. Build the boundary + parts
-  // by hand — Node's FormData works but requires the file to be a
-  // Blob-like; we adapt Uint8Array via a Blob polyfill.
-  const documentMeta = {
-    document: {
-      referenceId: `ref-${Date.now()}`,
-      name: fileName,
-      contentType: "application/pdf",
-      meta: {
-        imageType: "PDF",
-        imageIndex: "IMAGE_1",
-      },
-    },
-    rules: {
-      workflowName: "ETDPreshipment",
-    },
-  };
-
-  const form = new FormData();
-  form.append("document", JSON.stringify(documentMeta));
-  form.append(
-    "attachment",
-    new Blob([new Uint8Array(fileBytes)], { type: "application/pdf" }),
-    fileName,
-  );
-
-  const res = await fetch(`${config.apiUrl}/documents/v1/etds/upload`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      // Content-Type is auto-set by fetch with the multipart boundary
-      "X-locale": "en_US",
-    },
-    body: form,
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `FedEx ETD upload failed (${res.status}) for ${fileName} [${documentType}]: ${text.slice(0, 500)}`,
-    );
-  }
-
-  const data = (await res.json()) as {
-    meta?: { transactionId?: string };
-    output?: {
-      metaData?: { docType?: string };
-      documentStatuses?: Array<{
-        docId?: string;
-        status?: string;
-      }>;
-    };
-  };
-
-  const docId = data.output?.documentStatuses?.[0]?.docId;
-  if (!docId) {
-    throw new Error(
-      `FedEx ETD upload for ${fileName} returned no docId: ${JSON.stringify(data).slice(0, 500)}`,
-    );
-  }
-  return docId;
+function base64Encode(bytes: Uint8Array): string {
+  // Node's Buffer is available in the Next.js Node runtime this
+  // module runs in. Use Buffer directly — btoa+charCode fallback is
+  // slow for multi-KB PDFs.
+  return Buffer.from(bytes).toString("base64");
 }
 
 /**
@@ -122,20 +60,22 @@ export async function uploadEtdDocument(
  */
 export async function createShipment(params: {
   profile: ShippingProfile;
-  /** Optional pre-uploaded ETD document ids to reference. */
-  etdDocumentIds?: string[];
+  /** Recipient customs PDFs to attach inline as ETD (base64-encoded
+   *  into the Ship API request). Empty array is fine — FedEx will
+   *  still auto-generate a commercial invoice from commodity data. */
+  etdDocuments?: InlineAttachedDocument[];
   /** Optional per-shipment override — free-text on the airway bill. */
   reference?: string;
 }): Promise<ShipApiResult> {
   const config = readFedExConfig();
   const token = await getFedExAccessToken(config);
 
-  const { profile, etdDocumentIds = [], reference } = params;
+  const { profile, etdDocuments = [], reference } = params;
 
   const requestBody = buildShipRequest({
     profile,
     accountNumber: config.accountNumber,
-    etdDocumentIds,
+    etdDocuments,
     reference,
   });
 
@@ -167,10 +107,10 @@ export async function createShipment(params: {
 function buildShipRequest(params: {
   profile: ShippingProfile;
   accountNumber: string;
-  etdDocumentIds: string[];
+  etdDocuments: InlineAttachedDocument[];
   reference?: string;
 }): Record<string, unknown> {
-  const { profile, accountNumber, etdDocumentIds, reference } = params;
+  const { profile, accountNumber, etdDocuments, reference } = params;
   const now = new Date();
 
   const shipperFedEx = {
@@ -297,34 +237,30 @@ function buildShipRequest(params: {
     commodities: [customsCommodity],
   };
 
-  // Electronic Trade Documents (ETD) — reference the docs we
-  // pre-uploaded so FedEx attaches them electronically. FedEx also
+  // Electronic Trade Documents (ETD) — attach each recipient customs
+  // PDF inline via base64-encoded documentContent. Skips the separate
+  // ETD upload API (which lives on a different subdomain that isn't
+  // reachable from apis-sandbox and returns 404). FedEx also
   // auto-generates a commercial invoice from the commodity data
-  // above; we don't need to upload one.
-  const etdBlock =
-    etdDocumentIds.length > 0
-      ? {
-          shipmentSpecialServices: {
-            specialServiceTypes: ["ELECTRONIC_TRADE_DOCUMENTS"],
-            etdDetail: {
-              attachedDocuments: etdDocumentIds.map((docId, idx) => ({
-                documentType: "OTHER",
-                documentReference: `attached_doc_${idx + 1}`,
-                description: "Recipient customs paperwork",
-                documentId: docId,
-              })),
-              requestedDocumentTypes: ["COMMERCIAL_INVOICE"],
-            },
-          },
-        }
-      : {
-          shipmentSpecialServices: {
-            specialServiceTypes: ["ELECTRONIC_TRADE_DOCUMENTS"],
-            etdDetail: {
-              requestedDocumentTypes: ["COMMERCIAL_INVOICE"],
-            },
-          },
-        };
+  // above, requested via requestedDocumentTypes.
+  const attachedDocuments = etdDocuments.map((doc, idx) => ({
+    documentType: "OTHER",
+    documentReference: `attached_doc_${idx + 1}`,
+    description: "Recipient customs paperwork",
+    fileName: doc.fileName,
+    documentContent: base64Encode(doc.bytes),
+    documentFormat: "PDF",
+  }));
+
+  const etdBlock = {
+    shipmentSpecialServices: {
+      specialServiceTypes: ["ELECTRONIC_TRADE_DOCUMENTS"],
+      etdDetail: {
+        ...(attachedDocuments.length > 0 ? { attachedDocuments } : {}),
+        requestedDocumentTypes: ["COMMERCIAL_INVOICE"],
+      },
+    },
+  };
 
   const emailNotifications = {
     emailNotificationDetail: {

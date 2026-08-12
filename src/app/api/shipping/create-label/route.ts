@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { getShippingProfile } from "@/lib/config/shipping-profiles";
-import { createShipment, uploadEtdDocument } from "@/lib/fedex/ship";
+import { createShipment, type InlineAttachedDocument } from "@/lib/fedex/ship";
 import { resend } from "@/lib/resend";
 
 export const runtime = "nodejs";
@@ -88,8 +88,6 @@ export async function POST(request: NextRequest) {
   // ─── Parse body ───────────────────────────────────────────────
   let body: {
     kind?: string;
-    notes?: string;
-    shipped_by_name?: string;
   };
   try {
     body = await request.json();
@@ -107,11 +105,11 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceRoleClient();
 
-  // ─── Upload ETD docs to FedEx ─────────────────────────────────
-  // Every recipient-specific PDF lives in Supabase Storage bucket
-  // `shipping-documents`. Fetch bytes → upload to FedEx → collect
-  // the returned docIds to reference in the Ship API call.
-  let etdDocIds: string[] = [];
+  // ─── Load ETD docs from Supabase Storage ──────────────────────
+  // Each recipient-specific PDF lives in bucket `shipping-documents`.
+  // Fetch bytes and hand them to the Ship API, which will inline them
+  // base64-encoded — no separate ETD upload roundtrip.
+  const etdDocuments: InlineAttachedDocument[] = [];
   try {
     for (const path of profile.etdDocumentPaths) {
       const { data: file, error } = await supabase.storage
@@ -122,14 +120,13 @@ export async function POST(request: NextRequest) {
           `Failed to load ${path} from Supabase Storage: ${error?.message ?? "not found"}. Upload it to the shipping-documents bucket.`,
         );
       }
-      const buffer = new Uint8Array(await file.arrayBuffer());
-      const docId = await uploadEtdDocument(buffer, path, "OTHER");
-      etdDocIds.push(docId);
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      etdDocuments.push({ fileName: path.split("/").pop() ?? path, bytes });
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: `ETD document upload failed: ${message}` },
+      { error: `ETD document load failed: ${message}` },
       { status: 500 },
     );
   }
@@ -139,8 +136,7 @@ export async function POST(request: NextRequest) {
   try {
     ship = await createShipment({
       profile,
-      etdDocumentIds: etdDocIds,
-      reference: body.notes?.slice(0, 40),
+      etdDocuments,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -229,9 +225,9 @@ export async function POST(request: NextRequest) {
       // actual currency is per-profile (Mayo USD, Armin EUR, EpiSeek
       // USD). Record as-is; convert in the reporting view if needed.
       declared_value_cad: profile.package.declaredValue,
-      notes: body.notes ?? null,
+      notes: null,
       environment,
-      shipped_by_name: body.shipped_by_name ?? null,
+      shipped_by_name: null,
     })
     .select("id")
     .single();
@@ -260,9 +256,7 @@ export async function POST(request: NextRequest) {
           Tracking: <strong>${ship.trackingNumber}</strong><br>
           Service: ${profile.serviceType}<br>
           Environment: ${environment}<br>
-          Weight: ${profile.package.weightLb} lb${profile.package.dryIceWeightKg > 0 ? ` (${profile.package.dryIceWeightKg} kg dry ice)` : ""}<br>
-          Shipped by: ${body.shipped_by_name ?? "(not provided)"}<br>
-          ${body.notes ? `Notes: ${body.notes}<br>` : ""}
+          Weight: ${profile.package.weightLb} lb${profile.package.dryIceWeightKg > 0 ? ` (${profile.package.dryIceWeightKg} kg dry ice)` : ""}
         </p>
         <p>
           ${labelStorageUrl ? `<a href="${labelStorageUrl}">Label PDF</a>` : "Label PDF: (not stored — check server logs)"}
