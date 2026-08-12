@@ -21,6 +21,7 @@ interface Shipment {
 interface Props {
   token: string;
   recentShipments: Shipment[];
+  environment: "sandbox" | "production";
 }
 
 /**
@@ -33,7 +34,11 @@ interface Props {
  * marketing page. No AvoVita header/footer, no auth chrome, no
  * navigation. Fits a warehouse laptop and a phone.
  */
-export function ShippingPageClient({ token, recentShipments }: Props) {
+export function ShippingPageClient({
+  token,
+  recentShipments,
+  environment,
+}: Props) {
   const [busyKind, setBusyKind] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<{
@@ -193,7 +198,7 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
   };
 
   const profiles = Object.values(SHIPPING_PROFILES);
-  const isSandbox = shipments.some((s) => s.environment === "sandbox");
+  const isSandbox = environment === "sandbox";
 
   return (
     <div
@@ -219,9 +224,24 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
           </h1>
           <p style={{ color: "#6ab04c", fontSize: "14px", margin: 0 }}>
             FedEx label creation for scheduled specimen pickups.
+            <span
+              style={{
+                marginLeft: "10px",
+                padding: "2px 8px",
+                borderRadius: "4px",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                backgroundColor: isSandbox ? "#c4973a" : "#8dc63f",
+                color: "#0a1a0d",
+              }}
+            >
+              {isSandbox ? "sandbox" : "production"}
+            </span>
             {isSandbox && (
               <span style={{ color: "#c4973a", marginLeft: "8px" }}>
-                · Sandbox mode — no real shipments are being created.
+                No real shipments are being created.
               </span>
             )}
           </p>

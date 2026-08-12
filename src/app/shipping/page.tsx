@@ -84,5 +84,18 @@ export default async function ShippingPage({
 
   const recentShipments = (shipmentsRaw ?? []) as unknown as Shipment[];
 
-  return <ShippingPageClient token={token} recentShipments={recentShipments} />;
+  // Derive current environment from FEDEX_API_URL — pass to client so
+  // the header shows an unambiguous SANDBOX vs PRODUCTION badge.
+  // "Recent shipments" env comes from historical data; this is live.
+  const environment = process.env.FEDEX_API_URL?.includes("sandbox")
+    ? "sandbox"
+    : "production";
+
+  return (
+    <ShippingPageClient
+      token={token}
+      recentShipments={recentShipments}
+      environment={environment}
+    />
+  );
 }
