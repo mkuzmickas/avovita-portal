@@ -243,7 +243,7 @@ export const MAYO_FROZEN: ShippingProfile = {
       { pageIndex: 0, x: 340, y: 695, fontSize: 12, format: "iso" },
       // "Date:" label just under the signature block — sits to the
       // right of the label text.
-      { pageIndex: 0, x: 110, y: 185, fontSize: 10, format: "iso" },
+      { pageIndex: 0, x: 110, y: 192, fontSize: 10, format: "iso" },
     ],
     signatureOverlay: undefined,
   },
