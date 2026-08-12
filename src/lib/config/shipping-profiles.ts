@@ -412,24 +412,22 @@ export const EPISEEK: ShippingProfile = {
   },
   commercialInvoice: {
     // Mike uploads: episeek-commercial-invoice.pdf (2 pages — CI on
-    // page 1 with blank waybill+date, declaration on page 2 with
-    // shipper signature line).
+    // page 1 matches the Mayo commercial-invoice template exactly
+    // [same INTERNATIONAL AIRWAYBILL NO. / DATE OF EXPORTATION / Date:
+    // fields], declaration on page 2 comes pre-signed).
     templatePath: "episeek-commercial-invoice.pdf",
     trackingNumberOverlays: [
-      { pageIndex: 0, x: 200, y: 700, fontSize: 11 },
+      // Top-left cell "INTERNATIONAL AIRWAYBILL NO."
+      { pageIndex: 0, x: 105, y: 695, fontSize: 12 },
     ],
     dateOverlays: [
-      { pageIndex: 0, x: 200, y: 670, fontSize: 11, format: "iso" },
+      // Top-right cell "DATE OF EXPORTATION"
+      { pageIndex: 0, x: 340, y: 695, fontSize: 12, format: "iso" },
+      // "Date:" label just under the signature block on page 1.
+      { pageIndex: 0, x: 110, y: 192, fontSize: 10, format: "iso" },
     ],
-    signatureOverlay: {
-      // Signature line is typically at the bottom of the declaration
-      // (page 2 for EpiSeek's 2-page template).
-      pageIndex: 1,
-      x: 80,
-      y: 130,
-      width: 180,
-      height: 45,
-    },
+    // Page 2 declaration is pre-signed — no overlay needed.
+    signatureOverlay: undefined,
   },
   etdDocumentPaths: [],
 };
