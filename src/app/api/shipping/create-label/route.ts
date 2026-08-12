@@ -225,7 +225,10 @@ export async function POST(request: NextRequest) {
       label_url: labelStorageUrl,
       documents_urls: additionalDocUrls,
       weight_lb: profile.package.weightLb,
-      declared_value_cad: profile.package.declaredValueUsd,
+      // Column named declared_value_cad for historical reasons; the
+      // actual currency is per-profile (Mayo USD, Armin EUR, EpiSeek
+      // USD). Record as-is; convert in the reporting view if needed.
+      declared_value_cad: profile.package.declaredValue,
       notes: body.notes ?? null,
       environment,
       shipped_by_name: body.shipped_by_name ?? null,

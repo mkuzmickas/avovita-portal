@@ -225,23 +225,32 @@ function buildShipRequest(params: {
         }
       : {};
 
-  const packageLineItem = {
+  // FedEx-branded packagings (FEDEX_PAK / FEDEX_ENVELOPE / etc.)
+  // don't require dimensions — FedEx uses standard sizes internally.
+  // YOUR_PACKAGING does require them.
+  const hasDims =
+    profile.package.lengthIn != null &&
+    profile.package.widthIn != null &&
+    profile.package.heightIn != null;
+  const packageLineItem: Record<string, unknown> = {
     weight: {
       units: profile.package.weightUnit,
       value: profile.package.weightLb,
     },
-    dimensions: {
+    declaredValue: {
+      amount: profile.package.declaredValue,
+      currency: profile.currency,
+    },
+    ...dangerousGoodsBlock,
+  };
+  if (hasDims) {
+    packageLineItem.dimensions = {
       length: profile.package.lengthIn,
       width: profile.package.widthIn,
       height: profile.package.heightIn,
       units: profile.package.dimensionUnit,
-    },
-    declaredValue: {
-      amount: profile.package.declaredValueUsd,
-      currency: "USD",
-    },
-    ...dangerousGoodsBlock,
-  };
+    };
+  }
 
   const customsCommodity = {
     description: profile.commodity.description,
@@ -252,22 +261,34 @@ function buildShipRequest(params: {
       value: profile.commodity.netWeightLb,
     },
     customsValue: {
-      amount: profile.commodity.customsValueUsd,
-      currency: "USD",
+      amount: profile.commodity.customsValue,
+      currency: profile.currency,
     },
     unitPrice: {
-      amount: profile.commodity.customsValueUsd / profile.commodity.quantity,
-      currency: "USD",
+      amount: profile.commodity.customsValue / profile.commodity.quantity,
+      currency: profile.currency,
     },
     numberOfPieces: profile.commodity.quantity,
     countryOfManufacture: profile.commodity.countryOfManufacture,
     harmonizedCode: profile.commodity.harmonizedCode,
   };
 
+  const dutiesPaymentBlock =
+    profile.dutiesPaidBy === "SENDER"
+      ? {
+          paymentType: "SENDER",
+          payor: {
+            responsibleParty: {
+              accountNumber: { value: accountNumber },
+            },
+          },
+        }
+      : {
+          paymentType: "RECIPIENT",
+        };
+
   const customsClearanceDetail: Record<string, unknown> = {
-    dutiesPayment: {
-      paymentType: "RECIPIENT",
-    },
+    dutiesPayment: dutiesPaymentBlock,
     isDocumentOnly: false,
     commercialInvoice: {
       shipmentPurpose: profile.shipmentPurpose,
@@ -327,7 +348,7 @@ function buildShipRequest(params: {
     recipients: [recipientFedEx],
     shipDatestamp: now.toISOString().slice(0, 10),
     serviceType: profile.serviceType,
-    packagingType: "YOUR_PACKAGING",
+    packagingType: profile.package.packagingType,
     pickupType: "USE_SCHEDULED_PICKUP",
     blockInsightVisibility: false,
     labelSpecification: {
