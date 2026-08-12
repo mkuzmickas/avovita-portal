@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { getShippingProfile } from "@/lib/config/shipping-profiles";
 import { createShipment } from "@/lib/fedex/ship";
+import { generateCommercialInvoice } from "@/lib/fedex/generate-commercial-invoice";
 import { resend } from "@/lib/resend";
 
 export const runtime = "nodejs";
@@ -173,9 +174,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // FedEx-generated shipment docs (auto commercial invoice, etc.).
-  // Save each and track its FedEx-suggested copy count so the UI can
-  // tell the shipper how many to print for the pouch.
+  // Generate our own commercial invoice from the profile + shipment
+  // data. FedEx's ETD flag still transmits the invoice electronically
+  // to customs via the Ship API, but their response omits the printable
+  // PDF (empty shipmentDocuments on sandbox despite the label showing
+  // 'ICE ETD'). Generating server-side guarantees the shipper always
+  // has a printable copy that matches what customs was told.
   const additionalDocUrls: Record<string, string> = {};
   const fedexGeneratedDocs: Array<{
     contentType: string;
@@ -183,33 +187,42 @@ export async function POST(request: NextRequest) {
     url: string;
     copiesToPrint: number;
   }> = [];
-  for (let i = 0; i < ship.additionalDocs.length; i += 1) {
-    const doc = ship.additionalDocs[i];
-    const fileName = `${ship.trackingNumber}-${doc.contentType}.pdf`;
-    const path = `docs/${new Date().toISOString().slice(0, 10)}/${fileName}`;
-    try {
-      const bytes = Uint8Array.from(atob(doc.pdfBase64), (c) => c.charCodeAt(0));
-      const { error: uploadErr } = await supabase.storage
+
+  try {
+    const ciBytes = await generateCommercialInvoice({
+      profile,
+      trackingNumber: ship.trackingNumber,
+      shipDate: new Date(),
+    });
+    const ciFileName = `${ship.trackingNumber}-COMMERCIAL_INVOICE.pdf`;
+    const ciPath = `docs/${new Date().toISOString().slice(0, 10)}/${ciFileName}`;
+    const { error: ciUploadErr } = await supabase.storage
+      .from("shipping-documents")
+      .upload(ciPath, ciBytes, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+    if (!ciUploadErr) {
+      const { data } = supabase.storage
         .from("shipping-documents")
-        .upload(path, bytes, {
-          contentType: "application/pdf",
-          upsert: false,
-        });
-      if (!uploadErr) {
-        const { data } = supabase.storage
-          .from("shipping-documents")
-          .getPublicUrl(path);
-        additionalDocUrls[doc.contentType] = data.publicUrl;
-        fedexGeneratedDocs.push({
-          contentType: doc.contentType,
-          fileName,
-          url: data.publicUrl,
-          copiesToPrint: doc.copiesToPrint,
-        });
-      }
-    } catch {
-      /* non-fatal */
+        .getPublicUrl(ciPath);
+      additionalDocUrls["COMMERCIAL_INVOICE"] = data.publicUrl;
+      fedexGeneratedDocs.push({
+        contentType: "COMMERCIAL_INVOICE",
+        fileName: ciFileName,
+        url: data.publicUrl,
+        copiesToPrint: 3,
+      });
+    } else {
+      console.warn(
+        `[shipping/create-label] Failed to persist commercial invoice for ${ship.trackingNumber}: ${ciUploadErr.message}`,
+      );
     }
+  } catch (err) {
+    console.error(
+      `[shipping/create-label] Failed to generate commercial invoice for ${ship.trackingNumber}:`,
+      err,
+    );
   }
 
   // ─── Record to manual_shipments ───────────────────────────────
@@ -299,13 +312,5 @@ export async function POST(request: NextRequest) {
     customs_docs: customsDocUrls,
     environment,
     shipment_id: shipmentRow?.id ?? null,
-    // Temporary — helps debug why the auto-CI isn't landing
-    // in shipmentDocuments on sandbox. Remove once flowing.
-    _debug: {
-      raw_ship_result_additional_doc_count: ship.additionalDocs.length,
-      raw_ship_result_additional_doc_types: ship.additionalDocs.map(
-        (d) => d.contentType,
-      ),
-    },
   });
 }

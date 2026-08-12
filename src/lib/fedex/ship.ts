@@ -84,21 +84,6 @@ export async function createShipment(params: {
   }
 
   const data = JSON.parse(responseText) as ShipApiResponse;
-  // Temporary: log full response shape so we can debug why
-  // shipmentDocuments is coming back empty on sandbox despite
-  // the label showing "ICE ETD". Remove once CI is flowing.
-  console.log(
-    "[FedEx Ship] response shape:",
-    JSON.stringify({
-      transactionShipmentKeys: Object.keys(
-        data.output?.transactionShipments?.[0] ?? {},
-      ),
-      shipmentDocuments: data.output?.transactionShipments?.[0]?.shipmentDocuments,
-      pieceResponsesKeys: Object.keys(
-        data.output?.transactionShipments?.[0]?.pieceResponses?.[0] ?? {},
-      ),
-    }).slice(0, 2000),
-  );
   return extractResult(data);
 }
 
