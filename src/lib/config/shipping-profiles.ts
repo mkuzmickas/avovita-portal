@@ -334,13 +334,13 @@ export const ARMIN_LABS: ShippingProfile = {
     templatePath: "armin-proforma-invoice.pdf",
     trackingNumberOverlays: [
       // Right column "Waybill Number:" cell.
-      { pageIndex: 0, x: 340, y: 715, fontSize: 11 },
+      { pageIndex: 0, x: 340, y: 708, fontSize: 11 },
     ],
     dateOverlays: [
       // Right column "Date:" cell — below waybill in the same cell.
-      { pageIndex: 0, x: 340, y: 650, fontSize: 11, format: "iso" },
+      { pageIndex: 0, x: 340, y: 660, fontSize: 11, format: "iso" },
       // Bottom of Declaration Statement box — next to the "Date"
-      // label under the M.B signature. Best-guess coords, iterate.
+      // label under the M.B signature.
       { pageIndex: 0, x: 215, y: 45, fontSize: 10, format: "iso" },
     ],
     // Template is pre-signed by Armin ("M.B" at bottom of declaration
