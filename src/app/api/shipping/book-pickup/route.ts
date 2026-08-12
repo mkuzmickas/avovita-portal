@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { bookPickup } from "@/lib/fedex/pickup";
-import { SAVED_PICKUP_ADDRESSES, PICKUP_DEFAULTS } from "@/lib/config/pickup";
+import {
+  SAVED_PICKUP_ADDRESSES,
+  PICKUP_DEFAULTS,
+  type SavedPickupAddress,
+} from "@/lib/config/pickup";
 import { resend } from "@/lib/resend";
 
 export const runtime = "nodejs";
@@ -71,6 +75,18 @@ export async function POST(request: NextRequest) {
   // ─── Parse body ───────────────────────────────────────────────
   let body: {
     addressKey?: string;
+    manualAddress?: {
+      contactName?: string;
+      companyName?: string | null;
+      phone?: string;
+      streetLine1?: string;
+      streetLine2?: string | null;
+      city?: string;
+      stateOrProvince?: string;
+      postalCode?: string;
+      country?: string;
+      residential?: boolean;
+    };
     date?: string;
     readyTime?: string;
     closeTime?: string;
@@ -83,14 +99,49 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const address = SAVED_PICKUP_ADDRESSES.find(
-    (a) => a.key === (body.addressKey ?? "shawfield"),
-  );
-  if (!address) {
-    return NextResponse.json(
-      { error: `Unknown pickup address: ${body.addressKey}` },
-      { status: 400 },
+  // Address: either a saved key or a full manual address.
+  let address: SavedPickupAddress;
+  if (body.addressKey === "__manual__") {
+    const m = body.manualAddress;
+    const required: Array<keyof NonNullable<typeof body.manualAddress>> = [
+      "contactName",
+      "phone",
+      "streetLine1",
+      "city",
+      "stateOrProvince",
+      "postalCode",
+    ];
+    const missing = required.filter((k) => !(m?.[k] as unknown as string)?.trim());
+    if (!m || missing.length > 0) {
+      return NextResponse.json(
+        { error: `Manual address missing fields: ${missing.join(", ")}` },
+        { status: 400 },
+      );
+    }
+    address = {
+      key: "__manual__",
+      displayLabel: `${m.streetLine1}, ${m.city} ${m.stateOrProvince} ${m.postalCode}`,
+      contactName: m.contactName!,
+      companyName: m.companyName ?? null,
+      phone: m.phone!,
+      streetLines: [m.streetLine1!, ...(m.streetLine2 ? [m.streetLine2] : [])],
+      city: m.city!,
+      stateOrProvince: m.stateOrProvince!,
+      postalCode: m.postalCode!.replace(/\s+/g, ""),
+      country: m.country || "CA",
+      residential: m.residential ?? true,
+    };
+  } else {
+    const saved = SAVED_PICKUP_ADDRESSES.find(
+      (a) => a.key === (body.addressKey ?? "shawfield"),
     );
+    if (!saved) {
+      return NextResponse.json(
+        { error: `Unknown pickup address: ${body.addressKey}` },
+        { status: 400 },
+      );
+    }
+    address = saved;
   }
   if (!body.date || !/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
     return NextResponse.json(

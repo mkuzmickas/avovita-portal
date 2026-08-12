@@ -86,6 +86,20 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
     PICKUP_DEFAULTS.closeTime,
   );
 
+  // Manual address entry — used when pickupAddressKey === "__manual__".
+  const [manualAddress, setManualAddress] = useState({
+    contactName: "",
+    companyName: "",
+    phone: "",
+    streetLine1: "",
+    streetLine2: "",
+    city: "Calgary",
+    stateOrProvince: "AB",
+    postalCode: "",
+    country: "CA",
+    residential: true,
+  });
+
   const handleBookPickup = async () => {
     if (pickupBusy) return;
     setPickupBusy(true);
@@ -103,6 +117,8 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
           date: pickupDate,
           readyTime: pickupReadyTime,
           closeTime: pickupCloseTime,
+          manualAddress:
+            pickupAddressKey === "__manual__" ? manualAddress : undefined,
         }),
       });
       const data = await res.json();
@@ -460,8 +476,159 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
                   {a.displayLabel}
                 </option>
               ))}
+              <option value="__manual__">Other — enter address below</option>
             </select>
           </div>
+
+          {pickupAddressKey === "__manual__" && (
+            <div
+              style={{
+                marginBottom: "16px",
+                padding: "14px",
+                border: "1px dashed #2d6b35",
+                borderRadius: "10px",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+              }}
+            >
+              <div style={{ gridColumn: "1 / 3" }}>
+                <label style={pickupLabelStyle}>Contact name *</label>
+                <input
+                  type="text"
+                  value={manualAddress.contactName}
+                  onChange={(e) =>
+                    setManualAddress({ ...manualAddress, contactName: e.target.value })
+                  }
+                  placeholder="e.g. Jane Doe"
+                  style={pickupInputStyle}
+                />
+              </div>
+              <div>
+                <label style={pickupLabelStyle}>Company (optional)</label>
+                <input
+                  type="text"
+                  value={manualAddress.companyName}
+                  onChange={(e) =>
+                    setManualAddress({ ...manualAddress, companyName: e.target.value })
+                  }
+                  style={pickupInputStyle}
+                />
+              </div>
+              <div>
+                <label style={pickupLabelStyle}>Phone *</label>
+                <input
+                  type="tel"
+                  value={manualAddress.phone}
+                  onChange={(e) =>
+                    setManualAddress({ ...manualAddress, phone: e.target.value })
+                  }
+                  placeholder="10 digits, no spaces"
+                  style={pickupInputStyle}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / 3" }}>
+                <label style={pickupLabelStyle}>Street address *</label>
+                <input
+                  type="text"
+                  value={manualAddress.streetLine1}
+                  onChange={(e) =>
+                    setManualAddress({ ...manualAddress, streetLine1: e.target.value })
+                  }
+                  placeholder="e.g. 137 Shawfield Bay SW"
+                  style={pickupInputStyle}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / 3" }}>
+                <label style={pickupLabelStyle}>Street line 2 (optional)</label>
+                <input
+                  type="text"
+                  value={manualAddress.streetLine2}
+                  onChange={(e) =>
+                    setManualAddress({ ...manualAddress, streetLine2: e.target.value })
+                  }
+                  placeholder="Suite, unit, etc."
+                  style={pickupInputStyle}
+                />
+              </div>
+              <div>
+                <label style={pickupLabelStyle}>City *</label>
+                <input
+                  type="text"
+                  value={manualAddress.city}
+                  onChange={(e) =>
+                    setManualAddress({ ...manualAddress, city: e.target.value })
+                  }
+                  style={pickupInputStyle}
+                />
+              </div>
+              <div>
+                <label style={pickupLabelStyle}>Province *</label>
+                <input
+                  type="text"
+                  value={manualAddress.stateOrProvince}
+                  onChange={(e) =>
+                    setManualAddress({
+                      ...manualAddress,
+                      stateOrProvince: e.target.value.toUpperCase(),
+                    })
+                  }
+                  maxLength={2}
+                  placeholder="AB"
+                  style={pickupInputStyle}
+                />
+              </div>
+              <div>
+                <label style={pickupLabelStyle}>Postal code *</label>
+                <input
+                  type="text"
+                  value={manualAddress.postalCode}
+                  onChange={(e) =>
+                    setManualAddress({
+                      ...manualAddress,
+                      postalCode: e.target.value.toUpperCase(),
+                    })
+                  }
+                  placeholder="T2Y 2W4"
+                  style={pickupInputStyle}
+                />
+              </div>
+              <div>
+                <label style={pickupLabelStyle}>Country</label>
+                <input
+                  type="text"
+                  value={manualAddress.country}
+                  onChange={(e) =>
+                    setManualAddress({
+                      ...manualAddress,
+                      country: e.target.value.toUpperCase(),
+                    })
+                  }
+                  maxLength={2}
+                  style={pickupInputStyle}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / 3", display: "flex", alignItems: "center", gap: "8px" }}>
+                <input
+                  type="checkbox"
+                  id="pickup-residential"
+                  checked={manualAddress.residential}
+                  onChange={(e) =>
+                    setManualAddress({
+                      ...manualAddress,
+                      residential: e.target.checked,
+                    })
+                  }
+                />
+                <label
+                  htmlFor="pickup-residential"
+                  style={{ color: "#e8d5a3", fontSize: "13px", cursor: "pointer" }}
+                >
+                  Residential address
+                </label>
+              </div>
+            </div>
+          )}
 
           <button
             type="button"
