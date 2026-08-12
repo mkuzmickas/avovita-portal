@@ -334,7 +334,7 @@ export const ARMIN_LABS: ShippingProfile = {
     templatePath: "armin-proforma-invoice.pdf",
     trackingNumberOverlays: [
       // Right column "Waybill Number:" cell.
-      { pageIndex: 0, x: 340, y: 705, fontSize: 11 },
+      { pageIndex: 0, x: 340, y: 715, fontSize: 11 },
     ],
     dateOverlays: [
       // Right column "Date:" cell — below waybill in the same cell.
