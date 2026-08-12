@@ -225,6 +225,14 @@ function buildShipRequest(params: {
       termsOfSale: profile.incoterm,
     },
     commodities: [customsCommodity],
+    // Canada Border Services requires a B13A export declaration for
+    // shipments over CAD 2000 to non-US destinations. All three of our
+    // profiles are well under that threshold (Mayo USD 1, Armin EUR 20,
+    // EpiSeek USD 1) so NOT_REQUIRED is correct across the board.
+    // Missing this field fails Canada->Germany with EXPORTDETAIL.DATA.MISSING.
+    exportDetail: {
+      b13AFilingOption: "NOT_REQUIRED",
+    },
   };
 
   // Electronic Trade Documents (ETD) — request FedEx to auto-generate
