@@ -341,7 +341,7 @@ export const ARMIN_LABS: ShippingProfile = {
       { pageIndex: 0, x: 340, y: 650, fontSize: 11, format: "iso" },
       // Bottom of Declaration Statement box — next to the "Date"
       // label under the M.B signature. Best-guess coords, iterate.
-      { pageIndex: 0, x: 215, y: 30, fontSize: 10, format: "iso" },
+      { pageIndex: 0, x: 215, y: 45, fontSize: 10, format: "iso" },
     ],
     // Template is pre-signed by Armin ("M.B" at bottom of declaration
     // block) — no shipper signature overlay needed.
