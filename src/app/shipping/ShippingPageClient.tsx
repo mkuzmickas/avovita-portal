@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { SHIPPING_PROFILES } from "@/lib/config/shipping-profiles";
+import {
+  SAVED_PICKUP_ADDRESSES,
+  PICKUP_DEFAULTS,
+} from "@/lib/config/pickup";
 
 interface Shipment {
   id: string;
@@ -46,6 +50,80 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
     customsDocs: Array<{ fileName: string; url: string }>;
   } | null>(null);
   const [shipments, setShipments] = useState(recentShipments);
+
+  // ─── Pickup booking state ───────────────────────────────────
+  const todayCalgaryISO = () => {
+    // YYYY-MM-DD in Calgary local time, robust across DST.
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Edmonton",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const y = parts.find((p) => p.type === "year")?.value;
+    const m = parts.find((p) => p.type === "month")?.value;
+    const d = parts.find((p) => p.type === "day")?.value;
+    return `${y}-${m}-${d}`;
+  };
+  const [pickupBusy, setPickupBusy] = useState(false);
+  const [pickupError, setPickupError] = useState<string | null>(null);
+  const [pickupResult, setPickupResult] = useState<{
+    confirmationCode: string;
+    scheduledDate: string;
+    readyTime: string;
+    closeTime: string;
+    addressLabel: string;
+    environment: string;
+  } | null>(null);
+  const [pickupDate, setPickupDate] = useState<string>(todayCalgaryISO());
+  const [pickupAddressKey, setPickupAddressKey] = useState<string>(
+    SAVED_PICKUP_ADDRESSES[0]?.key ?? "",
+  );
+  const [pickupReadyTime, setPickupReadyTime] = useState<string>(
+    PICKUP_DEFAULTS.readyTime,
+  );
+  const [pickupCloseTime, setPickupCloseTime] = useState<string>(
+    PICKUP_DEFAULTS.closeTime,
+  );
+
+  const handleBookPickup = async () => {
+    if (pickupBusy) return;
+    setPickupBusy(true);
+    setPickupError(null);
+    setPickupResult(null);
+    try {
+      const res = await fetch("/api/shipping/book-pickup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-shipping-token": token,
+        },
+        body: JSON.stringify({
+          addressKey: pickupAddressKey,
+          date: pickupDate,
+          readyTime: pickupReadyTime,
+          closeTime: pickupCloseTime,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPickupError(data.error ?? "Pickup booking failed.");
+        return;
+      }
+      setPickupResult({
+        confirmationCode: data.confirmation_code,
+        scheduledDate: data.scheduled_date,
+        readyTime: data.ready_time,
+        closeTime: data.close_time,
+        addressLabel: data.address_label,
+        environment: data.environment,
+      });
+    } catch (err) {
+      setPickupError(err instanceof Error ? err.message : "Pickup booking failed.");
+    } finally {
+      setPickupBusy(false);
+    }
+  };
 
   const handleShip = async (kind: string) => {
     if (busyKind) return;
@@ -302,6 +380,161 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
           </div>
         )}
 
+        {/* Book a Pickup */}
+        <section
+          style={{
+            marginBottom: "32px",
+            padding: "20px",
+            backgroundColor: "#1a3d22",
+            border: "1px solid #2d6b35",
+            borderRadius: "12px",
+          }}
+        >
+          <h2
+            style={{
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+              fontSize: "22px",
+              color: "#ffffff",
+              margin: "0 0 4px 0",
+            }}
+          >
+            Book a Pickup
+          </h2>
+          <p
+            style={{
+              fontSize: "12px",
+              color: "#6ab04c",
+              margin: "0 0 16px 0",
+            }}
+          >
+            Schedule a FedEx courier pickup at a saved address.
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr",
+              gap: "12px",
+              marginBottom: "12px",
+            }}
+          >
+            <div>
+              <label style={pickupLabelStyle}>Date</label>
+              <input
+                type="date"
+                value={pickupDate}
+                min={todayCalgaryISO()}
+                onChange={(e) => setPickupDate(e.target.value)}
+                style={pickupInputStyle}
+              />
+            </div>
+            <div>
+              <label style={pickupLabelStyle}>Ready time (Calgary)</label>
+              <input
+                type="time"
+                value={pickupReadyTime}
+                onChange={(e) => setPickupReadyTime(e.target.value)}
+                style={pickupInputStyle}
+              />
+            </div>
+            <div>
+              <label style={pickupLabelStyle}>Close time (Calgary)</label>
+              <input
+                type="time"
+                value={pickupCloseTime}
+                onChange={(e) => setPickupCloseTime(e.target.value)}
+                style={pickupInputStyle}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: "16px" }}>
+            <label style={pickupLabelStyle}>Pickup address</label>
+            <select
+              value={pickupAddressKey}
+              onChange={(e) => setPickupAddressKey(e.target.value)}
+              style={pickupInputStyle}
+            >
+              {SAVED_PICKUP_ADDRESSES.map((a) => (
+                <option key={a.key} value={a.key}>
+                  {a.displayLabel}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleBookPickup}
+            disabled={pickupBusy}
+            style={{
+              backgroundColor: pickupBusy ? "#8b6a1e" : "#c4973a",
+              color: "#0a1a0d",
+              border: 0,
+              borderRadius: "10px",
+              padding: "14px 20px",
+              fontSize: "15px",
+              fontWeight: 700,
+              cursor: pickupBusy ? "not-allowed" : "pointer",
+              fontFamily: "inherit",
+              width: "100%",
+            }}
+          >
+            {pickupBusy ? "Booking pickup…" : "Book Pickup"}
+          </button>
+
+          {pickupError && (
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "10px 14px",
+                backgroundColor: "rgba(224,82,82,0.12)",
+                border: "1px solid #e05252",
+                borderRadius: "8px",
+                color: "#e05252",
+                fontSize: "13px",
+                lineHeight: 1.5,
+              }}
+            >
+              <strong>Pickup failed:</strong> {pickupError}
+            </div>
+          )}
+
+          {pickupResult && (
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "12px 16px",
+                backgroundColor: "rgba(141,198,63,0.1)",
+                border: "1px solid #8dc63f",
+                borderRadius: "8px",
+                color: "#8dc63f",
+                fontSize: "13px",
+                lineHeight: 1.6,
+              }}
+            >
+              <div style={{ fontSize: "15px", fontWeight: 600, marginBottom: "6px" }}>
+                Pickup confirmed — {pickupResult.confirmationCode}
+                {pickupResult.environment === "sandbox" && (
+                  <span
+                    style={{
+                      marginLeft: "8px",
+                      color: "#c4973a",
+                      fontSize: "12px",
+                    }}
+                  >
+                    (sandbox — no courier will actually come)
+                  </span>
+                )}
+              </div>
+              <div style={{ opacity: 0.85 }}>
+                {pickupResult.scheduledDate} · {pickupResult.readyTime} –{" "}
+                {pickupResult.closeTime} · {pickupResult.addressLabel}
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* Recent shipments */}
         {shipments.length > 0 && (
           <section>
@@ -401,6 +634,27 @@ const pouchLinkStyle: React.CSSProperties = {
   color: "#c4973a",
   fontWeight: 700,
   textDecoration: "underline",
+};
+
+const pickupLabelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "11px",
+  marginBottom: "6px",
+  color: "#c4973a",
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+  fontWeight: 600,
+};
+
+const pickupInputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  border: "1px solid #2d6b35",
+  borderRadius: "8px",
+  backgroundColor: "#0f2614",
+  color: "#ffffff",
+  fontSize: "14px",
+  fontFamily: "inherit",
 };
 
 function formatDocLabel(contentType: string): string {
