@@ -34,25 +34,11 @@ export interface ShipApiResult {
   raw: unknown;
 }
 
-/**
- * Attached-document payload for the Ship API's etdDetail block.
- * We inline the PDF bytes base64-encoded rather than pre-uploading
- * via the separate ETD upload API — the pre-upload endpoint lives
- * on a different subdomain that isn't reachable from apis-sandbox
- * (returns 404), and inlining works uniformly across sandbox +
- * production without hostname juggling.
- */
-export interface InlineAttachedDocument {
-  fileName: string;
-  bytes: Uint8Array;
-}
-
-function base64Encode(bytes: Uint8Array): string {
-  // Node's Buffer is available in the Next.js Node runtime this
-  // module runs in. Use Buffer directly — btoa+charCode fallback is
-  // slow for multi-KB PDFs.
-  return Buffer.from(bytes).toString("base64");
-}
+// Extra customs paperwork (CDC permits, proforma invoice, declaration)
+// is printed manually alongside the label — FedEx auto-generates the
+// commercial invoice from commodity data, which satisfies customs
+// electronically. See the route for how the extra PDFs are surfaced
+// as download links.
 
 /**
  * Create the actual shipment. Returns the tracking number + label
@@ -60,22 +46,17 @@ function base64Encode(bytes: Uint8Array): string {
  */
 export async function createShipment(params: {
   profile: ShippingProfile;
-  /** Recipient customs PDFs to attach inline as ETD (base64-encoded
-   *  into the Ship API request). Empty array is fine — FedEx will
-   *  still auto-generate a commercial invoice from commodity data. */
-  etdDocuments?: InlineAttachedDocument[];
   /** Optional per-shipment override — free-text on the airway bill. */
   reference?: string;
 }): Promise<ShipApiResult> {
   const config = readFedExConfig();
   const token = await getFedExAccessToken(config);
 
-  const { profile, etdDocuments = [], reference } = params;
+  const { profile, reference } = params;
 
   const requestBody = buildShipRequest({
     profile,
     accountNumber: config.accountNumber,
-    etdDocuments,
     reference,
   });
 
@@ -107,10 +88,9 @@ export async function createShipment(params: {
 function buildShipRequest(params: {
   profile: ShippingProfile;
   accountNumber: string;
-  etdDocuments: InlineAttachedDocument[];
   reference?: string;
 }): Record<string, unknown> {
-  const { profile, accountNumber, etdDocuments, reference } = params;
+  const { profile, accountNumber, reference } = params;
   const now = new Date();
 
   const shipperFedEx = {
@@ -237,26 +217,19 @@ function buildShipRequest(params: {
     commodities: [customsCommodity],
   };
 
-  // Electronic Trade Documents (ETD) — attach each recipient customs
-  // PDF inline via base64-encoded documentContent. Skips the separate
-  // ETD upload API (which lives on a different subdomain that isn't
-  // reachable from apis-sandbox and returns 404). FedEx also
-  // auto-generates a commercial invoice from the commodity data
-  // above, requested via requestedDocumentTypes.
-  const attachedDocuments = etdDocuments.map((doc, idx) => ({
-    documentType: "OTHER",
-    documentReference: `attached_doc_${idx + 1}`,
-    description: "Recipient customs paperwork",
-    fileName: doc.fileName,
-    documentContent: base64Encode(doc.bytes),
-    documentFormat: "PDF",
-  }));
-
+  // Electronic Trade Documents (ETD) — request FedEx to auto-generate
+  // the commercial invoice from the commodity data above and transmit
+  // it electronically to customs. Extra recipient customs paperwork
+  // (CDC permits, proforma invoice, declaration) is not attached
+  // here — it's downloaded from the shipping console and printed
+  // alongside the label. Inline documentContent is not supported by
+  // the Ship API attachedDocuments field, and pre-uploading via the
+  // separate ETD upload API lives on a different subdomain that
+  // isn't reachable from apis-sandbox.
   const etdBlock = {
     shipmentSpecialServices: {
       specialServiceTypes: ["ELECTRONIC_TRADE_DOCUMENTS"],
       etdDetail: {
-        ...(attachedDocuments.length > 0 ? { attachedDocuments } : {}),
         requestedDocumentTypes: ["COMMERCIAL_INVOICE"],
       },
     },

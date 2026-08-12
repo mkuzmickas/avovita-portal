@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { getShippingProfile } from "@/lib/config/shipping-profiles";
-import { createShipment, type InlineAttachedDocument } from "@/lib/fedex/ship";
+import { createShipment } from "@/lib/fedex/ship";
 import { resend } from "@/lib/resend";
 
 export const runtime = "nodejs";
@@ -105,30 +105,23 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceRoleClient();
 
-  // ─── Load ETD docs from Supabase Storage ──────────────────────
-  // Each recipient-specific PDF lives in bucket `shipping-documents`.
-  // Fetch bytes and hand them to the Ship API, which will inline them
-  // base64-encoded — no separate ETD upload roundtrip.
-  const etdDocuments: InlineAttachedDocument[] = [];
-  try {
-    for (const path of profile.etdDocumentPaths) {
-      const { data: file, error } = await supabase.storage
-        .from("shipping-documents")
-        .download(path);
-      if (error || !file) {
-        throw new Error(
-          `Failed to load ${path} from Supabase Storage: ${error?.message ?? "not found"}. Upload it to the shipping-documents bucket.`,
-        );
-      }
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      etdDocuments.push({ fileName: path.split("/").pop() ?? path, bytes });
+  // ─── Resolve recipient customs paperwork URLs ─────────────────
+  // FedEx auto-generates the commercial invoice (transmitted
+  // electronically). Extra paperwork (CDC permits, proforma,
+  // declaration) is not attached to the shipment — we return
+  // download URLs so the shipper can print copies to include in
+  // the FedEx pouch alongside the label.
+  const customsDocUrls: Array<{ fileName: string; url: string }> = [];
+  for (const path of profile.etdDocumentPaths) {
+    const { data } = supabase.storage
+      .from("shipping-documents")
+      .getPublicUrl(path);
+    if (data?.publicUrl) {
+      customsDocUrls.push({
+        fileName: path.split("/").pop() ?? path,
+        url: data.publicUrl,
+      });
     }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json(
-      { error: `ETD document load failed: ${message}` },
-      { status: 500 },
-    );
   }
 
   // ─── Call FedEx Ship API ──────────────────────────────────────
@@ -136,7 +129,6 @@ export async function POST(request: NextRequest) {
   try {
     ship = await createShipment({
       profile,
-      etdDocuments,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -261,6 +253,11 @@ export async function POST(request: NextRequest) {
         <p>
           ${labelStorageUrl ? `<a href="${labelStorageUrl}">Label PDF</a>` : "Label PDF: (not stored — check server logs)"}
         </p>
+        ${customsDocUrls.length > 0 ? `
+        <p><strong>Customs paperwork to print + include in pouch:</strong></p>
+        <ul>
+          ${customsDocUrls.map((d) => `<li><a href="${d.url}">${d.fileName}</a></li>`).join("")}
+        </ul>` : ""}
         <p style="color:#888;font-size:12px;">Shipment id: ${shipmentRow?.id ?? "(insert failed — see logs)"}</p>
       `,
     });
@@ -273,6 +270,7 @@ export async function POST(request: NextRequest) {
     tracking_number: ship.trackingNumber,
     label_url: labelStorageUrl,
     additional_docs: additionalDocUrls,
+    customs_docs: customsDocUrls,
     environment,
     shipment_id: shipmentRow?.id ?? null,
   });

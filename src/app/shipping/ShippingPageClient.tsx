@@ -36,6 +36,7 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
     trackingNumber: string;
     labelUrl: string | null;
     environment: string;
+    customsDocs: Array<{ fileName: string; url: string }>;
   } | null>(null);
   const [shipments, setShipments] = useState(recentShipments);
 
@@ -62,6 +63,7 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
         trackingNumber: data.tracking_number,
         labelUrl: data.label_url,
         environment: data.environment,
+        customsDocs: data.customs_docs ?? [],
       });
       // Optimistically prepend to shipments list; full accuracy comes
       // on next page refresh.
@@ -242,6 +244,38 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
                 >
                   Open label PDF →
                 </a>
+              </div>
+            )}
+            {lastResult.customsDocs.length > 0 && (
+              <div style={{ marginTop: "14px" }}>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: "#c4973a",
+                    fontWeight: 600,
+                    marginBottom: "6px",
+                  }}
+                >
+                  Print + include in FedEx pouch:
+                </div>
+                <ul style={{ margin: 0, paddingLeft: "20px" }}>
+                  {lastResult.customsDocs.map((d) => (
+                    <li key={d.fileName} style={{ marginBottom: "4px" }}>
+                      <a
+                        href={d.url}
+                        target="_blank"
+                        rel="noopener"
+                        style={{
+                          color: "#c4973a",
+                          fontWeight: 600,
+                          textDecoration: "underline",
+                        }}
+                      >
+                        {d.fileName}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
