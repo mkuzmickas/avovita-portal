@@ -328,26 +328,21 @@ export const ARMIN_LABS: ShippingProfile = {
     events: ["ON_TENDER", "ON_EXCEPTION"],
   },
   commercialInvoice: {
-    // Mike uploads: armin-proforma-invoice.pdf (1 page — proforma with
-    // blank waybill + date fields, needs shipper signature).
+    // Mike uploads: armin-proforma-invoice.pdf (1 page — proforma
+    // pre-signed by Armin "M.B" at bottom left). Waybill + Date cells
+    // live in the right column at the top of the page.
     templatePath: "armin-proforma-invoice.pdf",
     trackingNumberOverlays: [
-      // Best guess: waybill line is upper section of the page.
-      { pageIndex: 0, x: 200, y: 700, fontSize: 11 },
+      // Right column "Waybill Number:" cell.
+      { pageIndex: 0, x: 340, y: 705, fontSize: 11 },
     ],
     dateOverlays: [
-      // Two date fields: one near the top (invoice date), one lower
-      // (shipper signature date). Best-guess coords.
-      { pageIndex: 0, x: 200, y: 670, fontSize: 11, format: "iso" },
-      { pageIndex: 0, x: 200, y: 130, fontSize: 11, format: "iso" },
+      // Right column "Date:" cell — below waybill in the same cell.
+      { pageIndex: 0, x: 340, y: 650, fontSize: 11, format: "iso" },
     ],
-    signatureOverlay: {
-      pageIndex: 0,
-      x: 80,
-      y: 100,
-      width: 180,
-      height: 45,
-    },
+    // Template is pre-signed by Armin ("M.B" at bottom of declaration
+    // block) — no shipper signature overlay needed.
+    signatureOverlay: undefined,
   },
   etdDocumentPaths: [],
 };
