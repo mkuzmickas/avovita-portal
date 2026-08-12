@@ -35,7 +35,14 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
   const [lastResult, setLastResult] = useState<{
     trackingNumber: string;
     labelUrl: string | null;
+    labelCopies: number;
     environment: string;
+    fedexGeneratedDocs: Array<{
+      contentType: string;
+      fileName: string;
+      url: string;
+      copiesToPrint: number;
+    }>;
     customsDocs: Array<{ fileName: string; url: string }>;
   } | null>(null);
   const [shipments, setShipments] = useState(recentShipments);
@@ -62,7 +69,9 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
       setLastResult({
         trackingNumber: data.tracking_number,
         labelUrl: data.label_url,
+        labelCopies: data.label_copies_to_print ?? 3,
         environment: data.environment,
+        fedexGeneratedDocs: data.fedex_generated_docs ?? [],
         customsDocs: data.customs_docs ?? [],
       });
       // Optimistically prepend to shipments list; full accuracy comes
@@ -230,54 +239,66 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
                 </span>
               )}
             </div>
-            {lastResult.labelUrl && (
-              <div>
-                <a
-                  href={lastResult.labelUrl}
-                  target="_blank"
-                  rel="noopener"
-                  style={{
-                    color: "#c4973a",
-                    fontWeight: 700,
-                    textDecoration: "underline",
-                  }}
-                >
-                  Open label PDF →
-                </a>
+            <div style={{ marginTop: "14px" }}>
+              <div
+                style={{
+                  fontSize: "13px",
+                  color: "#c4973a",
+                  fontWeight: 600,
+                  marginBottom: "6px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                Pouch checklist — print + assemble:
               </div>
-            )}
-            {lastResult.customsDocs.length > 0 && (
-              <div style={{ marginTop: "14px" }}>
-                <div
-                  style={{
-                    fontSize: "13px",
-                    color: "#c4973a",
-                    fontWeight: 600,
-                    marginBottom: "6px",
-                  }}
-                >
-                  Print + include in FedEx pouch:
-                </div>
-                <ul style={{ margin: 0, paddingLeft: "20px" }}>
-                  {lastResult.customsDocs.map((d) => (
-                    <li key={d.fileName} style={{ marginBottom: "4px" }}>
-                      <a
-                        href={d.url}
-                        target="_blank"
-                        rel="noopener"
-                        style={{
-                          color: "#c4973a",
-                          fontWeight: 600,
-                          textDecoration: "underline",
-                        }}
-                      >
-                        {d.fileName}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+              <ul style={{ margin: 0, paddingLeft: "20px", lineHeight: 1.7 }}>
+                {lastResult.labelUrl && (
+                  <li>
+                    <a
+                      href={lastResult.labelUrl}
+                      target="_blank"
+                      rel="noopener"
+                      style={pouchLinkStyle}
+                    >
+                      FedEx label
+                    </a>{" "}
+                    — <strong>print {lastResult.labelCopies} copies</strong>{" "}
+                    <span style={{ opacity: 0.7 }}>
+                      (1 affixed to box, {lastResult.labelCopies - 1} in pouch)
+                    </span>
+                  </li>
+                )}
+                {lastResult.fedexGeneratedDocs.map((d) => (
+                  <li key={d.fileName}>
+                    <a
+                      href={d.url}
+                      target="_blank"
+                      rel="noopener"
+                      style={pouchLinkStyle}
+                    >
+                      {formatDocLabel(d.contentType)}
+                    </a>{" "}
+                    — <strong>print {d.copiesToPrint} copies</strong>{" "}
+                    <span style={{ opacity: 0.7 }}>(in pouch)</span>
+                  </li>
+                ))}
+                {lastResult.customsDocs.map((d) => (
+                  <li key={d.fileName}>
+                    <a
+                      href={d.url}
+                      target="_blank"
+                      rel="noopener"
+                      style={pouchLinkStyle}
+                    >
+                      {d.fileName}
+                    </a>{" "}
+                    — <strong>print 1 copy</strong>{" "}
+                    <span style={{ opacity: 0.7 }}>(in pouch)</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
 
@@ -374,6 +395,21 @@ export function ShippingPageClient({ token, recentShipments }: Props) {
       </div>
     </div>
   );
+}
+
+const pouchLinkStyle: React.CSSProperties = {
+  color: "#c4973a",
+  fontWeight: 700,
+  textDecoration: "underline",
+};
+
+function formatDocLabel(contentType: string): string {
+  // Convert FedEx enum (COMMERCIAL_INVOICE) to readable label
+  // (Commercial invoice) for the pouch checklist.
+  return contentType
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/^./, (c) => c.toUpperCase());
 }
 
 const thStyle: React.CSSProperties = {

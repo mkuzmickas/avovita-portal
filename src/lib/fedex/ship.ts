@@ -21,15 +21,21 @@ import type { ShippingProfile } from "@/lib/config/shipping-profiles";
 import { SHIPPER } from "@/lib/config/shipping-profiles";
 
 // ─── Response types (minimal — we don't parse the whole shape) ───
+export interface ShipmentDocument {
+  /** FedEx document type — COMMERCIAL_INVOICE, PRO_FORMA_INVOICE, etc. */
+  contentType: string;
+  /** How many copies FedEx expects the shipper to print + include
+   *  in the FedEx pouch. Typically 3 for commercial invoice. */
+  copiesToPrint: number;
+  pdfBase64: string;
+}
+
 export interface ShipApiResult {
   trackingNumber: string;
   labelPdfBase64: string;
   /** Additional documents FedEx returned (e.g. auto-generated
-   *  commercial invoice, customs docs). Each is base64 PDF bytes. */
-  additionalDocs: Array<{
-    docType: string;
-    pdfBase64: string;
-  }>;
+   *  commercial invoice). */
+  additionalDocs: ShipmentDocument[];
   /** Raw response for debugging / auditing. */
   raw: unknown;
 }
@@ -323,6 +329,7 @@ interface ShipApiResponse {
       shipmentDocuments?: Array<{
         contentType?: string;
         docType?: string;
+        copiesToPrint?: number;
         encodedLabel?: string;
       }>;
     }>;
@@ -350,8 +357,14 @@ function extractResult(response: ShipApiResponse): ShipApiResult {
   ) ?? packageDocs[0];
   const labelPdfBase64 = labelDoc?.encodedLabel ?? "";
 
-  const additionalDocs = (shipment.shipmentDocuments ?? []).map((d) => ({
-    docType: d.docType ?? d.contentType ?? "UNKNOWN",
+  // In FedEx's schema: contentType = document type
+  // (COMMERCIAL_INVOICE), docType = file format (PDF). We record
+  // contentType because the shipper cares about the doc, not the
+  // format. copiesToPrint defaults to 3 for CI — falls back if the
+  // API omits it.
+  const additionalDocs: ShipmentDocument[] = (shipment.shipmentDocuments ?? []).map((d) => ({
+    contentType: d.contentType ?? "UNKNOWN",
+    copiesToPrint: d.copiesToPrint ?? 3,
     pdfBase64: d.encodedLabel ?? "",
   }));
 

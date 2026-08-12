@@ -173,13 +173,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Additional docs (auto-generated commercial invoice, etc.) —
-  // persist same way. Keys them by docType so callers know which is
-  // which.
+  // FedEx-generated shipment docs (auto commercial invoice, etc.).
+  // Save each and track its FedEx-suggested copy count so the UI can
+  // tell the shipper how many to print for the pouch.
   const additionalDocUrls: Record<string, string> = {};
+  const fedexGeneratedDocs: Array<{
+    contentType: string;
+    fileName: string;
+    url: string;
+    copiesToPrint: number;
+  }> = [];
   for (let i = 0; i < ship.additionalDocs.length; i += 1) {
     const doc = ship.additionalDocs[i];
-    const path = `docs/${new Date().toISOString().slice(0, 10)}/${ship.trackingNumber}-${doc.docType}.pdf`;
+    const fileName = `${ship.trackingNumber}-${doc.contentType}.pdf`;
+    const path = `docs/${new Date().toISOString().slice(0, 10)}/${fileName}`;
     try {
       const bytes = Uint8Array.from(atob(doc.pdfBase64), (c) => c.charCodeAt(0));
       const { error: uploadErr } = await supabase.storage
@@ -192,7 +199,13 @@ export async function POST(request: NextRequest) {
         const { data } = supabase.storage
           .from("shipping-documents")
           .getPublicUrl(path);
-        additionalDocUrls[doc.docType] = data.publicUrl;
+        additionalDocUrls[doc.contentType] = data.publicUrl;
+        fedexGeneratedDocs.push({
+          contentType: doc.contentType,
+          fileName,
+          url: data.publicUrl,
+          copiesToPrint: doc.copiesToPrint,
+        });
       }
     } catch {
       /* non-fatal */
@@ -253,11 +266,22 @@ export async function POST(request: NextRequest) {
         <p>
           ${labelStorageUrl ? `<a href="${labelStorageUrl}">Label PDF</a>` : "Label PDF: (not stored — check server logs)"}
         </p>
-        ${customsDocUrls.length > 0 ? `
-        <p><strong>Customs paperwork to print + include in pouch:</strong></p>
+        <p><strong>Pouch contents to print + assemble:</strong></p>
         <ul>
-          ${customsDocUrls.map((d) => `<li><a href="${d.url}">${d.fileName}</a></li>`).join("")}
-        </ul>` : ""}
+          <li>FedEx label — <strong>print 3 copies</strong> (1 affixed to box, 2 in pouch)</li>
+          ${fedexGeneratedDocs
+            .map(
+              (d) =>
+                `<li><a href="${d.url}">${d.contentType}</a> — <strong>print ${d.copiesToPrint} copies</strong> (in pouch)</li>`,
+            )
+            .join("")}
+          ${customsDocUrls
+            .map(
+              (d) =>
+                `<li><a href="${d.url}">${d.fileName}</a> — <strong>print 1 copy</strong> (in pouch)</li>`,
+            )
+            .join("")}
+        </ul>
         <p style="color:#888;font-size:12px;">Shipment id: ${shipmentRow?.id ?? "(insert failed — see logs)"}</p>
       `,
     });
@@ -269,7 +293,9 @@ export async function POST(request: NextRequest) {
     ok: true,
     tracking_number: ship.trackingNumber,
     label_url: labelStorageUrl,
+    label_copies_to_print: 3,
     additional_docs: additionalDocUrls,
+    fedex_generated_docs: fedexGeneratedDocs,
     customs_docs: customsDocUrls,
     environment,
     shipment_id: shipmentRow?.id ?? null,
