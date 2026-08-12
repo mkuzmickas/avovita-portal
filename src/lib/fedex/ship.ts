@@ -219,18 +219,29 @@ function buildShipRequest(params: {
 
   // Electronic Trade Documents (ETD) — request FedEx to auto-generate
   // the commercial invoice from the commodity data above and transmit
-  // it electronically to customs. Extra recipient customs paperwork
-  // (CDC permits, proforma invoice, declaration) is not attached
-  // here — it's downloaded from the shipping console and printed
-  // alongside the label. Inline documentContent is not supported by
-  // the Ship API attachedDocuments field, and pre-uploading via the
-  // separate ETD upload API lives on a different subdomain that
-  // isn't reachable from apis-sandbox.
+  // it electronically to customs. Two blocks are required together:
+  //   1. shipmentSpecialServices.etdDetail.requestedDocumentCopies
+  //      declares which docs FedEx should transmit electronically.
+  //   2. shippingDocumentSpecification tells FedEx how to format
+  //      the auto-generated doc (PDF, letter-size). Without this
+  //      the ETD request fails with SHIPPING.DOCUMENT.REQUIRED.
+  // Extra recipient customs paperwork (CDC permits, proforma,
+  // declaration) is not attached here — it's downloaded from the
+  // shipping console and printed alongside the label.
   const etdBlock = {
     shipmentSpecialServices: {
       specialServiceTypes: ["ELECTRONIC_TRADE_DOCUMENTS"],
       etdDetail: {
-        requestedDocumentTypes: ["COMMERCIAL_INVOICE"],
+        requestedDocumentCopies: ["COMMERCIAL_INVOICE"],
+      },
+    },
+    shippingDocumentSpecification: {
+      shippingDocumentTypes: ["COMMERCIAL_INVOICE"],
+      commercialInvoiceDetail: {
+        documentFormat: {
+          docType: "PDF",
+          stockType: "PAPER_LETTER",
+        },
       },
     },
   };
