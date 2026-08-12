@@ -236,14 +236,14 @@ export const MAYO_FROZEN: ShippingProfile = {
     trackingNumberOverlays: [
       // Top-left cell "INTERNATIONAL AIRWAYBILL NO." — blank line
       // between the label (~y=705) and the SHIPPER row (~y=685).
-      { pageIndex: 0, x: 90, y: 695, fontSize: 12 },
+      { pageIndex: 0, x: 105, y: 695, fontSize: 12 },
     ],
     dateOverlays: [
       // Top-right cell "DATE OF EXPORTATION" — same blank line height.
       { pageIndex: 0, x: 340, y: 695, fontSize: 12, format: "iso" },
-      // "Date:" label just under the signature block. (Line 1/2/3
-      // bullets start below.)
-      { pageIndex: 0, x: 80, y: 170, fontSize: 10, format: "iso" },
+      // "Date:" label just under the signature block — sits to the
+      // right of the label text.
+      { pageIndex: 0, x: 110, y: 185, fontSize: 10, format: "iso" },
     ],
     signatureOverlay: undefined,
   },
