@@ -299,5 +299,13 @@ export async function POST(request: NextRequest) {
     customs_docs: customsDocUrls,
     environment,
     shipment_id: shipmentRow?.id ?? null,
+    // Temporary — helps debug why the auto-CI isn't landing
+    // in shipmentDocuments on sandbox. Remove once flowing.
+    _debug: {
+      raw_ship_result_additional_doc_count: ship.additionalDocs.length,
+      raw_ship_result_additional_doc_types: ship.additionalDocs.map(
+        (d) => d.contentType,
+      ),
+    },
   });
 }
