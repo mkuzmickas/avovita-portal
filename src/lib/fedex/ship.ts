@@ -306,6 +306,11 @@ function buildShipRequest(params: {
     customsClearanceDetail,
     ...etdBlock,
     ...emailNotifications,
+    // Ask FedEx to generate secondary/consignee labels alongside the
+    // master AWB. Required to satisfy FedEx Label Analysis Group
+    // certification for International Express services — and useful
+    // in ongoing ops too (customs sometimes wants an extra copy).
+    additionalLabels: [{ type: "CONSIGNEE", count: 1 }],
     totalPackageCount: 1,
     totalWeight: profile.package.weightLb,
     requestedPackageLineItems: [packageLineItem],
