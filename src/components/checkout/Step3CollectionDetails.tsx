@@ -154,12 +154,20 @@ export function Step3CollectionDetails({
   // stays as the ONE remaining pre-payment simplification (Phase 1)
   // because address collection is genuinely redundant — FloLabs
   // takes the full street address at booking.
-  const identityComplete = (p: (typeof persons)[number]) =>
-    (p.first_name?.trim().length ?? 0) > 0 &&
-    (p.last_name?.trim().length ?? 0) > 0 &&
-    (p.date_of_birth?.trim().length ?? 0) > 0 &&
-    p.biological_sex !== "" &&
-    p.biological_sex != null;
+  const identityComplete = (p: (typeof persons)[number]) => {
+    const base =
+      (p.first_name?.trim().length ?? 0) > 0 &&
+      (p.last_name?.trim().length ?? 0) > 0 &&
+      (p.date_of_birth?.trim().length ?? 0) > 0 &&
+      p.biological_sex !== "" &&
+      p.biological_sex != null;
+    // Phone required only on the account holder — shared as the
+    // single contact for the whole order (see Mobile number field).
+    if (p.is_account_holder) {
+      return base && (p.phone?.trim().length ?? 0) > 0;
+    }
+    return base;
+  };
   const namesValid = persons.every(identityComplete);
 
   const postalZone = classifyPostalZone(collectionAddress.postal_code);
@@ -553,6 +561,38 @@ export function Step3CollectionDetails({
                   </select>
                 </div>
               </div>
+
+              {/* One phone number per order — captured on the account
+                  holder's card. FloLabs email falls back to this for
+                  any additional persons on the order (single household
+                  contact is fine for a 2-person booking). */}
+              {person.is_account_holder && (
+                <div className="mt-3">
+                  <label
+                    className="block text-sm font-medium mb-1.5"
+                    style={labelStyle}
+                  >
+                    Mobile number{reqMark}
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={person.phone ?? ""}
+                    onChange={(e) =>
+                      updatePerson(person.index, {
+                        phone: e.target.value || null,
+                      })
+                    }
+                    className="mf-input"
+                    placeholder="+1 (403) 555-0000"
+                    autoComplete="tel"
+                  />
+                  <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
+                    Used for SMS notifications and shared with FloLabs
+                    as the contact for this order.
+                  </p>
+                </div>
+              )}
             </div>
           ))}
         </div>
