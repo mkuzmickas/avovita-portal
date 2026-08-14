@@ -16,12 +16,108 @@ interface Shipment {
   weight_lb: number | null;
   environment: string;
   created_at: string;
+  tracking_status_code: string | null;
+  tracking_status_description: string | null;
+  delivered_at: string | null;
 }
 
 interface Props {
   token: string;
   recentShipments: Shipment[];
   environment: "sandbox" | "production";
+}
+
+/**
+ * Colored chip showing FedEx tracking status for a shipment. Delivered
+ * shipments show the delivery date/time inline; in-flight shipments
+ * show FedEx's latest status description.
+ *
+ * Status refresh happens server-side in refreshShipmentTracking
+ * (~10 min throttle per shipment), so this component just renders
+ * whatever's in the DB.
+ */
+function TrackingStatusChip({ shipment }: { shipment: Shipment }) {
+  const style = statusChipStyle(shipment);
+  const label = statusChipLabel(shipment);
+  const sub = statusChipSubtext(shipment);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+      <span
+        style={{
+          display: "inline-block",
+          padding: "3px 8px",
+          borderRadius: "4px",
+          fontSize: "11px",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          alignSelf: "flex-start",
+          ...style,
+        }}
+      >
+        {label}
+      </span>
+      {sub && (
+        <span style={{ fontSize: "11px", color: "#8ba392" }}>{sub}</span>
+      )}
+    </div>
+  );
+}
+
+function statusChipStyle(s: Shipment): React.CSSProperties {
+  if (s.delivered_at) {
+    return { backgroundColor: "#8dc63f", color: "#0a1a0d" }; // green
+  }
+  const code = s.tracking_status_code;
+  if (!code) return { backgroundColor: "#3a4a3f", color: "#c4c4c4" }; // grey — no status yet
+  if (code === "DE" || code === "RS" || code === "SE") {
+    return { backgroundColor: "#e05252", color: "#0a1a0d" }; // red — exception
+  }
+  if (code === "OD") {
+    return { backgroundColor: "#c4973a", color: "#0a1a0d" }; // amber — out for delivery
+  }
+  if (code === "IT" || code === "PU" || code === "AR" || code === "DP") {
+    return { backgroundColor: "#4a90c2", color: "#0a1a0d" }; // blue — in transit
+  }
+  if (code === "OC" || code === "PENDING") {
+    return { backgroundColor: "#3a4a3f", color: "#c4c4c4" }; // grey — label made / awaiting pickup
+  }
+  return { backgroundColor: "#3a4a3f", color: "#c4c4c4" };
+}
+
+function statusChipLabel(s: Shipment): string {
+  if (s.delivered_at) return "Delivered";
+  const code = s.tracking_status_code;
+  if (!code) return "Awaiting FedEx";
+  const map: Record<string, string> = {
+    OC: "Label created",
+    PU: "Picked up",
+    IT: "In transit",
+    AR: "Arrived",
+    DP: "Departed",
+    OD: "Out for delivery",
+    DL: "Delivered",
+    DE: "Exception",
+    RS: "Returning",
+    SE: "Shipment exception",
+    PENDING: "Awaiting FedEx",
+  };
+  return map[code] ?? s.tracking_status_description ?? code;
+}
+
+function statusChipSubtext(s: Shipment): string | null {
+  if (s.delivered_at) {
+    return new Date(s.delivered_at).toLocaleString("en-CA", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+  if (s.tracking_status_description && s.tracking_status_code !== "PENDING") {
+    return s.tracking_status_description;
+  }
+  return null;
 }
 
 /**
@@ -186,6 +282,9 @@ export function ShippingPageClient({
             weight_lb: SHIPPING_PROFILES[kind]?.package.weightLb ?? null,
             environment: data.environment,
             created_at: new Date().toISOString(),
+            tracking_status_code: null,
+            tracking_status_description: null,
+            delivered_at: null,
           },
           ...prev,
         ].slice(0, 20),
@@ -749,6 +848,7 @@ export function ShippingPageClient({
                     <th style={thStyle}>When</th>
                     <th style={thStyle}>Kind</th>
                     <th style={thStyle}>Tracking</th>
+                    <th style={thStyle}>Status</th>
                     <th style={thStyle}>Label</th>
                   </tr>
                 </thead>
@@ -790,6 +890,9 @@ export function ShippingPageClient({
                         }}
                       >
                         {s.tracking_number}
+                      </td>
+                      <td style={tdStyle}>
+                        <TrackingStatusChip shipment={s} />
                       </td>
                       <td style={tdStyle}>
                         {s.label_url ? (

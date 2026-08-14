@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { refreshShipmentTracking } from "@/lib/shipments/refresh-tracking";
 import { ShippingPageClient } from "./ShippingPageClient";
 
 export const dynamic = "force-dynamic";
@@ -63,10 +64,22 @@ export default async function ShippingPage({
 
   // Load recent shipments for the audit table below the buttons.
   const supabase = createServiceRoleClient();
+  const { data: initialRows } = await supabase
+    .from("manual_shipments")
+    .select("id")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  // Opportunistically refresh tracking status for any shipment that's
+  // still in flight and hasn't been checked recently. Non-blocking on
+  // FedEx errors — page renders with whatever's already in the DB.
+  const ids = (initialRows ?? []).map((r) => (r as { id: string }).id);
+  await refreshShipmentTracking(supabase, ids);
+
   const { data: shipmentsRaw } = await supabase
     .from("manual_shipments")
     .select(
-      "id, profile_kind, tracking_number, service_type, label_url, weight_lb, environment, created_at",
+      "id, profile_kind, tracking_number, service_type, label_url, weight_lb, environment, created_at, tracking_status_code, tracking_status_description, delivered_at",
     )
     .order("created_at", { ascending: false })
     .limit(20);
@@ -80,6 +93,9 @@ export default async function ShippingPage({
     weight_lb: number | null;
     environment: string;
     created_at: string;
+    tracking_status_code: string | null;
+    tracking_status_description: string | null;
+    delivered_at: string | null;
   };
 
   const recentShipments = (shipmentsRaw ?? []) as unknown as Shipment[];
