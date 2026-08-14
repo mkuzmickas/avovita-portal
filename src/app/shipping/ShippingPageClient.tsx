@@ -25,6 +25,7 @@ interface Props {
   token: string;
   recentShipments: Shipment[];
   environment: "sandbox" | "production";
+  isAdmin: boolean;
 }
 
 /**
@@ -134,6 +135,7 @@ export function ShippingPageClient({
   token,
   recentShipments,
   environment,
+  isAdmin,
 }: Props) {
   const [busyKind, setBusyKind] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -311,16 +313,50 @@ export function ShippingPageClient({
     >
       <div style={{ maxWidth: "960px", margin: "0 auto" }}>
         <header style={{ marginBottom: "32px" }}>
-          <h1
+          <div
             style={{
-              fontFamily: '"Cormorant Garamond", Georgia, serif',
-              fontSize: "36px",
-              color: "#ffffff",
-              margin: "0 0 8px 0",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "16px",
+              marginBottom: "8px",
             }}
           >
-            AvoVita <span style={{ color: "#c4973a" }}>Shipping</span>
-          </h1>
+            <h1
+              style={{
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+                fontSize: "36px",
+                color: "#ffffff",
+                margin: 0,
+              }}
+            >
+              AvoVita <span style={{ color: "#c4973a" }}>Shipping</span>
+            </h1>
+            <a
+              href={
+                isAdmin
+                  ? "/admin"
+                  : "/login?redirectTo=/admin&msg=admin_required"
+              }
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                border: "1px solid #2d6b35",
+                borderRadius: "8px",
+                backgroundColor: "#1a3d22",
+                color: "#e8d5a3",
+                fontSize: "13px",
+                fontWeight: 500,
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                fontFamily: "inherit",
+              }}
+            >
+              ← Back to Portal
+            </a>
+          </div>
           <p style={{ color: "#6ab04c", fontSize: "14px", margin: 0 }}>
             FedEx label creation for scheduled specimen pickups.
             <span

@@ -16,7 +16,7 @@ export default async function AdminLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login?returnUrl=/admin");
+  if (!user) redirect("/login?redirectTo=/admin&msg=admin_required");
 
   const { data: account } = (await supabase
     .from("accounts")
@@ -27,7 +27,9 @@ export default async function AdminLayout({
     error: unknown;
   };
 
-  if (!account || account.role !== "admin") redirect("/portal");
+  if (!account || account.role !== "admin") {
+    redirect("/portal?msg=admin_required");
+  }
 
   // Live pending results count for the sidebar gold badge
   const service = createServiceRoleClient();

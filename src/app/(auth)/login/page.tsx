@@ -15,6 +15,15 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") ?? "/portal";
+  const msg = searchParams.get("msg");
+  // Contextual info banner — set by callers like the shipping console's
+  // "Back to Portal" button when a non-admin visitor tries to reach an
+  // admin-only route. Distinct from `error` (auth failure) so it can
+  // coexist without visual conflict.
+  const infoBanner =
+    msg === "admin_required"
+      ? "Admin access required. Sign in with an AvoVita administrator account to view the portal."
+      : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +57,19 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {infoBanner && (
+        <div
+          className="flex items-start gap-2 p-3 rounded-lg text-sm border"
+          style={{
+            backgroundColor: "rgba(196, 151, 58, 0.12)",
+            borderColor: "#c4973a",
+            color: "#c4973a",
+          }}
+        >
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          {infoBanner}
+        </div>
+      )}
       <div>
         <label
           className="block text-sm font-medium mb-1.5"

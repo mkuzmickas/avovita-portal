@@ -1,30 +1,40 @@
 import { redirect } from "next/navigation";
-import { createServiceRoleClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { refreshShipmentTracking } from "@/lib/shipments/refresh-tracking";
 import { ShippingPageClient } from "./ShippingPageClient";
+import type { Account } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
 /**
- * /shipping — token-gated FedEx label creation for FloLabs (and
- * anyone else Mike hands the URL to). Not linked from anywhere
- * public; access is by shared secret in the URL only. Deliberately
- * NOT under /admin because we don't want FloLabs staff to have any
- * portal admin permissions.
+ * /shipping — FedEx label creation console. Two ways to reach it:
+ *   1. FloLabs bookmarked URL: /shipping?token=<SHIPPING_ACCESS_TOKEN>
+ *   2. Admin sidebar link: /shipping (no token — authenticated session)
  *
- * Access model:
- *   - Bookmarked URL: https://portal.avovita.ca/shipping?token=<secret>
- *   - Server compares token param to SHIPPING_ACCESS_TOKEN env var
- *   - Mismatch → renders "Not authorised" and no page contents
- *   - Match → renders the buttons page + passes token to client so
- *     the create-label fetch can send it back
+ * Kept outside the (admin) route group so FloLabs never gains admin
+ * chrome/perms — they interact with this page only. Admins get access
+ * via their session so they don't have to memorise the token URL.
  *
- * If the token is ever leaked, rotate SHIPPING_ACCESS_TOKEN in Vercel
- * and send FloLabs the fresh URL.
+ * If the FloLabs token is ever leaked, rotate SHIPPING_ACCESS_TOKEN
+ * in Vercel and send FloLabs the fresh URL. Admin access is unaffected.
  */
 
 interface SearchParams {
   token?: string;
+}
+
+async function isAdminSession(): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data: account } = (await supabase
+    .from("accounts")
+    .select("role")
+    .eq("id", user.id)
+    .single()) as { data: Pick<Account, "role"> | null };
+  return account?.role === "admin";
 }
 
 export default async function ShippingPage({
@@ -34,10 +44,21 @@ export default async function ShippingPage({
 }) {
   const { token } = await searchParams;
   const expected = process.env.SHIPPING_ACCESS_TOKEN;
+  const isAdmin = await isAdminSession();
 
+  // Access rule: valid token OR admin session. Either grants full
+  // access to the page (buttons, pickup, history).
+  const tokenValid = !!expected && token === expected;
+  if (!tokenValid && !isAdmin) {
+    // Same 404 shape as any unknown Next route so a URL-fisher
+    // doesn't learn the page exists.
+    redirect("/");
+  }
+
+  // Bail with a clear error if SHIPPING_ACCESS_TOKEN is missing —
+  // the API routes need it to authenticate label + pickup calls, so
+  // the console can't function without it even for admins.
   if (!expected) {
-    // Deployment misconfig. Render a plain error rather than exposing
-    // that the token check exists.
     return (
       <div
         style={{
@@ -51,16 +72,15 @@ export default async function ShippingPage({
           fontFamily: "system-ui, sans-serif",
         }}
       >
-        Shipping is not configured on this deployment.
+        Shipping is not configured on this deployment — set
+        SHIPPING_ACCESS_TOKEN in Vercel env vars.
       </div>
     );
   }
 
-  if (token !== expected) {
-    // Same 404 shape as any unknown Next route so a URL-fisher
-    // doesn't learn the page exists.
-    redirect("/");
-  }
+  // Admins arrive with no token in URL; inject the env value so the
+  // client's API calls still authenticate. FloLabs already has it.
+  const clientToken = tokenValid ? token! : expected;
 
   // Load recent shipments for the audit table below the buttons.
   const supabase = createServiceRoleClient();
@@ -109,9 +129,10 @@ export default async function ShippingPage({
 
   return (
     <ShippingPageClient
-      token={token}
+      token={clientToken}
       recentShipments={recentShipments}
       environment={environment}
+      isAdmin={isAdmin}
     />
   );
 }
