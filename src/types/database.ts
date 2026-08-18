@@ -101,6 +101,9 @@ export interface Test {
   description: string | null;
   category: string | null;
   price_cad: number | null;
+  /** Wholesale cost — what AvoVita pays the lab. Used for gross-profit
+   *  calculations on the admin calendar / financials views. */
+  cost_cad: number | null;
   turnaround_display: string | null;
   turnaround_min_days: number | null;
   turnaround_max_days: number | null;
@@ -216,6 +219,13 @@ export interface Order {
   shipped_at: string | null;
   shipping_date: string | null;
   appointment_date: string | null;
+  /** Full-timestamp collection start (Calgary local, stored as TZ).
+   *  Populated when a FloLabs Acuity confirmation is matched to this
+   *  order via the /admin/bookings ingest. Displayed on the admin
+   *  calendar. Preferred over the date-only appointment_date. */
+  appointment_at: string | null;
+  /** Collection end time. Optional — defaults to +30 min if null. */
+  appointment_end_at: string | null;
   manifest_id: string | null;
   /** True when the order contains at least one supplement line. */
   has_supplements: boolean;

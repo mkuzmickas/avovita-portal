@@ -38,6 +38,7 @@ interface NavLink {
 
 const NAV_LINKS: NavLink[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, key: "dashboard" },
+  { href: "/admin/calendar", label: "Calendar", icon: Calendar, key: "calendar" },
   { href: "/admin/orders", label: "Orders", icon: Package, key: "orders" },
   { href: "/admin/manifests", label: "Manifests", icon: Calendar, key: "manifests" },
   { href: "/admin/quotes", label: "Quotes", icon: FileText, key: "quotes" },
