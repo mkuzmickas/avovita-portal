@@ -40,6 +40,9 @@ export async function POST(request: NextRequest) {
     orderId?: string;
     appointmentAtISO?: string;
     durationMinutes?: number;
+    /** If set, the paired booking_events row is marked
+     *  resolution='manually_assigned' pointing at the same order. */
+    bookingEventId?: string;
   };
   try {
     body = await request.json();
@@ -80,6 +83,24 @@ export async function POST(request: NextRequest) {
       { error: `Assign failed: ${error.message}` },
       { status: 500 },
     );
+  }
+
+  // If this came from the review queue, mark the underlying event as
+  // resolved so it drops off Jenna's list.
+  if (body.bookingEventId) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    await service
+      .from("booking_events")
+      .update({
+        resolution: "manually_assigned",
+        matched_order_id: body.orderId,
+        resolved_by: user?.id ?? null,
+        resolved_at: new Date().toISOString(),
+      })
+      .eq("id", body.bookingEventId);
   }
 
   return NextResponse.json({
