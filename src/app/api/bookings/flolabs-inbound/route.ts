@@ -46,16 +46,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not authorised." }, { status: 401 });
   }
 
-  let body: { rawEmail?: string; subject?: string; from?: string };
+  // Accept the body in three shapes so Power Automate flows work
+  // whether the Body field is a proper JSON object, a JSON-looking
+  // string, or (the easiest to set up) the trigger's raw email body
+  // + subject + from concatenated together as plain text.
+  const rawBody = await request.text();
+  let body: { rawEmail?: string; subject?: string; from?: string } = {};
   try {
-    body = await request.json();
+    const parsed = JSON.parse(rawBody);
+    if (parsed && typeof parsed === "object") {
+      body = parsed as typeof body;
+    }
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    // Not JSON — treat the whole body as the concatenated email blob.
+    body = { rawEmail: rawBody };
   }
 
-  // Power Automate sometimes wraps the body with subject/from as
-  // separate fields. Concatenate them into rawEmail so the parser can
-  // read both the subject line and the body block.
   const rawEmail = [
     body.subject ? `Subject: ${body.subject}` : "",
     body.from ? `From: ${body.from}` : "",
