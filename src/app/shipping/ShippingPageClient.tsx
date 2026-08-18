@@ -37,12 +37,58 @@ interface Props {
  * (~10 min throttle per shipment), so this component just renders
  * whatever's in the DB.
  */
-function TrackingStatusChip({ shipment }: { shipment: Shipment }) {
+function TrackingStatusChip({
+  shipment,
+  token,
+  onRefreshed,
+}: {
+  shipment: Shipment;
+  token: string;
+  onRefreshed: (s: Shipment) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const style = statusChipStyle(shipment);
   const label = statusChipLabel(shipment);
   const sub = statusChipSubtext(shipment);
+
+  const handleRefresh = async () => {
+    if (busy) return;
+    setBusy(true);
+    setRefreshError(null);
+    try {
+      const res = await fetch("/api/shipping/refresh-tracking", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-shipping-token": token,
+        },
+        body: JSON.stringify({ shipmentId: shipment.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) {
+        setRefreshError(
+          [data.error ?? "Refresh failed.", data.hint].filter(Boolean).join(" — "),
+        );
+        return;
+      }
+      onRefreshed({
+        ...shipment,
+        tracking_status_code: data.status_code,
+        tracking_status_description: data.status_description,
+        delivered_at: data.delivered_at ?? shipment.delivered_at,
+      });
+    } catch (err) {
+      setRefreshError(err instanceof Error ? err.message : "Refresh failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const trackUrl = `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(shipment.tracking_number)}`;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
       <span
         style={{
           display: "inline-block",
@@ -60,6 +106,49 @@ function TrackingStatusChip({ shipment }: { shipment: Shipment }) {
       </span>
       {sub && (
         <span style={{ fontSize: "11px", color: "#8ba392" }}>{sub}</span>
+      )}
+      <div style={{ display: "flex", gap: "10px", fontSize: "11px" }}>
+        <a
+          href={trackUrl}
+          target="_blank"
+          rel="noopener"
+          style={{
+            color: "#c4973a",
+            fontWeight: 600,
+            textDecoration: "underline",
+          }}
+        >
+          Track ↗
+        </a>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={busy}
+          style={{
+            background: "none",
+            border: 0,
+            padding: 0,
+            color: "#6ab04c",
+            cursor: busy ? "wait" : "pointer",
+            fontSize: "11px",
+            fontFamily: "inherit",
+            textDecoration: "underline",
+          }}
+        >
+          {busy ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+      {refreshError && (
+        <span
+          style={{
+            fontSize: "11px",
+            color: "#e05252",
+            maxWidth: "220px",
+            lineHeight: 1.3,
+          }}
+        >
+          {refreshError}
+        </span>
       )}
     </div>
   );
@@ -928,7 +1017,17 @@ export function ShippingPageClient({
                         {s.tracking_number}
                       </td>
                       <td style={tdStyle}>
-                        <TrackingStatusChip shipment={s} />
+                        <TrackingStatusChip
+                          shipment={s}
+                          token={token}
+                          onRefreshed={(updated) =>
+                            setShipments((prev) =>
+                              prev.map((row) =>
+                                row.id === updated.id ? updated : row,
+                              ),
+                            )
+                          }
+                        />
                       </td>
                       <td style={tdStyle}>
                         {s.label_url ? (
