@@ -480,6 +480,13 @@
     var hasHead = rows.length > 1 && isSep(rows[1]);
     var body = rows.filter(function (r) { return !isSep(r); });
     if (!body.length) return '';
+
+    // Correct pricing math before render — the model is unreliable at
+    // multi-line sums (has produced subtotals off by hundreds of $).
+    // If the table has a "Tests subtotal" / "Home visit fee" / "Total
+    // before GST" shape, recompute those from the individual test rows.
+    body = fixPricingMath(body, hasHead);
+
     var html = '<table>';
     body.forEach(function (r, idx) {
       var tag = (hasHead && idx === 0) ? 'th' : 'td';
@@ -489,6 +496,80 @@
     });
     return html + '</table>';
   }
+
+  /* Recomputes subtotals in the model's pricing tables so hallucinated
+     sums don't reach the customer. Returns the (possibly rewritten)
+     rows array — non-pricing tables pass through untouched. */
+  function fixPricingMath(body, hasHead) {
+    var startIdx = hasHead ? 1 : 0;
+    var subtotalIdx = -1, feeIdx = -1, totalIdx = -1;
+    for (var i = startIdx; i < body.length; i++) {
+      var c = cells(body[i]);
+      var label = (c[0] || '').toLowerCase();
+      if (/tests?\s+subtotal/.test(label)) subtotalIdx = i;
+      else if (/(home\s*visit|visit\s*fee|collection\s+fee)/.test(label)) feeIdx = i;
+      else if (/total\s+before\s+gst|grand\s+total|order\s+total/.test(label)) totalIdx = i;
+    }
+    // Not a pricing table — leave alone.
+    if (subtotalIdx === -1 && totalIdx === -1) return body;
+
+    // Sum every row before the first summary row (subtotal / fee /
+    // total) — those are the test line items.
+    var firstSummary = Math.min.apply(null, [subtotalIdx, feeIdx, totalIdx]
+      .filter(function (v) { return v > -1; }));
+    var lineSum = 0, lineCount = 0;
+    for (var j = startIdx; j < firstSummary; j++) {
+      var cc = cells(body[j]);
+      var price = priceFromCells(cc);
+      if (price != null) { lineSum += price; lineCount++; }
+    }
+    if (!lineCount) return body; // Nothing to sum against — bail.
+
+    var feeAmount = feeIdx > -1 ? (priceFromCells(cells(body[feeIdx])) || 0) : 0;
+    var correctSubtotal = round2(lineSum);
+    var correctTotal = round2(correctSubtotal + feeAmount);
+
+    if (subtotalIdx > -1) {
+      body[subtotalIdx] = rewritePriceCell(body[subtotalIdx], formatCurrency(correctSubtotal));
+    }
+    if (totalIdx > -1) {
+      body[totalIdx] = rewritePriceCell(body[totalIdx], formatCurrency(correctTotal));
+    }
+    return body;
+  }
+
+  function priceFromCells(cellArr) {
+    // Look at every cell for a $XXX or plain-number value; last one wins
+    // (the price column is almost always the rightmost non-empty cell).
+    var found = null;
+    for (var i = cellArr.length - 1; i >= 0; i--) {
+      var v = parsePrice(cellArr[i]);
+      if (v != null) { found = v; break; }
+    }
+    return found;
+  }
+
+  function parsePrice(str) {
+    if (!str) return null;
+    var m = String(str).replace(/,/g, '').match(/-?\$?\s*(\d+(?:\.\d+)?)/);
+    if (!m) return null;
+    return parseFloat(m[1]);
+  }
+
+  function rewritePriceCell(rowStr, newPriceText) {
+    var c = cells(rowStr);
+    // Replace the last non-empty cell (assumed price column).
+    for (var i = c.length - 1; i >= 0; i--) {
+      if (c[i]) { c[i] = newPriceText; break; }
+    }
+    return '| ' + c.join(' | ') + ' |';
+  }
+
+  function formatCurrency(n) {
+    return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function round2(n) { return Math.round(n * 100) / 100; }
 
   function asSlip(line) {
     var m = line.match(/Code:\s*\**([A-Za-z0-9][A-Za-z0-9_+\-]*)/i);
