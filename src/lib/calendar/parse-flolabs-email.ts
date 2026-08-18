@@ -31,7 +31,7 @@ export interface ParsedFloLabsEmail {
 
 export function parseFloLabsEmail(raw: string): ParsedFloLabsEmail {
   const warnings: string[] = [];
-  const text = raw.replace(/\r\n/g, "\n");
+  const text = htmlToText(raw).replace(/\r\n/g, "\n");
 
   // Try subject line first — it has the most compact form.
   const subjectMatch = text.match(
@@ -85,6 +85,36 @@ export function parseFloLabsEmail(raw: string): ParsedFloLabsEmail {
 function matchLine(text: string, re: RegExp): string | null {
   const m = text.match(re);
   return m?.[1]?.trim() ?? null;
+}
+
+/**
+ * Strip HTML tags, collapse entities, and normalise whitespace so the
+ * text-only regexes in parseFloLabsEmail work on either an Outlook
+ * HTML body or a plain-text paste. Blocks-level tags become newlines
+ * so labels like "Name:" / "Phone:" survive on their own line.
+ */
+function htmlToText(raw: string): string {
+  // Fast path: no tags → return as-is.
+  if (!/<[^>]+>/.test(raw)) return raw;
+  return (
+    raw
+      // Common block-level elements → newline
+      .replace(/<\/?(p|div|br|tr|li|h[1-6])[^>]*>/gi, "\n")
+      // Table cell separators → space so "Name: Coleen" doesn't collapse
+      .replace(/<\/(td|th)>/gi, " ")
+      // Strip everything else
+      .replace(/<[^>]+>/g, "")
+      // Decode a handful of common entities
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      // Collapse triple+ newlines / trailing spaces
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+  );
 }
 
 function normalizePhone(raw: string): string {
