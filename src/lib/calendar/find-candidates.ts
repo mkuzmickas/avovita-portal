@@ -64,6 +64,17 @@ export async function findCandidateOrders(
   const phone = parsed.clientPhone;
   const lastNameLower = parsed.clientName?.split(/\s+/).pop()?.toLowerCase();
 
+  // Match against every recent order regardless of scheduled state.
+  // The original filter (appointment_at IS NULL) excluded any order
+  // that had ever had an appointment_date populated — which after
+  // migration 034's backfill was essentially every historical order.
+  // Real clients booking via FloLabs weren't matching because the
+  // 8am placeholder appointment_at from the backfill made them look
+  // 'already scheduled'. Recent-window cap keeps the query fast; old
+  // orders (>180d) can be paste-matched manually if needed.
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+
   const { data } = await service
     .from("orders")
     .select(
@@ -71,6 +82,7 @@ export async function findCandidateOrders(
         id,
         total_cad,
         created_at,
+        appointment_at,
         account_id,
         accounts:accounts (email, first_name, last_name, phone),
         order_lines:order_lines (
@@ -80,9 +92,9 @@ export async function findCandidateOrders(
         )
       `,
     )
-    .is("appointment_at", null)
+    .gte("created_at", sixMonthsAgo.toISOString())
     .order("created_at", { ascending: false })
-    .limit(80);
+    .limit(200);
 
   const rows = (data ?? []) as unknown as CandidateRow[];
 

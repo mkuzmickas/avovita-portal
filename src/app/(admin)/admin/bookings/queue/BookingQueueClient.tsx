@@ -87,6 +87,29 @@ function QueueRow({
     }
   };
 
+  const rematch = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/bookings/rematch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingEventId: event.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Re-match failed.");
+        return;
+      }
+      // Simple approach: reload the page so the fresh candidates render.
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Re-match failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const ignore = async () => {
     setBusy(true);
     setError(null);
@@ -274,6 +297,23 @@ function QueueRow({
                 Assign
               </button>
             )}
+            <button
+              type="button"
+              onClick={rematch}
+              disabled={busy}
+              style={{
+                padding: "8px 14px",
+                border: "1px solid #c4973a",
+                borderRadius: "8px",
+                backgroundColor: "transparent",
+                color: "#c4973a",
+                fontSize: "13px",
+                cursor: busy ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Re-match
+            </button>
             <button
               type="button"
               onClick={ignore}
