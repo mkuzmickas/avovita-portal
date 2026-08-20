@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { createServiceRoleClient, createClient } from "@/lib/supabase/server";
 import { fetchCalendarAppointments } from "@/lib/calendar/fetch-appointments";
 import { CalendarClient } from "@/app/(admin)/admin/calendar/CalendarClient";
@@ -53,7 +52,49 @@ export default async function PublicCalendarPage({
 
   const tokenValid = !!expected && token === expected;
   if (!tokenValid && !isAdmin) {
-    redirect("/");
+    // Diagnostic screen — the silent redirect made it impossible to
+    // tell env-var-missing from token-mismatch. Once the token is
+    // stable and known-good this can be switched back to redirect('/').
+    const reason = !expected
+      ? "CALENDAR_ACCESS_TOKEN env var is not set in this deployment."
+      : !token
+        ? "No ?token=... query parameter was received."
+        : "Token in URL does not match CALENDAR_ACCESS_TOKEN.";
+    const tokenLenSeen = token ? token.length : 0;
+    const tokenLenExpected = expected ? expected.length : 0;
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          backgroundColor: "#0a1a0d",
+          color: "#e8d5a3",
+          padding: "48px 24px",
+          fontFamily: "ui-sans-serif, system-ui, sans-serif",
+        }}
+      >
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+          <h1
+            style={{
+              color: "#c4973a",
+              fontSize: 28,
+              fontWeight: 600,
+              marginBottom: 16,
+            }}
+          >
+            Calendar access denied
+          </h1>
+          <p style={{ marginBottom: 12 }}>{reason}</p>
+          <p style={{ fontSize: 13, opacity: 0.7 }}>
+            token length seen: {tokenLenSeen} · expected length:{" "}
+            {tokenLenExpected}
+          </p>
+          <p style={{ fontSize: 13, opacity: 0.7, marginTop: 8 }}>
+            Ask Mike to check the Vercel env var and confirm the URL you were
+            sent.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const anchorISO = date ?? todayCalgaryISO();
