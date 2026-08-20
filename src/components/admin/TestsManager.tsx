@@ -110,12 +110,18 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
   }, [tests]);
 
   const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    // Normalize both sides: lowercase, strip apostrophes / underscores
+    // / dashes / dots. So "womens" matches "Women's" and "menshormone"
+    // matches "MENS-HORMONE-PANEL". Without this, common natural
+    // spellings miss real catalogue entries.
+    const normalize = (s: string) =>
+      s.toLowerCase().replace(/['_\-.\s]/g, "");
+    const q = normalize(searchQuery);
     return tests.filter((t) => {
       if (q) {
         const matches =
-          t.name.toLowerCase().includes(q) ||
-          (!!t.sku && t.sku.toLowerCase().includes(q));
+          normalize(t.name).includes(q) ||
+          (!!t.sku && normalize(t.sku).includes(q));
         if (!matches) return false;
       }
       if (labFilter !== "all" && t.lab_id !== labFilter) return false;
