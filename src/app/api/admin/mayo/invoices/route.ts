@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createClient,
   createServiceRoleClient,
@@ -197,43 +198,88 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Auto-match pass — only for currently-unmatched lines of this
-  // invoice. Preserves any manual matches from earlier uploads.
+  // Auto-match pass, grouped by accession — every line on the same
+  // accession shares patient + collection date, so scoring once per
+  // accession (with the full test basket for that accession) beats
+  // scoring each line in isolation.
+  const stats = await runAutoMatchForInvoice(service, invoiceId);
+
+  return NextResponse.json({
+    ok: true,
+    invoice_id: invoiceId,
+    lines_upserted: rows.length,
+    auto_matched: stats.autoMatched,
+    unmatched: stats.unmatched,
+  });
+}
+
+/**
+ * Grouped auto-matcher — the shared engine used by both the JSON /
+ * PDF upload routes and the /rematch endpoint. Groups unmatched
+ * lines by accession, calls candidatesForLine with the accession's
+ * full test-description basket, and stamps every line on the
+ * accession with the winning order_id.
+ */
+export async function runAutoMatchForInvoice(
+  service: SupabaseClient,
+  invoiceId: string,
+): Promise<{ autoMatched: number; unmatched: number }> {
   const { data: unmatchedRaw } = await service
     .from("mayo_invoice_lines")
-    .select("id, patient_name, collection_date")
+    .select("id, accession_no, patient_name, collection_date, description")
     .eq("invoice_id", invoiceId)
     .is("order_id", null);
   const unmatched = (unmatchedRaw ?? []) as Array<{
     id: string;
+    accession_no: string;
     patient_name: string;
     collection_date: string;
+    description: string | null;
   }>;
 
-  let autoMatched = 0;
-  for (const line of unmatched) {
+  // Group by accession
+  const groups = new Map<
+    string,
+    {
+      patient_name: string;
+      collection_date: string;
+      lineIds: string[];
+      descriptions: string[];
+    }
+  >();
+  for (const l of unmatched) {
+    const g = groups.get(l.accession_no) ?? {
+      patient_name: l.patient_name,
+      collection_date: l.collection_date,
+      lineIds: [],
+      descriptions: [],
+    };
+    g.lineIds.push(l.id);
+    if (l.description) g.descriptions.push(l.description);
+    groups.set(l.accession_no, g);
+  }
+
+  let matchedLines = 0;
+  for (const g of groups.values()) {
     const cands = await candidatesForLine(service, {
-      patient_name: line.patient_name,
-      collection_date: line.collection_date,
+      patient_name: g.patient_name,
+      collection_date: g.collection_date,
+      mayoTestDescriptions: g.descriptions,
     });
     const orderId = pickAutoMatch(cands);
     if (!orderId) continue;
-    await service
+    const { error } = await service
       .from("mayo_invoice_lines")
       .update({
         order_id: orderId,
         matched_at: new Date().toISOString(),
         matched_by: "auto",
       })
-      .eq("id", line.id);
-    autoMatched++;
+      .in("id", g.lineIds);
+    if (!error) matchedLines += g.lineIds.length;
   }
-
-  return NextResponse.json({
-    ok: true,
-    invoice_id: invoiceId,
-    lines_upserted: rows.length,
-    auto_matched: autoMatched,
-    unmatched: unmatched.length - autoMatched,
-  });
+  return {
+    autoMatched: matchedLines,
+    unmatched: unmatched.length - matchedLines,
+  };
 }

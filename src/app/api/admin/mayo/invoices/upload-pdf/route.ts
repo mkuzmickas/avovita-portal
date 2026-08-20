@@ -4,10 +4,7 @@ import {
   createServiceRoleClient,
 } from "@/lib/supabase/server";
 import { parseMayoPdf } from "@/lib/mayo/parse-mayo-pdf";
-import {
-  candidatesForLine,
-  pickAutoMatch,
-} from "@/lib/mayo/match-candidates";
+import { runAutoMatchForInvoice } from "@/app/api/admin/mayo/invoices/route";
 import type { Account } from "@/types/database";
 
 export const runtime = "nodejs";
@@ -142,40 +139,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Auto-match only currently-unmatched lines (preserves prior manual matches)
-  const { data: unmatchedRaw } = await service
-    .from("mayo_invoice_lines")
-    .select("id, patient_name, collection_date")
-    .eq("invoice_id", invoiceId)
-    .is("order_id", null);
-  const unmatched = (unmatchedRaw ?? []) as Array<{
-    id: string;
-    patient_name: string;
-    collection_date: string;
-  }>;
+  // Accession-grouped auto-match (shared engine with the JSON route)
+  const stats = await runAutoMatchForInvoice(service, invoiceId);
 
-  let autoMatched = 0;
-  for (const line of unmatched) {
-    const cands = await candidatesForLine(service, {
-      patient_name: line.patient_name,
-      collection_date: line.collection_date,
-    });
-    const orderId = pickAutoMatch(cands);
-    if (!orderId) continue;
-    await service
-      .from("mayo_invoice_lines")
-      .update({
-        order_id: orderId,
-        matched_at: new Date().toISOString(),
-        matched_by: "auto",
-      })
-      .eq("id", line.id);
-    autoMatched++;
-  }
-
-  // Also compute the invoice-total sanity check — surface any drift
-  // between the extracted line-sum and Mayo's Grand Total so Mike
-  // can spot parse errors.
+  // Invoice-total sanity check — surface any drift between the
+  // extracted line-sum and Mayo's Grand Total so Mike can spot
+  // parse errors.
   const linesSum = rows.reduce((s, r) => s + Number(r.charge_usd), 0);
   const drift = Math.round((linesSum - parsed.total_usd) * 100) / 100;
 
@@ -184,8 +153,8 @@ export async function POST(request: NextRequest) {
     invoice_id: invoiceId,
     invoice_number: parsed.invoice_number,
     lines_upserted: rows.length,
-    auto_matched: autoMatched,
-    unmatched: unmatched.length - autoMatched,
+    auto_matched: stats.autoMatched,
+    unmatched: stats.unmatched,
     parsed_total: parsed.total_usd,
     line_sum: Math.round(linesSum * 100) / 100,
     drift_cad: drift,

@@ -64,6 +64,28 @@ export function MayoInvoiceMatcher({
       setSavingFx(false);
     }
   };
+  const [rematching, setRematching] = useState(false);
+  const [rematchMsg, setRematchMsg] = useState<string | null>(null);
+  const runRematch = async () => {
+    setRematching(true);
+    setRematchMsg(null);
+    try {
+      const res = await fetch(
+        `/api/admin/mayo/invoices/${invoiceId}/rematch`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setRematchMsg(
+        `Re-matched ${data.autoMatched} more line${data.autoMatched === 1 ? "" : "s"} · ${data.unmatched} still unmatched.`,
+      );
+      router.refresh();
+    } catch (err) {
+      setRematchMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRematching(false);
+    }
+  };
   const [selectedPatient, setSelectedPatient] = useState<string | null>(
     patientGroups.find((g) => g.lines.some((l) => !l.order_id))?.patient_name ??
       patientGroups[0]?.patient_name ??
@@ -216,10 +238,34 @@ export function MayoInvoiceMatcher({
           >
             {savingFx ? "Saving…" : "Save"}
           </button>
+          <button
+            type="button"
+            onClick={runRematch}
+            disabled={rematching}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 6,
+              backgroundColor: rematching ? "#5a705f" : "transparent",
+              color: rematching ? "#e8d5a3" : "#c4973a",
+              fontSize: 12,
+              fontWeight: 700,
+              border: `1px solid ${rematching ? "#5a705f" : "#c4973a"}`,
+              cursor: rematching ? "not-allowed" : "pointer",
+              marginLeft: 6,
+            }}
+            title="Re-run the auto-matcher on currently-unmatched lines. Manual matches are preserved."
+          >
+            {rematching ? "Re-matching…" : "Re-run auto-match"}
+          </button>
         </div>
         {fxMsg && (
           <div style={{ width: "100%", color: "#8dc63f", fontSize: 11 }}>
             {fxMsg}
+          </div>
+        )}
+        {rematchMsg && (
+          <div style={{ width: "100%", color: "#8dc63f", fontSize: 11 }}>
+            {rematchMsg}
           </div>
         )}
       </div>
