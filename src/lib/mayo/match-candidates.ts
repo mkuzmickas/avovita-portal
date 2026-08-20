@@ -29,9 +29,16 @@ export interface OrderCandidate {
   patient_dob: string | null;
   appointment_at: string | null;
   shipping_date: string | null;
+  /** Fallback anchor when no explicit date is set — Stripe charge time
+   *  from orders.created_at. Displayed as "charge date" in the UI. */
+  created_at: string | null;
   /** Number of Mayo tests on this accession that also appear on the
    *  candidate order (via fuzzy name match). */
   test_overlap: number;
+  /** Every portal test name on this candidate order — shown in the UI
+   *  so the reviewer can eyeball which order actually contains the
+   *  tests being invoiced (crucial when multiple orders tie on score). */
+  test_names: string[];
   score: number;
   reason: string;
 }
@@ -299,7 +306,9 @@ export async function candidatesForLine(
       patient_dob: profile.date_of_birth,
       appointment_at: o.appointment_at,
       shipping_date: o.shipping_date,
+      created_at: o.created_at,
       test_overlap: overlap,
+      test_names: orderTestNames.get(o.id) ?? [],
       score: Math.round(score),
       reason: reasonParts.join(" · "),
     });

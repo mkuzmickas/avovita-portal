@@ -667,18 +667,57 @@ function CandidatesForSelected({
                     )}
                   </div>
                   <div style={{ color: "#8dc63f", fontSize: 11, marginTop: 2 }}>
-                    {formatDateTime(c.appointment_at)} · Order{" "}
-                    {c.order_id.slice(0, 8)} · {c.reason}
+                    {c.appointment_at
+                      ? formatDateTime(c.appointment_at)
+                      : c.created_at
+                        ? `charge ${formatDateTime(c.created_at)}`
+                        : "no date"}{" "}
+                    · Order {c.order_id.slice(0, 8)} · {c.reason}
                   </div>
+                  {c.test_names.length > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 3,
+                        marginTop: 6,
+                      }}
+                    >
+                      {c.test_names.slice(0, 8).map((n, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            display: "inline-block",
+                            padding: "1px 6px",
+                            borderRadius: 4,
+                            backgroundColor: "rgba(141, 198, 63, 0.14)",
+                            border: "1px solid rgba(141, 198, 63, 0.3)",
+                            fontSize: 10,
+                            color: "#e8d5a3",
+                          }}
+                          title={n}
+                        >
+                          {n.length > 32 ? n.slice(0, 31) + "…" : n}
+                        </span>
+                      ))}
+                      {c.test_names.length > 8 && (
+                        <span style={{ fontSize: 10, color: "#8dc63f" }}>
+                          +{c.test_names.length - 8} more
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div
+                    title="Match score: base 100 · −1.5 per day off · +5 exact-name · +12 per matched test. Higher = better."
                     style={{
                       minWidth: 42,
                       textAlign: "center",
                       fontSize: 11,
                       fontWeight: 700,
                       color: scoreColor(c.score),
+                      cursor: "help",
                     }}
                   >
                     {c.score}
