@@ -49,7 +49,13 @@ export interface PollResult {
 
 const SENDER_FILTER = "no-reply@acuityscheduling.com";
 const SUBJECT_PREFIX = "Confirmation of Booking: AvoVita";
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50;
+// Look back 7 days regardless of read state — Mike or an Outlook rule
+// can read a confirmation before the 5-min cron fires, and the old
+// `isRead eq false` filter dropped everything already read. Dedup is
+// enforced by booking_events.outlook_message_id (unique index) so
+// re-scanning read messages is safe and a no-op on the DB.
+const LOOKBACK_DAYS = 7;
 
 export async function pollFloLabsInbox(
   supabase: SupabaseClient,
@@ -64,15 +70,18 @@ export async function pollFloLabsInbox(
     errors: [],
   };
 
-  // Query: unread messages from Acuity with matching subject prefix.
-  // Graph's $filter can't do startsWith on subject in some tenants
-  // reliably, so we filter server-side on sender + isRead and check
-  // subject in code.
+  // Query: recent (last 7 days) messages from Acuity with matching
+  // subject prefix. Graph's $filter can't do startsWith on subject
+  // in some tenants reliably, so we filter server-side on sender +
+  // received date and check subject in code.
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - LOOKBACK_DAYS);
+  const cutoffISO = cutoff.toISOString();
   const filter = [
-    `isRead eq false`,
+    `receivedDateTime ge ${cutoffISO}`,
     `from/emailAddress/address eq '${SENDER_FILTER}'`,
   ].join(" and ");
-  const path = `/messages?$filter=${encodeURIComponent(filter)}&$top=${PAGE_SIZE}&$select=id,subject,from,body,receivedDateTime,isRead`;
+  const path = `/messages?$filter=${encodeURIComponent(filter)}&$top=${PAGE_SIZE}&$orderby=${encodeURIComponent("receivedDateTime desc")}&$select=id,subject,from,body,receivedDateTime,isRead`;
 
   const data = await graphFetch<GraphMessagesResponse>(path);
   result.scanned = data.value.length;
