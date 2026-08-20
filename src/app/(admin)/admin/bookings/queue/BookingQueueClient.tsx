@@ -180,7 +180,11 @@ function QueueRow({
         setError(data.error ?? "Re-match failed.");
         return;
       }
-      // Simple approach: reload the page so the fresh candidates render.
+      // Surface exactly what the matcher returned so a "no change"
+      // outcome doesn't look like the button did nothing.
+      const summary = `Rematch: ${data.candidates_found ?? 0} candidates, top score ${data.top_score ?? 0}`;
+      setError(summary); // reused as status line (green if candidates>0)
+      // Also reload so the row re-renders from DB
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Re-match failed.");
