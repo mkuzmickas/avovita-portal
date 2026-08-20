@@ -110,12 +110,12 @@ export function TestsManager({ initialTests, labs }: TestsManagerProps) {
   }, [tests]);
 
   const filtered = useMemo(() => {
-    // Normalize both sides: lowercase, strip apostrophes / underscores
-    // / dashes / dots. So "womens" matches "Women's" and "menshormone"
-    // matches "MENS-HORMONE-PANEL". Without this, common natural
-    // spellings miss real catalogue entries.
-    const normalize = (s: string) =>
-      s.toLowerCase().replace(/['_\-.\s]/g, "");
+    // Normalize both sides: lowercase, strip everything except letters
+    // and digits. So "womens" matches "Women's" (straight OR curly
+    // apostrophe), "menshormone" matches "MENS-HORMONE-PANEL", and
+    // anything with parentheses or spaces still lines up. Handles any
+    // Unicode punctuation the DB might have that specific regexes miss.
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
     const q = normalize(searchQuery);
     return tests.filter((t) => {
       if (q) {
