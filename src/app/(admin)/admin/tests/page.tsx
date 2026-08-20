@@ -36,7 +36,12 @@ export default async function AdminTestsPage() {
         lab:labs(id, name)
       `
       )
-      .order("name", { ascending: true }),
+      .order("name", { ascending: true })
+      // Supabase caps .select() at 1000 rows by default — Mayo's Mayo
+      // catalogue alone easily exceeds that, so W-starting entries
+      // (Women's Hormone Panel etc.) were falling off the end and
+      // invisible to the admin search. Explicit range covers headroom.
+      .range(0, 9999),
     service.from("labs").select("id, name").order("name", { ascending: true }),
   ]);
 
