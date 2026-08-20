@@ -394,6 +394,19 @@ function OrderUploadCard({
   const [submitting, setSubmitting] = useState(false);
   const [justNotified, setJustNotified] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  // Review-prompt state — triggered ONLY after a successful 'final'
+  // upload for this order. Answer Yes → POST review request; No →
+  // dismiss. Replaces the always-visible column in the patients list
+  // so the prompt appears at the moment of maximum context (the
+  // client's final results are just about to reach them).
+  const [reviewPrompt, setReviewPrompt] = useState<{
+    accountId: string;
+    patientName: string;
+  } | null>(null);
+  const [reviewPromptBusy, setReviewPromptBusy] = useState(false);
+  const [reviewPromptResult, setReviewPromptResult] = useState<string | null>(
+    null,
+  );
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
@@ -567,6 +580,15 @@ function OrderUploadCard({
         if (data.notified) {
           setJustNotified(true);
           setTimeout(() => setJustNotified(false), 6000);
+        }
+        // Final results just went out — offer to send the Google
+        // review request while the customer's about to open the email.
+        // Only if we have an account to send it to.
+        if (resultStatus === "final" && order.accountId) {
+          setReviewPrompt({
+            accountId: order.accountId,
+            patientName: order.patientName,
+          });
         }
       }
     } catch (err) {
@@ -1145,6 +1167,170 @@ function OrderUploadCard({
           onConfirm={confirmDeletePdf}
         />
       )}
+
+      {reviewPrompt && (
+        <ReviewPromptModal
+          patientName={reviewPrompt.patientName}
+          busy={reviewPromptBusy}
+          result={reviewPromptResult}
+          onDismiss={() => {
+            setReviewPrompt(null);
+            setReviewPromptResult(null);
+          }}
+          onSend={async () => {
+            setReviewPromptBusy(true);
+            setReviewPromptResult(null);
+            try {
+              const res = await fetch(
+                `/api/admin/patients/${reviewPrompt.accountId}/send-review-request`,
+                { method: "POST" },
+              );
+              const data = await res.json();
+              if (!res.ok) {
+                setReviewPromptResult(
+                  `Error: ${data.error ?? res.statusText}`,
+                );
+                return;
+              }
+              const channels: string[] = [];
+              if (data.email_sent) channels.push("email");
+              if (data.sms_sent) channels.push("SMS");
+              setReviewPromptResult(
+                `Sent via ${channels.join(" + ") || "email"}.`,
+              );
+              setTimeout(() => {
+                setReviewPrompt(null);
+                setReviewPromptResult(null);
+              }, 2500);
+            } catch (err) {
+              setReviewPromptResult(
+                err instanceof Error ? err.message : "Failed to send.",
+              );
+            } finally {
+              setReviewPromptBusy(false);
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ReviewPromptModal({
+  patientName,
+  busy,
+  result,
+  onSend,
+  onDismiss,
+}: {
+  patientName: string;
+  busy: boolean;
+  result: string | null;
+  onSend: () => void | Promise<void>;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(0,0,0,0.6)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 50,
+        padding: "20px",
+      }}
+      onClick={onDismiss}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: "440px",
+          width: "100%",
+          backgroundColor: "#1a3d22",
+          border: "1px solid #2d6b35",
+          borderRadius: "12px",
+          padding: "24px",
+        }}
+      >
+        <h3
+          style={{
+            fontFamily: '"Cormorant Garamond", Georgia, serif',
+            fontSize: "22px",
+            color: "#ffffff",
+            margin: "0 0 10px 0",
+          }}
+        >
+          Send Google review request?
+        </h3>
+        <p
+          style={{
+            color: "#e8d5a3",
+            fontSize: "14px",
+            lineHeight: 1.55,
+            margin: "0 0 16px 0",
+          }}
+        >
+          Final results just went out to <strong>{patientName}</strong>.
+          Send them a Google review link now (email + SMS if a phone is
+          on file)?
+        </p>
+        {result && (
+          <div
+            style={{
+              padding: "10px 12px",
+              borderRadius: "8px",
+              backgroundColor: result.startsWith("Error")
+                ? "rgba(224,82,82,0.12)"
+                : "rgba(141,198,63,0.12)",
+              border: `1px solid ${result.startsWith("Error") ? "#e05252" : "#8dc63f"}`,
+              color: result.startsWith("Error") ? "#e05252" : "#8dc63f",
+              fontSize: "13px",
+              marginBottom: "16px",
+            }}
+          >
+            {result}
+          </div>
+        )}
+        <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            onClick={onDismiss}
+            disabled={busy}
+            style={{
+              padding: "10px 18px",
+              border: "1px solid #2d6b35",
+              borderRadius: "8px",
+              backgroundColor: "transparent",
+              color: "#e8d5a3",
+              fontSize: "14px",
+              cursor: busy ? "not-allowed" : "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            No, skip
+          </button>
+          <button
+            type="button"
+            onClick={onSend}
+            disabled={busy || !!result}
+            style={{
+              padding: "10px 18px",
+              border: 0,
+              borderRadius: "8px",
+              backgroundColor: busy || result ? "#8b6a1e" : "#c4973a",
+              color: "#0a1a0d",
+              fontSize: "14px",
+              fontWeight: 700,
+              cursor: busy || result ? "not-allowed" : "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {busy ? "Sending…" : "Yes, send"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

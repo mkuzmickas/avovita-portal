@@ -191,7 +191,6 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
                   "Orders",
                   "Waiver",
                   "Member Since",
-                  "Review",
                   "",
                 ].map((h, i) => (
                   <th
@@ -211,7 +210,7 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={8}
                     className="px-6 py-16 text-center"
                     style={{
                       backgroundColor: "#0a1a0d",
@@ -433,16 +432,6 @@ function PatientRow({
         >
           {formatDate(patient.created_at)}
         </td>
-        <td
-          className="px-5 py-4 whitespace-nowrap"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ReviewRequestButton
-            sentAt={reviewSentAt}
-            hasContactInfo={!!patient.email || !!patient.primaryPhone}
-            onClick={onRequestReview}
-          />
-        </td>
         <td className="px-5 py-4 text-right">
           <ChevronDown
             className="w-4 h-4 inline-block transition-transform duration-200"
@@ -456,7 +445,7 @@ function PatientRow({
 
       {isExpanded && (
         <tr style={{ backgroundColor: rowBg }}>
-          <td colSpan={9} className="p-0">
+          <td colSpan={8} className="p-0">
             <div
               className="px-6 py-5 border-t"
               style={{

@@ -72,13 +72,36 @@ export async function POST(request: NextRequest) {
       ? result.order[0]?.shipped_at ?? null
       : result.order?.shipped_at ?? null;
 
+    // Delete the DB row FIRST — if this fails, the storage file
+    // stays intact and the caller sees the error. Previous ordering
+    // (storage first, then DB with no error check) left orphan rows
+    // pointing to deleted files whenever the DB delete quietly failed
+    // (e.g. RLS drop, transient network) — the "file not there" bug.
+    const { error: dbErr } = await service
+      .from("results")
+      .delete()
+      .eq("id", result.id);
+    if (dbErr) {
+      return NextResponse.json(
+        { error: `Failed to delete result row: ${dbErr.message}` },
+        { status: 500 }
+      );
+    }
+
+    // Now safe to remove the storage object — best-effort. If the
+    // file was already missing (orphan cleanup path), the .remove
+    // call just no-ops; either way the DB row is gone.
     if (result.storage_path && !result.storage_path.startsWith("__")) {
       await service.storage
         .from("results-pdfs")
         .remove([result.storage_path])
-        .catch(() => undefined);
+        .catch((err) =>
+          console.warn(
+            "[results:delete] storage remove failed (row already deleted):",
+            err
+          )
+        );
     }
-    await service.from("results").delete().eq("id", result.id);
 
     // Recompute order status from whatever PDFs remain.
     const { data: remainingRaw } = await service
