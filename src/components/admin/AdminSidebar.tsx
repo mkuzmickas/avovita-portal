@@ -26,6 +26,7 @@ import { createClient } from "@/lib/supabase/client";
 
 interface AdminSidebarProps {
   email: string;
+  role: string;
   pendingResultsCount: number;
 }
 
@@ -41,7 +42,6 @@ const NAV_LINKS: NavLink[] = [
   { href: "/admin/calendar", label: "Calendar", icon: Calendar, key: "calendar" },
   { href: "/admin/bookings/queue", label: "Booking Queue", icon: FileInput, key: "bookings-queue" },
   { href: "/admin/orders", label: "Orders", icon: Package, key: "orders" },
-  { href: "/admin/manifests", label: "Manifests", icon: Calendar, key: "manifests" },
   { href: "/admin/quotes", label: "Quotes", icon: FileText, key: "quotes" },
   { href: "/admin/financials", label: "Financials", icon: TrendingUp, key: "financials" },
   { href: "/admin/invoices", label: "Invoices", icon: Receipt, key: "invoices" },
@@ -55,9 +55,17 @@ const NAV_LINKS: NavLink[] = [
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3, key: "analytics" },
 ];
 
-export function AdminSidebar({ email, pendingResultsCount }: AdminSidebarProps) {
+export function AdminSidebar({ email, role, pendingResultsCount }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+
+  // calendar_viewer sees only the Calendar link — scoped role for
+  // FloLabs staff who need visibility into collection times but no
+  // access to orders / patients / financials.
+  const visibleLinks =
+    role === "calendar_viewer"
+      ? NAV_LINKS.filter((l) => l.key === "calendar")
+      : NAV_LINKS;
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -99,7 +107,7 @@ export function AdminSidebar({ email, pendingResultsCount }: AdminSidebarProps) 
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {NAV_LINKS.map(({ href, label, icon: Icon, key }) => {
+        {visibleLinks.map(({ href, label, icon: Icon, key }) => {
           const active =
             href === "/admin"
               ? pathname === "/admin"

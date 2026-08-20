@@ -167,50 +167,58 @@ function WeekView({
         ))}
       </div>
 
-      {/* Hour rows */}
-      {HOUR_SLOTS.map((hour) => (
-        <div
-          key={hour}
-          style={{
-            display: "grid",
-            gridTemplateColumns: `60px repeat(7, 1fr)`,
-            borderTop: "1px solid #1f4a28",
-          }}
-        >
+      {/* Hour rows — variable height. If any day in this hour has an
+          appointment we let the row grow; otherwise it collapses to a
+          slim spacer so the week is compact and appointments read
+          bigger. */}
+      {HOUR_SLOTS.map((hour) => {
+        const rowHasAny = weekDays.some(
+          (d) => (byDayHour.get(`${d.iso}-${hour}`) ?? []).length > 0,
+        );
+        return (
           <div
+            key={hour}
             style={{
-              padding: "8px",
-              fontSize: "11px",
-              color: "#8ba392",
-              textAlign: "right",
-              paddingRight: "12px",
+              display: "grid",
+              gridTemplateColumns: `60px repeat(7, 1fr)`,
+              borderTop: "1px solid #1f4a28",
+              minHeight: rowHasAny ? "88px" : "28px",
             }}
           >
-            {formatHour(hour)}
+            <div
+              style={{
+                padding: rowHasAny ? "8px 12px 4px" : "4px 12px",
+                fontSize: "11px",
+                color: rowHasAny ? "#c4973a" : "#5a705f",
+                textAlign: "right",
+                fontWeight: rowHasAny ? 600 : 400,
+              }}
+            >
+              {formatHour(hour)}
+            </div>
+            {weekDays.map((d) => {
+              const key = `${d.iso}-${hour}`;
+              const list = byDayHour.get(key) ?? [];
+              return (
+                <div
+                  key={d.iso}
+                  style={{
+                    borderLeft: "1px solid #1f4a28",
+                    padding: rowHasAny ? "4px" : "0",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "3px",
+                  }}
+                >
+                  {list.map((a) => (
+                    <AppointmentChip key={a.orderId} appointment={a} />
+                  ))}
+                </div>
+              );
+            })}
           </div>
-          {weekDays.map((d) => {
-            const key = `${d.iso}-${hour}`;
-            const list = byDayHour.get(key) ?? [];
-            return (
-              <div
-                key={d.iso}
-                style={{
-                  borderLeft: "1px solid #1f4a28",
-                  minHeight: "72px",
-                  padding: "4px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "3px",
-                }}
-              >
-                {list.map((a) => (
-                  <AppointmentChip key={a.orderId} appointment={a} />
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -221,34 +229,88 @@ function AppointmentChip({
   appointment: CalendarAppointment;
 }) {
   const time = formatTime(a.appointmentAt);
-  const codes = a.tests
-    .map((t) => t.sku ?? shortCode(t.name))
-    .join(" · ");
+  const codes = a.tests.map((t) => t.sku ?? shortCode(t.name));
+  const dobShort = a.patientDob ? formatDob(a.patientDob) : null;
+  const sexShort = a.patientSex ? formatSex(a.patientSex) : null;
   return (
     <Link
       href={`/admin/orders?highlight=${a.orderId}`}
       style={{
         display: "block",
-        padding: "6px 8px",
-        borderRadius: "6px",
+        padding: "8px 10px",
+        borderRadius: "8px",
         backgroundColor: a.isKitOnly
           ? "rgba(196, 151, 58, 0.18)" // light orange (kit)
           : "rgba(141, 198, 63, 0.16)", // light green (visit)
         border: `1px solid ${a.isKitOnly ? "#c4973a" : "#8dc63f"}`,
         color: "#ffffff",
-        fontSize: "12px",
-        lineHeight: 1.3,
+        fontSize: "13px",
+        lineHeight: 1.35,
         textDecoration: "none",
       }}
-      title={`${a.patientName} · ${time} · ${a.tests.map((t) => t.name).join(", ")}`}
+      title={`${a.patientName} · DOB ${dobShort ?? "?"} · ${time} · ${a.tests.map((t) => t.name).join(", ")}`}
     >
-      <div style={{ fontWeight: 600 }}>{a.patientName}</div>
-      <div style={{ opacity: 0.85, fontSize: "11px" }}>
+      <div style={{ fontWeight: 700, fontSize: "14px" }}>{a.patientName}</div>
+      <div
+        style={{
+          opacity: 0.85,
+          fontSize: "11px",
+          marginTop: "2px",
+          textTransform: "uppercase",
+          letterSpacing: "0.03em",
+        }}
+      >
         {time}
-        {a.tests.length > 0 && ` · ${codes}`}
+        {dobShort && ` · DOB ${dobShort}`}
+        {sexShort && ` · ${sexShort}`}
       </div>
+      {codes.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "3px",
+            marginTop: "6px",
+          }}
+        >
+          {codes.map((code, i) => (
+            <span
+              key={i}
+              style={{
+                display: "inline-block",
+                padding: "1px 6px",
+                borderRadius: "4px",
+                backgroundColor: "rgba(0,0,0,0.28)",
+                fontSize: "11px",
+                fontWeight: 600,
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                letterSpacing: "0.02em",
+              }}
+            >
+              {code}
+            </span>
+          ))}
+        </div>
+      )}
     </Link>
   );
+}
+
+function formatDob(iso: string): string {
+  // YYYY-MM-DD -> DD MMM YY (compact for chip). Safe with any DB format
+  // that starts with YYYY-MM-DD.
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  if (!y || !m || !d) return iso;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const mm = months[parseInt(m, 10) - 1] ?? m;
+  return `${d} ${mm} ${y.slice(2)}`;
+}
+
+function formatSex(s: string): string {
+  const first = s[0]?.toUpperCase();
+  if (first === "F" || first === "M" || first === "I" || first === "O") return first;
+  return s.slice(0, 1).toUpperCase();
 }
 
 /* ─── Month view ───────────────────────────────────────────────── */

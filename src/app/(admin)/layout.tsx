@@ -27,9 +27,21 @@ export default async function AdminLayout({
     error: unknown;
   };
 
-  if (!account || account.role !== "admin") {
+  // Two roles are allowed through this layout:
+  //   'admin'           → full portal access (default behavior)
+  //   'calendar_viewer' → scoped access for FloLabs staff — sees only
+  //                       /admin/calendar. Any other path bounces them
+  //                       back to the calendar, so they cannot reach
+  //                       orders / patients / financials even by URL.
+  const allowedRoles = new Set(["admin", "calendar_viewer"]);
+  if (!account || !allowedRoles.has(account.role)) {
     redirect("/portal?msg=admin_required");
   }
+
+  // Path-based route restriction for calendar_viewer is enforced in
+  // middleware.ts at the project root (reads the role from a header
+  // set at login and bounces non-calendar admin URLs). Sidebar also
+  // hides non-calendar links so the user has no visible nav.
 
   // Live pending results count for the sidebar gold badge
   const service = createServiceRoleClient();
@@ -38,6 +50,7 @@ export default async function AdminLayout({
   return (
     <AdminShell
       email={account.email ?? user.email ?? ""}
+      role={account.role}
       pendingResultsCount={pendingResultsCount}
     >
       {children}

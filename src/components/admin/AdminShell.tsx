@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, Leaf } from "lucide-react";
 import Link from "next/link";
 import { AdminSidebar } from "./AdminSidebar";
 
 interface AdminShellProps {
   email: string;
+  role: string;
   pendingResultsCount: number;
   children: React.ReactNode;
 }
@@ -21,16 +22,28 @@ interface AdminShellProps {
  */
 export function AdminShell({
   email,
+  role,
   pendingResultsCount,
   children,
 }: AdminShellProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   // Close drawer whenever the route changes
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  // Scoped role — calendar_viewer can only be on /admin/calendar. If
+  // they land elsewhere (bookmark, typed URL), redirect them. Server
+  // layout already gates the layout itself; this guard covers the
+  // "manually type /admin/orders in the address bar" case.
+  useEffect(() => {
+    if (role === "calendar_viewer" && !pathname.startsWith("/admin/calendar")) {
+      router.replace("/admin/calendar");
+    }
+  }, [role, pathname, router]);
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#0a1a0d" }}>
@@ -38,6 +51,7 @@ export function AdminShell({
       <div className="hidden md:flex">
         <AdminSidebar
           email={email}
+          role={role}
           pendingResultsCount={pendingResultsCount}
         />
       </div>
@@ -55,6 +69,7 @@ export function AdminShell({
           <div className="md:hidden fixed left-0 top-0 bottom-0 z-50 w-64">
             <AdminSidebar
               email={email}
+              role={role}
               pendingResultsCount={pendingResultsCount}
             />
             <button

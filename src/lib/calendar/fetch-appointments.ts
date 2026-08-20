@@ -18,6 +18,7 @@ export interface CalendarAppointment {
   orderId: string;
   patientName: string;
   patientDob: string | null;
+  patientSex: string | null;
   appointmentAt: string; // ISO
   appointmentEndAt: string | null;
   totalCad: number;
@@ -65,7 +66,8 @@ export async function fetchCalendarAppointments(
           patient_profiles:patient_profiles (
             first_name,
             last_name,
-            date_of_birth
+            date_of_birth,
+            biological_sex
           )
         )
       `,
@@ -97,6 +99,7 @@ export async function fetchCalendarAppointments(
         first_name: string;
         last_name: string;
         date_of_birth: string | null;
+        biological_sex: string | null;
       } | null;
     }>;
   };
@@ -137,6 +140,7 @@ export async function fetchCalendarAppointments(
       orderId: row.id,
       patientName,
       patientDob: firstProfile?.date_of_birth ?? null,
+      patientSex: firstProfile?.biological_sex ?? null,
       appointmentAt: row.appointment_at,
       appointmentEndAt: row.appointment_end_at,
       totalCad,
