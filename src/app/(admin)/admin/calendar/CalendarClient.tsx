@@ -10,15 +10,42 @@ interface Props {
   anchorISO: string;
   activeView: "week" | "month";
   appointments: CalendarAppointment[];
+  /**
+   * Base URL used for calendar navigation (view/date changes) and for
+   * appointment-chip click-through. Defaults to the admin route; the
+   * FloLabs token-gated /calendar page passes its own path here so
+   * navigation preserves the token query.
+   */
+  basePath?: string;
+  /**
+   * Extra query params to append to every navigation URL (e.g. the
+   * `token=<hex>` used on the public /calendar route).
+   */
+  extraQuery?: string;
+  /**
+   * When true, appointment chips render as inert divs (no order link)
+   * and the "Log FloLabs booking" button is hidden. Used by the
+   * FloLabs-facing view where the audience must not reach the rest
+   * of the admin portal.
+   */
+  readOnly?: boolean;
 }
 
 const HOUR_SLOTS = [7, 8, 9, 10, 11, 12, 13, 14, 15]; // 7 AM – 3 PM
 
-export function CalendarClient({ anchorISO, activeView, appointments }: Props) {
+export function CalendarClient({
+  anchorISO,
+  activeView,
+  appointments,
+  basePath = "/admin/calendar",
+  extraQuery = "",
+  readOnly = false,
+}: Props) {
   const router = useRouter();
 
   const jumpTo = (date: string, view: "week" | "month" = activeView) => {
-    router.push(`/admin/calendar?date=${date}&view=${view}`);
+    const suffix = extraQuery ? `&${extraQuery}` : "";
+    router.push(`${basePath}?date=${date}&view=${view}${suffix}`);
   };
 
   return (
@@ -88,28 +115,38 @@ export function CalendarClient({ anchorISO, activeView, appointments }: Props) {
           Today
         </button>
 
-        <Link
-          href="/admin/bookings/new"
-          className="inline-flex items-center gap-2"
-          style={{
-            padding: "8px 14px",
-            borderRadius: "8px",
-            backgroundColor: "#c4973a",
-            color: "#0a1a0d",
-            fontSize: "13px",
-            fontWeight: 700,
-            textDecoration: "none",
-          }}
-        >
-          <CalendarPlus className="w-4 h-4" />
-          Log FloLabs booking
-        </Link>
+        {!readOnly && (
+          <Link
+            href="/admin/bookings/new"
+            className="inline-flex items-center gap-2"
+            style={{
+              padding: "8px 14px",
+              borderRadius: "8px",
+              backgroundColor: "#c4973a",
+              color: "#0a1a0d",
+              fontSize: "13px",
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            <CalendarPlus className="w-4 h-4" />
+            Log FloLabs booking
+          </Link>
+        )}
       </div>
 
       {activeView === "week" ? (
-        <WeekView anchorISO={anchorISO} appointments={appointments} />
+        <WeekView
+          anchorISO={anchorISO}
+          appointments={appointments}
+          readOnly={readOnly}
+        />
       ) : (
-        <MonthView anchorISO={anchorISO} appointments={appointments} onJumpToDay={(iso) => jumpTo(iso, "week")} />
+        <MonthView
+          anchorISO={anchorISO}
+          appointments={appointments}
+          onJumpToDay={(iso) => jumpTo(iso, "week")}
+        />
       )}
     </>
   );
@@ -120,9 +157,11 @@ export function CalendarClient({ anchorISO, activeView, appointments }: Props) {
 function WeekView({
   anchorISO,
   appointments,
+  readOnly,
 }: {
   anchorISO: string;
   appointments: CalendarAppointment[];
+  readOnly: boolean;
 }) {
   const weekDays = useMemo(() => weekDaysFor(anchorISO), [anchorISO]);
   const byDayHour = useMemo(() => groupByDayHour(appointments), [appointments]);
@@ -211,7 +250,11 @@ function WeekView({
                   }}
                 >
                   {list.map((a) => (
-                    <AppointmentChip key={a.orderId} appointment={a} />
+                    <AppointmentChip
+                      key={a.orderId}
+                      appointment={a}
+                      readOnly={readOnly}
+                    />
                   ))}
                 </div>
               );
@@ -225,31 +268,31 @@ function WeekView({
 
 function AppointmentChip({
   appointment: a,
+  readOnly,
 }: {
   appointment: CalendarAppointment;
+  readOnly: boolean;
 }) {
   const time = formatTime(a.appointmentAt);
   const codes = a.tests.map((t) => t.sku ?? shortCode(t.name));
   const dobShort = a.patientDob ? formatDob(a.patientDob) : null;
   const sexShort = a.patientSex ? formatSex(a.patientSex) : null;
-  return (
-    <Link
-      href={`/admin/orders?highlight=${a.orderId}`}
-      style={{
-        display: "block",
-        padding: "8px 10px",
-        borderRadius: "8px",
-        backgroundColor: a.isKitOnly
-          ? "rgba(196, 151, 58, 0.18)" // light orange (kit)
-          : "rgba(141, 198, 63, 0.16)", // light green (visit)
-        border: `1px solid ${a.isKitOnly ? "#c4973a" : "#8dc63f"}`,
-        color: "#ffffff",
-        fontSize: "13px",
-        lineHeight: 1.35,
-        textDecoration: "none",
-      }}
-      title={`${a.patientName} · DOB ${dobShort ?? "?"} · ${time} · ${a.tests.map((t) => t.name).join(", ")}`}
-    >
+  const chipStyle: React.CSSProperties = {
+    display: "block",
+    padding: "8px 10px",
+    borderRadius: "8px",
+    backgroundColor: a.isKitOnly
+      ? "rgba(196, 151, 58, 0.18)" // light orange (kit)
+      : "rgba(141, 198, 63, 0.16)", // light green (visit)
+    border: `1px solid ${a.isKitOnly ? "#c4973a" : "#8dc63f"}`,
+    color: "#ffffff",
+    fontSize: "13px",
+    lineHeight: 1.35,
+    textDecoration: "none",
+  };
+  const chipTitle = `${a.patientName} · DOB ${dobShort ?? "?"} · ${time} · ${a.tests.map((t) => t.name).join(", ")}`;
+  const inner = (
+    <>
       <div style={{ fontWeight: 700, fontSize: "14px" }}>{a.patientName}</div>
       <div
         style={{
@@ -292,6 +335,23 @@ function AppointmentChip({
           ))}
         </div>
       )}
+    </>
+  );
+
+  if (readOnly) {
+    return (
+      <div style={chipStyle} title={chipTitle}>
+        {inner}
+      </div>
+    );
+  }
+  return (
+    <Link
+      href={`/admin/orders?highlight=${a.orderId}`}
+      style={chipStyle}
+      title={chipTitle}
+    >
+      {inner}
     </Link>
   );
 }
