@@ -65,38 +65,106 @@ export async function findCandidateOrders(
   const lastNameLower = parsed.clientName?.split(/\s+/).pop()?.toLowerCase();
 
   // Match against every recent order regardless of scheduled state.
-  // The original filter (appointment_at IS NULL) excluded any order
-  // that had ever had an appointment_date populated — which after
-  // migration 034's backfill was essentially every historical order.
-  // Real clients booking via FloLabs weren't matching because the
-  // 8am placeholder appointment_at from the backfill made them look
-  // 'already scheduled'. Recent-window cap keeps the query fast; old
-  // orders (>180d) can be paste-matched manually if needed.
+  // Split into three simple queries instead of one nested join so a
+  // schema/RLS quirk in any single join doesn't kill the whole match
+  // silently. Errors surface in logs so we know what's broken.
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
 
-  const { data } = await service
+  const { data: orderRows, error: ordersErr } = await service
     .from("orders")
-    .select(
-      `
-        id,
-        total_cad,
-        created_at,
-        appointment_at,
-        account_id,
-        accounts:accounts (email, first_name, last_name, phone),
-        order_lines:order_lines (
-          line_type,
-          tests:tests (name, sku),
-          patient_profiles:patient_profiles (first_name, last_name, phone)
-        )
-      `,
-    )
+    .select("id, total_cad, created_at, appointment_at, account_id")
     .gte("created_at", sixMonthsAgo.toISOString())
     .order("created_at", { ascending: false })
     .limit(200);
 
-  const rows = (data ?? []) as unknown as CandidateRow[];
+  if (ordersErr || !orderRows) {
+    console.error(
+      "[find-candidates] orders query failed:",
+      ordersErr?.message ?? "no data",
+    );
+    return [];
+  }
+  if (orderRows.length === 0) return [];
+
+  const orderIds = orderRows.map((o) => o.id);
+  const accountIds = Array.from(new Set(orderRows.map((o) => o.account_id).filter(Boolean)));
+
+  // Accounts lookup — email/phone/name lives here for the buyer.
+  const { data: accountRows, error: accountsErr } = await service
+    .from("accounts")
+    .select("id, email, first_name, last_name, phone")
+    .in("id", accountIds);
+  if (accountsErr) {
+    console.error("[find-candidates] accounts query failed:", accountsErr.message);
+  }
+  const accountsById = new Map<string, {
+    email: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
+  }>();
+  for (const a of (accountRows ?? []) as Array<{
+    id: string;
+    email: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
+  }>) {
+    accountsById.set(a.id, a);
+  }
+
+  // Order lines with joined tests + patient profiles.
+  const { data: lineRows, error: linesErr } = await service
+    .from("order_lines")
+    .select(
+      "order_id, line_type, tests:tests(name, sku), patient_profiles:patient_profiles(first_name, last_name, phone)",
+    )
+    .in("order_id", orderIds);
+  if (linesErr) {
+    console.error("[find-candidates] order_lines query failed:", linesErr.message);
+  }
+
+  type LineShape = {
+    order_id: string;
+    line_type: string;
+    tests: { name: string; sku: string | null } | { name: string; sku: string | null }[] | null;
+    patient_profiles: {
+      first_name: string;
+      last_name: string;
+      phone: string | null;
+    } | { first_name: string; last_name: string; phone: string | null }[] | null;
+  };
+  const linesByOrder = new Map<string, Array<{
+    line_type: string;
+    tests: { name: string; sku: string | null } | null;
+    patient_profiles: {
+      first_name: string;
+      last_name: string;
+      phone: string | null;
+    } | null;
+  }>>();
+  for (const l of (lineRows ?? []) as LineShape[]) {
+    const arr = linesByOrder.get(l.order_id) ?? [];
+    arr.push({
+      line_type: l.line_type,
+      tests: Array.isArray(l.tests) ? l.tests[0] ?? null : l.tests ?? null,
+      patient_profiles: Array.isArray(l.patient_profiles)
+        ? l.patient_profiles[0] ?? null
+        : l.patient_profiles ?? null,
+    });
+    linesByOrder.set(l.order_id, arr);
+  }
+
+  // Stitch into CandidateRow shape for the rest of the function.
+  const rows: CandidateRow[] = orderRows.map((o) => ({
+    id: o.id as string,
+    total_cad: (o.total_cad as number | null) ?? null,
+    created_at: o.created_at as string,
+    account_id: o.account_id as string,
+    accounts: accountsById.get(o.account_id as string) ?? null,
+    order_lines: linesByOrder.get(o.id as string) ?? [],
+  }));
 
   const scored = rows.map((r) => {
     let score = 0;
