@@ -672,7 +672,16 @@ function CandidatesForSelected({
                       : c.created_at
                         ? `charge ${formatDateTime(c.created_at)}`
                         : "no date"}{" "}
-                    · Order {c.order_id.slice(0, 8)} · {c.reason}
+                    · Order {c.order_id.slice(0, 8)}
+                    {c.order_total_cad != null && (
+                      <>
+                        {" "}
+                        · <span style={{ color: "#c4973a", fontWeight: 700 }}>
+                          {formatCadShort(c.order_total_cad)}
+                        </span>
+                      </>
+                    )}{" "}
+                    · {c.reason}
                   </div>
                   {c.test_names.length > 0 && (
                     <div
@@ -683,26 +692,34 @@ function CandidatesForSelected({
                         marginTop: 6,
                       }}
                     >
-                      {c.test_names.slice(0, 8).map((n, i) => (
-                        <span
-                          key={i}
-                          style={{
-                            display: "inline-block",
-                            padding: "1px 6px",
-                            borderRadius: 4,
-                            backgroundColor: "rgba(141, 198, 63, 0.14)",
-                            border: "1px solid rgba(141, 198, 63, 0.3)",
-                            fontSize: 10,
-                            color: "#e8d5a3",
-                          }}
-                          title={n}
-                        >
-                          {n.length > 32 ? n.slice(0, 31) + "…" : n}
-                        </span>
-                      ))}
-                      {c.test_names.length > 8 && (
+                      {c.test_names.slice(0, 10).map((n, i) => {
+                        const isMatch = (c.matched_test_names ?? []).includes(
+                          n,
+                        );
+                        return (
+                          <span
+                            key={i}
+                            style={{
+                              display: "inline-block",
+                              padding: "1px 6px",
+                              borderRadius: 4,
+                              backgroundColor: isMatch
+                                ? "rgba(141, 198, 63, 0.30)"
+                                : "rgba(255, 255, 255, 0.05)",
+                              border: `1px solid ${isMatch ? "#8dc63f" : "rgba(255, 255, 255, 0.15)"}`,
+                              fontSize: 10,
+                              color: isMatch ? "#ffffff" : "#8a9a8f",
+                              fontWeight: isMatch ? 600 : 400,
+                            }}
+                            title={n}
+                          >
+                            {n.length > 32 ? n.slice(0, 31) + "…" : n}
+                          </span>
+                        );
+                      })}
+                      {c.test_names.length > 10 && (
                         <span style={{ fontSize: 10, color: "#8dc63f" }}>
-                          +{c.test_names.length - 8} more
+                          +{c.test_names.length - 10} more
                         </span>
                       )}
                     </div>
@@ -798,6 +815,14 @@ function formatDate(iso: string): string {
     month: "short",
     day: "numeric",
     year: "numeric",
+  });
+}
+function formatCadShort(n: number): string {
+  return n.toLocaleString("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   });
 }
 function formatDateTime(iso: string | null): string {

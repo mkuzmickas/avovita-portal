@@ -32,6 +32,8 @@ export interface OrderCandidate {
   /** Fallback anchor when no explicit date is set — Stripe charge time
    *  from orders.created_at. Displayed as "charge date" in the UI. */
   created_at: string | null;
+  /** Order total in CAD — extra disambiguator when everything else ties. */
+  order_total_cad: number | null;
   /** Number of Mayo tests on this accession that also appear on the
    *  candidate order (via fuzzy name match). */
   test_overlap: number;
@@ -39,6 +41,10 @@ export interface OrderCandidate {
    *  so the reviewer can eyeball which order actually contains the
    *  tests being invoiced (crucial when multiple orders tie on score). */
   test_names: string[];
+  /** Subset of test_names that matched at least one Mayo description on
+   *  this accession. UI highlights these chips green so the reviewer
+   *  sees "yes, this one has the Cardio Risk panel" at a glance. */
+  matched_test_names: string[];
   score: number;
   reason: string;
 }
@@ -59,6 +65,7 @@ interface OrderRow {
   shipping_date: string | null;
   shipped_at: string | null;
   created_at: string;
+  total_cad: number | null;
 }
 
 interface OrderLineJoinRow {
@@ -198,7 +205,7 @@ export async function candidatesForLine(
   const { data: ordersRaw } = await service
     .from("orders")
     .select(
-      "id, account_id, appointment_at, appointment_date, shipping_date, shipped_at, created_at",
+      "id, account_id, appointment_at, appointment_date, shipping_date, shipped_at, created_at, total_cad",
     )
     .in("account_id", accountIds);
   const orders = (ordersRaw ?? []) as OrderRow[];
@@ -268,13 +275,17 @@ export async function candidatesForLine(
     );
 
     // Test-SKU overlap — for each Mayo test on this accession, does
-    // the candidate order have a test with a matching name?
+    // the candidate order have a test with a matching name? Also
+    // collect the specific portal test names that matched so the UI
+    // can highlight those chips (green) vs the rest (dim).
     const orderNames = orderTestNames.get(o.id) ?? [];
     let overlap = 0;
+    const matched = new Set<string>();
     for (const md of mayoDescs) {
       for (const on of orderNames) {
         if (looksLikeSameTest(md, on)) {
           overlap++;
+          matched.add(on);
           break; // count each Mayo test at most once
         }
       }
@@ -315,8 +326,10 @@ export async function candidatesForLine(
       appointment_at: o.appointment_at,
       shipping_date: o.shipping_date,
       created_at: o.created_at,
+      order_total_cad: o.total_cad,
       test_overlap: overlap,
       test_names: orderTestNames.get(o.id) ?? [],
+      matched_test_names: [...matched],
       score: Math.round(score),
       reason: reasonParts.join(" · "),
     });
