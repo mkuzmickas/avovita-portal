@@ -47,7 +47,6 @@ const NAV_LINKS: NavLink[] = [
   { href: "/admin/invoices", label: "Invoices", icon: Receipt, key: "invoices" },
   { href: "/admin/patients", label: "Clients", icon: Users, key: "patients" },
   { href: "/admin/results", label: "Upload Results", icon: Upload, key: "results" },
-  { href: "/admin/mayo/pending-batch", label: "Mayo Pending Batch", icon: FileInput, key: "mayo-pending-batch" },
   { href: "/shipping", label: "Shipping", icon: Truck, key: "shipping" },
   { href: "/admin/tests", label: "Tests", icon: FlaskConical, key: "tests" },
   { href: "/admin/supplements", label: "Supplements", icon: Pill, key: "supplements" },
