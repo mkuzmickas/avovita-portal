@@ -612,10 +612,12 @@ function CandidatesForSelected({
             borderRadius: 8,
           }}
         >
-          No candidate orders in the ±3-week window. Either the patient hasn&apos;t
-          been onboarded on the portal (Mayo direct-billed request), or the
-          collection date is unusually far off. Drop still works from a patient
-          you know is right — pick from all patients using search (v2).
+          No candidate orders in the window (−35 days / +5 days from Mayo&apos;s
+          collection date, using appointment / shipping / charge date as the
+          anchor). Either the patient isn&apos;t on the portal, the collection
+          date is unusually far off, or the order was booked under a different
+          spelling. Search-all-orders picker coming next; for now, drag from a
+          patient you know is correct on the left.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

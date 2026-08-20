@@ -51,6 +51,7 @@ interface OrderRow {
   appointment_date: string | null;
   shipping_date: string | null;
   shipped_at: string | null;
+  created_at: string;
 }
 
 interface OrderLineJoinRow {
@@ -160,7 +161,18 @@ export async function candidatesForLine(
     .from("patient_profiles")
     .select("id, account_id, first_name, last_name, date_of_birth")
     .ilike("last_name", last);
-  const profiles = (profilesRaw ?? []) as ProfileRow[];
+  let profiles = (profilesRaw ?? []) as ProfileRow[];
+  // Fallback: substring last-name match for edge cases like hyphens
+  // ("SMITH-JONES"), diacritics ("Filipović"), or trailing whitespace.
+  // Guarded on last.length ≥ 4 so we don't accidentally match every
+  // surname containing "LI" or "AN".
+  if (profiles.length === 0 && last.length >= 4) {
+    const { data: fallbackRaw } = await service
+      .from("patient_profiles")
+      .select("id, account_id, first_name, last_name, date_of_birth")
+      .ilike("last_name", `%${last}%`);
+    profiles = (fallbackRaw ?? []) as ProfileRow[];
+  }
   if (profiles.length === 0) return [];
 
   const firstMatch = first
@@ -183,20 +195,26 @@ export async function candidatesForLine(
   const { data: ordersRaw } = await service
     .from("orders")
     .select(
-      "id, account_id, appointment_at, appointment_date, shipping_date, shipped_at",
+      "id, account_id, appointment_at, appointment_date, shipping_date, shipped_at, created_at",
     )
     .in("account_id", accountIds);
   const orders = (ordersRaw ?? []) as OrderRow[];
 
   // Filter to date-window orders first, then fetch their test names
-  // in one query for overlap scoring.
+  // in one query for overlap scoring. `created_at` is the ultimate
+  // fallback anchor — some orders (esp. those where the appointment
+  // was never entered) have all four appointment/shipping dates null,
+  // and dropping them silently is exactly the bug that made Ana
+  // Filipovic's July 22 accession look "unmatched" while her Jul 20
+  // charged order was sitting there in the DB.
   const eligibleOrders: OrderRow[] = [];
   for (const o of orders) {
     const anchor =
       o.appointment_at ||
       o.appointment_date ||
       o.shipping_date ||
-      o.shipped_at;
+      o.shipped_at ||
+      o.created_at;
     if (!anchor) continue;
     const anchorDate = new Date(anchor);
     if (anchorDate < start || anchorDate > end) continue;
@@ -230,7 +248,8 @@ export async function candidatesForLine(
       o.appointment_at ||
       o.appointment_date ||
       o.shipping_date ||
-      o.shipped_at!;
+      o.shipped_at ||
+      o.created_at;
     const diff = Math.abs(daysBetween(anchor, invoiceLine.collection_date));
 
     // Test-SKU overlap — for each Mayo test on this accession, does
