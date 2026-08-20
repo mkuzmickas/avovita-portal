@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { pollFloLabsInbox } from "@/lib/microsoft/poll-flolabs-inbox";
+import type { Account } from "@/types/database";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -8,22 +9,44 @@ export const maxDuration = 60;
 /**
  * GET /api/cron/poll-flolabs-inbox
  *
- * Vercel cron endpoint — runs every 5 minutes (vercel.json). Reads
- * unread Acuity confirmations from Mike's Outlook via Microsoft Graph,
- * matches each one to an order, and either auto-assigns or drops it
- * in the review queue. Marks processed emails as read so subsequent
- * polls skip them.
+ * Runs every 5 min via Vercel cron. Reads recent Acuity confirmations
+ * from Mike's Outlook via Microsoft Graph, matches each to an order,
+ * and either auto-assigns or drops it in the review queue.
  *
- * Auth: Vercel cron jobs are called by Vercel's infrastructure with
- * a bearer token equal to CRON_SECRET. Public callers get 401.
- * Manual admin trigger (for testing) is allowed with the same secret.
+ * Auth accepts EITHER path:
+ *   - Bearer CRON_SECRET header — how Vercel's cron scheduler calls it
+ *   - Authenticated admin browser session — so Mike can force a
+ *     manual poll by just visiting /api/cron/poll-flolabs-inbox
+ *     while logged in as admin (bookmarkable, no secret to memorise)
+ *
+ * The endpoint is a read-then-write-with-dedup — worst-case abuse is
+ * burning Graph API quota, so dual auth is safe.
  */
+
+async function isAdminSession(): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data: account } = (await supabase
+    .from("accounts")
+    .select("role")
+    .eq("id", user.id)
+    .single()) as { data: Pick<Account, "role"> | null };
+  return account?.role === "admin";
+}
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   const secret = process.env.CRON_SECRET;
-  if (secret && authHeader !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Not authorised." }, { status: 401 });
+  const secretValid = !!secret && authHeader === `Bearer ${secret}`;
+  const adminValid = !secretValid && (await isAdminSession());
+  if (!secretValid && !adminValid) {
+    return NextResponse.json(
+      { error: "Not authorised — send CRON_SECRET bearer or sign in as admin." },
+      { status: 401 },
+    );
   }
 
   const supabase = createServiceRoleClient();

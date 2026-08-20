@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import type { QueuedEvent } from "./page";
 
 interface Props {
@@ -10,34 +10,113 @@ interface Props {
 }
 
 export function BookingQueueClient({ events: initialEvents }: Props) {
+  const router = useRouter();
   const [events, setEvents] = useState(initialEvents);
+  const [polling, setPolling] = useState(false);
+  const [pollResult, setPollResult] = useState<string | null>(null);
 
-  if (events.length === 0) {
-    return (
-      <div
-        style={{
-          padding: "40px",
-          border: "1px dashed #2d6b35",
-          borderRadius: "10px",
-          color: "#e8d5a3",
-          textAlign: "center",
-        }}
-      >
-        Nothing in the queue. All forwarded FloLabs confirmations have
-        auto-matched to an order.
-      </div>
-    );
-  }
+  const pollNow = async () => {
+    setPolling(true);
+    setPollResult(null);
+    try {
+      const res = await fetch("/api/cron/poll-flolabs-inbox");
+      const data = await res.json();
+      if (!res.ok) {
+        setPollResult(`Error: ${data.error ?? res.statusText}`);
+        return;
+      }
+      setPollResult(
+        `Scanned ${data.scanned ?? 0}, processed ${data.processed ?? 0} · auto-assigned ${data.autoAssigned ?? 0} · needs review ${data.needsReview ?? 0} · no match ${data.noMatch ?? 0} · duplicates skipped ${data.skippedDuplicates ?? 0}`,
+      );
+      // Give the DB a moment to settle, then refresh
+      setTimeout(() => router.refresh(), 500);
+    } catch (err) {
+      setPollResult(err instanceof Error ? err.message : "Poll failed.");
+    } finally {
+      setPolling(false);
+    }
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      {events.map((ev) => (
-        <QueueRow
-          key={ev.id}
-          event={ev}
-          onResolved={(id) => setEvents((prev) => prev.filter((e) => e.id !== id))}
-        />
-      ))}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "12px 14px",
+          border: "1px solid #2d6b35",
+          borderRadius: "10px",
+          backgroundColor: "#0f2614",
+        }}
+      >
+        <button
+          type="button"
+          onClick={pollNow}
+          disabled={polling}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "8px 14px",
+            border: 0,
+            borderRadius: "8px",
+            backgroundColor: polling ? "#8b6a1e" : "#c4973a",
+            color: "#0a1a0d",
+            fontSize: "13px",
+            fontWeight: 700,
+            cursor: polling ? "not-allowed" : "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          {polling ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <RefreshCw className="w-4 h-4" />
+          )}
+          {polling ? "Polling Outlook…" : "Poll Outlook now"}
+        </button>
+        <span style={{ fontSize: "12px", color: "#8ba392" }}>
+          Cron fires automatically every 5 min. Click to force an immediate
+          scan of the last 7 days of Acuity emails.
+        </span>
+        {pollResult && (
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: "12px",
+              color: pollResult.startsWith("Error") ? "#e05252" : "#8dc63f",
+            }}
+          >
+            {pollResult}
+          </span>
+        )}
+      </div>
+
+      {events.length === 0 ? (
+        <div
+          style={{
+            padding: "40px",
+            border: "1px dashed #2d6b35",
+            borderRadius: "10px",
+            color: "#e8d5a3",
+            textAlign: "center",
+          }}
+        >
+          Nothing in the queue. All forwarded FloLabs confirmations have
+          auto-matched to an order.
+        </div>
+      ) : (
+        events.map((ev) => (
+          <QueueRow
+            key={ev.id}
+            event={ev}
+            onResolved={(id) =>
+              setEvents((prev) => prev.filter((e) => e.id !== id))
+            }
+          />
+        ))
+      )}
     </div>
   );
 }
