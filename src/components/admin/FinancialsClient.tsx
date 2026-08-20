@@ -161,7 +161,10 @@ function OverviewTab({
   qboTxns: QboTxn[];
   cogsSet: Set<string>;
 }) {
-  const [granularity, setGranularity] = useState<Granularity>("weekly");
+  // Monthly is the useful default: "this week" starting Monday is
+  // often 1–2 days old and reads $0.00 across the board even when
+  // the business is fine. Monthly = current month, always meaningful.
+  const [granularity, setGranularity] = useState<Granularity>("monthly");
   const [customStart, setCustomStart] = useState<string>("");
   const [customEnd, setCustomEnd] = useState<string>("");
 
@@ -199,7 +202,7 @@ function OverviewTab({
   const periodOrders = useMemo(
     () =>
       orders.filter((o) => {
-        const t = new Date(o.shipped_at);
+        const t = new Date(o.revenue_date);
         return t >= start && t < end;
       }),
     [orders, start, end],
@@ -252,7 +255,7 @@ function OverviewTab({
     }
     return buckets.map((b) => {
       const inBucket = orders.filter((o) => {
-        const t = new Date(o.shipped_at);
+        const t = new Date(o.revenue_date);
         return t >= b.start && t < b.end;
       });
       const rev = inBucket.reduce((s, o) => s + o.total_cad, 0);

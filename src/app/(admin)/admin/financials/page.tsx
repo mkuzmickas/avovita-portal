@@ -7,7 +7,11 @@ export const dynamic = "force-dynamic";
 
 export type ShippedOrder = {
   id: string;
-  shipped_at: string;
+  /** Canonical revenue-recognition date: appointment_at →
+   *  appointment_date → shipping_date → shipped_at → created_at,
+   *  whichever is set first. Every completed order has at least
+   *  created_at, so no revenue silently drops out anymore. */
+  revenue_date: string;
   total_cad: number;
   test_cost_cad: number;
   test_count: number;
@@ -41,7 +45,13 @@ export type QboTxn = {
 export default async function AdminFinancialsPage() {
   const service = createServiceRoleClient();
 
-  // 1. Orders — last 15 months so the 12-month chart has full context
+  // 1. Orders — last 15 months so the 12-month chart has full context.
+  // We used to require shipped_at IS NOT NULL, but many portal orders
+  // reach status=Complete without shipped_at ever being set (same
+  // silent-drop bug that hid Ana Filipovic from the Mayo matcher).
+  // Now: pull every completed/shipped/resulted order in the window
+  // and compute a canonical revenue_date via the same fallback chain
+  // the matcher uses.
   const cutoffIso = new Date(
     Date.now() - 15 * 30 * 24 * 60 * 60 * 1000,
   ).toISOString();
@@ -50,7 +60,8 @@ export default async function AdminFinancialsPage() {
     .from("orders")
     .select(
       `
-      id, shipped_at, total_cad, manifest_id,
+      id, appointment_at, appointment_date, shipping_date, shipped_at, created_at,
+      total_cad, manifest_id,
       order_lines (
         quantity,
         test:tests ( cost_cad )
@@ -58,12 +69,15 @@ export default async function AdminFinancialsPage() {
     `,
     )
     .in("status", ["shipped", "resulted", "complete"])
-    .not("shipped_at", "is", null)
-    .gte("shipped_at", cutoffIso);
+    .gte("created_at", cutoffIso);
 
   type RawOrder = {
     id: string;
-    shipped_at: string;
+    appointment_at: string | null;
+    appointment_date: string | null;
+    shipping_date: string | null;
+    shipped_at: string | null;
+    created_at: string;
     total_cad: number | null;
     manifest_id: string | null;
     order_lines: Array<{
@@ -82,9 +96,15 @@ export default async function AdminFinancialsPage() {
         testCost += cost * qty;
         testCount += qty;
       }
+      const revenue_date =
+        o.appointment_at ||
+        o.appointment_date ||
+        o.shipping_date ||
+        o.shipped_at ||
+        o.created_at;
       return {
         id: o.id,
-        shipped_at: o.shipped_at,
+        revenue_date,
         total_cad: o.total_cad ?? 0,
         test_cost_cad: testCost,
         test_count: testCount,

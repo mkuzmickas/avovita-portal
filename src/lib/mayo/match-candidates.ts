@@ -139,11 +139,6 @@ export function splitMayoName(full: string): {
   return { last: parts[0].toUpperCase(), first: parts[1].toUpperCase() };
 }
 
-function daysBetween(a: string, b: string): number {
-  const da = new Date(a).getTime();
-  const db = new Date(b).getTime();
-  return Math.round((da - db) / (24 * 60 * 60 * 1000));
-}
 
 /**
  * Compute candidate orders for an invoice line (or a group of lines
@@ -192,12 +187,13 @@ export async function candidatesForLine(
   const accountIds = [...new Set(candidates.map((c) => c.account_id))];
   if (accountIds.length === 0) return [];
 
-  // Widened date window: -35d back (Mayo can invoice weeks late) to
-  // +5d forward (specimen may sit in transit before Mayo logs it).
-  const start = new Date(invoiceLine.collection_date);
-  start.setDate(start.getDate() - 35);
-  const end = new Date(invoiceLine.collection_date);
-  end.setDate(end.getDate() + 5);
+  // Wide window: ±60 days from Mayo's collection date. Wider than
+  // strictly necessary — but the day-off penalty in scoring handles
+  // relevance and this lets us catch late-shipped or backdated
+  // orders. Anchor per order is the CLOSEST of its 5 date fields to
+  // Mayo's collection_date, not the first-non-null (see below).
+  const collectionMs = new Date(invoiceLine.collection_date).getTime();
+  const windowMs = 60 * 24 * 60 * 60 * 1000;
 
   const { data: ordersRaw } = await service
     .from("orders")
@@ -207,25 +203,39 @@ export async function candidatesForLine(
     .in("account_id", accountIds);
   const orders = (ordersRaw ?? []) as OrderRow[];
 
-  // Filter to date-window orders first, then fetch their test names
-  // in one query for overlap scoring. `created_at` is the ultimate
-  // fallback anchor — some orders (esp. those where the appointment
-  // was never entered) have all four appointment/shipping dates null,
-  // and dropping them silently is exactly the bug that made Ana
-  // Filipovic's July 22 accession look "unmatched" while her Jul 20
-  // charged order was sitting there in the DB.
-  const eligibleOrders: OrderRow[] = [];
+  // Pick the anchor date as the CLOSEST of the 5 candidate dates on
+  // the order — appointment_at/date, shipping_date, shipped_at, or
+  // created_at. The old fallback chain broke on Sidonie
+  // Durnford-Pascal: her order had shipping_date May 5 (6d after
+  // Mayo's Apr 29 collection) and created_at Apr 22 (7d before), so
+  // "first non-null wins" grabbed shipping_date, which sat 1 day
+  // past the tight forward window and got her filtered out. Closest-
+  // date + wider window fixes that class of bug.
+  const eligibleOrders: Array<OrderRow & { anchorMs: number }> = [];
   for (const o of orders) {
-    const anchor =
-      o.appointment_at ||
-      o.appointment_date ||
-      o.shipping_date ||
-      o.shipped_at ||
-      o.created_at;
-    if (!anchor) continue;
-    const anchorDate = new Date(anchor);
-    if (anchorDate < start || anchorDate > end) continue;
-    eligibleOrders.push(o);
+    const dates = [
+      o.appointment_at,
+      o.appointment_date,
+      o.shipping_date,
+      o.shipped_at,
+      o.created_at,
+    ]
+      .filter((d): d is string => Boolean(d))
+      .map((d) => new Date(d).getTime())
+      .filter((n) => Number.isFinite(n));
+    if (dates.length === 0) continue;
+    // Closest to collectionMs
+    let closest = dates[0];
+    let closestDiff = Math.abs(closest - collectionMs);
+    for (const d of dates) {
+      const diff = Math.abs(d - collectionMs);
+      if (diff < closestDiff) {
+        closestDiff = diff;
+        closest = d;
+      }
+    }
+    if (closestDiff > windowMs) continue;
+    eligibleOrders.push({ ...o, anchorMs: closest });
   }
   if (eligibleOrders.length === 0) return [];
 
@@ -251,13 +261,11 @@ export async function candidatesForLine(
   for (const o of eligibleOrders) {
     const profile = candidates.find((c) => c.account_id === o.account_id);
     if (!profile) continue;
-    const anchor =
-      o.appointment_at ||
-      o.appointment_date ||
-      o.shipping_date ||
-      o.shipped_at ||
-      o.created_at;
-    const diff = Math.abs(daysBetween(anchor, invoiceLine.collection_date));
+    // anchorMs is the closest date to Mayo's collection_date across
+    // all 5 of the order's date fields — pre-computed above.
+    const diff = Math.round(
+      Math.abs(o.anchorMs - collectionMs) / (24 * 60 * 60 * 1000),
+    );
 
     // Test-SKU overlap — for each Mayo test on this accession, does
     // the candidate order have a test with a matching name?
