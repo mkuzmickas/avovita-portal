@@ -1,5 +1,6 @@
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { FinancialsClient } from "@/components/admin/FinancialsClient";
+import { QuickBooksCard } from "@/components/admin/QuickBooksCard";
 import type { Expense, ManifestStatus } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -115,6 +116,48 @@ export default async function AdminFinancialsPage() {
     .order("created_at", { ascending: false });
   const expenses = (expensesRaw ?? []) as unknown as Expense[];
 
+  // 4. QuickBooks integration status + counts (best-effort — table
+  //    may not exist yet in older deployments; treat any error as
+  //    "not connected" so the page still renders).
+  let qboConnected = false;
+  let qboConnectedBy: string | null = null;
+  let qboConnectedAt: string | null = null;
+  let qboLastTxnSyncedAt: string | null = null;
+  let qboTxnCount = 0;
+  let qboUncategorizedCount = 0;
+  try {
+    const { data: integ } = await service
+      .from("integrations")
+      .select("connected_by, connected_at")
+      .eq("provider", "quickbooks")
+      .maybeSingle();
+    if (integ) {
+      qboConnected = true;
+      const row = integ as { connected_by: string | null; connected_at: string };
+      qboConnectedBy = row.connected_by;
+      qboConnectedAt = row.connected_at;
+    }
+    const { count: totalCount } = await service
+      .from("qbo_transactions")
+      .select("id", { count: "exact", head: true });
+    qboTxnCount = totalCount ?? 0;
+    const { count: uncatCount } = await service
+      .from("qbo_transactions")
+      .select("id", { count: "exact", head: true })
+      .is("category", null);
+    qboUncategorizedCount = uncatCount ?? 0;
+    const { data: lastSync } = await service
+      .from("qbo_transactions")
+      .select("synced_at")
+      .order("synced_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    qboLastTxnSyncedAt =
+      (lastSync as { synced_at: string } | null)?.synced_at ?? null;
+  } catch {
+    // migration not applied yet — keep defaults
+  }
+
   return (
     <div className="p-6 max-w-[1800px] mx-auto">
       <div className="mb-8">
@@ -131,6 +174,15 @@ export default async function AdminFinancialsPage() {
           Revenue, costs, and operating expenses across the business.
         </p>
       </div>
+
+      <QuickBooksCard
+        connected={qboConnected}
+        connectedBy={qboConnectedBy}
+        connectedAt={qboConnectedAt}
+        lastTxnSyncedAt={qboLastTxnSyncedAt}
+        txnCount={qboTxnCount}
+        uncategorizedCount={qboUncategorizedCount}
+      />
 
       <FinancialsClient
         orders={orders}

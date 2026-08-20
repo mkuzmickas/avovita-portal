@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/poll-flolabs-inbox",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/quickbooks-sync",
+      "schedule": "0 8 * * *"
     }
   ],
   "functions": {
