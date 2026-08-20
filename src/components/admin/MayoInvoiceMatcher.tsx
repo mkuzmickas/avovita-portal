@@ -7,6 +7,10 @@ import type { OrderCandidate } from "@/lib/mayo/match-candidates";
 
 interface Props {
   invoiceId: string;
+  /** USD → CAD multiplier from mayo_invoices.fx_rate. Used to compute
+   *  every displayed CAD figure client-side so the matcher stays in
+   *  sync with whatever rate is stored on the invoice. */
+  fxRate: number;
   patientGroups: PatientGroup[];
 }
 
@@ -25,8 +29,41 @@ interface Props {
  * Mayo invoices don't carry DOB, so eyeballing this is how Mike
  * confirms "yes this Smith is that Smith".
  */
-export function MayoInvoiceMatcher({ invoiceId, patientGroups }: Props) {
+export function MayoInvoiceMatcher({
+  invoiceId,
+  fxRate,
+  patientGroups,
+}: Props) {
   const router = useRouter();
+  const [savingFx, setSavingFx] = useState(false);
+  const [fxInput, setFxInput] = useState(fxRate.toFixed(4));
+  const [fxMsg, setFxMsg] = useState<string | null>(null);
+  const saveFx = async () => {
+    setSavingFx(true);
+    setFxMsg(null);
+    try {
+      const parsed = parseFloat(fxInput);
+      if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 10) {
+        throw new Error("FX rate must be a positive number under 10.");
+      }
+      const res = await fetch(
+        `/api/admin/mayo/invoices/${invoiceId}/fx-rate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fx_rate: parsed }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setFxMsg(`Saved. Reloading…`);
+      router.refresh();
+    } catch (err) {
+      setFxMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingFx(false);
+    }
+  };
   const [selectedPatient, setSelectedPatient] = useState<string | null>(
     patientGroups.find((g) => g.lines.some((l) => !l.order_id))?.patient_name ??
       patientGroups[0]?.patient_name ??
@@ -99,6 +136,94 @@ export function MayoInvoiceMatcher({ invoiceId, patientGroups }: Props) {
   };
 
   return (
+    <>
+      {/* FX rate strip — editable per invoice */}
+      <div
+        style={{
+          marginBottom: 16,
+          padding: "10px 14px",
+          borderRadius: 10,
+          border: "1px solid #2d6b35",
+          backgroundColor: "#0f2614",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              color: "#c4973a",
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            USD → CAD rate for this invoice
+          </div>
+          <div style={{ color: "#e8d5a3", fontSize: 12, marginTop: 2 }}>
+            Every CAD figure below is USD × this rate. Default 1.43 (Amex
+            spread on foreign txn); override if you know the actual rate
+            AvoVita paid.
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginLeft: "auto",
+          }}
+        >
+          <input
+            type="number"
+            step="0.0001"
+            min="0.5"
+            max="3"
+            value={fxInput}
+            onChange={(e) => setFxInput(e.target.value)}
+            disabled={savingFx}
+            style={{
+              width: 90,
+              padding: "6px 8px",
+              borderRadius: 6,
+              border: "1px solid #2d6b35",
+              backgroundColor: "#0a1a0d",
+              color: "#ffffff",
+              fontFamily: "monospace",
+              fontSize: 13,
+            }}
+          />
+          <button
+            type="button"
+            onClick={saveFx}
+            disabled={savingFx || Math.abs(parseFloat(fxInput) - fxRate) < 0.00005}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 6,
+              backgroundColor:
+                savingFx || Math.abs(parseFloat(fxInput) - fxRate) < 0.00005
+                  ? "#5a705f"
+                  : "#c4973a",
+              color: "#0a1a0d",
+              fontSize: 12,
+              fontWeight: 700,
+              border: 0,
+              cursor: savingFx ? "not-allowed" : "pointer",
+            }}
+          >
+            {savingFx ? "Saving…" : "Save"}
+          </button>
+        </div>
+        {fxMsg && (
+          <div style={{ width: "100%", color: "#8dc63f", fontSize: 11 }}>
+            {fxMsg}
+          </div>
+        )}
+      </div>
+
     <div
       style={{
         display: "grid",
@@ -181,7 +306,7 @@ export function MayoInvoiceMatcher({ invoiceId, patientGroups }: Props) {
                   </div>
                   <div style={{ color: "#8dc63f", fontSize: 11 }}>
                     {g.lines.length} line{g.lines.length === 1 ? "" : "s"} ·{" "}
-                    {formatCad(g.total_charge_cad)}
+                    {formatUsdCad(g.total_charge_usd, fxRate)}
                   </div>
                 </div>
                 <span
@@ -245,7 +370,7 @@ export function MayoInvoiceMatcher({ invoiceId, patientGroups }: Props) {
                 {selected.patient_name}
               </div>
               <div style={{ color: "#8dc63f", fontSize: 12, marginTop: 2 }}>
-                Total {formatCad(selected.total_charge_cad)} ·{" "}
+                Total {formatUsdCad(selected.total_charge_usd, fxRate)} ·{" "}
                 {selected.lines.length} line
                 {selected.lines.length === 1 ? "" : "s"}
                 {selected.mayo_patient_id && (
@@ -295,7 +420,7 @@ export function MayoInvoiceMatcher({ invoiceId, patientGroups }: Props) {
                           fontWeight: 700,
                         }}
                       >
-                        {formatCad(Number(l.charge_cad))}
+                        {formatUsdCad(Number(l.charge_usd), fxRate)}
                       </td>
                     </tr>
                   ))}
@@ -318,6 +443,7 @@ export function MayoInvoiceMatcher({ invoiceId, patientGroups }: Props) {
         )}
       </div>
     </div>
+    </>
   );
 }
 
@@ -561,13 +687,24 @@ function scoreColor(n: number): string {
   if (n >= 60) return "#c4973a";
   return "#e88b8b";
 }
-function formatCad(n: number): string {
-  return n.toLocaleString("en-CA", {
+/**
+ * Format a USD amount as "$X.XX USD → $Y.YY CAD" using the invoice's
+ * fx_rate. This is the ONLY money formatter the matcher uses now that
+ * all Mayo columns store raw USD.
+ */
+function formatUsdCad(usd: number, fxRate: number): string {
+  const cad = usd * fxRate;
+  return `${usd.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} → ${cad.toLocaleString("en-CA", {
     style: "currency",
     currency: "CAD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  });
+  })}`;
 }
 function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-CA", {

@@ -18,7 +18,7 @@ export const maxDuration = 300;
  *
  * Accepts multipart/form-data with a `file` field pointing at a Mayo
  * Clinic monthly invoice PDF. Parses the PDF into
- * (invoice_number, invoice_date, total_cad, lines[]), inserts
+ * (invoice_number, invoice_date, total_usd, lines[]), inserts
  * (idempotent on invoice_number + accession + test_id), then runs the
  * name-based auto-matcher against portal orders.
  *
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       .from("mayo_invoices")
       .update({
         invoice_date: parsed.invoice_date,
-        total_cad: parsed.total_cad,
+        total_usd: parsed.total_usd,
         source_filename: file.name,
         uploaded_by: account.email ?? user.email ?? null,
         uploaded_at: new Date().toISOString(),
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       .insert({
         invoice_number: parsed.invoice_number,
         invoice_date: parsed.invoice_date,
-        total_cad: parsed.total_cad,
+        total_usd: parsed.total_usd,
         source_filename: file.name,
         uploaded_by: account.email ?? user.email ?? null,
       })
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     test_id: l.test_id,
     cpt: l.cpt,
     description: l.description,
-    charge_cad: l.charge_cad,
+    charge_usd: l.charge_usd,
   }));
 
   const { error: upsertErr } = await service
@@ -176,8 +176,8 @@ export async function POST(request: NextRequest) {
   // Also compute the invoice-total sanity check — surface any drift
   // between the extracted line-sum and Mayo's Grand Total so Mike
   // can spot parse errors.
-  const linesSum = rows.reduce((s, r) => s + Number(r.charge_cad), 0);
-  const drift = Math.round((linesSum - parsed.total_cad) * 100) / 100;
+  const linesSum = rows.reduce((s, r) => s + Number(r.charge_usd), 0);
+  const drift = Math.round((linesSum - parsed.total_usd) * 100) / 100;
 
   return NextResponse.json({
     ok: true,
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
     lines_upserted: rows.length,
     auto_matched: autoMatched,
     unmatched: unmatched.length - autoMatched,
-    parsed_total: parsed.total_cad,
+    parsed_total: parsed.total_usd,
     line_sum: Math.round(linesSum * 100) / 100,
     drift_cad: drift,
   });

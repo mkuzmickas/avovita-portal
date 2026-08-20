@@ -34,13 +34,13 @@ export interface ParsedInvoiceLine {
   test_id: string;
   cpt: string | null;
   description: string | null;
-  charge_cad: number;
+  charge_usd: number;
 }
 
 export interface ParsedInvoice {
   invoice_number: string;
   invoice_date: string; // YYYY-MM-DD
-  total_cad: number;
+  total_usd: number;
   lines: ParsedInvoiceLine[];
 }
 
@@ -122,7 +122,7 @@ function parseTestTail(tokens: string[]): {
   test_id: string;
   cpt: string | null;
   description: string | null;
-  charge_cad: number;
+  charge_usd: number;
 } | null {
   if (tokens.length === 0) return null;
   const test_id = tokens[0];
@@ -132,8 +132,8 @@ function parseTestTail(tokens: string[]): {
   const last = tokens[tokens.length - 1];
   const m = MONEY_END_RE.exec(last);
   if (!m) return null;
-  const charge_cad = parseMoney(m[1]);
-  if (!Number.isFinite(charge_cad) || charge_cad <= 0) return null;
+  const charge_usd = parseMoney(m[1]);
+  if (!Number.isFinite(charge_usd) || charge_usd <= 0) return null;
 
   const middle = tokens.slice(1, -1);
   let cpt: string | null = null;
@@ -146,7 +146,7 @@ function parseTestTail(tokens: string[]): {
     test_id,
     cpt,
     description: descTokens.length > 0 ? descTokens.join(" ") : null,
-    charge_cad,
+    charge_usd,
   };
 }
 
@@ -188,10 +188,10 @@ export async function parseMayoPdf(buffer: Buffer): Promise<ParsedInvoice> {
   if (!invoice_date) throw new Error("Could not find invoice Date in PDF.");
 
   // Grand Total: prefer the labeled summary; fall back to footer.
-  let total_cad = NaN;
+  let total_usd = NaN;
   const grand = /Grand Total\s+\$([\d,]+\.\d{2})/i.exec(text);
   if (grand) {
-    total_cad = parseMoney(grand[1]);
+    total_usd = parseMoney(grand[1]);
   } else {
     const footer = [
       ...text.matchAll(
@@ -199,10 +199,10 @@ export async function parseMayoPdf(buffer: Buffer): Promise<ParsedInvoice> {
       ),
     ];
     if (footer.length > 0) {
-      total_cad = parseMoney(footer[footer.length - 1][1]);
+      total_usd = parseMoney(footer[footer.length - 1][1]);
     }
   }
-  if (!Number.isFinite(total_cad)) {
+  if (!Number.isFinite(total_usd)) {
     throw new Error("Could not extract Grand Total from PDF.");
   }
 
@@ -319,7 +319,7 @@ export async function parseMayoPdf(buffer: Buffer): Promise<ParsedInvoice> {
   return {
     invoice_number,
     invoice_date,
-    total_cad,
+    total_usd,
     lines: deduped,
   };
 }

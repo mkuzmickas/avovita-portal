@@ -19,7 +19,7 @@ export const maxDuration = 120;
  *   {
  *     invoice_number: "7044716-053126",
  *     invoice_date:   "2026-05-31",
- *     total_cad:      7343.68,
+ *     total_usd:      7343.68,
  *     source_filename?: "MCL_invoice_2026-05-31.pdf",
  *     lines: [
  *       {
@@ -31,7 +31,7 @@ export const maxDuration = 120;
  *         test_id:         "FFIG2",
  *         cpt?:            "83520",
  *         description?:    "IGF-2",
- *         charge_cad:      104.90
+ *         charge_usd:      104.90
  *       }, ...
  *     ]
  *   }
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
   let body: {
     invoice_number?: string;
     invoice_date?: string;
-    total_cad?: number;
+    total_usd?: number;
     source_filename?: string;
     lines?: Array<{
       collection_date?: string;
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       test_id?: string;
       cpt?: string;
       description?: string;
-      charge_cad?: number;
+      charge_usd?: number;
     }>;
   };
   try {
@@ -80,9 +80,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  if (!body.invoice_number || !body.invoice_date || body.total_cad == null) {
+  if (!body.invoice_number || !body.invoice_date || body.total_usd == null) {
     return NextResponse.json(
-      { error: "invoice_number, invoice_date, total_cad required." },
+      { error: "invoice_number, invoice_date, total_usd required." },
       { status: 400 },
     );
   }
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       .from("mayo_invoices")
       .update({
         invoice_date: body.invoice_date,
-        total_cad: body.total_cad,
+        total_usd: body.total_usd,
         source_filename: body.source_filename ?? null,
         uploaded_by: account.email ?? user.email ?? null,
         uploaded_at: new Date().toISOString(),
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       .insert({
         invoice_number: body.invoice_number,
         invoice_date: body.invoice_date,
-        total_cad: body.total_cad,
+        total_usd: body.total_usd,
         source_filename: body.source_filename ?? null,
         uploaded_by: account.email ?? user.email ?? null,
       })
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     test_id: string;
     cpt: string | null;
     description: string | null;
-    charge_cad: number;
+    charge_usd: number;
   }> = [];
   const errors: string[] = [];
   for (const [i, l] of lines.entries()) {
@@ -160,10 +160,10 @@ export async function POST(request: NextRequest) {
       !l.accession_no ||
       !l.patient_name ||
       !l.test_id ||
-      l.charge_cad == null
+      l.charge_usd == null
     ) {
       errors.push(
-        `line ${i + 1}: collection_date, accession_no, patient_name, test_id, charge_cad required`,
+        `line ${i + 1}: collection_date, accession_no, patient_name, test_id, charge_usd required`,
       );
       continue;
     }
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
       test_id: l.test_id,
       cpt: l.cpt ?? null,
       description: l.description ?? null,
-      charge_cad: l.charge_cad,
+      charge_usd: l.charge_usd,
     });
   }
   if (errors.length > 0) {

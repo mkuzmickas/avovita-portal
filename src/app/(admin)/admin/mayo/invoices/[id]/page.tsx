@@ -25,7 +25,7 @@ export interface MatchLine {
   patient_name: string;
   test_id: string;
   description: string | null;
-  charge_cad: number;
+  charge_usd: number;
   order_id: string | null;
   matched_by: string | null;
   candidates: OrderCandidate[];
@@ -38,7 +38,7 @@ export interface PatientGroup {
   patient_name: string;
   mayo_patient_id: string | null;
   lines: MatchLine[];
-  total_charge_cad: number;
+  total_charge_usd: number;
 }
 
 export interface MatchedOrderSummary {
@@ -58,7 +58,7 @@ interface LineRow {
   patient_name: string;
   test_id: string;
   description: string | null;
-  charge_cad: number;
+  charge_usd: number;
   order_id: string | null;
   matched_by: string | null;
 }
@@ -67,7 +67,8 @@ interface InvoiceRow {
   id: string;
   invoice_number: string;
   invoice_date: string;
-  total_cad: number;
+  total_usd: number;
+  fx_rate: number;
 }
 
 export default async function MayoInvoiceMatcherPage({
@@ -80,7 +81,7 @@ export default async function MayoInvoiceMatcherPage({
 
   const { data: inv } = await service
     .from("mayo_invoices")
-    .select("id, invoice_number, invoice_date, total_cad")
+    .select("id, invoice_number, invoice_date, total_usd, fx_rate")
     .eq("id", id)
     .maybeSingle();
   if (!inv) notFound();
@@ -89,7 +90,7 @@ export default async function MayoInvoiceMatcherPage({
   const { data: linesRaw } = await service
     .from("mayo_invoice_lines")
     .select(
-      "id, collection_date, accession_no, specimen_no, mayo_patient_id, patient_name, test_id, description, charge_cad, order_id, matched_by",
+      "id, collection_date, accession_no, specimen_no, mayo_patient_id, patient_name, test_id, description, charge_usd, order_id, matched_by",
     )
     .eq("invoice_id", id)
     .order("collection_date", { ascending: true });
@@ -152,10 +153,10 @@ export default async function MayoInvoiceMatcherPage({
       patient_name: l.patient_name,
       mayo_patient_id: l.mayo_patient_id,
       lines: [],
-      total_charge_cad: 0,
+      total_charge_usd: 0,
     };
     g.lines.push(l);
-    g.total_charge_cad += Number(l.charge_cad);
+    g.total_charge_usd += Number(l.charge_usd);
     groups.set(key, g);
   }
   const patientGroups = [...groups.values()].sort((a, b) =>
@@ -183,13 +184,18 @@ export default async function MayoInvoiceMatcherPage({
         </h1>
         <p className="mt-1" style={{ color: "#e8d5a3" }}>
           Dated {formatDate(invoice.invoice_date)} · Total{" "}
-          {formatCad(Number(invoice.total_cad))} · {lineRows.length} line
+          {formatUsd(Number(invoice.total_usd))} USD →{" "}
+          <span style={{ color: "#c4973a", fontWeight: 700 }}>
+            {formatCad(Number(invoice.total_usd) * Number(invoice.fx_rate))}
+          </span>{" "}
+          @ {Number(invoice.fx_rate).toFixed(4)} · {lineRows.length} line
           {lineRows.length === 1 ? "" : "s"}
         </p>
       </div>
 
       <MayoInvoiceMatcher
         invoiceId={invoice.id}
+        fxRate={Number(invoice.fx_rate)}
         patientGroups={patientGroups}
       />
     </div>
@@ -200,6 +206,14 @@ function formatCad(n: number): string {
   return n.toLocaleString("en-CA", {
     style: "currency",
     currency: "CAD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+function formatUsd(n: number): string {
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });

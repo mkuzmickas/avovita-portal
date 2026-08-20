@@ -17,7 +17,8 @@ interface InvoiceRow {
   id: string;
   invoice_number: string;
   invoice_date: string;
-  total_cad: number;
+  total_usd: number;
+  fx_rate: number;
   uploaded_at: string;
   uploaded_by: string | null;
 }
@@ -36,7 +37,7 @@ export default async function MayoInvoicesListPage() {
   const { data: invoicesRaw } = await service
     .from("mayo_invoices")
     .select(
-      "id, invoice_number, invoice_date, total_cad, uploaded_at, uploaded_by",
+      "id, invoice_number, invoice_date, total_usd, fx_rate, uploaded_at, uploaded_by",
     )
     .order("invoice_date", { ascending: false });
   const invoices = (invoicesRaw ?? []) as InvoiceRow[];
@@ -46,12 +47,12 @@ export default async function MayoInvoicesListPage() {
   // and still fast at our scale.
   const { data: linesRaw } = await service
     .from("mayo_invoice_lines")
-    .select("invoice_id, order_id, charge_cad");
+    .select("invoice_id, order_id, charge_usd");
   const lineAggs = new Map<string, LineAggRow>();
   for (const l of (linesRaw ?? []) as Array<{
     invoice_id: string;
     order_id: string | null;
-    charge_cad: number;
+    charge_usd: number;
   }>) {
     const agg = lineAggs.get(l.invoice_id) ?? {
       invoice_id: l.invoice_id,
@@ -62,10 +63,10 @@ export default async function MayoInvoicesListPage() {
     };
     if (l.order_id) {
       agg.matched_count += 1;
-      agg.matched_amount += Number(l.charge_cad);
+      agg.matched_amount += Number(l.charge_usd);
     } else {
       agg.unmatched_count += 1;
-      agg.unmatched_amount += Number(l.charge_cad);
+      agg.unmatched_amount += Number(l.charge_usd);
     }
     lineAggs.set(l.invoice_id, agg);
   }
@@ -155,13 +156,22 @@ export default async function MayoInvoicesListPage() {
                       {inv.invoice_number}
                     </td>
                     <td
-                      className="px-4 py-3 font-semibold whitespace-nowrap"
+                      className="px-4 py-3 whitespace-nowrap"
                       style={{ color: "#c4973a" }}
                     >
-                      {formatCad(Number(inv.total_cad))}
+                      <div style={{ fontWeight: 700 }}>
+                        {formatCad(Number(inv.total_usd) * Number(inv.fx_rate))}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#8dc63f" }}>
+                        {formatUsd(Number(inv.total_usd))} @{" "}
+                        {Number(inv.fx_rate).toFixed(4)}
+                      </div>
                     </td>
                     <td className="px-4 py-3" style={{ color: "#8dc63f" }}>
-                      {matched} · {formatCad(agg?.matched_amount ?? 0)}
+                      {matched} ·{" "}
+                      {formatCad(
+                        (agg?.matched_amount ?? 0) * Number(inv.fx_rate),
+                      )}
                       <div
                         style={{
                           marginTop: 4,
@@ -182,7 +192,10 @@ export default async function MayoInvoicesListPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3" style={{ color: unmatched > 0 ? "#c4973a" : "#6ab04c" }}>
-                      {unmatched} · {formatCad(agg?.unmatched_amount ?? 0)}
+                      {unmatched} ·{" "}
+                      {formatCad(
+                        (agg?.unmatched_amount ?? 0) * Number(inv.fx_rate),
+                      )}
                     </td>
                     <td
                       className="px-4 py-3 text-xs"
@@ -224,6 +237,14 @@ function formatCad(n: number): string {
   return n.toLocaleString("en-CA", {
     style: "currency",
     currency: "CAD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+function formatUsd(n: number): string {
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
