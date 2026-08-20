@@ -506,6 +506,25 @@ function CandidatesForSelected({
   onUnmatch: () => void;
   saving: boolean;
 }) {
+  const [searchQ, setSearchQ] = useState("");
+  const [searchResults, setSearchResults] = useState<OrderCandidate[]>([]);
+  const [searching, setSearching] = useState(false);
+  const runSearch = async (q: string) => {
+    if (q.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      const res = await fetch(
+        `/api/admin/orders/search?q=${encodeURIComponent(q)}&limit=25`,
+      );
+      const data = await res.json();
+      if (res.ok) setSearchResults((data.orders as OrderCandidate[]) ?? []);
+    } finally {
+      setSearching(false);
+    }
+  };
   // If any line in the group is matched, show the linked order first.
   const currentMatch = selected.lines.find((l) => l.order_id);
   // Merge candidates across all lines in the group (they all share the
@@ -766,6 +785,190 @@ function CandidatesForSelected({
           })}
         </div>
       )}
+
+      {/* Search-all-orders picker — always available so Mike can find
+          orders that fall outside the auto-suggester (wife paid for
+          husband, name spelled differently, etc.). */}
+      <div style={{ marginTop: 16 }}>
+        <div
+          style={{
+            color: "#c4973a",
+            fontSize: 12,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            marginBottom: 8,
+          }}
+        >
+          Search all orders (any patient)
+        </div>
+        <input
+          type="text"
+          placeholder="Type a name or email (min 2 chars)…"
+          value={searchQ}
+          onChange={(e) => {
+            setSearchQ(e.target.value);
+            runSearch(e.target.value);
+          }}
+          style={{
+            width: "100%",
+            padding: "8px 10px",
+            borderRadius: 6,
+            border: "1px solid #2d6b35",
+            backgroundColor: "#0a1a0d",
+            color: "#ffffff",
+            fontSize: 13,
+          }}
+        />
+        {searching && (
+          <div
+            style={{ color: "#8dc63f", fontSize: 11, marginTop: 6 }}
+          >
+            Searching…
+          </div>
+        )}
+        {searchResults.length > 0 && (
+          <div
+            style={{
+              marginTop: 8,
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              maxHeight: 400,
+              overflowY: "auto",
+            }}
+          >
+            {searchResults.map((c) => {
+              const isCurrent = false;
+              return (
+                <div
+                  key={c.order_id}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "link";
+                  }}
+                  onDrop={(e) => onDropCandidate(e, c.order_id)}
+                  style={{
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #2d6b35",
+                    backgroundColor: "#0a1a0d",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{
+                        color: "#ffffff",
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {c.patient_name}
+                      {c.patient_dob && (
+                        <span
+                          style={{
+                            color: "#c4973a",
+                            fontWeight: 400,
+                            fontSize: 12,
+                            marginLeft: 6,
+                          }}
+                        >
+                          · DOB {c.patient_dob}
+                        </span>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        color: "#8dc63f",
+                        fontSize: 11,
+                        marginTop: 2,
+                      }}
+                    >
+                      {c.appointment_at
+                        ? formatDateTime(c.appointment_at)
+                        : c.created_at
+                          ? `charge ${formatDateTime(c.created_at)}`
+                          : "no date"}{" "}
+                      · Order {c.order_id.slice(0, 8)}
+                      {c.order_total_cad != null && (
+                        <>
+                          {" "}
+                          ·{" "}
+                          <span
+                            style={{ color: "#c4973a", fontWeight: 700 }}
+                          >
+                            {formatCadShort(c.order_total_cad)}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {c.test_names.length > 0 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 3,
+                          marginTop: 6,
+                        }}
+                      >
+                        {c.test_names.slice(0, 10).map((n, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              display: "inline-block",
+                              padding: "1px 6px",
+                              borderRadius: 4,
+                              backgroundColor: "rgba(255,255,255,0.05)",
+                              border: "1px solid rgba(255,255,255,0.15)",
+                              fontSize: 10,
+                              color: "#8a9a8f",
+                            }}
+                            title={n}
+                          >
+                            {n.length > 32 ? n.slice(0, 31) + "…" : n}
+                          </span>
+                        ))}
+                        {c.test_names.length > 10 && (
+                          <span style={{ fontSize: 10, color: "#8dc63f" }}>
+                            +{c.test_names.length - 10} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onMatch(c.order_id)}
+                    disabled={saving || isCurrent}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      backgroundColor: saving ? "#5a705f" : "#c4973a",
+                      color: "#0a1a0d",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      border: 0,
+                      cursor: saving ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Match
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {!searching && searchQ.length >= 2 && searchResults.length === 0 && (
+          <div style={{ color: "#e88b8b", fontSize: 11, marginTop: 6 }}>
+            No orders matched — try a different spelling, first name, or the
+            account holder&apos;s email.
+          </div>
+        )}
+      </div>
     </>
   );
 }
