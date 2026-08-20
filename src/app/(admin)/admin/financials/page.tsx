@@ -1,7 +1,7 @@
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { FinancialsClient } from "@/components/admin/FinancialsClient";
 import { QuickBooksCard } from "@/components/admin/QuickBooksCard";
-import type { Expense, ManifestStatus } from "@/types/database";
+import type { ManifestStatus } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
@@ -25,12 +25,25 @@ export type ManifestSummary = {
   test_cost: number;
 };
 
+/**
+ * QBO transaction, trimmed to the fields the client needs. `direction`
+ * is 'refund' for VendorCredit rows (subtract from period totals);
+ * everything else is 'expense'.
+ */
+export type QboTxn = {
+  txn_date: string;
+  amount_cad: number;
+  direction: "expense" | "refund";
+  category: string | null;
+  supplier_name: string | null;
+};
+
 export default async function AdminFinancialsPage() {
   const service = createServiceRoleClient();
 
-  // 1. Pull eligible orders from the last 365 days
+  // 1. Orders — last 15 months so the 12-month chart has full context
   const cutoffIso = new Date(
-    Date.now() - 365 * 24 * 60 * 60 * 1000
+    Date.now() - 15 * 30 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
   const { data: ordersRaw } = await service
@@ -42,7 +55,7 @@ export default async function AdminFinancialsPage() {
         quantity,
         test:tests ( cost_cad )
       )
-    `
+    `,
     )
     .in("status", ["shipped", "resulted", "complete"])
     .not("shipped_at", "is", null)
@@ -77,7 +90,7 @@ export default async function AdminFinancialsPage() {
         test_count: testCount,
         manifest_id: o.manifest_id,
       };
-    }
+    },
   );
 
   // 2. Manifests with aggregates
@@ -109,16 +122,61 @@ export default async function AdminFinancialsPage() {
     };
   });
 
-  // 3. Expenses
-  const { data: expensesRaw } = await service
-    .from("expenses")
-    .select("id, name, amount_cad, category, frequency, active, notes, created_at")
-    .order("created_at", { ascending: false });
-  const expenses = (expensesRaw ?? []) as unknown as Expense[];
+  // 3. QuickBooks transactions (15-month window, same as orders)
+  const qboSinceDate = new Date(
+    Date.now() - 15 * 30 * 24 * 60 * 60 * 1000,
+  )
+    .toISOString()
+    .slice(0, 10);
+  let qboTxns: QboTxn[] = [];
+  let cogsCategories: string[] = [];
+  let uncategorizedSuppliers: Array<{
+    supplier_name: string;
+    count: number;
+    total_amount: number;
+  }> = [];
+  try {
+    const { data: txnsRaw } = await service
+      .from("qbo_transactions")
+      .select("txn_date, amount_cad, direction, category, supplier_name")
+      .gte("txn_date", qboSinceDate)
+      .order("txn_date", { ascending: true });
+    qboTxns = (txnsRaw ?? []) as unknown as QboTxn[];
 
-  // 4. QuickBooks integration status + counts (best-effort — table
-  //    may not exist yet in older deployments; treat any error as
-  //    "not connected" so the page still renders).
+    const { data: catsRaw } = await service
+      .from("expense_categories")
+      .select("category, is_cogs");
+    const cogsSet = new Set<string>();
+    for (const c of (catsRaw ?? []) as Array<{
+      category: string;
+      is_cogs: boolean;
+    }>) {
+      if (c.is_cogs) cogsSet.add(c.category);
+    }
+    cogsCategories = [...cogsSet];
+
+    // Roll up uncategorized suppliers for the mapper card
+    const uncatMap = new Map<
+      string,
+      { count: number; total_amount: number }
+    >();
+    for (const t of qboTxns) {
+      if (t.category != null) continue;
+      const key = t.supplier_name ?? "(no supplier)";
+      const prev = uncatMap.get(key) ?? { count: 0, total_amount: 0 };
+      prev.count += 1;
+      prev.total_amount +=
+        t.direction === "refund" ? -t.amount_cad : t.amount_cad;
+      uncatMap.set(key, prev);
+    }
+    uncategorizedSuppliers = [...uncatMap.entries()]
+      .map(([supplier_name, v]) => ({ supplier_name, ...v }))
+      .sort((a, b) => b.total_amount - a.total_amount);
+  } catch {
+    // migration 037 not applied yet — keep defaults, UI degrades gracefully
+  }
+
+  // 4. QBO integration status
   let qboConnected = false;
   let qboConnectedBy: string | null = null;
   let qboConnectedAt: string | null = null;
@@ -133,7 +191,10 @@ export default async function AdminFinancialsPage() {
       .maybeSingle();
     if (integ) {
       qboConnected = true;
-      const row = integ as { connected_by: string | null; connected_at: string };
+      const row = integ as {
+        connected_by: string | null;
+        connected_at: string;
+      };
       qboConnectedBy = row.connected_by;
       qboConnectedAt = row.connected_at;
     }
@@ -141,11 +202,10 @@ export default async function AdminFinancialsPage() {
       .from("qbo_transactions")
       .select("id", { count: "exact", head: true });
     qboTxnCount = totalCount ?? 0;
-    const { count: uncatCount } = await service
-      .from("qbo_transactions")
-      .select("id", { count: "exact", head: true })
-      .is("category", null);
-    qboUncategorizedCount = uncatCount ?? 0;
+    qboUncategorizedCount = uncategorizedSuppliers.reduce(
+      (s, u) => s + u.count,
+      0,
+    );
     const { data: lastSync } = await service
       .from("qbo_transactions")
       .select("synced_at")
@@ -171,7 +231,8 @@ export default async function AdminFinancialsPage() {
           <span style={{ color: "#c4973a" }}>Financials</span>
         </h1>
         <p className="mt-1" style={{ color: "#e8d5a3" }}>
-          Revenue, costs, and operating expenses across the business.
+          Real revenue, COGS, and operating expenses — expenses come straight
+          from QuickBooks.
         </p>
       </div>
 
@@ -182,12 +243,14 @@ export default async function AdminFinancialsPage() {
         lastTxnSyncedAt={qboLastTxnSyncedAt}
         txnCount={qboTxnCount}
         uncategorizedCount={qboUncategorizedCount}
+        uncategorizedSuppliers={uncategorizedSuppliers}
       />
 
       <FinancialsClient
         orders={orders}
         manifests={manifests}
-        initialExpenses={expenses}
+        qboTxns={qboTxns}
+        cogsCategories={cogsCategories}
       />
     </div>
   );

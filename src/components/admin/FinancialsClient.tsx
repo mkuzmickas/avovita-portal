@@ -1,15 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  Plus,
-  Trash2,
-  Loader2,
-  Download,
-  AlertCircle,
-  CheckCircle,
-} from "lucide-react";
+import { Download } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -21,52 +13,19 @@ import {
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import type {
-  Expense,
-  ExpenseCategory,
-  ExpenseFrequency,
-} from "@/types/database";
-import type {
   ShippedOrder,
   ManifestSummary,
+  QboTxn,
 } from "@/app/(admin)/admin/financials/page";
 
 interface Props {
   orders: ShippedOrder[];
   manifests: ManifestSummary[];
-  initialExpenses: Expense[];
+  qboTxns: QboTxn[];
+  cogsCategories: string[];
 }
 
-const CATEGORIES: ExpenseCategory[] = [
-  "software",
-  "utilities",
-  "supplies",
-  "labour",
-  "shipping",
-  "marketing",
-  "other",
-];
-const FREQUENCIES: ExpenseFrequency[] = ["monthly", "annual", "one_time"];
-
-const WEEKS_PER_MONTH = 4.33;
-const DAYS_PER_MONTH = 30.44;
-
-// Convert any expense to a monthly equivalent. one_time → 0 (excluded
-// from recurring operating expense pro-rate).
-function monthlyEquivalent(amount: number, frequency: ExpenseFrequency): number {
-  if (frequency === "monthly") return amount;
-  if (frequency === "annual") return amount / 12;
-  return 0;
-}
-
-function totalMonthlyRecurring(expenses: Expense[]): number {
-  return expenses
-    .filter((e) => e.active)
-    .reduce((s, e) => s + monthlyEquivalent(e.amount_cad, e.frequency), 0);
-}
-
-function expensesForDays(monthlyTotal: number, days: number): number {
-  return monthlyTotal * (days / DAYS_PER_MONTH);
-}
+// ─── Date helpers ─────────────────────────────────────────────────────
 
 function startOfWeek(d: Date): Date {
   const out = new Date(d);
@@ -97,23 +56,59 @@ function formatDateLong(iso: string): string {
 
 type Granularity = "weekly" | "monthly";
 
-export function FinancialsClient({ orders, manifests, initialExpenses }: Props) {
-  const [tab, setTab] = useState<"overview" | "shipment" | "expenses">("overview");
-  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
+// ─── QBO period math ──────────────────────────────────────────────────
 
-  const monthlyExpenseTotal = useMemo(
-    () => totalMonthlyRecurring(expenses),
-    [expenses]
-  );
+interface PeriodTotals {
+  cogs: number;
+  opex: number;
+}
+
+/**
+ * Sum QBO transactions falling in [start, end). Refunds subtract.
+ * `cogsSet` decides which categories count toward COGS vs OpEx;
+ * uncategorized (null category) is bucketed as OpEx so it doesn't
+ * silently disappear.
+ */
+function sumTxnsInPeriod(
+  txns: QboTxn[],
+  start: Date,
+  end: Date,
+  cogsSet: Set<string>,
+): PeriodTotals {
+  let cogs = 0;
+  let opex = 0;
+  const startISO = isoDate(start);
+  const endISO = isoDate(end);
+  for (const t of txns) {
+    if (t.txn_date < startISO || t.txn_date >= endISO) continue;
+    const signed = t.direction === "refund" ? -t.amount_cad : t.amount_cad;
+    if (t.category && cogsSet.has(t.category)) cogs += signed;
+    else opex += signed;
+  }
+  return { cogs, opex };
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────
+
+export function FinancialsClient({
+  orders,
+  manifests,
+  qboTxns,
+  cogsCategories,
+}: Props) {
+  const [tab, setTab] = useState<"overview" | "shipment">("overview");
+  const cogsSet = useMemo(() => new Set(cogsCategories), [cogsCategories]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 border-b" style={{ borderColor: "#2d6b35" }}>
+      <div
+        className="flex items-center gap-2 border-b"
+        style={{ borderColor: "#2d6b35" }}
+      >
         {(
           [
             ["overview", "Overview"],
             ["shipment", "By Shipment"],
-            ["expenses", "Expenses"],
           ] as const
         ).map(([key, label]) => {
           const active = tab === key;
@@ -125,7 +120,9 @@ export function FinancialsClient({ orders, manifests, initialExpenses }: Props) 
               className="px-4 py-2.5 text-sm font-semibold transition-colors"
               style={{
                 color: active ? "#c4973a" : "#e8d5a3",
-                borderBottom: active ? "2px solid #c4973a" : "2px solid transparent",
+                borderBottom: active
+                  ? "2px solid #c4973a"
+                  : "2px solid transparent",
                 marginBottom: "-1px",
               }}
             >
@@ -136,13 +133,18 @@ export function FinancialsClient({ orders, manifests, initialExpenses }: Props) 
       </div>
 
       {tab === "overview" && (
-        <OverviewTab orders={orders} monthlyExpenseTotal={monthlyExpenseTotal} />
+        <OverviewTab
+          orders={orders}
+          qboTxns={qboTxns}
+          cogsSet={cogsSet}
+        />
       )}
       {tab === "shipment" && (
-        <ByShipmentTab manifests={manifests} monthlyExpenseTotal={monthlyExpenseTotal} />
-      )}
-      {tab === "expenses" && (
-        <ExpensesTab expenses={expenses} setExpenses={setExpenses} />
+        <ByShipmentTab
+          manifests={manifests}
+          qboTxns={qboTxns}
+          cogsSet={cogsSet}
+        />
       )}
     </div>
   );
@@ -152,16 +154,17 @@ export function FinancialsClient({ orders, manifests, initialExpenses }: Props) 
 
 function OverviewTab({
   orders,
-  monthlyExpenseTotal,
+  qboTxns,
+  cogsSet,
 }: {
   orders: ShippedOrder[];
-  monthlyExpenseTotal: number;
+  qboTxns: QboTxn[];
+  cogsSet: Set<string>;
 }) {
   const [granularity, setGranularity] = useState<Granularity>("weekly");
   const [customStart, setCustomStart] = useState<string>("");
   const [customEnd, setCustomEnd] = useState<string>("");
 
-  // Determine the active card period
   const { start, end, label } = useMemo(() => {
     if (customStart && customEnd) {
       return {
@@ -186,7 +189,10 @@ function OverviewTab({
     return {
       start: s,
       end: e,
-      label: now.toLocaleDateString("en-CA", { month: "long", year: "numeric" }),
+      label: now.toLocaleDateString("en-CA", {
+        month: "long",
+        year: "numeric",
+      }),
     };
   }, [granularity, customStart, customEnd]);
 
@@ -196,21 +202,21 @@ function OverviewTab({
         const t = new Date(o.shipped_at);
         return t >= start && t < end;
       }),
-    [orders, start, end]
+    [orders, start, end],
   );
 
   const revenue = periodOrders.reduce((s, o) => s + o.total_cad, 0);
-  const testCost = periodOrders.reduce((s, o) => s + o.test_cost_cad, 0);
-  const grossProfit = revenue - testCost;
-  const days = Math.max(
-    1,
-    Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
+  const totals = useMemo(
+    () => sumTxnsInPeriod(qboTxns, start, end, cogsSet),
+    [qboTxns, start, end, cogsSet],
   );
-  const opEx = expensesForDays(monthlyExpenseTotal, days);
-  const netProfit = grossProfit - opEx;
+  const cogs = totals.cogs;
+  const opex = totals.opex;
+  const grossProfit = revenue - cogs;
+  const netProfit = grossProfit - opex;
   const netMargin = revenue > 0 ? (netProfit / revenue) * 100 : null;
 
-  // Chart series — last 12 buckets at the selected granularity
+  // 12-bucket chart series
   const series = useMemo(() => {
     const buckets: { start: Date; end: Date; label: string }[] = [];
     const now = new Date();
@@ -231,7 +237,11 @@ function OverviewTab({
     } else {
       const first = startOfMonth(now);
       for (let i = count - 1; i >= 0; i--) {
-        const s = new Date(first.getFullYear(), first.getMonth() - i, 1);
+        const s = new Date(
+          first.getFullYear(),
+          first.getMonth() - i,
+          1,
+        );
         const e = new Date(s.getFullYear(), s.getMonth() + 1, 1);
         buckets.push({
           start: s,
@@ -246,21 +256,27 @@ function OverviewTab({
         return t >= b.start && t < b.end;
       });
       const rev = inBucket.reduce((s, o) => s + o.total_cad, 0);
-      const cost = inBucket.reduce((s, o) => s + o.test_cost_cad, 0);
-      const bDays = (b.end.getTime() - b.start.getTime()) / (24 * 60 * 60 * 1000);
-      const bOpEx = expensesForDays(monthlyExpenseTotal, bDays);
+      const { cogs: bCogs, opex: bOpex } = sumTxnsInPeriod(
+        qboTxns,
+        b.start,
+        b.end,
+        cogsSet,
+      );
       return {
         label: b.label,
-        net: Math.round(rev - cost - bOpEx),
+        net: Math.round(rev - bCogs - bOpex),
       };
     });
-  }, [orders, granularity, monthlyExpenseTotal]);
+  }, [orders, qboTxns, granularity, cogsSet]);
 
   return (
     <div className="space-y-6">
       {/* Period controls */}
       <div className="flex flex-wrap items-end gap-3">
-        <div className="flex rounded-lg border overflow-hidden" style={{ borderColor: "#2d6b35" }}>
+        <div
+          className="flex rounded-lg border overflow-hidden"
+          style={{ borderColor: "#2d6b35" }}
+        >
           {(["weekly", "monthly"] as const).map((g) => {
             const active = granularity === g;
             return (
@@ -328,10 +344,21 @@ function OverviewTab({
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card label="Total Revenue" value={formatCurrency(revenue)} />
-        <Card label="Test Costs" value={formatCurrency(testCost)} />
-        <Card label="Gross Profit" value={formatCurrency(grossProfit)} accent />
-        <Card label="Operating Expenses" value={formatCurrency(opEx)} />
-        <Card label="Net Profit" value={formatCurrency(netProfit)} accent />
+        <Card label="COGS (real, QBO)" value={formatCurrency(cogs)} />
+        <Card
+          label="Gross Profit"
+          value={formatCurrency(grossProfit)}
+          accent
+        />
+        <Card
+          label="Operating Expenses (QBO)"
+          value={formatCurrency(opex)}
+        />
+        <Card
+          label="Net Profit"
+          value={formatCurrency(netProfit)}
+          accent
+        />
         <Card
           label="Net Margin"
           value={netMargin == null ? "—" : `${netMargin.toFixed(1)}%`}
@@ -351,13 +378,25 @@ function OverviewTab({
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          Net profit — last 12 {granularity === "weekly" ? "weeks" : "months"}
+          Net profit — last 12{" "}
+          {granularity === "weekly" ? "weeks" : "months"}
         </h3>
         <div style={{ width: "100%", height: 280 }}>
           <ResponsiveContainer>
-            <BarChart data={series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke="#2d6b35" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" stroke="#e8d5a3" tick={{ fontSize: 11 }} />
+            <BarChart
+              data={series}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid
+                stroke="#2d6b35"
+                strokeDasharray="3 3"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="label"
+                stroke="#e8d5a3"
+                tick={{ fontSize: 11 }}
+              />
               <YAxis stroke="#e8d5a3" tick={{ fontSize: 11 }} />
               <Tooltip
                 contentStyle={{
@@ -366,9 +405,16 @@ function OverviewTab({
                   borderRadius: 8,
                   color: "#ffffff",
                 }}
-                formatter={(v) => [formatCurrency(Number(v) || 0), "Net profit"]}
+                formatter={(v) => [
+                  formatCurrency(Number(v) || 0),
+                  "Net profit",
+                ]}
               />
-              <Bar dataKey="net" fill="#c4973a" radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey="net"
+                fill="#c4973a"
+                radius={[4, 4, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -381,20 +427,63 @@ function OverviewTab({
 
 function ByShipmentTab({
   manifests,
-  monthlyExpenseTotal,
+  qboTxns,
+  cogsSet,
 }: {
   manifests: ManifestSummary[];
-  monthlyExpenseTotal: number;
+  qboTxns: QboTxn[];
+  cogsSet: Set<string>;
 }) {
-  // Pro-rate: each manifest = 1 week of operating expenses
-  const weeklyExpense = monthlyExpenseTotal / WEEKS_PER_MONTH;
+  // Pro-rate OpEx by week using the trailing 12 weeks of QBO OpEx.
+  // (COGS is transactional — attributed to the ship week directly.)
+  const weeklyOpex = useMemo(() => {
+    const now = new Date();
+    const twelveWeeksAgo = new Date(now);
+    twelveWeeksAgo.setDate(now.getDate() - 12 * 7);
+    const { opex } = sumTxnsInPeriod(qboTxns, twelveWeeksAgo, now, cogsSet);
+    return opex / 12;
+  }, [qboTxns, cogsSet]);
 
-  const rows = manifests.map((m) => {
-    const grossProfit = m.revenue - m.test_cost;
-    const netProfit = grossProfit - weeklyExpense;
-    const margin = m.revenue > 0 ? (netProfit / m.revenue) * 100 : null;
-    return { ...m, grossProfit, opEx: weeklyExpense, netProfit, margin };
-  });
+  const rows = useMemo(
+    () =>
+      manifests.map((m) => {
+        const ship = new Date(`${m.ship_date}T00:00:00`);
+        const weekStart = startOfWeek(ship);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+        const { cogs: weekCogs } = sumTxnsInPeriod(
+          qboTxns,
+          weekStart,
+          weekEnd,
+          cogsSet,
+        );
+        // If multiple manifests ship the same week, split the week's
+        // COGS across them. Simple even split — accurate enough for
+        // steady weekly shipments; refine per-supplier later.
+        const manifestsThisWeek = manifests.filter((m2) => {
+          const s = new Date(`${m2.ship_date}T00:00:00`);
+          return s >= weekStart && s < weekEnd;
+        }).length;
+        const cogsShare = manifestsThisWeek > 0
+          ? weekCogs / manifestsThisWeek
+          : weekCogs;
+        const grossProfit = m.revenue - cogsShare;
+        const opExShare =
+          manifestsThisWeek > 0 ? weeklyOpex / manifestsThisWeek : weeklyOpex;
+        const netProfit = grossProfit - opExShare;
+        const margin =
+          m.revenue > 0 ? (netProfit / m.revenue) * 100 : null;
+        return {
+          ...m,
+          cogs: cogsShare,
+          grossProfit,
+          opEx: opExShare,
+          netProfit,
+          margin,
+        };
+      }),
+    [manifests, qboTxns, cogsSet, weeklyOpex],
+  );
 
   const exportCsv = () => {
     const header = [
@@ -403,9 +492,9 @@ function ByShipmentTab({
       "Orders",
       "Tests",
       "Revenue CAD",
-      "Test Cost CAD",
+      "COGS CAD (allocated from ship week)",
       "Gross Profit CAD",
-      "Operating Expenses CAD",
+      "OpEx CAD (weekly average)",
       "Net Profit CAD",
       "Margin %",
     ];
@@ -415,7 +504,7 @@ function ByShipmentTab({
       String(r.orders_count),
       String(r.tests_count),
       r.revenue.toFixed(2),
-      r.test_cost.toFixed(2),
+      r.cogs.toFixed(2),
       r.grossProfit.toFixed(2),
       r.opEx.toFixed(2),
       r.netProfit.toFixed(2),
@@ -435,9 +524,10 @@ function ByShipmentTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-xs" style={{ color: "#6ab04c" }}>
-          Operating expenses pro-rated weekly (monthly ÷ 4.33)
+          COGS allocated from QBO transactions in the manifest&apos;s ship week;
+          OpEx pro-rated from trailing 12-week average (${(weeklyOpex).toFixed(0)}/wk).
         </p>
         <button
           type="button"
@@ -469,7 +559,7 @@ function ByShipmentTab({
                   "Orders",
                   "Tests",
                   "Revenue",
-                  "Test Cost",
+                  "COGS",
                   "Gross Profit",
                   "OpEx (week)",
                   "Net Profit",
@@ -494,7 +584,10 @@ function ByShipmentTab({
                   <td
                     colSpan={10}
                     className="px-6 py-16 text-center"
-                    style={{ backgroundColor: "#0a1a0d", color: "#6ab04c" }}
+                    style={{
+                      backgroundColor: "#0a1a0d",
+                      color: "#6ab04c",
+                    }}
                   >
                     No manifests yet
                   </td>
@@ -543,7 +636,7 @@ function ByShipmentTab({
                         className="px-4 py-3 whitespace-nowrap"
                         style={{ color: "#e8d5a3" }}
                       >
-                        {formatCurrency(r.test_cost)}
+                        {formatCurrency(r.cogs)}
                       </td>
                       <td
                         className="px-4 py-3 whitespace-nowrap"
@@ -559,7 +652,9 @@ function ByShipmentTab({
                       </td>
                       <td
                         className="px-4 py-3 font-semibold whitespace-nowrap"
-                        style={{ color: r.netProfit >= 0 ? "#8dc63f" : "#e05252" }}
+                        style={{
+                          color: r.netProfit >= 0 ? "#8dc63f" : "#e05252",
+                        }}
                       >
                         {formatCurrency(r.netProfit)}
                       </td>
@@ -576,471 +671,6 @@ function ByShipmentTab({
             </tbody>
           </table>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── EXPENSES TAB ─────────────────────────────────────────────────────
-
-function ExpensesTab({
-  expenses,
-  setExpenses,
-}: {
-  expenses: Expense[];
-  setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
-}) {
-  const router = useRouter();
-  const [creating, setCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  const monthlyTotal = totalMonthlyRecurring(expenses);
-  const annualTotal = monthlyTotal * 12;
-
-  const removeExpense = async (id: string) => {
-    if (!confirm("Delete this expense permanently?")) return;
-    const res = await fetch(`/api/admin/expenses/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      alert(`Failed: ${data.error ?? res.statusText}`);
-      return;
-    }
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
-  };
-
-  const toggleActive = async (id: string, next: boolean) => {
-    const res = await fetch(`/api/admin/expenses/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: next }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      alert(`Failed: ${data.error ?? res.statusText}`);
-      return;
-    }
-    setExpenses((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, active: next } : e))
-    );
-  };
-
-  return (
-    <div className="space-y-4">
-      <div
-        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-      >
-        <Card label="Total Monthly Recurring" value={formatCurrency(monthlyTotal)} accent />
-        <Card label="Annual Operating Cost" value={formatCurrency(annualTotal)} accent />
-      </div>
-
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setCreating((v) => !v)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-          style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
-        >
-          <Plus className="w-4 h-4" />
-          {creating ? "Cancel" : "Add Expense"}
-        </button>
-      </div>
-
-      {creating && (
-        <ExpenseForm
-          mode="create"
-          onCancel={() => setCreating(false)}
-          onSaved={(created) => {
-            // Leave the form OPEN on create — admins usually add
-            // expenses in batches. ExpenseForm clears its own fields
-            // and flashes a "Added" hint so the click feels confirmed.
-            // The expenses list is held in client state initialised
-            // once from the server prop, so router.refresh() alone
-            // wouldn't rehydrate it — append the new row directly.
-            if (created?.id) {
-              const fresh: Expense = {
-                id: created.id,
-                name: created.name ?? "",
-                amount_cad: created.amount_cad ?? 0,
-                category: (created.category ?? "other") as ExpenseCategory,
-                frequency: (created.frequency ?? "monthly") as ExpenseFrequency,
-                notes: created.notes ?? null,
-                active: created.active ?? true,
-                created_at: new Date().toISOString(),
-              };
-              setExpenses((prev) => [fresh, ...prev]);
-            }
-            router.refresh();
-          }}
-        />
-      )}
-
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ backgroundColor: "#0f2614" }}>
-                {[
-                  "Name",
-                  "Category",
-                  "Frequency",
-                  "Amount",
-                  "Monthly Equiv.",
-                  "Active",
-                  "",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
-                    style={{
-                      color: "#c4973a",
-                      fontFamily: '"DM Sans", sans-serif',
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-6 py-16 text-center"
-                    style={{ backgroundColor: "#0a1a0d", color: "#6ab04c" }}
-                  >
-                    No expenses yet — add your first to start tracking operating costs.
-                  </td>
-                </tr>
-              ) : (
-                expenses.flatMap((e, idx) => {
-                  const rowBg = idx % 2 === 0 ? "#0a1a0d" : "#1a3d22";
-                  const monthly = monthlyEquivalent(e.amount_cad, e.frequency);
-                  const isEditing = editingId === e.id;
-                  const display = (
-                    <tr
-                      key={e.id}
-                      style={{
-                        backgroundColor: rowBg,
-                        borderTop: "1px solid #1a3d22",
-                      }}
-                    >
-                      <td className="px-4 py-3" style={{ color: "#ffffff" }}>
-                        {e.name}
-                        {e.notes && (
-                          <p className="text-xs italic mt-0.5" style={{ color: "#6ab04c" }}>
-                            {e.notes}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 capitalize" style={{ color: "#e8d5a3" }}>
-                        {e.category}
-                      </td>
-                      <td className="px-4 py-3 capitalize" style={{ color: "#e8d5a3" }}>
-                        {e.frequency.replace("_", " ")}
-                      </td>
-                      <td
-                        className="px-4 py-3 font-semibold whitespace-nowrap"
-                        style={{ color: "#c4973a" }}
-                      >
-                        {formatCurrency(e.amount_cad)}
-                      </td>
-                      <td
-                        className="px-4 py-3 whitespace-nowrap"
-                        style={{ color: "#e8d5a3" }}
-                      >
-                        {e.frequency === "one_time" ? "—" : formatCurrency(monthly)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={e.active}
-                          onChange={(ev) => toggleActive(e.id, ev.target.checked)}
-                          style={{ accentColor: "#c4973a" }}
-                          className="w-4 h-4 cursor-pointer"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setEditingId(isEditing ? null : e.id)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold border"
-                            style={{
-                              backgroundColor: "transparent",
-                              borderColor: "#2d6b35",
-                              color: "#e8d5a3",
-                            }}
-                          >
-                            {isEditing ? "Close" : "Edit"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeExpense(e.id)}
-                            className="px-2 py-1 rounded-lg text-xs"
-                            style={{
-                              backgroundColor: "transparent",
-                              color: "#e05252",
-                            }}
-                            aria-label="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                  if (!isEditing) return [display];
-                  return [
-                    display,
-                    <tr key={`${e.id}-edit`} style={{ backgroundColor: rowBg }}>
-                      <td colSpan={7} className="p-0">
-                        <div
-                          className="px-4 py-4 border-t"
-                          style={{
-                            borderColor: "#2d6b35",
-                            backgroundColor: "#0f2614",
-                          }}
-                        >
-                          <ExpenseForm
-                            mode="edit"
-                            initial={e}
-                            onCancel={() => setEditingId(null)}
-                            onSaved={(updated) => {
-                              setEditingId(null);
-                              if (updated) {
-                                setExpenses((prev) =>
-                                  prev.map((x) =>
-                                    x.id === e.id ? { ...x, ...updated } : x
-                                  )
-                                );
-                              }
-                            }}
-                          />
-                        </div>
-                      </td>
-                    </tr>,
-                  ];
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Expense create/edit form ─────────────────────────────────────────
-
-function ExpenseForm({
-  mode,
-  initial,
-  onCancel,
-  onSaved,
-}: {
-  mode: "create" | "edit";
-  initial?: Expense;
-  onCancel: () => void;
-  onSaved: (updated?: Partial<Expense>) => void;
-}) {
-  const [name, setName] = useState(initial?.name ?? "");
-  const [amount, setAmount] = useState(
-    initial ? String(initial.amount_cad) : ""
-  );
-  const [category, setCategory] = useState<ExpenseCategory>(
-    initial?.category ?? "software"
-  );
-  const [frequency, setFrequency] = useState<ExpenseFrequency>(
-    initial?.frequency ?? "monthly"
-  );
-  const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [justAddedName, setJustAddedName] = useState<string | null>(null);
-
-  const submit = async () => {
-    setError(null);
-    const amt = Number(amount);
-    if (!name.trim() || !Number.isFinite(amt) || amt < 0) {
-      setError("Name and a non-negative amount are required");
-      return;
-    }
-    setSaving(true);
-    try {
-      const url =
-        mode === "create"
-          ? "/api/admin/expenses"
-          : `/api/admin/expenses/${initial!.id}`;
-      const method = mode === "create" ? "POST" : "PATCH";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          amount_cad: amt,
-          category,
-          frequency,
-          notes: notes.trim() || null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Failed to save");
-        return;
-      }
-      // For create, include the new id + active=true so the parent
-      // can append a complete row to the local list — server returns
-      // { id }, the rest matches what we just posted. For edit, the
-      // initial id is already present on `initial`; pass it through
-      // unchanged.
-      const savedName = name.trim();
-      onSaved({
-        id: mode === "create" ? (data as { id: string }).id : initial?.id,
-        name: savedName,
-        amount_cad: amt,
-        category,
-        frequency,
-        notes: notes.trim() || null,
-        active: initial?.active ?? true,
-      });
-      // On create, keep the form open and clear the per-row fields so
-      // the admin can immediately type the next expense. Keep category
-      // and frequency since multiple entries usually share them.
-      if (mode === "create") {
-        setName("");
-        setAmount("");
-        setNotes("");
-        setJustAddedName(savedName);
-        // Clear the success flash after a few seconds so the form
-        // doesn't keep stale text floating around.
-        setTimeout(() => setJustAddedName(null), 3500);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div
-      className="rounded-xl border p-4 space-y-3"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
-    >
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-        <Field label="Name" required>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mf-input"
-            placeholder="e.g. Squarespace"
-          />
-        </Field>
-        <Field label="Amount (CAD)" required>
-          <input
-            type="number"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="mf-input"
-          />
-        </Field>
-        <Field label="Category">
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-            className="mf-input cursor-pointer capitalize"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c} className="capitalize">
-                {c}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Frequency">
-          <select
-            value={frequency}
-            onChange={(e) => setFrequency(e.target.value as ExpenseFrequency)}
-            className="mf-input cursor-pointer"
-          >
-            {FREQUENCIES.map((f) => (
-              <option key={f} value={f}>
-                {f.replace("_", " ")}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
-      <Field label="Notes (optional)">
-        <input
-          type="text"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          className="mf-input"
-        />
-      </Field>
-
-      {error && (
-        <div
-          className="flex items-center gap-2 p-3 rounded-lg text-sm border"
-          style={{
-            backgroundColor: "rgba(224, 82, 82, 0.12)",
-            borderColor: "#e05252",
-            color: "#e05252",
-          }}
-        >
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {error}
-        </div>
-      )}
-
-      {justAddedName && (
-        <div
-          className="flex items-center gap-2 p-3 rounded-lg text-sm border"
-          style={{
-            backgroundColor: "rgba(141, 198, 63, 0.12)",
-            borderColor: "#8dc63f",
-            color: "#8dc63f",
-          }}
-        >
-          <CheckCircle className="w-4 h-4 shrink-0" />
-          Added &ldquo;{justAddedName}&rdquo; — enter the next expense or
-          click Cancel when you&apos;re done.
-        </div>
-      )}
-
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={submit}
-          disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-          style={{
-            backgroundColor: "#c4973a",
-            color: "#0a1a0d",
-            opacity: saving ? 0.6 : 1,
-          }}
-        >
-          {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          {saving ? "Saving…" : mode === "create" ? "Add Expense" : "Save"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          className="px-4 py-2 rounded-lg text-sm font-semibold border"
-          style={{
-            backgroundColor: "transparent",
-            borderColor: "#2d6b35",
-            color: "#e8d5a3",
-          }}
-        >
-          Cancel
-        </button>
       </div>
     </div>
   );
@@ -1083,11 +713,9 @@ function Card({
 
 function Field({
   label,
-  required,
   children,
 }: {
   label: string;
-  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -1097,7 +725,6 @@ function Field({
         style={{ color: "#e8d5a3" }}
       >
         {label}
-        {required && <span style={{ color: "#e05252" }}> *</span>}
       </label>
       {children}
     </div>
