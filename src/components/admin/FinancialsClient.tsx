@@ -209,12 +209,19 @@ function OverviewTab({
   );
 
   const revenue = periodOrders.reduce((s, o) => s + o.total_cad, 0);
+  // Stripe processing fees for orders whose revenue_date falls in this
+  // period. Treated as OpEx (payment processing expense), not netted
+  // against revenue — standard accrual accounting practice.
+  const stripeFees = periodOrders.reduce(
+    (s, o) => s + (o.stripe_fee_cad ?? 0),
+    0,
+  );
   const totals = useMemo(
     () => sumTxnsInPeriod(qboTxns, start, end, cogsSet),
     [qboTxns, start, end, cogsSet],
   );
   const cogs = totals.cogs;
-  const opex = totals.opex;
+  const opex = totals.opex + stripeFees;
   const grossProfit = revenue - cogs;
   const netProfit = grossProfit - opex;
   const netMargin = revenue > 0 ? (netProfit / revenue) * 100 : null;
@@ -259,6 +266,10 @@ function OverviewTab({
         return t >= b.start && t < b.end;
       });
       const rev = inBucket.reduce((s, o) => s + o.total_cad, 0);
+      const bStripe = inBucket.reduce(
+        (s, o) => s + (o.stripe_fee_cad ?? 0),
+        0,
+      );
       const { cogs: bCogs, opex: bOpex } = sumTxnsInPeriod(
         qboTxns,
         b.start,
@@ -267,7 +278,7 @@ function OverviewTab({
       );
       return {
         label: b.label,
-        net: Math.round(rev - bCogs - bOpex),
+        net: Math.round(rev - bCogs - bOpex - bStripe),
       };
     });
   }, [orders, qboTxns, granularity, cogsSet]);
@@ -354,7 +365,11 @@ function OverviewTab({
           accent
         />
         <Card
-          label="Operating Expenses (QBO)"
+          label={
+            stripeFees > 0
+              ? `Operating Expenses (QBO + Stripe ${formatCurrency(stripeFees)})`
+              : "Operating Expenses (QBO)"
+          }
           value={formatCurrency(opex)}
         />
         <Card

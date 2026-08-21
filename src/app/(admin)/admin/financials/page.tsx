@@ -16,6 +16,10 @@ export type ShippedOrder = {
   test_cost_cad: number;
   test_count: number;
   manifest_id: string | null;
+  /** Stripe processing fee (CAD) for this order, from Stripe's
+   *  balance_transaction. Null when not yet backfilled. Counted as
+   *  OpEx in the Financials view. */
+  stripe_fee_cad: number | null;
 };
 
 export type ManifestSummary = {
@@ -61,7 +65,7 @@ export default async function AdminFinancialsPage() {
     .select(
       `
       id, appointment_at, appointment_date, shipping_date, shipped_at, created_at,
-      total_cad, tax_cad, manifest_id,
+      total_cad, tax_cad, stripe_fee_cad, manifest_id,
       order_lines (
         quantity,
         test:tests ( cost_cad )
@@ -80,6 +84,7 @@ export default async function AdminFinancialsPage() {
     created_at: string;
     total_cad: number | null;
     tax_cad: number | null;
+    stripe_fee_cad: number | null;
     manifest_id: string | null;
     order_lines: Array<{
       quantity: number;
@@ -115,6 +120,7 @@ export default async function AdminFinancialsPage() {
         test_cost_cad: testCost,
         test_count: testCount,
         manifest_id: o.manifest_id,
+        stripe_fee_cad: o.stripe_fee_cad,
       };
     },
   );

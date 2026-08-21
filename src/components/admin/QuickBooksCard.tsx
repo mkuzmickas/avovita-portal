@@ -78,6 +78,38 @@ export function QuickBooksCard({
   // months that were missed by the initial connect.
   const [sinceDate, setSinceDate] = useState<string>("");
 
+  const [stripeBackfilling, setStripeBackfilling] = useState(false);
+  const [stripeMsg, setStripeMsg] = useState<string | null>(null);
+  const runStripeBackfill = async () => {
+    setStripeBackfilling(true);
+    setStripeMsg(null);
+    try {
+      const res = await fetch(
+        "/api/admin/orders/backfill-stripe-fees",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ limit: 500 }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setStripeMsg(`Stripe fees backfill failed: ${data.error ?? "unknown"}`);
+      } else {
+        setStripeMsg(
+          `Stripe fees: ${data.updated} updated · ${data.skipped} skipped · ${data.errors} errored (of ${data.attempted} attempted). Run again if more orders remain.`,
+        );
+        router.refresh();
+      }
+    } catch (err) {
+      setStripeMsg(
+        `Stripe fees backfill failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    } finally {
+      setStripeBackfilling(false);
+    }
+  };
+
   const runSync = async () => {
     setSyncing(true);
     setSyncMsg(null);
@@ -224,10 +256,40 @@ export function QuickBooksCard({
               >
                 Disconnect
               </button>
+              <button
+                type="button"
+                onClick={runStripeBackfill}
+                disabled={stripeBackfilling}
+                title="Fetches Stripe processing fees from the Stripe API for any order that doesn't have one stored yet. Nightly cron also runs this at 08:30 UTC, but click here to run immediately after connecting or after a big backlog."
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  backgroundColor: "transparent",
+                  color: "#e8d5a3",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: "1px solid #2d6b35",
+                  cursor: stripeBackfilling ? "not-allowed" : "pointer",
+                }}
+              >
+                {stripeBackfilling ? "Backfilling…" : "Backfill Stripe fees"}
+              </button>
             </>
           )}
         </div>
       </div>
+      {stripeMsg && (
+        <p
+          style={{
+            marginTop: 8,
+            marginBottom: 0,
+            fontSize: 11,
+            color: stripeMsg.includes("failed") ? "#e88b8b" : "#8dc63f",
+          }}
+        >
+          {stripeMsg}
+        </p>
+      )}
 
       {connected && (
         <div
