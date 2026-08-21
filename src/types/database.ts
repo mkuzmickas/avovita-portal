@@ -16,7 +16,11 @@ export type Json =
 
 export type ShippingSchedule = "weekly_wednesday" | "same_day" | "kit_only" | "other";
 export type ResultsVisibility = "full" | "none" | "partial";
-export type AccountRole = "patient" | "admin" | "calendar_viewer";
+export type AccountRole =
+  | "patient"
+  | "admin"
+  | "admin_viewer"
+  | "calendar_viewer";
 export type BiologicalSex = "male" | "female" | "intersex";
 export type Relationship =
   | "account_holder"

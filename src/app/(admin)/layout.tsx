@@ -27,13 +27,17 @@ export default async function AdminLayout({
     error: unknown;
   };
 
-  // Two roles are allowed through this layout:
+  // Three roles are allowed through this layout:
   //   'admin'           → full portal access (default behavior)
+  //   'admin_viewer'    → sees the full admin UI but every mutation
+  //                       API route rejects them with 403 (they check
+  //                       role === 'admin'). No sidebar or page code
+  //                       changes needed — write lockdown is automatic.
   //   'calendar_viewer' → scoped access for FloLabs staff — sees only
   //                       /admin/calendar. Any other path bounces them
   //                       back to the calendar, so they cannot reach
   //                       orders / patients / financials even by URL.
-  const allowedRoles = new Set(["admin", "calendar_viewer"]);
+  const allowedRoles = new Set(["admin", "admin_viewer", "calendar_viewer"]);
   if (!account || !allowedRoles.has(account.role)) {
     redirect("/portal?msg=admin_required");
   }

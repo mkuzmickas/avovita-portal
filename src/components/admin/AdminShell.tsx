@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, Leaf } from "lucide-react";
+import { Menu, X, Leaf, Eye } from "lucide-react";
 import Link from "next/link";
 import { AdminSidebar } from "./AdminSidebar";
 
@@ -135,6 +135,21 @@ export function AdminShell({
           </button>
         </header>
 
+        {role === "admin_viewer" && (
+          <div
+            className="sticky top-0 z-20 px-4 py-2 text-center text-xs font-semibold border-b flex items-center justify-center gap-2"
+            style={{
+              backgroundColor: "rgba(196, 151, 58, 0.15)",
+              borderColor: "#c4973a",
+              color: "#c4973a",
+            }}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            Read-only access — you can view everything but any save,
+            upload, or delete action will be blocked. Nothing you click
+            can break the portal.
+          </div>
+        )}
         <main className="flex-1 min-w-0 overflow-auto">{children}</main>
       </div>
     </div>

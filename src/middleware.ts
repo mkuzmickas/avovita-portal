@@ -79,7 +79,9 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (!account || account.role !== "admin") {
+    const acct = account as { role: string } | null;
+    const allowed = new Set(["admin", "admin_viewer", "calendar_viewer"]);
+    if (!acct || !allowed.has(acct.role)) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/portal";
       return NextResponse.redirect(redirectUrl);

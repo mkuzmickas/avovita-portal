@@ -7,31 +7,45 @@ import type { Account } from "@/types/database";
  * Role-based access model for the admin area.
  *
  *   role = 'admin'            → full portal access (everything)
+ *   role = 'admin_viewer'     → sees the full admin UI but cannot mutate.
+ *                               Every /api/admin/** route (and /api/orders,
+ *                               /api/results, /api/quickbooks) rejects
+ *                               anyone whose role !== 'admin', so write
+ *                               lockdown is automatic — no per-route
+ *                               changes needed.
  *   role = 'calendar_viewer'  → ONLY /admin/calendar (for FloLabs staff
  *                               who need to see the FloLabs collection
  *                               calendar without seeing patient orders,
  *                               financials, etc.)
  *
- * The (admin)/layout allows either role through. Individual pages
- * that require full admin access call requireFullAdmin() at the top;
+ * The (admin)/layout allows admin + admin_viewer + calendar_viewer
+ * through. Full-admin-only pages call requireFullAdmin() at the top;
  * a calendar_viewer visiting one of those pages is silently redirected
- * to /admin/calendar.
+ * to /admin/calendar. admin_viewer passes through requireFullAdmin so
+ * they can read every page.
  */
 
-export type AdminRole = "admin" | "calendar_viewer";
+export type AdminRole = "admin" | "admin_viewer" | "calendar_viewer";
 
 export function canSeeFullAdmin(role: string | null | undefined): boolean {
-  return role === "admin";
+  return role === "admin" || role === "admin_viewer";
 }
 
 export function canSeeCalendar(role: string | null | undefined): boolean {
-  return role === "admin" || role === "calendar_viewer";
+  return (
+    role === "admin" || role === "admin_viewer" || role === "calendar_viewer"
+  );
+}
+
+export function canWriteAdmin(role: string | null | undefined): boolean {
+  return role === "admin";
 }
 
 /**
- * Server-component guard for pages that require full admin access.
- * Redirects calendar_viewer users to /admin/calendar; kicks anyone
- * unauthenticated to /login.
+ * Server-component guard for pages that require full admin access
+ * (read or write). Redirects calendar_viewer users to /admin/calendar;
+ * kicks anyone unauthenticated to /login. admin_viewer passes through
+ * — write actions on their session are blocked at the API layer.
  */
 export async function requireFullAdmin(): Promise<{
   role: AdminRole;
@@ -51,7 +65,7 @@ export async function requireFullAdmin(): Promise<{
   if (account.role === "calendar_viewer") {
     redirect("/admin/calendar");
   }
-  if (account.role !== "admin") {
+  if (account.role !== "admin" && account.role !== "admin_viewer") {
     redirect("/portal?msg=admin_required");
   }
   return {
