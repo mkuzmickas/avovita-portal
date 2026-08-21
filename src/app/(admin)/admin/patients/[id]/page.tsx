@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Mail, Phone, Calendar } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, Package, ExternalLink } from "lucide-react";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/utils";
 import { PatientResultsRepository } from "@/components/admin/PatientResultsRepository";
 import type { AdminPatientProfile } from "@/app/(admin)/admin/patients/page";
+import type { OrderStatus } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,21 @@ export type PatientRepositoryResult = {
   /** Email of the admin/account that uploaded this row. Null for system uploads. */
   uploaded_by_email: string | null;
 };
+
+function statusColorFor(status: OrderStatus): { bg: string; fg: string } {
+  switch (status) {
+    case "complete":
+    case "resulted":
+      return { bg: "rgba(106,176,76,0.15)", fg: "#6ab04c" };
+    case "shipped":
+    case "collected":
+      return { bg: "rgba(196,151,58,0.15)", fg: "#c4973a" };
+    case "cancelled":
+      return { bg: "rgba(220,90,90,0.15)", fg: "#dc5a5a" };
+    default:
+      return { bg: "rgba(232,213,163,0.10)", fg: "#e8d5a3" };
+  }
+}
 
 export default async function AdminPatientDetailPage({
   params,
@@ -151,6 +167,69 @@ export default async function AdminPatientDetailPage({
       uploaderEmailById.set(u.id, u.email);
     }
   }
+
+  // Order history for this account — everything the account_id ever
+  // paid for, newest first, with test list, ship date, tracking, and
+  // status. Solves the "thin client profile" gripe.
+  const { data: ordersRaw } = await service
+    .from("orders")
+    .select(
+      `
+      id, status, total_cad, fedex_tracking_number, shipped_at,
+      appointment_at, appointment_date, created_at,
+      order_lines(
+        id, line_type,
+        test:tests(name),
+        profile:patient_profiles(first_name, last_name)
+      )
+    `,
+    )
+    .eq("account_id", accountId)
+    .order("created_at", { ascending: false });
+
+  type RawOrder = {
+    id: string;
+    status: OrderStatus;
+    total_cad: number | null;
+    fedex_tracking_number: string | null;
+    shipped_at: string | null;
+    appointment_at: string | null;
+    appointment_date: string | null;
+    created_at: string;
+    order_lines: Array<{
+      id: string;
+      line_type: string | null;
+      test: { name: string } | { name: string }[] | null;
+      profile:
+        | { first_name: string; last_name: string }
+        | { first_name: string; last_name: string }[]
+        | null;
+    }>;
+  };
+  const orders = ((ordersRaw ?? []) as unknown as RawOrder[]).map((o) => {
+    const testLines = (o.order_lines ?? []).filter(
+      (l) => (l.line_type ?? "test") === "test",
+    );
+    const tests: string[] = [];
+    const patientLabels = new Set<string>();
+    for (const l of testLines) {
+      const test = Array.isArray(l.test) ? l.test[0] : l.test;
+      if (test?.name) tests.push(test.name);
+      const prof = Array.isArray(l.profile) ? l.profile[0] : l.profile;
+      if (prof) patientLabels.add(`${prof.first_name} ${prof.last_name}`);
+    }
+    return {
+      id: o.id,
+      status: o.status,
+      total_cad: o.total_cad,
+      fedex_tracking_number: o.fedex_tracking_number,
+      shipped_at: o.shipped_at,
+      collection_at: o.appointment_at ?? o.appointment_date,
+      created_at: o.created_at,
+      tests,
+      patients: [...patientLabels],
+    };
+  });
 
   const results: PatientRepositoryResult[] = rawResults.map((r) => ({
     id: r.id,
@@ -326,6 +405,135 @@ export default async function AdminPatientDetailPage({
                 )}
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      {/* Orders */}
+      <section
+        className="mb-8 rounded-xl border p-5"
+        style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      >
+        <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+          <h2
+            className="font-heading text-xl font-semibold flex items-center gap-2"
+            style={{
+              color: "#ffffff",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+            }}
+          >
+            <Package className="w-5 h-5" style={{ color: "#c4973a" }} />
+            Orders <span style={{ color: "#c4973a" }}>({orders.length})</span>
+          </h2>
+          <Link
+            href={`/admin/orders?patient_id=${accountId}`}
+            className="text-xs underline"
+            style={{ color: "#e8d5a3" }}
+          >
+            Open in Orders module →
+          </Link>
+        </div>
+        {orders.length === 0 ? (
+          <p className="text-sm" style={{ color: "#6ab04c" }}>
+            No orders on this account yet.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr
+                  className="text-xs uppercase tracking-wider text-left"
+                  style={{ color: "#6ab04c", borderBottom: "1px solid #2d6b35" }}
+                >
+                  <th className="py-2 pr-3">Order</th>
+                  <th className="py-2 pr-3">Placed</th>
+                  <th className="py-2 pr-3">Collected</th>
+                  <th className="py-2 pr-3">Tests</th>
+                  <th className="py-2 pr-3">Patient</th>
+                  <th className="py-2 pr-3">Shipped</th>
+                  <th className="py-2 pr-3">Tracking</th>
+                  <th className="py-2 pr-3">Total</th>
+                  <th className="py-2 pr-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => {
+                  const statusColor = statusColorFor(o.status);
+                  return (
+                    <tr
+                      key={o.id}
+                      style={{ borderBottom: "1px solid rgba(45,107,53,0.4)" }}
+                    >
+                      <td className="py-2 pr-3">
+                        <Link
+                          href={`/admin/orders?patient_id=${accountId}`}
+                          className="font-mono text-xs underline"
+                          style={{ color: "#c4973a" }}
+                          title={o.id}
+                        >
+                          {o.id.slice(0, 8).toUpperCase()}
+                        </Link>
+                      </td>
+                      <td className="py-2 pr-3" style={{ color: "#e8d5a3" }}>
+                        {formatDate(o.created_at)}
+                      </td>
+                      <td className="py-2 pr-3" style={{ color: "#e8d5a3" }}>
+                        {o.collection_at ? formatDate(o.collection_at) : "—"}
+                      </td>
+                      <td
+                        className="py-2 pr-3"
+                        style={{ color: "#ffffff", maxWidth: 360 }}
+                      >
+                        {o.tests.length === 0 ? (
+                          <span style={{ color: "#6ab04c" }}>—</span>
+                        ) : (
+                          o.tests.join(", ")
+                        )}
+                      </td>
+                      <td className="py-2 pr-3" style={{ color: "#e8d5a3" }}>
+                        {o.patients.length === 0 ? "—" : o.patients.join(", ")}
+                      </td>
+                      <td className="py-2 pr-3" style={{ color: "#e8d5a3" }}>
+                        {o.shipped_at ? formatDate(o.shipped_at) : "—"}
+                      </td>
+                      <td className="py-2 pr-3">
+                        {o.fedex_tracking_number ? (
+                          <a
+                            href={`https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(o.fedex_tracking_number)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-xs inline-flex items-center gap-1 underline"
+                            style={{ color: "#c4973a" }}
+                          >
+                            {o.fedex_tracking_number}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span style={{ color: "#6ab04c" }}>—</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3" style={{ color: "#e8d5a3" }}>
+                        {o.total_cad == null
+                          ? "—"
+                          : `$${o.total_cad.toFixed(2)}`}
+                      </td>
+                      <td className="py-2 pr-3">
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border capitalize"
+                          style={{
+                            backgroundColor: statusColor.bg,
+                            color: statusColor.fg,
+                            borderColor: statusColor.fg,
+                          }}
+                        >
+                          {o.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
