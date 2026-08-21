@@ -20,6 +20,10 @@ interface Props {
   orders: ShippedOrder[];
   qboTxns: QboTxn[];
   cogsCategories: string[];
+  /** category → accrual lag in days. Mayo / FloLabs = 30 by default
+   *  because they bill ~monthly-in-arrears; everything else = 0.
+   *  Applied when bucketing: service_month = txn_date - lag_days. */
+  categoryLags: Record<string, number>;
   /** Earliest order in the system — chart / periods can't sensibly go
    *  before this. Populated server-side from min(orders.created_at). */
   earliestOrderISO: string | null;
@@ -80,7 +84,12 @@ function sumTxnsInPeriod(
   const startISO = isoDate(start);
   const endISO = isoDate(end);
   for (const t of txns) {
-    if (t.txn_date < startISO || t.txn_date >= endISO) continue;
+    // Use accrual_date when the wrapper has computed one (Mayo/FloLabs
+    // land in their service month, not the AMEX-charge month); fall
+    // back to txn_date otherwise.
+    const bucketDate =
+      (t as QboTxn & { accrual_date?: string }).accrual_date ?? t.txn_date;
+    if (bucketDate < startISO || bucketDate >= endISO) continue;
     const signed = t.direction === "refund" ? -t.amount_cad : t.amount_cad;
     if (t.category && cogsSet.has(t.category)) cogs += signed;
     else opex += signed;
@@ -94,13 +103,28 @@ export function FinancialsClient({
   orders,
   qboTxns,
   cogsCategories,
+  categoryLags,
   earliestOrderISO,
 }: Props) {
   const cogsSet = useMemo(() => new Set(cogsCategories), [cogsCategories]);
+  // Pre-compute each QBO txn's accrual date (txn_date - category lag)
+  // once here so downstream bucketing and drilldown stay simple.
+  const accrualTxns = useMemo(() => {
+    return qboTxns.map((t) => {
+      const lag: number = t.category ? categoryLags[t.category] ?? 0 : 0;
+      let accrual_date = t.txn_date;
+      if (lag > 0) {
+        const d = new Date(`${t.txn_date}T00:00:00`);
+        d.setDate(d.getDate() - lag);
+        accrual_date = isoDate(d);
+      }
+      return { ...t, accrual_date, applied_lag_days: lag };
+    });
+  }, [qboTxns, categoryLags]);
   return (
     <OverviewTab
       orders={orders}
-      qboTxns={qboTxns}
+      qboTxns={accrualTxns}
       cogsSet={cogsSet}
       earliestOrderISO={earliestOrderISO}
     />
@@ -465,10 +489,12 @@ function PnLBreakdown({
     0,
   );
 
-  // QBO transactions in the window
-  const periodTxns = qboTxns.filter(
-    (t) => t.txn_date >= startISO && t.txn_date < endISO,
-  );
+  // QBO transactions in the window — use accrual_date when set
+  const periodTxns = qboTxns.filter((t) => {
+    const bucketDate =
+      (t as QboTxn & { accrual_date?: string }).accrual_date ?? t.txn_date;
+    return bucketDate >= startISO && bucketDate < endISO;
+  });
 
   // Bucket by category, keeping COGS vs OpEx separation
   const cogsBuckets = new Map<string, QboTxn[]>();
@@ -789,6 +815,21 @@ function PnLCategoryRow({
                 }}
               >
                 {t.supplier_name ?? "(no supplier)"} · {t.txn_date}
+                {(() => {
+                  const lag = (t as QboTxn & { applied_lag_days?: number })
+                    .applied_lag_days ?? 0;
+                  if (lag <= 0) return null;
+                  const accrual = (t as QboTxn & { accrual_date?: string })
+                    .accrual_date;
+                  return (
+                    <span
+                      style={{ color: "#8dc63f", marginLeft: 6, fontSize: 11 }}
+                      title={`Accrued to service month (~${lag} day lag)`}
+                    >
+                      → {accrual}
+                    </span>
+                  );
+                })()}
               </td>
               <td style={{ ...pnlCellR, color: "#6ab04c" }}>
                 {t.direction === "refund" ? "refund" : ""}

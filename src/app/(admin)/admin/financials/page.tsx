@@ -113,19 +113,29 @@ export default async function AdminFinancialsPage() {
     },
   );
 
-  // Earliest revenue-generating order in the system. Used as the
-  // cutoff for the chart / QBO query so we don't render months of
-  // pre-portal QBO expenses (setup subscriptions, initial supplier
-  // charges) with zero revenue attached — those made the chart look
-  // like the business was losing $25k/mo in Jan-Apr when the
-  // business hadn't opened its doors yet.
+  // Financials cutoff — hard floor at 2026-05-01 (portal launch)
+  // regardless of what the earliest order says. April had a few
+  // ramp-up orders that Mike explicitly wants excluded because the
+  // portal wasn't really live yet. Use MAX(hard floor, earliest
+  // order) so the cutoff also naturally advances if we ever have
+  // no orders before some later date.
+  const HARD_FLOOR_ISO = "2026-05-01";
   const earliestRevenueDate = orders.reduce<string | null>((min, o) => {
     if (!min || o.revenue_date < min) return o.revenue_date;
     return min;
   }, null);
-  const earliestOrderISO = earliestRevenueDate
+  const derivedEarliest = earliestRevenueDate
     ? earliestRevenueDate.slice(0, 10)
     : null;
+  const earliestOrderISO =
+    derivedEarliest && derivedEarliest > HARD_FLOOR_ISO
+      ? derivedEarliest
+      : HARD_FLOOR_ISO;
+
+  // Drop orders whose revenue_date is before the cutoff.
+  const cutoffOrders = orders.filter(
+    (o) => o.revenue_date.slice(0, 10) >= earliestOrderISO,
+  );
 
   // 3. QuickBooks transactions from first-order date forward.
   // Anything before that is pre-portal cost with no revenue to match,
@@ -138,6 +148,7 @@ export default async function AdminFinancialsPage() {
       .slice(0, 10);
   let qboTxns: QboTxn[] = [];
   let cogsCategories: string[] = [];
+  let categoryLags: Record<string, number> = {};
   let uncategorizedSuppliers: Array<{
     supplier_name: string;
     count: number;
@@ -153,15 +164,23 @@ export default async function AdminFinancialsPage() {
 
     const { data: catsRaw } = await service
       .from("expense_categories")
-      .select("category, is_cogs");
+      .select("category, is_cogs, accrual_lag_days");
     const cogsSet = new Set<string>();
+    const lags: Record<string, number> = {};
     for (const c of (catsRaw ?? []) as Array<{
       category: string;
       is_cogs: boolean;
+      accrual_lag_days: number | null;
     }>) {
       if (c.is_cogs) cogsSet.add(c.category);
+      // Multiple supplier_patterns map to the same category; take
+      // the max lag across them (rows on the same category shouldn't
+      // usually disagree, but max is safe).
+      const lag = c.accrual_lag_days ?? 0;
+      if (lag > (lags[c.category] ?? 0)) lags[c.category] = lag;
     }
     cogsCategories = [...cogsSet];
+    categoryLags = lags;
 
     // Roll up uncategorized suppliers for the mapper card
     const uncatMap = new Map<
@@ -255,9 +274,10 @@ export default async function AdminFinancialsPage() {
       />
 
       <FinancialsClient
-        orders={orders}
+        orders={cutoffOrders}
         qboTxns={qboTxns}
         cogsCategories={cogsCategories}
+        categoryLags={categoryLags}
         earliestOrderISO={earliestOrderISO}
       />
     </div>
