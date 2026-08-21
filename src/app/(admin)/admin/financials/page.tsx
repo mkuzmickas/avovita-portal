@@ -61,7 +61,7 @@ export default async function AdminFinancialsPage() {
     .select(
       `
       id, appointment_at, appointment_date, shipping_date, shipped_at, created_at,
-      total_cad, manifest_id,
+      total_cad, tax_cad, manifest_id,
       order_lines (
         quantity,
         test:tests ( cost_cad )
@@ -79,6 +79,7 @@ export default async function AdminFinancialsPage() {
     shipped_at: string | null;
     created_at: string;
     total_cad: number | null;
+    tax_cad: number | null;
     manifest_id: string | null;
     order_lines: Array<{
       quantity: number;
@@ -102,10 +103,15 @@ export default async function AdminFinancialsPage() {
         o.shipping_date ||
         o.shipped_at ||
         o.created_at;
+      // Pre-tax revenue: exclude GST. GST is money we collect on
+      // behalf of CRA and remit — it is NOT income and mustn't
+      // appear in the P&L. Was previously using total_cad which
+      // inflated revenue by ~5%.
+      const pretax = (o.total_cad ?? 0) - (o.tax_cad ?? 0);
       return {
         id: o.id,
         revenue_date,
-        total_cad: o.total_cad ?? 0,
+        total_cad: pretax,
         test_cost_cad: testCost,
         test_count: testCount,
         manifest_id: o.manifest_id,

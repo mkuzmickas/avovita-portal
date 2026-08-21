@@ -73,17 +73,27 @@ export function QuickBooksCard({
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
+  // Optional backfill date — when set, the sync pulls from this date
+  // forward instead of the default 90 days. Use to seed historical
+  // months that were missed by the initial connect.
+  const [sinceDate, setSinceDate] = useState<string>("");
+
   const runSync = async () => {
     setSyncing(true);
     setSyncMsg(null);
     try {
-      const res = await fetch("/api/quickbooks/sync", { method: "POST" });
+      const body = sinceDate ? JSON.stringify({ sinceDate }) : undefined;
+      const res = await fetch("/api/quickbooks/sync", {
+        method: "POST",
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body,
+      });
       const data = await res.json();
       if (!res.ok) {
         setSyncMsg(`Sync failed: ${data.error ?? "unknown"}`);
       } else {
         setSyncMsg(
-          `Synced ${data.purchases + data.bills + data.vendorCredits} txns (${data.categorized} categorized, ${data.uncategorized} unmapped)`,
+          `Synced ${data.purchases + data.bills + data.vendorCredits} txns from ${data.sinceDate} (${data.categorized} categorized, ${data.uncategorized} unmapped)`,
         );
         router.refresh();
       }
@@ -147,6 +157,36 @@ export function QuickBooksCard({
           )}
           {connected && (
             <>
+              <label
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  fontSize: 10,
+                  color: "#8dc63f",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  fontWeight: 700,
+                }}
+                title="Optional. Leave blank for the default 90-day rolling sync. Set to backfill months missed by the initial connect (e.g. 2025-01-01 for a full 2025+ history)."
+              >
+                Since (optional)
+                <input
+                  type="date"
+                  value={sinceDate}
+                  onChange={(e) => setSinceDate(e.target.value)}
+                  disabled={syncing}
+                  style={{
+                    marginTop: 2,
+                    padding: "4px 6px",
+                    borderRadius: 6,
+                    border: "1px solid #2d6b35",
+                    backgroundColor: "#0a1a0d",
+                    color: "#e8d5a3",
+                    fontSize: 12,
+                    colorScheme: "dark",
+                  }}
+                />
+              </label>
               <button
                 type="button"
                 onClick={runSync}
@@ -162,7 +202,11 @@ export function QuickBooksCard({
                   cursor: syncing ? "not-allowed" : "pointer",
                 }}
               >
-                {syncing ? "Syncing…" : "Sync now"}
+                {syncing
+                  ? "Syncing…"
+                  : sinceDate
+                    ? `Backfill from ${sinceDate}`
+                    : "Sync now"}
               </button>
               <button
                 type="button"
