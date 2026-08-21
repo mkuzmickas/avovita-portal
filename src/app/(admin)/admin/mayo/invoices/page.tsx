@@ -27,8 +27,10 @@ interface LineAggRow {
   invoice_id: string;
   matched_count: number;
   unmatched_count: number;
+  overhead_count: number;
   matched_amount: number;
   unmatched_amount: number;
+  overhead_amount: number;
 }
 
 export default async function MayoInvoicesListPage() {
@@ -47,23 +49,29 @@ export default async function MayoInvoicesListPage() {
   // and still fast at our scale.
   const { data: linesRaw } = await service
     .from("mayo_invoice_lines")
-    .select("invoice_id, order_id, charge_usd");
+    .select("invoice_id, order_id, no_portal_order, charge_usd");
   const lineAggs = new Map<string, LineAggRow>();
   for (const l of (linesRaw ?? []) as Array<{
     invoice_id: string;
     order_id: string | null;
+    no_portal_order: boolean;
     charge_usd: number;
   }>) {
     const agg = lineAggs.get(l.invoice_id) ?? {
       invoice_id: l.invoice_id,
       matched_count: 0,
       unmatched_count: 0,
+      overhead_count: 0,
       matched_amount: 0,
       unmatched_amount: 0,
+      overhead_amount: 0,
     };
     if (l.order_id) {
       agg.matched_count += 1;
       agg.matched_amount += Number(l.charge_usd);
+    } else if (l.no_portal_order) {
+      agg.overhead_count += 1;
+      agg.overhead_amount += Number(l.charge_usd);
     } else {
       agg.unmatched_count += 1;
       agg.unmatched_amount += Number(l.charge_usd);
@@ -103,6 +111,7 @@ export default async function MayoInvoicesListPage() {
                 "Invoice #",
                 "Total",
                 "Matched",
+                "Overhead",
                 "Unmatched",
                 "Uploaded",
                 "",
@@ -121,7 +130,7 @@ export default async function MayoInvoicesListPage() {
             {invoices.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-6 py-16 text-center"
                   style={{ backgroundColor: "#0a1a0d", color: "#6ab04c" }}
                 >
@@ -132,9 +141,11 @@ export default async function MayoInvoicesListPage() {
               invoices.map((inv, idx) => {
                 const agg = lineAggs.get(inv.id);
                 const matched = agg?.matched_count ?? 0;
+                const overhead = agg?.overhead_count ?? 0;
                 const unmatched = agg?.unmatched_count ?? 0;
-                const total = matched + unmatched;
-                const pctMatched = total > 0 ? (matched / total) * 100 : 0;
+                const total = matched + overhead + unmatched;
+                const pctResolved =
+                  total > 0 ? ((matched + overhead) / total) * 100 : 0;
                 return (
                   <tr
                     key={inv.id}
@@ -184,14 +195,20 @@ export default async function MayoInvoicesListPage() {
                       >
                         <div
                           style={{
-                            width: `${pctMatched}%`,
+                            width: `${pctResolved}%`,
                             height: "100%",
                             backgroundColor: "#8dc63f",
                           }}
                         />
                       </div>
                     </td>
-                    <td className="px-4 py-3" style={{ color: unmatched > 0 ? "#c4973a" : "#6ab04c" }}>
+                    <td className="px-4 py-3" style={{ color: overhead > 0 ? "#c8d0cb" : "#6ab04c" }}>
+                      {overhead} ·{" "}
+                      {formatCad(
+                        (agg?.overhead_amount ?? 0) * Number(inv.fx_rate),
+                      )}
+                    </td>
+                    <td className="px-4 py-3" style={{ color: unmatched > 0 ? "#e88b8b" : "#6ab04c" }}>
                       {unmatched} ·{" "}
                       {formatCad(
                         (agg?.unmatched_amount ?? 0) * Number(inv.fx_rate),

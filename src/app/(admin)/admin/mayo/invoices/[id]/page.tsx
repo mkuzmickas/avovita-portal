@@ -28,6 +28,7 @@ export interface MatchLine {
   charge_usd: number;
   order_id: string | null;
   matched_by: string | null;
+  no_portal_order: boolean;
   candidates: OrderCandidate[];
   /** For already-matched lines, the linked order's summary so we can
    *  show what it's pointing at without another round-trip. */
@@ -61,6 +62,7 @@ interface LineRow {
   charge_usd: number;
   order_id: string | null;
   matched_by: string | null;
+  no_portal_order: boolean;
 }
 
 interface InvoiceRow {
@@ -90,7 +92,7 @@ export default async function MayoInvoiceMatcherPage({
   const { data: linesRaw } = await service
     .from("mayo_invoice_lines")
     .select(
-      "id, collection_date, accession_no, specimen_no, mayo_patient_id, patient_name, test_id, description, charge_usd, order_id, matched_by",
+      "id, collection_date, accession_no, specimen_no, mayo_patient_id, patient_name, test_id, description, charge_usd, order_id, matched_by, no_portal_order",
     )
     .eq("invoice_id", id)
     .order("collection_date", { ascending: true });
@@ -135,12 +137,13 @@ export default async function MayoInvoiceMatcherPage({
   const linesWithCandidates: MatchLine[] = await Promise.all(
     lineRows.map(async (l) => ({
       ...l,
-      candidates: l.order_id
-        ? []
-        : await candidatesForLine(service, {
-            patient_name: l.patient_name,
-            collection_date: l.collection_date,
-          }),
+      candidates:
+        l.order_id || l.no_portal_order
+          ? []
+          : await candidatesForLine(service, {
+              patient_name: l.patient_name,
+              collection_date: l.collection_date,
+            }),
       matched_order: l.order_id ? matchedOrderMap.get(l.order_id) ?? null : null,
     })),
   );

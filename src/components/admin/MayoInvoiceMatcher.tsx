@@ -139,6 +139,37 @@ export function MayoInvoiceMatcher({
     router.refresh();
   };
 
+  const applyOverheadToGroup = async (
+    group: PatientGroup,
+    overhead: boolean,
+  ) => {
+    setSaving(group.patient_name);
+    setFlash(null);
+    const res = await fetch(
+      `/api/admin/mayo/invoices/${invoiceId}/mark-overhead`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          line_ids: group.lines.map((l) => l.id),
+          overhead,
+        }),
+      },
+    );
+    const data = await res.json();
+    setSaving(null);
+    setFlash({
+      patient: group.patient_name,
+      ok: res.ok,
+      msg: res.ok
+        ? overhead
+          ? `Marked ${data.updated} line${data.updated === 1 ? "" : "s"} as overhead.`
+          : `Cleared overhead flag on ${data.updated} line${data.updated === 1 ? "" : "s"}.`
+        : `Failed: ${data.error ?? res.statusText}`,
+    });
+    router.refresh();
+  };
+
   const onDragStartGroup = (
     e: React.DragEvent<HTMLDivElement>,
     group: PatientGroup,
@@ -306,6 +337,11 @@ export function MayoInvoiceMatcher({
         {patientGroups.map((g) => {
           const allMatched = g.lines.every((l) => l.order_id);
           const someMatched = g.lines.some((l) => l.order_id);
+          const allOverhead = g.lines.every((l) => l.no_portal_order);
+          const someOverhead = g.lines.some((l) => l.no_portal_order);
+          const allResolved = g.lines.every(
+            (l) => l.order_id || l.no_portal_order,
+          );
           const isSelected = g.patient_name === selectedPatient;
           const isSaving = saving === g.patient_name;
           return (
@@ -323,9 +359,11 @@ export function MayoInvoiceMatcher({
                 border: `1px solid ${
                   allMatched
                     ? "#8dc63f"
-                    : someMatched
-                      ? "#c4973a"
-                      : "#2d6b35"
+                    : allOverhead
+                      ? "#8a9a8f"
+                      : someMatched || someOverhead
+                        ? "#c4973a"
+                        : "#2d6b35"
                 }`,
                 opacity: isSaving ? 0.5 : 1,
               }}
@@ -363,19 +401,31 @@ export function MayoInvoiceMatcher({
                     borderRadius: 4,
                     backgroundColor: allMatched
                       ? "rgba(141, 198, 63, 0.2)"
-                      : someMatched
-                        ? "rgba(196, 151, 58, 0.2)"
-                        : "rgba(224, 82, 82, 0.15)",
+                      : allOverhead
+                        ? "rgba(138, 154, 143, 0.25)"
+                        : someMatched || someOverhead
+                          ? "rgba(196, 151, 58, 0.2)"
+                          : "rgba(224, 82, 82, 0.15)",
                     color: allMatched
                       ? "#8dc63f"
-                      : someMatched
-                        ? "#c4973a"
-                        : "#e88b8b",
+                      : allOverhead
+                        ? "#c8d0cb"
+                        : someMatched || someOverhead
+                          ? "#c4973a"
+                          : "#e88b8b",
                     height: 18,
                     lineHeight: "14px",
                   }}
                 >
-                  {allMatched ? "MATCHED" : someMatched ? "PARTIAL" : "OPEN"}
+                  {allMatched
+                    ? "MATCHED"
+                    : allOverhead
+                      ? "OVERHEAD"
+                      : allResolved
+                        ? "PARTIAL"
+                        : someMatched || someOverhead
+                          ? "PARTIAL"
+                          : "OPEN"}
                 </span>
               </div>
               {flash && flash.patient === g.patient_name && (
@@ -479,6 +529,7 @@ export function MayoInvoiceMatcher({
               onDropCandidate={onDropCandidate}
               onMatch={(orderId) => applyMatchToGroup(selected, orderId)}
               onUnmatch={() => applyMatchToGroup(selected, null)}
+              onMarkOverhead={(overhead) => applyOverheadToGroup(selected, overhead)}
               saving={saving === selected.patient_name}
             />
           </div>
@@ -498,12 +549,14 @@ function CandidatesForSelected({
   onDropCandidate,
   onMatch,
   onUnmatch,
+  onMarkOverhead,
   saving,
 }: {
   selected: PatientGroup;
   onDropCandidate: (e: React.DragEvent<HTMLDivElement>, orderId: string) => void;
   onMatch: (orderId: string) => void;
   onUnmatch: () => void;
+  onMarkOverhead: (overhead: boolean) => void;
   saving: boolean;
 }) {
   const [searchQ, setSearchQ] = useState("");
@@ -542,8 +595,60 @@ function CandidatesForSelected({
     (a, b) => b.score - a.score,
   );
 
+  const isOverhead = selected.lines.every((l) => l.no_portal_order);
   return (
     <>
+      {isOverhead && (
+        <div
+          style={{
+            border: "1px solid #8a9a8f",
+            borderRadius: 8,
+            padding: 12,
+            marginBottom: 12,
+            backgroundColor: "rgba(138, 154, 143, 0.08)",
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                color: "#c8d0cb",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 4,
+              }}
+            >
+              Marked as overhead
+            </div>
+            <div style={{ color: "#e8d5a3", fontSize: 12 }}>
+              This accession has no portal order — treated as internal/comp
+              lab cost. Contributes to overhead, not COGS.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onMarkOverhead(false)}
+            disabled={saving}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 6,
+              backgroundColor: "transparent",
+              border: "1px solid #e8d5a3",
+              color: "#e8d5a3",
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: saving ? "not-allowed" : "pointer",
+            }}
+          >
+            Undo
+          </button>
+        </div>
+      )}
       {currentMatch && currentMatch.matched_order && (
         <div
           style={{
@@ -611,15 +716,45 @@ function CandidatesForSelected({
 
       <div
         style={{
-          color: "#c4973a",
-          fontSize: 12,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 8,
           marginBottom: 8,
         }}
       >
-        Candidate portal orders · drop patient here
+        <div
+          style={{
+            color: "#c4973a",
+            fontSize: 12,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
+          Candidate portal orders · drop patient here
+        </div>
+        {!isOverhead && !currentMatch && (
+          <button
+            type="button"
+            onClick={() => onMarkOverhead(true)}
+            disabled={saving}
+            title="Use for internal/comp Mayo orders that never went through the portal (Mike, Jenna, friends direct to Mayo). Cost is real but there's no client revenue tied to it."
+            style={{
+              padding: "4px 10px",
+              borderRadius: 6,
+              backgroundColor: "transparent",
+              border: "1px solid #8a9a8f",
+              color: "#c8d0cb",
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: saving ? "not-allowed" : "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            No portal order (overhead)
+          </button>
+        )}
       </div>
       {candidates.length === 0 ? (
         <div
