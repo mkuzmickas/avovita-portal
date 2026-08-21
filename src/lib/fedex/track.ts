@@ -1,4 +1,4 @@
-import { readFedExConfig, getFedExAccessToken } from "./oauth";
+import { readFedExTrackConfig, getFedExAccessToken } from "./oauth";
 
 /**
  * FedEx Tracking API — batch lookup of shipment status.
@@ -28,7 +28,9 @@ export async function fetchTrackingStatuses(
 ): Promise<TrackingStatus[]> {
   if (trackingNumbers.length === 0) return [];
 
-  const config = readFedExConfig();
+  // Track API lives on its own FedEx project so it doesn't compete with
+  // Ship/Rates/Pickup for that project's rate limits. See oauth.ts.
+  const config = readFedExTrackConfig();
   const token = await getFedExAccessToken(config);
 
   const results: TrackingStatus[] = [];
