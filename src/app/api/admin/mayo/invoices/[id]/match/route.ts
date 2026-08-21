@@ -3,6 +3,7 @@ import {
   createClient,
   createServiceRoleClient,
 } from "@/lib/supabase/server";
+import { backstampMayoIds } from "@/app/api/admin/mayo/invoices/route";
 import type { Account } from "@/types/database";
 
 export const runtime = "nodejs";
@@ -74,5 +75,29 @@ export async function POST(
       { status: 500 },
     );
   }
+
+  // Learning loop — if this was a MATCH (not an unmatch), back-stamp
+  // Mayo's identifiers onto the order + patient profile so future
+  // invoices auto-match this patient via the deterministic PK path.
+  if (body.order_id) {
+    const { data: line } = await service
+      .from("mayo_invoice_lines")
+      .select("accession_no, specimen_no, mayo_patient_id")
+      .eq("id", body.line_id)
+      .maybeSingle();
+    if (line) {
+      const l = line as unknown as {
+        accession_no: string;
+        specimen_no: string | null;
+        mayo_patient_id: string | null;
+      };
+      await backstampMayoIds(service, body.order_id, {
+        accession_no: l.accession_no,
+        specimen_no: l.specimen_no,
+        mayo_patient_id: l.mayo_patient_id,
+      });
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

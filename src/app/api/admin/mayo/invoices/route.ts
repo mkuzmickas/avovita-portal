@@ -6,6 +6,7 @@ import {
 } from "@/lib/supabase/server";
 import {
   candidatesForLine,
+  findByPrimaryKeys,
   pickAutoMatch,
 } from "@/lib/mayo/match-candidates";
 import type { Account } from "@/types/database";
@@ -226,15 +227,20 @@ export async function runAutoMatchForInvoice(
 ): Promise<{ autoMatched: number; unmatched: number }> {
   const { data: unmatchedRaw } = await service
     .from("mayo_invoice_lines")
-    .select("id, accession_no, patient_name, collection_date, description")
+    .select(
+      "id, accession_no, specimen_no, mayo_patient_id, patient_name, collection_date, description, test_id",
+    )
     .eq("invoice_id", invoiceId)
     .is("order_id", null);
   const unmatched = (unmatchedRaw ?? []) as Array<{
     id: string;
     accession_no: string;
+    specimen_no: string | null;
+    mayo_patient_id: string | null;
     patient_name: string;
     collection_date: string;
     description: string | null;
+    test_id: string;
   }>;
 
   // Group by accession
@@ -243,28 +249,59 @@ export async function runAutoMatchForInvoice(
     {
       patient_name: string;
       collection_date: string;
+      mayo_patient_id: string | null;
+      specimen_no: string | null;
       lineIds: string[];
       descriptions: string[];
+      testIds: string[];
     }
   >();
   for (const l of unmatched) {
     const g = groups.get(l.accession_no) ?? {
       patient_name: l.patient_name,
       collection_date: l.collection_date,
+      mayo_patient_id: l.mayo_patient_id,
+      specimen_no: l.specimen_no,
       lineIds: [],
       descriptions: [],
+      testIds: [],
     };
     g.lineIds.push(l.id);
     if (l.description) g.descriptions.push(l.description);
+    if (l.test_id) g.testIds.push(l.test_id);
     groups.set(l.accession_no, g);
   }
 
   let matchedLines = 0;
-  for (const g of groups.values()) {
+  for (const [accession_no, g] of groups) {
+    // PATH 1 — deterministic primary-key match. If any portal order
+    // already has this accession / specimen / MRN stamped on it (from
+    // a prior manual match that back-stamped, or historical Pipeline
+    // 1 seeding), auto-match with total confidence.
+    const pkOrderId = await findByPrimaryKeys(service, {
+      mayo_ml_order_number: accession_no,
+      mayo_order_number: g.specimen_no,
+      mayo_patient_id: g.mayo_patient_id,
+    });
+    if (pkOrderId) {
+      const { error } = await service
+        .from("mayo_invoice_lines")
+        .update({
+          order_id: pkOrderId,
+          matched_at: new Date().toISOString(),
+          matched_by: "auto:pk",
+        })
+        .in("id", g.lineIds);
+      if (!error) matchedLines += g.lineIds.length;
+      continue;
+    }
+
+    // PATH 2 — scored candidates via name + date + SKU/name overlap.
     const cands = await candidatesForLine(service, {
       patient_name: g.patient_name,
       collection_date: g.collection_date,
       mayoTestDescriptions: g.descriptions,
+      mayoTestIds: g.testIds,
     });
     const orderId = pickAutoMatch(cands);
     if (!orderId) continue;
@@ -277,9 +314,85 @@ export async function runAutoMatchForInvoice(
       })
       .in("id", g.lineIds);
     if (!error) matchedLines += g.lineIds.length;
+    // Back-stamp Mayo IDs onto the matched order + profile for
+    // future runs (learning loop).
+    await backstampMayoIds(service, orderId, {
+      accession_no,
+      specimen_no: g.specimen_no,
+      mayo_patient_id: g.mayo_patient_id,
+    });
   }
   return {
     autoMatched: matchedLines,
     unmatched: unmatched.length - matchedLines,
   };
+}
+
+/**
+ * When we (or Mike) confirm an invoice-line → order match, stamp the
+ * Mayo identifiers onto the order (and the linked patient profile,
+ * if any) — but only when the fields are currently null. Never
+ * overwrite existing values. This is the learning loop that turns
+ * every match into a permanent auto-match key for next time.
+ */
+export async function backstampMayoIds(
+  service: SupabaseClient,
+  orderId: string,
+  ids: {
+    accession_no?: string | null;
+    specimen_no?: string | null;
+    mayo_patient_id?: string | null;
+  },
+): Promise<void> {
+  const { data: current } = await service
+    .from("orders")
+    .select(
+      "mayo_ml_order_number, mayo_order_number, mayo_patient_id",
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+  const cur = (current ?? {}) as {
+    mayo_ml_order_number?: string | null;
+    mayo_order_number?: string | null;
+    mayo_patient_id?: string | null;
+  };
+  const patch: Record<string, string> = {};
+  if (ids.accession_no && !cur.mayo_ml_order_number) {
+    patch.mayo_ml_order_number = ids.accession_no;
+  }
+  if (ids.specimen_no && !cur.mayo_order_number) {
+    patch.mayo_order_number = ids.specimen_no;
+  }
+  if (ids.mayo_patient_id && !cur.mayo_patient_id) {
+    patch.mayo_patient_id = ids.mayo_patient_id;
+  }
+  if (Object.keys(patch).length > 0) {
+    await service.from("orders").update(patch).eq("id", orderId);
+  }
+
+  // Also stamp the profile — this is what unlocks fast auto-matching
+  // for the patient's NEXT invoice regardless of which specific order.
+  if (ids.mayo_patient_id) {
+    const { data: lines } = await service
+      .from("order_lines")
+      .select("profile_id")
+      .eq("order_id", orderId)
+      .eq("line_type", "test")
+      .limit(50);
+    const profileIds = [
+      ...new Set(
+        ((lines ?? []) as Array<{ profile_id: string | null }>)
+          .map((l) => l.profile_id)
+          .filter((p): p is string => Boolean(p)),
+      ),
+    ];
+    for (const pid of profileIds) {
+      // Only stamp if profile currently has no MRN — don't overwrite.
+      await service
+        .from("patient_profiles")
+        .update({ mayo_patient_id: ids.mayo_patient_id })
+        .eq("id", pid)
+        .is("mayo_patient_id", null);
+    }
+  }
 }

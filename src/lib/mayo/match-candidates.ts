@@ -70,7 +70,25 @@ interface OrderRow {
 
 interface OrderLineJoinRow {
   order_id: string;
-  test: { name: string | null } | null;
+  test: {
+    name: string | null;
+    mayo_test_id: string | null;
+    mayo_test_ids: string[] | null;
+  } | null;
+}
+
+/**
+ * Effective Mayo test IDs for a portal test: prefer the array
+ * column (panels populate it), fall back to the singular column
+ * (single-code tests keep it for the Mayo catalogue link).
+ */
+function effectiveMayoIds(t: {
+  mayo_test_id: string | null;
+  mayo_test_ids: string[] | null;
+}): string[] {
+  if (t.mayo_test_ids && t.mayo_test_ids.length > 0) return t.mayo_test_ids;
+  if (t.mayo_test_id) return [t.mayo_test_id];
+  return [];
 }
 
 // ─── Text normalization for fuzzy test-name matching ──────────────────
@@ -159,8 +177,12 @@ export async function candidatesForLine(
     patient_name: string;
     collection_date: string;
     /** All Mayo test descriptions billed on this line's accession —
-     *  used for the test-SKU overlap bonus. */
+     *  used for the fuzzy-name test-overlap bonus. */
     mayoTestDescriptions?: string[];
+    /** All Mayo test IDs (e.g. ANST, CORT, T4FT4) billed on this line's
+     *  accession. Used for exact SKU-to-SKU matching against portal
+     *  tests' mayo_test_ids[] — stronger signal than fuzzy name match. */
+    mayoTestIds?: string[];
   },
 ): Promise<OrderCandidate[]> {
   const { last, first } = splitMayoName(invoiceLine.patient_name);
@@ -249,20 +271,31 @@ export async function candidatesForLine(
   const eligibleOrderIds = eligibleOrders.map((o) => o.id);
   const { data: linesRaw } = await service
     .from("order_lines")
-    .select("order_id, test:tests ( name )")
+    .select("order_id, test:tests ( name, mayo_test_id, mayo_test_ids )")
     .in("order_id", eligibleOrderIds)
     .eq("line_type", "test");
   const orderLines = (linesRaw ?? []) as unknown as OrderLineJoinRow[];
   const orderTestNames = new Map<string, string[]>();
+  const orderMayoIds = new Map<string, Set<string>>();
   for (const ol of orderLines) {
     const name = ol.test?.name ?? null;
-    if (!name) continue;
-    const arr = orderTestNames.get(ol.order_id) ?? [];
-    arr.push(name);
-    orderTestNames.set(ol.order_id, arr);
+    if (name) {
+      const arr = orderTestNames.get(ol.order_id) ?? [];
+      arr.push(name);
+      orderTestNames.set(ol.order_id, arr);
+    }
+    if (ol.test) {
+      const ids = effectiveMayoIds(ol.test);
+      if (ids.length > 0) {
+        const set = orderMayoIds.get(ol.order_id) ?? new Set<string>();
+        for (const id of ids) set.add(id);
+        orderMayoIds.set(ol.order_id, set);
+      }
+    }
   }
 
   const mayoDescs = invoiceLine.mayoTestDescriptions ?? [];
+  const mayoTestIds = invoiceLine.mayoTestIds ?? [];
 
   const results: OrderCandidate[] = [];
   for (const o of eligibleOrders) {
@@ -274,19 +307,38 @@ export async function candidatesForLine(
       Math.abs(o.anchorMs - collectionMs) / (24 * 60 * 60 * 1000),
     );
 
-    // Test-SKU overlap — for each Mayo test on this accession, does
-    // the candidate order have a test with a matching name? Also
-    // collect the specific portal test names that matched so the UI
-    // can highlight those chips (green) vs the rest (dim).
+    // Test-SKU overlap — two paths:
+    //   (a) EXACT SKU MATCH via tests.mayo_test_ids[]. If an invoice
+    //       line's test_id (e.g. ANST) is in the effective
+    //       mayo_test_ids of any portal test on the candidate order,
+    //       that's deterministic — panels like MENS_HORMONE_PANEL now
+    //       score properly instead of falling back to fuzzy name.
+    //   (b) FUZZY NAME MATCH as a safety net for tests without a
+    //       populated mayo_test_ids mapping.
+    // We count each Mayo test at most once and prefer the SKU hit.
     const orderNames = orderTestNames.get(o.id) ?? [];
+    const orderIds = orderMayoIds.get(o.id) ?? new Set<string>();
     let overlap = 0;
+    let skuOverlap = 0;
     const matched = new Set<string>();
+    const mayoTestSet = new Set(mayoTestIds);
+    // SKU path — one hit per Mayo test id present on the order.
+    for (const oid of orderIds) {
+      if (mayoTestSet.has(oid)) {
+        skuOverlap++;
+        overlap++;
+      }
+    }
+    // Name path for whatever the SKU path didn't already claim.
+    // (We don't have a clean per-Mayo-test dedup key between SKU and
+    // name matches, so this may modestly double-count when the same
+    // Mayo test hits both — acceptable, biases toward stronger matches.)
     for (const md of mayoDescs) {
       for (const on of orderNames) {
         if (looksLikeSameTest(md, on)) {
           overlap++;
           matched.add(on);
-          break; // count each Mayo test at most once
+          break;
         }
       }
     }
@@ -297,23 +349,28 @@ export async function candidatesForLine(
 
     // Scoring:
     //   base 100
-    //   - 1.5 × days off (max ~-52 at 35 days out — reachable but weak)
+    //   - 1.5 × days off
     //   + 5 exact-name bonus
-    //   + 12 × test overlap (a single confirmed test is a stronger
-    //         signal than 8 days of date proximity; three overlaps
-    //         crushes date noise entirely)
+    //   + 15 × sku-overlap (deterministic Mayo-code hit)
+    //   + 12 × fuzzy-name-overlap (safety net)
     let score = 100 - diff * 1.5;
     if (nameExact) score += 5;
-    score += overlap * 12;
+    score += skuOverlap * 15;
+    score += (overlap - skuOverlap) * 12; // name-only hits
     if (candidates.length > 1) score -= 3;
-    score = Math.max(0, Math.min(200, score));
+    score = Math.max(0, Math.min(300, score));
 
     const reasonParts: string[] = [];
     reasonParts.push(nameExact ? "exact-name" : "name+prefix");
     reasonParts.push(`${diff}d off`);
-    if (overlap > 0) {
+    if (skuOverlap > 0) {
       reasonParts.push(
-        `${overlap}/${mayoDescs.length} test${overlap === 1 ? "" : "s"} match`,
+        `${skuOverlap} SKU hit${skuOverlap === 1 ? "" : "s"}`,
+      );
+    }
+    if (overlap - skuOverlap > 0) {
+      reasonParts.push(
+        `${overlap - skuOverlap} name match${overlap - skuOverlap === 1 ? "" : "es"}`,
       );
     }
 
@@ -335,6 +392,59 @@ export async function candidatesForLine(
     });
   }
   return results.sort((a, b) => b.score - a.score);
+}
+
+/**
+ * Try to find a portal order that ALREADY has Mayo's identifiers
+ * stamped on it (accession, specimen, or MRN — from a prior match
+ * that got back-stamped, or from Pipeline 1's historical CSV run).
+ * Returns the first order.id that hits any of the three keys; the
+ * caller can then auto-match with 100% confidence, skipping the
+ * scored candidate flow entirely.
+ */
+export async function findByPrimaryKeys(
+  service: SupabaseClient,
+  keys: {
+    mayo_ml_order_number?: string | null;
+    mayo_order_number?: string | null;
+    mayo_patient_id?: string | null;
+  },
+): Promise<string | null> {
+  const { mayo_ml_order_number, mayo_order_number, mayo_patient_id } = keys;
+
+  // Most specific first: ML accession, then WEB specimen, then MRN
+  // (MRN can match multiple orders — we don't auto-match on MRN
+  // alone; caller falls through to scored candidates for those).
+  if (mayo_ml_order_number) {
+    const { data } = await service
+      .from("orders")
+      .select("id")
+      .eq("mayo_ml_order_number", mayo_ml_order_number)
+      .limit(1)
+      .maybeSingle();
+    if (data) return (data as { id: string }).id;
+  }
+  if (mayo_order_number) {
+    const { data } = await service
+      .from("orders")
+      .select("id")
+      .eq("mayo_order_number", mayo_order_number)
+      .limit(1)
+      .maybeSingle();
+    if (data) return (data as { id: string }).id;
+  }
+  if (mayo_patient_id) {
+    // MRN is patient-level, not order-level — only auto-match when
+    // exactly one order for this MRN exists (otherwise ambiguous).
+    const { data } = await service
+      .from("orders")
+      .select("id")
+      .eq("mayo_patient_id", mayo_patient_id)
+      .limit(2);
+    const rows = (data ?? []) as Array<{ id: string }>;
+    if (rows.length === 1) return rows[0].id;
+  }
+  return null;
 }
 
 /**
