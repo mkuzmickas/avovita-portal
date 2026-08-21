@@ -87,11 +87,42 @@ export function MayoInvoiceMatcher({
     }
   };
   const [selectedPatient, setSelectedPatient] = useState<string | null>(
-    patientGroups.find((g) => g.lines.some((l) => !l.order_id))?.patient_name ??
+    patientGroups.find(
+      (g) => g.lines.some((l) => !l.order_id && !l.no_portal_order),
+    )?.patient_name ??
       patientGroups[0]?.patient_name ??
       null,
   );
   const [saving, setSaving] = useState<string | null>(null);
+  const [filter, setFilter] = useState<
+    "all" | "needs_review" | "matched" | "overhead"
+  >("needs_review");
+
+  const groupState = (g: PatientGroup) => {
+    const allMatched = g.lines.every((l) => l.order_id);
+    const allOverhead = g.lines.every((l) => l.no_portal_order);
+    const allResolved = g.lines.every(
+      (l) => l.order_id || l.no_portal_order,
+    );
+    if (allMatched) return "matched";
+    if (allOverhead) return "overhead";
+    if (allResolved) return "matched"; // mixed matched+overhead counts as resolved
+    return "needs_review";
+  };
+
+  const visibleGroups = useMemo(() => {
+    if (filter === "all") return patientGroups;
+    return patientGroups.filter((g) => groupState(g) === filter);
+  }, [patientGroups, filter]);
+
+  const counts = useMemo(() => {
+    const c = { all: patientGroups.length, needs_review: 0, matched: 0, overhead: 0 };
+    for (const g of patientGroups) {
+      const s = groupState(g);
+      c[s]++;
+    }
+    return c;
+  }, [patientGroups]);
   const [flash, setFlash] = useState<{
     patient: string;
     msg: string;
@@ -322,19 +353,52 @@ export function MayoInvoiceMatcher({
       >
         <div
           style={{
-            color: "#c4973a",
-            fontSize: 12,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
+            display: "flex",
+            gap: 4,
             marginBottom: 8,
             paddingBottom: 8,
             borderBottom: "1px solid #2d6b35",
+            flexWrap: "wrap",
           }}
         >
-          Patients on this invoice · {patientGroups.length}
+          {(
+            [
+              ["needs_review", "Needs review", counts.needs_review, "#e88b8b"],
+              ["matched",       "Matched",       counts.matched,       "#8dc63f"],
+              ["overhead",      "Overhead",      counts.overhead,      "#c8d0cb"],
+              ["all",           "All",           counts.all,           "#c4973a"],
+            ] as const
+          ).map(([key, label, count, color]) => {
+            const active = filter === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  border: `1px solid ${active ? color : "#2d6b35"}`,
+                  backgroundColor: active ? `${color}22` : "transparent",
+                  color: active ? "#ffffff" : color,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  cursor: "pointer",
+                }}
+              >
+                {label} · {count}
+              </button>
+            );
+          })}
         </div>
-        {patientGroups.map((g) => {
+        {visibleGroups.length === 0 && (
+          <div style={{ color: "#8dc63f", fontSize: 12, padding: 12 }}>
+            No patients in this filter.
+          </div>
+        )}
+        {visibleGroups.map((g) => {
           const allMatched = g.lines.every((l) => l.order_id);
           const someMatched = g.lines.some((l) => l.order_id);
           const allOverhead = g.lines.every((l) => l.no_portal_order);
