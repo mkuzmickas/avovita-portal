@@ -1,5 +1,6 @@
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { AdminOrdersTable } from "@/components/admin/AdminOrdersTable";
+import { MayoBatchShipmentUpload } from "@/components/admin/MayoBatchShipmentUpload";
 import type { OrderStatus } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -131,6 +132,8 @@ export default async function AdminOrdersPage({
           Manage and update status for all patient orders.
         </p>
       </div>
+
+      <MayoBatchShipmentUpload />
 
       <AdminOrdersTable
         orders={orders}
