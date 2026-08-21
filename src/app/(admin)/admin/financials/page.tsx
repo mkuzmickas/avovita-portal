@@ -1,7 +1,6 @@
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { FinancialsClient } from "@/components/admin/FinancialsClient";
 import { QuickBooksCard } from "@/components/admin/QuickBooksCard";
-import type { ManifestStatus } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
@@ -20,17 +19,6 @@ export type ShippedOrder = {
    *  balance_transaction. Null when not yet backfilled. Counted as
    *  OpEx in the Financials view. */
   stripe_fee_cad: number | null;
-};
-
-export type ManifestSummary = {
-  id: string;
-  name: string;
-  ship_date: string;
-  status: ManifestStatus;
-  orders_count: number;
-  tests_count: number;
-  revenue: number;
-  test_cost: number;
 };
 
 /**
@@ -125,41 +113,29 @@ export default async function AdminFinancialsPage() {
     },
   );
 
-  // 2. Manifests with aggregates
-  const { data: manifestsRaw } = await service
-    .from("manifests")
-    .select("id, name, ship_date, status")
-    .order("ship_date", { ascending: false });
+  // Earliest revenue-generating order in the system. Used as the
+  // cutoff for the chart / QBO query so we don't render months of
+  // pre-portal QBO expenses (setup subscriptions, initial supplier
+  // charges) with zero revenue attached — those made the chart look
+  // like the business was losing $25k/mo in Jan-Apr when the
+  // business hadn't opened its doors yet.
+  const earliestRevenueDate = orders.reduce<string | null>((min, o) => {
+    if (!min || o.revenue_date < min) return o.revenue_date;
+    return min;
+  }, null);
+  const earliestOrderISO = earliestRevenueDate
+    ? earliestRevenueDate.slice(0, 10)
+    : null;
 
-  type RawManifest = {
-    id: string;
-    name: string;
-    ship_date: string;
-    status: ManifestStatus;
-  };
-
-  const manifests: ManifestSummary[] = (
-    (manifestsRaw ?? []) as unknown as RawManifest[]
-  ).map((m) => {
-    const inManifest = orders.filter((o) => o.manifest_id === m.id);
-    return {
-      id: m.id,
-      name: m.name,
-      ship_date: m.ship_date,
-      status: m.status,
-      orders_count: inManifest.length,
-      tests_count: inManifest.reduce((s, o) => s + o.test_count, 0),
-      revenue: inManifest.reduce((s, o) => s + o.total_cad, 0),
-      test_cost: inManifest.reduce((s, o) => s + o.test_cost_cad, 0),
-    };
-  });
-
-  // 3. QuickBooks transactions (15-month window, same as orders)
-  const qboSinceDate = new Date(
-    Date.now() - 15 * 30 * 24 * 60 * 60 * 1000,
-  )
-    .toISOString()
-    .slice(0, 10);
+  // 3. QuickBooks transactions from first-order date forward.
+  // Anything before that is pre-portal cost with no revenue to match,
+  // which just spooks the chart with fake losses. Fall back to 15
+  // months if no orders exist yet.
+  const qboSinceDate =
+    earliestOrderISO ??
+    new Date(Date.now() - 15 * 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
   let qboTxns: QboTxn[] = [];
   let cogsCategories: string[] = [];
   let uncategorizedSuppliers: Array<{
@@ -280,9 +256,9 @@ export default async function AdminFinancialsPage() {
 
       <FinancialsClient
         orders={orders}
-        manifests={manifests}
         qboTxns={qboTxns}
         cogsCategories={cogsCategories}
+        earliestOrderISO={earliestOrderISO}
       />
     </div>
   );

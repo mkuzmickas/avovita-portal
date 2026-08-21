@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Download } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -14,15 +13,16 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import type {
   ShippedOrder,
-  ManifestSummary,
   QboTxn,
 } from "@/app/(admin)/admin/financials/page";
 
 interface Props {
   orders: ShippedOrder[];
-  manifests: ManifestSummary[];
   qboTxns: QboTxn[];
   cogsCategories: string[];
+  /** Earliest order in the system — chart / periods can't sensibly go
+   *  before this. Populated server-side from min(orders.created_at). */
+  earliestOrderISO: string | null;
 }
 
 // ─── Date helpers ─────────────────────────────────────────────────────
@@ -92,61 +92,18 @@ function sumTxnsInPeriod(
 
 export function FinancialsClient({
   orders,
-  manifests,
   qboTxns,
   cogsCategories,
+  earliestOrderISO,
 }: Props) {
-  const [tab, setTab] = useState<"overview" | "shipment">("overview");
   const cogsSet = useMemo(() => new Set(cogsCategories), [cogsCategories]);
-
   return (
-    <div className="space-y-6">
-      <div
-        className="flex items-center gap-2 border-b"
-        style={{ borderColor: "#2d6b35" }}
-      >
-        {(
-          [
-            ["overview", "Overview"],
-            ["shipment", "By Shipment"],
-          ] as const
-        ).map(([key, label]) => {
-          const active = tab === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTab(key)}
-              className="px-4 py-2.5 text-sm font-semibold transition-colors"
-              style={{
-                color: active ? "#c4973a" : "#e8d5a3",
-                borderBottom: active
-                  ? "2px solid #c4973a"
-                  : "2px solid transparent",
-                marginBottom: "-1px",
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {tab === "overview" && (
-        <OverviewTab
-          orders={orders}
-          qboTxns={qboTxns}
-          cogsSet={cogsSet}
-        />
-      )}
-      {tab === "shipment" && (
-        <ByShipmentTab
-          manifests={manifests}
-          qboTxns={qboTxns}
-          cogsSet={cogsSet}
-        />
-      )}
-    </div>
+    <OverviewTab
+      orders={orders}
+      qboTxns={qboTxns}
+      cogsSet={cogsSet}
+      earliestOrderISO={earliestOrderISO}
+    />
   );
 }
 
@@ -156,10 +113,12 @@ function OverviewTab({
   orders,
   qboTxns,
   cogsSet,
+  earliestOrderISO,
 }: {
   orders: ShippedOrder[];
   qboTxns: QboTxn[];
   cogsSet: Set<string>;
+  earliestOrderISO: string | null;
 }) {
   // Monthly is the useful default: "this week" starting Monday is
   // often 1–2 days old and reads $0.00 across the board even when
@@ -260,7 +219,17 @@ function OverviewTab({
         });
       }
     }
-    return buckets.map((b) => {
+    // Drop buckets ENTIRELY before the first real order in the system
+    // — showing months of pre-portal QBO spending with $0 revenue makes
+    // the chart look catastrophic when the business hadn't opened yet.
+    const cutoff = earliestOrderISO
+      ? new Date(`${earliestOrderISO}T00:00:00`)
+      : null;
+    const usable = cutoff
+      ? buckets.filter((b) => b.end > cutoff)
+      : buckets;
+
+    return usable.map((b) => {
       const inBucket = orders.filter((o) => {
         const t = new Date(o.revenue_date);
         return t >= b.start && t < b.end;
@@ -279,9 +248,22 @@ function OverviewTab({
       return {
         label: b.label,
         net: Math.round(rev - bCogs - bOpex - bStripe),
+        // Bucket bounds for click-to-drilldown — Recharts passes the
+        // data object to onClick handlers as payload.
+        _startISO: isoDate(b.start),
+        _endISO: isoDate(new Date(b.end.getTime() - 86400000)),
       };
     });
-  }, [orders, qboTxns, granularity, cogsSet]);
+  }, [orders, qboTxns, granularity, cogsSet, earliestOrderISO]);
+
+  const onChartBarClick = (data: unknown) => {
+    if (typeof data !== "object" || data === null) return;
+    const d = data as { _startISO?: string; _endISO?: string };
+    if (d._startISO && d._endISO) {
+      setCustomStart(d._startISO);
+      setCustomEnd(d._endISO);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -432,267 +414,418 @@ function OverviewTab({
                 dataKey="net"
                 fill="#c4973a"
                 radius={[4, 4, 0, 0]}
+                cursor="pointer"
+                onClick={onChartBarClick}
               />
             </BarChart>
           </ResponsiveContainer>
         </div>
+        <p style={{ color: "#8dc63f", fontSize: 11, marginTop: 6, marginBottom: 0 }}>
+          Click any bar to drill into that period&apos;s P&amp;L below.
+        </p>
       </div>
+
+      <PnLBreakdown
+        orders={periodOrders}
+        qboTxns={qboTxns}
+        cogsSet={cogsSet}
+        start={start}
+        end={end}
+        periodLabel={label}
+      />
     </div>
   );
 }
 
-// ─── BY SHIPMENT TAB ──────────────────────────────────────────────────
+// ─── P&L DRILLDOWN ────────────────────────────────────────────────────
 
-function ByShipmentTab({
-  manifests,
+function PnLBreakdown({
+  orders,
   qboTxns,
   cogsSet,
+  start,
+  end,
+  periodLabel,
 }: {
-  manifests: ManifestSummary[];
+  orders: ShippedOrder[];
   qboTxns: QboTxn[];
   cogsSet: Set<string>;
+  start: Date;
+  end: Date;
+  periodLabel: string;
 }) {
-  // Pro-rate OpEx by week using the trailing 12 weeks of QBO OpEx.
-  // (COGS is transactional — attributed to the ship week directly.)
-  const weeklyOpex = useMemo(() => {
-    const now = new Date();
-    const twelveWeeksAgo = new Date(now);
-    twelveWeeksAgo.setDate(now.getDate() - 12 * 7);
-    const { opex } = sumTxnsInPeriod(qboTxns, twelveWeeksAgo, now, cogsSet);
-    return opex / 12;
-  }, [qboTxns, cogsSet]);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const startISO = isoDate(start);
+  const endISO = isoDate(end);
 
-  const rows = useMemo(
-    () =>
-      manifests.map((m) => {
-        const ship = new Date(`${m.ship_date}T00:00:00`);
-        const weekStart = startOfWeek(ship);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 7);
-        const { cogs: weekCogs } = sumTxnsInPeriod(
-          qboTxns,
-          weekStart,
-          weekEnd,
-          cogsSet,
-        );
-        // If multiple manifests ship the same week, split the week's
-        // COGS across them. Simple even split — accurate enough for
-        // steady weekly shipments; refine per-supplier later.
-        const manifestsThisWeek = manifests.filter((m2) => {
-          const s = new Date(`${m2.ship_date}T00:00:00`);
-          return s >= weekStart && s < weekEnd;
-        }).length;
-        const cogsShare = manifestsThisWeek > 0
-          ? weekCogs / manifestsThisWeek
-          : weekCogs;
-        const grossProfit = m.revenue - cogsShare;
-        const opExShare =
-          manifestsThisWeek > 0 ? weeklyOpex / manifestsThisWeek : weeklyOpex;
-        const netProfit = grossProfit - opExShare;
-        const margin =
-          m.revenue > 0 ? (netProfit / m.revenue) * 100 : null;
-        return {
-          ...m,
-          cogs: cogsShare,
-          grossProfit,
-          opEx: opExShare,
-          netProfit,
-          margin,
-        };
-      }),
-    [manifests, qboTxns, cogsSet, weeklyOpex],
+  // Revenue side (already filtered to period)
+  const revenue = orders.reduce((s, o) => s + o.total_cad, 0);
+  const stripeFees = orders.reduce(
+    (s, o) => s + (o.stripe_fee_cad ?? 0),
+    0,
   );
 
-  const exportCsv = () => {
-    const header = [
-      "Ship Date",
-      "Manifest Name",
-      "Orders",
-      "Tests",
-      "Revenue CAD",
-      "COGS CAD (allocated from ship week)",
-      "Gross Profit CAD",
-      "OpEx CAD (weekly average)",
-      "Net Profit CAD",
-      "Margin %",
-    ];
-    const lines = rows.map((r) => [
-      r.ship_date,
-      r.name,
-      String(r.orders_count),
-      String(r.tests_count),
-      r.revenue.toFixed(2),
-      r.cogs.toFixed(2),
-      r.grossProfit.toFixed(2),
-      r.opEx.toFixed(2),
-      r.netProfit.toFixed(2),
-      r.margin == null ? "" : r.margin.toFixed(1),
-    ]);
-    const csv = [header, ...lines]
-      .map((row) => row.map(escapeCsv).join(","))
-      .join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `financials-by-shipment-${isoDate(new Date())}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // QBO transactions in the window
+  const periodTxns = qboTxns.filter(
+    (t) => t.txn_date >= startISO && t.txn_date < endISO,
+  );
+
+  // Bucket by category, keeping COGS vs OpEx separation
+  const cogsBuckets = new Map<string, QboTxn[]>();
+  const opexBuckets = new Map<string, QboTxn[]>();
+  for (const t of periodTxns) {
+    const bucketKey = t.category ?? "uncategorized";
+    const bucket =
+      t.category && cogsSet.has(t.category) ? cogsBuckets : opexBuckets;
+    const arr = bucket.get(bucketKey) ?? [];
+    arr.push(t);
+    bucket.set(bucketKey, arr);
+  }
+
+  const bucketSum = (txns: QboTxn[]) =>
+    txns.reduce(
+      (s, t) => s + (t.direction === "refund" ? -t.amount_cad : t.amount_cad),
+      0,
+    );
+
+  const cogsRows = [...cogsBuckets.entries()]
+    .map(([category, txns]) => ({
+      category,
+      txns,
+      amount: bucketSum(txns),
+    }))
+    .sort((a, b) => b.amount - a.amount);
+  const opexRows = [...opexBuckets.entries()]
+    .map(([category, txns]) => ({
+      category,
+      txns,
+      amount: bucketSum(txns),
+    }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const cogsTotal = cogsRows.reduce((s, r) => s + r.amount, 0);
+  const opexTotal = opexRows.reduce((s, r) => s + r.amount, 0) + stripeFees;
+  const grossProfit = revenue - cogsTotal;
+  const netProfit = grossProfit - opexTotal;
+
+  const toggle = (key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-xs" style={{ color: "#6ab04c" }}>
-          COGS allocated from QBO transactions in the manifest&apos;s ship week;
-          OpEx pro-rated from trailing 12-week average (${(weeklyOpex).toFixed(0)}/wk).
-        </p>
-        <button
-          type="button"
-          onClick={exportCsv}
-          disabled={rows.length === 0}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
+    <div
+      style={{
+        marginTop: 24,
+        border: "1px solid #2d6b35",
+        borderRadius: 12,
+        backgroundColor: "#0f2614",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          padding: "14px 18px",
+          borderBottom: "1px solid #2d6b35",
+          backgroundColor: "#1a3d22",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 8,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              color: "#c4973a",
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            P&amp;L Breakdown
+          </div>
+          <div
+            style={{
+              color: "#ffffff",
+              fontSize: 16,
+              fontWeight: 600,
+              marginTop: 2,
+            }}
+          >
+            {periodLabel}
+          </div>
+        </div>
+        <div
           style={{
-            backgroundColor: "transparent",
-            borderColor: "#c4973a",
-            color: "#c4973a",
-            opacity: rows.length === 0 ? 0.5 : 1,
+            color: netProfit >= 0 ? "#8dc63f" : "#e88b8b",
+            fontSize: 20,
+            fontWeight: 700,
           }}
         >
-          <Download className="w-4 h-4" />
-          Export CSV
-        </button>
-      </div>
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ backgroundColor: "#0f2614" }}>
-                {[
-                  "Ship Date",
-                  "Manifest",
-                  "Orders",
-                  "Tests",
-                  "Revenue",
-                  "COGS",
-                  "Gross Profit",
-                  "OpEx (week)",
-                  "Net Profit",
-                  "Margin",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
-                    style={{
-                      color: "#c4973a",
-                      fontFamily: '"DM Sans", sans-serif',
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={10}
-                    className="px-6 py-16 text-center"
-                    style={{
-                      backgroundColor: "#0a1a0d",
-                      color: "#6ab04c",
-                    }}
-                  >
-                    No manifests yet
-                  </td>
-                </tr>
-              ) : (
-                rows.map((r, idx) => {
-                  const rowBg = idx % 2 === 0 ? "#0a1a0d" : "#1a3d22";
-                  const marginColor =
-                    r.margin == null
-                      ? "#6ab04c"
-                      : r.margin >= 50
-                        ? "#8dc63f"
-                        : r.margin >= 25
-                          ? "#c4973a"
-                          : "#e05252";
-                  return (
-                    <tr
-                      key={r.id}
-                      style={{
-                        backgroundColor: rowBg,
-                        borderTop: "1px solid #1a3d22",
-                      }}
-                    >
-                      <td
-                        className="px-4 py-3 whitespace-nowrap"
-                        style={{ color: "#ffffff" }}
-                      >
-                        {formatDateLong(r.ship_date)}
-                      </td>
-                      <td className="px-4 py-3" style={{ color: "#e8d5a3" }}>
-                        {r.name}
-                      </td>
-                      <td className="px-4 py-3" style={{ color: "#e8d5a3" }}>
-                        {r.orders_count}
-                      </td>
-                      <td className="px-4 py-3" style={{ color: "#e8d5a3" }}>
-                        {r.tests_count}
-                      </td>
-                      <td
-                        className="px-4 py-3 font-semibold whitespace-nowrap"
-                        style={{ color: "#c4973a" }}
-                      >
-                        {formatCurrency(r.revenue)}
-                      </td>
-                      <td
-                        className="px-4 py-3 whitespace-nowrap"
-                        style={{ color: "#e8d5a3" }}
-                      >
-                        {formatCurrency(r.cogs)}
-                      </td>
-                      <td
-                        className="px-4 py-3 whitespace-nowrap"
-                        style={{ color: "#ffffff" }}
-                      >
-                        {formatCurrency(r.grossProfit)}
-                      </td>
-                      <td
-                        className="px-4 py-3 whitespace-nowrap"
-                        style={{ color: "#e8d5a3" }}
-                      >
-                        {formatCurrency(r.opEx)}
-                      </td>
-                      <td
-                        className="px-4 py-3 font-semibold whitespace-nowrap"
-                        style={{
-                          color: r.netProfit >= 0 ? "#8dc63f" : "#e05252",
-                        }}
-                      >
-                        {formatCurrency(r.netProfit)}
-                      </td>
-                      <td
-                        className="px-4 py-3 font-semibold whitespace-nowrap"
-                        style={{ color: marginColor }}
-                      >
-                        {r.margin == null ? "—" : `${r.margin.toFixed(1)}%`}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          {formatCurrency(netProfit)}
         </div>
       </div>
+      <table style={{ width: "100%", fontSize: 13 }}>
+        <tbody>
+          {/* REVENUE */}
+          <PnLSectionRow label="Revenue (pre-tax)" amount={revenue} accent />
+
+          {/* COGS */}
+          <PnLBreak />
+          <PnLHeader label="COGS" total={cogsTotal} />
+          {cogsRows.length === 0 && (
+            <PnLEmpty label="No COGS transactions in this period." />
+          )}
+          {cogsRows.map((r) => (
+            <PnLCategoryRow
+              key={r.category}
+              row={r}
+              expanded={expanded.has(`cogs:${r.category}`)}
+              onToggle={() => toggle(`cogs:${r.category}`)}
+            />
+          ))}
+
+          {/* GROSS PROFIT */}
+          <PnLBreak />
+          <PnLSectionRow
+            label="Gross Profit"
+            amount={grossProfit}
+            secondary={
+              revenue > 0
+                ? `${((grossProfit / revenue) * 100).toFixed(1)}% margin`
+                : undefined
+            }
+          />
+
+          {/* OPEX */}
+          <PnLBreak />
+          <PnLHeader label="Operating Expenses" total={opexTotal} />
+          {opexRows.length === 0 && stripeFees === 0 && (
+            <PnLEmpty label="No operating expenses in this period." />
+          )}
+          {opexRows.map((r) => (
+            <PnLCategoryRow
+              key={r.category}
+              row={r}
+              expanded={expanded.has(`opex:${r.category}`)}
+              onToggle={() => toggle(`opex:${r.category}`)}
+            />
+          ))}
+          {stripeFees > 0 && (
+            <tr>
+              <td style={pnlCell}>Payment processing (Stripe)</td>
+              <td style={pnlCellR}>{orders.filter((o) => o.stripe_fee_cad).length} orders</td>
+              <td style={{ ...pnlCellR, color: "#e8d5a3" }}>
+                {formatCurrency(stripeFees)}
+              </td>
+            </tr>
+          )}
+
+          {/* NET PROFIT */}
+          <PnLBreak />
+          <PnLSectionRow
+            label="Net Profit"
+            amount={netProfit}
+            accent
+            secondary={
+              revenue > 0
+                ? `${((netProfit / revenue) * 100).toFixed(1)}% net margin`
+                : undefined
+            }
+          />
+        </tbody>
+      </table>
     </div>
   );
 }
+
+const pnlCell: React.CSSProperties = {
+  padding: "8px 18px",
+  color: "#e8d5a3",
+  borderTop: "1px solid #1a3d22",
+};
+const pnlCellR: React.CSSProperties = {
+  ...pnlCell,
+  textAlign: "right",
+  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+  fontSize: 12,
+};
+
+function PnLBreak() {
+  return (
+    <tr>
+      <td colSpan={3} style={{ height: 6, backgroundColor: "#0a1a0d" }} />
+    </tr>
+  );
+}
+function PnLEmpty({ label }: { label: string }) {
+  return (
+    <tr>
+      <td
+        colSpan={3}
+        style={{ ...pnlCell, color: "#6ab04c", fontStyle: "italic" }}
+      >
+        {label}
+      </td>
+    </tr>
+  );
+}
+function PnLHeader({ label, total }: { label: string; total: number }) {
+  return (
+    <tr style={{ backgroundColor: "#1a3d22" }}>
+      <td
+        style={{
+          ...pnlCell,
+          color: "#c4973a",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          fontSize: 11,
+          letterSpacing: "0.06em",
+        }}
+      >
+        {label}
+      </td>
+      <td style={pnlCell}></td>
+      <td
+        style={{
+          ...pnlCellR,
+          color: "#c4973a",
+          fontWeight: 700,
+        }}
+      >
+        {formatCurrency(total)}
+      </td>
+    </tr>
+  );
+}
+function PnLSectionRow({
+  label,
+  amount,
+  accent,
+  secondary,
+}: {
+  label: string;
+  amount: number;
+  accent?: boolean;
+  secondary?: string;
+}) {
+  return (
+    <tr style={{ backgroundColor: accent ? "#1a3d22" : undefined }}>
+      <td
+        style={{
+          ...pnlCell,
+          color: "#ffffff",
+          fontWeight: 700,
+          fontSize: accent ? 15 : 13,
+        }}
+      >
+        {label}
+      </td>
+      <td style={{ ...pnlCellR, color: "#8dc63f" }}>{secondary ?? ""}</td>
+      <td
+        style={{
+          ...pnlCellR,
+          color: accent
+            ? amount >= 0
+              ? "#8dc63f"
+              : "#e88b8b"
+            : "#ffffff",
+          fontWeight: 700,
+          fontSize: accent ? 15 : 13,
+        }}
+      >
+        {formatCurrency(amount)}
+      </td>
+    </tr>
+  );
+}
+function PnLCategoryRow({
+  row,
+  expanded,
+  onToggle,
+}: {
+  row: { category: string; txns: QboTxn[]; amount: number };
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <>
+      <tr
+        onClick={onToggle}
+        style={{ cursor: "pointer" }}
+      >
+        <td style={pnlCell}>
+          <span style={{ color: "#c4973a", marginRight: 6 }}>
+            {expanded ? "▾" : "▸"}
+          </span>
+          {formatCategoryLabel(row.category)}
+        </td>
+        <td style={{ ...pnlCellR, color: "#8dc63f" }}>
+          {row.txns.length} txn{row.txns.length === 1 ? "" : "s"}
+        </td>
+        <td style={{ ...pnlCellR, color: "#ffffff" }}>
+          {formatCurrency(row.amount)}
+        </td>
+      </tr>
+      {expanded &&
+        row.txns
+          .slice()
+          .sort((a, b) => b.amount_cad - a.amount_cad)
+          .map((t, i) => (
+            <tr key={i} style={{ backgroundColor: "#0a1a0d" }}>
+              <td
+                style={{
+                  ...pnlCell,
+                  paddingLeft: 42,
+                  color: "#e8d5a3",
+                  fontSize: 12,
+                }}
+              >
+                {t.supplier_name ?? "(no supplier)"} · {t.txn_date}
+              </td>
+              <td style={{ ...pnlCellR, color: "#6ab04c" }}>
+                {t.direction === "refund" ? "refund" : ""}
+              </td>
+              <td
+                style={{
+                  ...pnlCellR,
+                  color: t.direction === "refund" ? "#8dc63f" : "#e8d5a3",
+                }}
+              >
+                {formatCurrency(
+                  t.direction === "refund" ? -t.amount_cad : t.amount_cad,
+                )}
+              </td>
+            </tr>
+          ))}
+    </>
+  );
+}
+function formatCategoryLabel(cat: string): string {
+  const map: Record<string, string> = {
+    cogs_lab: "Lab — outside processors (Mayo, Armin, etc.)",
+    cogs_shipping: "Shipping (FedEx)",
+    cogs_supplies: "Medical supplies (dry ice, tubes, etc.)",
+    contractor: "Contractor (FloLabs)",
+    saas: "SaaS / software",
+    marketing: "Marketing",
+    regulatory: "Regulatory / professional",
+    bank_fees: "Bank fees",
+    travel: "Travel",
+    inventory: "Inventory (supplements resale)",
+    other: "Other",
+    uncategorized: "Uncategorized",
+  };
+  return map[cat] ?? cat;
+}
+
 
 // ─── Small reusable bits ──────────────────────────────────────────────
 
@@ -747,12 +880,4 @@ function Field({
       {children}
     </div>
   );
-}
-
-function escapeCsv(value: string): string {
-  if (value == null) return "";
-  if (/[",\r\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
 }
