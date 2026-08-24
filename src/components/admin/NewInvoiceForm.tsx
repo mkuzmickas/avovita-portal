@@ -92,6 +92,7 @@ export function NewInvoiceForm({
     last_name: "",
     phone: "",
     date_of_birth: "",
+    biological_sex: "",
   });
   const [creatingClient, setCreatingClient] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
@@ -191,9 +192,15 @@ export function NewInvoiceForm({
     // only) only asks for email so the customer never has to sign in.
     if (
       !isSupplementOnly &&
-      (!newClient.first_name || !newClient.last_name || !newClient.phone)
+      (!newClient.first_name ||
+        !newClient.last_name ||
+        !newClient.phone ||
+        !newClient.date_of_birth ||
+        !newClient.biological_sex)
     ) {
-      setClientError("Email, first name, last name, and phone are required.");
+      setClientError(
+        "Email, first name, last name, phone, date of birth, and biological sex are all required.",
+      );
       return;
     }
     setCreatingClient(true);
@@ -490,7 +497,7 @@ export function NewInvoiceForm({
                   />
                   <input
                     type="date"
-                    placeholder="Date of birth (optional)"
+                    placeholder="Date of birth *"
                     value={newClient.date_of_birth}
                     onChange={(e) =>
                       setNewClient({
@@ -500,6 +507,21 @@ export function NewInvoiceForm({
                     }
                     className="mf-input text-sm"
                   />
+                  <select
+                    value={newClient.biological_sex}
+                    onChange={(e) =>
+                      setNewClient({
+                        ...newClient,
+                        biological_sex: e.target.value,
+                      })
+                    }
+                    className="mf-input text-sm"
+                  >
+                    <option value="">Biological sex *</option>
+                    <option value="male">male</option>
+                    <option value="female">female</option>
+                    <option value="intersex">intersex</option>
+                  </select>
                 </>
               )}
             </div>

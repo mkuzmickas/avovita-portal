@@ -25,7 +25,12 @@ export const runtime = "nodejs";
  * notification email sent immediately afterwards covers first contact.
  *
  * Body:
- *   { email, first_name, last_name, phone, date_of_birth?, minimal? }
+ *   { email, first_name, last_name, phone, date_of_birth, biological_sex, minimal? }
+ *
+ * In full mode date_of_birth and biological_sex are REQUIRED — no
+ * silent defaulting to 1900-01-01 / "intersex". The prior placeholders
+ * were leaking into production profiles because admins skipped the
+ * fields and the API accepted the blanks.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -54,7 +59,8 @@ export async function POST(request: NextRequest) {
     const firstName = String(body.first_name ?? "").trim();
     const lastName = String(body.last_name ?? "").trim();
     const phone = String(body.phone ?? "").trim();
-    const dob: string | null = body.date_of_birth?.trim() || null;
+    const dob = String(body.date_of_birth ?? "").trim();
+    const sex = String(body.biological_sex ?? "").trim().toLowerCase();
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json(
@@ -73,6 +79,20 @@ export async function POST(request: NextRequest) {
         { error: "Phone is required for SMS notification" },
         { status: 400 },
       );
+    }
+    if (!minimal) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+        return NextResponse.json(
+          { error: "Date of birth is required (YYYY-MM-DD)" },
+          { status: 400 },
+        );
+      }
+      if (!["male", "female", "intersex"].includes(sex)) {
+        return NextResponse.json(
+          { error: "Biological sex is required (male, female, or intersex)" },
+          { status: 400 },
+        );
+      }
     }
 
     const service = createServiceRoleClient();
@@ -129,8 +149,8 @@ export async function POST(request: NextRequest) {
           account_id: authUserId,
           first_name: firstName,
           last_name: lastName,
-          date_of_birth: dob ?? "1900-01-01",
-          biological_sex: "intersex", // placeholder; admin updates if known
+          date_of_birth: dob,
+          biological_sex: sex,
           phone,
           is_primary: true,
           is_dependent: false,
