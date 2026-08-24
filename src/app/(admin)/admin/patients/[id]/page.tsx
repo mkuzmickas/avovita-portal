@@ -4,6 +4,7 @@ import { ArrowLeft, Mail, Phone, Calendar, Package, ExternalLink } from "lucide-
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/utils";
 import { PatientResultsRepository } from "@/components/admin/PatientResultsRepository";
+import { ProfileEditTrigger } from "@/components/admin/ProfileEditTrigger";
 import type { AdminPatientProfile } from "@/app/(admin)/admin/patients/page";
 import type { OrderStatus } from "@/types/database";
 
@@ -384,17 +385,20 @@ export default async function AdminPatientDetailPage({
                   borderColor: p.is_primary ? "#c4973a" : "#2d6b35",
                 }}
               >
-                <p className="font-semibold" style={{ color: "#ffffff" }}>
-                  {p.first_name} {p.last_name}
-                  {p.is_primary && (
-                    <span
-                      className="ml-2 text-xs"
-                      style={{ color: "#c4973a" }}
-                    >
-                      (primary)
-                    </span>
-                  )}
-                </p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold" style={{ color: "#ffffff" }}>
+                    {p.first_name} {p.last_name}
+                    {p.is_primary && (
+                      <span
+                        className="ml-2 text-xs"
+                        style={{ color: "#c4973a" }}
+                      >
+                        (primary)
+                      </span>
+                    )}
+                  </p>
+                  <ProfileEditTrigger accountId={accountId} profile={p} />
+                </div>
                 <p className="text-xs mt-0.5" style={{ color: "#e8d5a3" }}>
                   DOB {p.date_of_birth} · {p.biological_sex}
                 </p>
