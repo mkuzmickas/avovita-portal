@@ -276,7 +276,7 @@ export const ARMIN_LABS: ShippingProfile = {
   kind: "armin_labs",
   displayLabel: "Ship Armin Labs Package",
   displaySubtitle:
-    "Ambient FedEx Pak to Armin Labs, Germany · International Priority",
+    "Ambient FedEx Pak to Armin Labs, Germany · International Priority Express",
   recipient: {
     contactName: "Markus Berger",
     company: "Armin Labs",
@@ -296,7 +296,7 @@ export const ARMIN_LABS: ShippingProfile = {
     },
     residential: false,
   },
-  serviceType: "INTERNATIONAL_PRIORITY",
+  serviceType: "INTERNATIONAL_PRIORITY_EXPRESS",
   currency: "EUR",
   package: {
     weightLb: 2,
@@ -364,7 +364,7 @@ export const EPISEEK: ShippingProfile = {
   kind: "episeek",
   displayLabel: "Ship EpiSeek Package",
   displaySubtitle:
-    "Ambient FedEx Pak to Precision Epigenomics, Tucson AZ · International Priority",
+    "Ambient FedEx Pak to Precision Epigenomics, Tucson AZ · International Priority Express",
   recipient: {
     contactName: "Laboratory Processing",
     company: "Precision Epigenomics",
@@ -380,7 +380,7 @@ export const EPISEEK: ShippingProfile = {
     },
     residential: false,
   },
-  serviceType: "INTERNATIONAL_PRIORITY",
+  serviceType: "INTERNATIONAL_PRIORITY_EXPRESS",
   currency: "USD",
   package: {
     weightLb: 1,
