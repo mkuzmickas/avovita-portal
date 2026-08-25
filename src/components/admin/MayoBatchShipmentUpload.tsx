@@ -389,12 +389,20 @@ export function MayoBatchShipmentUpload() {
             <button
               type="button"
               onClick={confirm}
-              disabled={assigning || preview.matched === 0 || !tracking.trim()}
+              disabled={
+                assigning ||
+                !!assignResult ||
+                preview.matched === 0 ||
+                !tracking.trim()
+              }
               style={{
                 padding: "8px 14px",
                 borderRadius: 8,
                 backgroundColor:
-                  assigning || preview.matched === 0 || !tracking.trim()
+                  assigning ||
+                  !!assignResult ||
+                  preview.matched === 0 ||
+                  !tracking.trim()
                     ? "#5a705f"
                     : "#c4973a",
                 color: "#0a1a0d",
@@ -402,14 +410,20 @@ export function MayoBatchShipmentUpload() {
                 fontWeight: 700,
                 border: 0,
                 cursor:
-                  assigning || preview.matched === 0 || !tracking.trim()
+                  assigning ||
+                  !!assignResult ||
+                  preview.matched === 0 ||
+                  !tracking.trim()
                     ? "not-allowed"
                     : "pointer",
+                opacity: assignResult ? 0.6 : 1,
               }}
             >
               {assigning
                 ? "Assigning…"
-                : `Assign tracking to ${preview.matched} order${preview.matched === 1 ? "" : "s"} + notify`}
+                : assignResult
+                  ? "Tracking assigned"
+                  : `Assign tracking to ${preview.matched} order${preview.matched === 1 ? "" : "s"} + notify`}
             </button>
           </div>
           {assignResult && (
