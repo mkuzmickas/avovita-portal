@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, CalendarPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarPlus, Plus } from "lucide-react";
 import type { CalendarAppointment } from "@/lib/calendar/fetch-appointments";
+import { AddAppointmentModal } from "@/components/admin/AddAppointmentModal";
 
 interface Props {
   anchorISO: string;
@@ -42,6 +43,7 @@ export function CalendarClient({
   readOnly = false,
 }: Props) {
   const router = useRouter();
+  const [addOpen, setAddOpen] = useState(false);
 
   const jumpTo = (date: string, view: "week" | "month" = activeView) => {
     const suffix = extraQuery ? `&${extraQuery}` : "";
@@ -116,24 +118,52 @@ export function CalendarClient({
         </button>
 
         {!readOnly && (
-          <Link
-            href="/admin/bookings/new"
-            className="inline-flex items-center gap-2"
-            style={{
-              padding: "8px 14px",
-              borderRadius: "8px",
-              backgroundColor: "#c4973a",
-              color: "#0a1a0d",
-              fontSize: "13px",
-              fontWeight: 700,
-              textDecoration: "none",
-            }}
-          >
-            <CalendarPlus className="w-4 h-4" />
-            Log FloLabs booking
-          </Link>
+          <>
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-2"
+              style={{
+                padding: "8px 14px",
+                borderRadius: "8px",
+                backgroundColor: "transparent",
+                border: "1px solid #c4973a",
+                color: "#c4973a",
+                fontSize: "13px",
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              <Plus className="w-4 h-4" />
+              Add appointment
+            </button>
+            <Link
+              href="/admin/bookings/new"
+              className="inline-flex items-center gap-2"
+              style={{
+                padding: "8px 14px",
+                borderRadius: "8px",
+                backgroundColor: "#c4973a",
+                color: "#0a1a0d",
+                fontSize: "13px",
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              <CalendarPlus className="w-4 h-4" />
+              Log FloLabs booking
+            </Link>
+          </>
         )}
       </div>
+
+      {addOpen && (
+        <AddAppointmentModal
+          defaultDate={anchorISO}
+          onClose={() => setAddOpen(false)}
+        />
+      )}
 
       {activeView === "week" ? (
         <WeekView
