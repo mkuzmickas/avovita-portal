@@ -250,7 +250,17 @@ export async function POST(request: NextRequest) {
       return d >= start && d <= end;
     });
     if (inWindow.length === 0) continue;
-    inWindow.sort((a, b) => {
+    // Prefer orders that haven't shipped yet — a same-account order
+    // that's already shipped/resulted/complete is stale for a fresh
+    // batch, and picking it would blindly reassign tracking on a
+    // finished order (and skip the real new one). Only fall back to
+    // shipped orders if there are zero unshipped candidates.
+    const DONE = new Set(["shipped", "resulted", "complete"]);
+    const isOpen = (o: FallbackOrder) =>
+      !o.shipped_at && !DONE.has(o.status);
+    const open = inWindow.filter(isOpen);
+    const pool = open.length > 0 ? open : inWindow;
+    pool.sort((a, b) => {
       const ad = Math.abs(
         new Date(a.appointment_at || a.appointment_date || a.created_at).getTime() -
           anchor.getTime(),
@@ -261,7 +271,7 @@ export async function POST(request: NextRequest) {
       );
       return ad - bd;
     });
-    const pick = inWindow[0];
+    const pick = pool[0];
     row.order_id = pick.id;
     row.match_key = "name+date";
     row.order_status = pick.status;
