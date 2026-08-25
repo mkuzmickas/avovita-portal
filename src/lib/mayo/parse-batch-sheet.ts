@@ -5,30 +5,29 @@ import { extractText, getDocumentProxy } from "unpdf";
  * Mayo Clinic Laboratories PRINTED BATCH SHEET parser.
  *
  * Different beast from the invoice parser — this is the shipment
- * manifest that goes IN the FedEx box (see the sample Mike shared:
- * "Batch 52936901" through "…903", each with the barcode
- * "C7044716-52936901-RST-F"). Structure per patient row:
+ * manifest that goes IN the FedEx box. Structure per patient row
+ * (Mayo layout as of 2026-08 — includes new Sex + DOB columns):
  *
- *   Order No.        WEBQ65RVUCM4
- *   Patient Name     Dias, Deborah
- *   Patient ID       1CJ589RKQ
- *   Collected/Phys.  15 Aug 2026 08:00
+ *   Order No.        WEBQ65RVUYCN
+ *   Patient Name     Tomlin, Jennifer
+ *   Patient ID       1CJ53FQS5
+ *   Collected/Phys.  19 Aug 2026 09:00
  *   Sex              F
- *   DOB              10/01/1970
- *   Accession No.    ML13931439  (renders as a barcode label near the row)
- *   Tests            FRT3S T3 Reverse ... (indented below)
+ *   DOB              02/15/1971
+ *   Accession No.    ML13944118  (rendered as a barcode label at the
+ *                                 top of the page)
+ *   Tests            25HDN ... (indented below)
  *
- * We only need the identity fields to match against orders — WEB
- * accession lives in orders.mayo_order_number, ML accession in
- * orders.mayo_ml_order_number, and the MRN in orders.mayo_patient_id
- * (all populated either by Pipeline 1 historically or by the Mayo
- * invoice matcher backstamp we ship on match).
+ * Text extraction from Mayo's PDF collapses the Order/Name/ID/Collected
+ * columns onto a single line per row (e.g.
+ * `WEBQ65RVUYCN Tomlin, Jennifer 1CJ53FQS5 19 Aug 2026 09:00`), with
+ * Sex + DOB dropping onto the following two lines. Long "Last, First"
+ * names wrap: `WEBQ65RV1128 Bravo Jaraba, Meris` \n `Coromoto` \n
+ * `1CJ4SDQRS 20 Aug 2026 08:00` — the WEB row breaks after the comma
+ * and the MRN+date continue two lines down.
  *
- * PDF text extraction gives us WEB codes, ML codes, and MRN codes all
- * on separate lines in an unpredictable order relative to the row's
- * name. We collect them into pools per page, then pair them up by
- * position — reliable because Mayo prints one WEB / one ML / one MRN
- * per row in the same order top-to-bottom.
+ * ML accession numbers appear as standalone lines clustered at the top
+ * of each page, one per row in the same top-to-bottom order.
  */
 
 export interface BatchRow {
@@ -48,16 +47,19 @@ export interface ParsedBatchSheet {
   warnings: string[];
 }
 
-const WEB_RE = /WEB[A-Z0-9]{6,}/;
 const ML_RE = /^ML\d{7,}[A-Z]?$/;
-const MRN_RE = /^(?:1CJ|47R)[A-Z0-9]{5,}$/;
 const BATCH_HEADER_RE = /^Batch\s+(\d{6,})$/i;
-// Patient name — Mayo prints "LAST, FIRST" (may have multi-word last
-// name like "Bravo Jaraba, Meris Coromoto"). Match anything ending
-// with a lowercase letter that also contains a comma.
-const NAME_RE = /^[A-Z][A-Za-z' -]+,\s*[A-Z][A-Za-z' -]+$/;
-const COLLECTED_RE =
-  /^\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{2}:\d{2}$/;
+// Combined-row: WEB + "Last, First" + MRN + "DD Mmm YYYY HH:MM"
+const ROW_RE = new RegExp(
+  "^(WEB[A-Z0-9]{6,})\\s+(.+?)\\s+((?:1CJ|47R)[A-Z0-9]{5,})\\s+(\\d{1,2}\\s+[A-Z][a-z]{2}\\s+\\d{4}\\s+\\d{2}:\\d{2})$",
+);
+// Wrap-case start: `WEB LastPart1 LastPart2, FirstStart,` (name broke
+// at the comma with no MRN on this line yet).
+const ROW_WRAP_START_RE = new RegExp("^(WEB[A-Z0-9]{6,})\\s+(.+,)\\s*$");
+// Wrap-case tail: `MRN DD Mmm YYYY HH:MM`.
+const ROW_WRAP_END_RE = new RegExp(
+  "^((?:1CJ|47R)[A-Z0-9]{5,})\\s+(\\d{1,2}\\s+[A-Z][a-z]{2}\\s+\\d{4}\\s+\\d{2}:\\d{2})$",
+);
 
 export async function parseBatchSheet(
   buffer: Buffer,
@@ -78,87 +80,64 @@ export async function parseBatchSheet(
       .map((l) => l.trim())
       .filter(Boolean);
 
-    // Find batch identifiers on this page
+    // Batch headers on this page
     const pageBatches: string[] = [];
     for (const line of lines) {
       const m = BATCH_HEADER_RE.exec(line);
       if (m) pageBatches.push(m[1]);
     }
     for (const b of pageBatches) if (!batches.includes(b)) batches.push(b);
-    // If no batch header on the page, the whole PDF might be a
-    // single-batch layout — fall back to whatever batch(es) we've
-    // seen so far.
     const currentBatch =
       pageBatches[0] ?? batches[batches.length - 1] ?? "unknown";
 
-    // Collect per-page pools of each ID type + names + collected timestamps
-    const webs: string[] = [];
-    const mls: string[] = [];
-    const mrns: string[] = [];
-    const names: string[] = [];
-    const collecteds: string[] = [];
+    // Collect ML accessions (standalone lines at the top of each page)
+    const pageMls: string[] = [];
+    for (const line of lines) if (ML_RE.test(line)) pageMls.push(line);
 
-    for (const line of lines) {
-      // Skip known non-data lines
-      if (
-        /^FROM|^TO|^Order No\.|^Patient (Name|ID)|^Collected|^Printed|^Page \d+ of|Mayo Clinic Laboratories/i.test(
-          line,
-        )
-      ) {
+    // Extract patient rows — combined-format first, wrap-case second.
+    const pageRows: Array<Omit<BatchRow, "batch_no" | "ml_accession">> = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const m = ROW_RE.exec(line);
+      if (m) {
+        pageRows.push({
+          order_no: m[1],
+          patient_name: m[2].trim(),
+          mayo_patient_id: m[3],
+          collected_at: m[4],
+        });
         continue;
       }
-      if (BATCH_HEADER_RE.test(line)) continue;
-      if (line === "Frozen" || line === "Refrigerated" || line === "Ambient")
-        continue;
-
-      // Some fields appear standalone; others share a line. Try match
-      // in order of specificity.
-      if (WEB_RE.test(line) && line === (WEB_RE.exec(line)?.[0] ?? "")) {
-        webs.push(line);
-        continue;
-      }
-      if (ML_RE.test(line)) {
-        mls.push(line);
-        continue;
-      }
-      if (MRN_RE.test(line)) {
-        mrns.push(line);
-        continue;
-      }
-      if (COLLECTED_RE.test(line)) {
-        collecteds.push(line);
-        continue;
-      }
-      if (NAME_RE.test(line) && line.length <= 60) {
-        names.push(line);
-        continue;
+      const wrap = ROW_WRAP_START_RE.exec(line);
+      if (wrap && i + 2 < lines.length) {
+        const tail = ROW_WRAP_END_RE.exec(lines[i + 2]);
+        if (tail) {
+          pageRows.push({
+            order_no: wrap[1],
+            patient_name: `${wrap[2].trim()} ${lines[i + 1].trim()}`,
+            mayo_patient_id: tail[1],
+            collected_at: tail[2],
+          });
+          i += 2;
+        }
       }
     }
 
-    // Pair up: patient rows are printed in the same order top-to-
-    // bottom, one WEB per row. Some rows on subsequent pages of the
-    // same manifest don't reprint the ML accession (Mayo shows the
-    // barcode inline once), so we treat mls / mrns / names /
-    // collecteds as best-effort by index.
-    for (let i = 0; i < webs.length; i++) {
+    // Pair each row with the ML at the same top-to-bottom position.
+    for (let i = 0; i < pageRows.length; i++) {
       rows.push({
-        order_no: webs[i],
-        ml_accession: mls[i] ?? null,
-        mayo_patient_id: mrns[i] ?? null,
-        patient_name: names[i] ?? null,
-        collected_at: collecteds[i] ?? null,
+        ...pageRows[i],
+        ml_accession: pageMls[i] ?? null,
         batch_no: currentBatch,
       });
     }
 
-    // Sanity warning if the counts are wildly out of sync
     if (
-      webs.length > 0 &&
-      (Math.abs(webs.length - names.length) > 2 ||
-        Math.abs(webs.length - mrns.length) > 2)
+      pageRows.length > 0 &&
+      Math.abs(pageRows.length - pageMls.length) > 1
     ) {
       warnings.push(
-        `Page pool sizes mismatch (WEB=${webs.length} names=${names.length} MRN=${mrns.length} ML=${mls.length}) — some rows may be missing metadata but their WEB accession is still captured.`,
+        `Batch ${currentBatch}: ML pool (${pageMls.length}) doesn't line up with row count (${pageRows.length}); ML→row pairing may drift.`,
       );
     }
   }
