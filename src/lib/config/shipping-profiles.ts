@@ -190,12 +190,11 @@ export const MAYO_FROZEN: ShippingProfile = {
     },
     residential: false,
   },
-  // INTERNATIONAL_PRIORITY_EXPRESS commits earlier AM delivery
-  // (typ. 10:30am) vs INTERNATIONAL_PRIORITY's by-5pm commitment.
-  // Mayo frozen specimens need to land before end-of-run so same-day
-  // processing catches them — the ~7-hour earlier commitment is the
-  // whole point of shipping this profile.
-  serviceType: "INTERNATIONAL_PRIORITY_EXPRESS",
+  // Correct enum is FEDEX_INTERNATIONAL_PRIORITY_EXPRESS with the
+  // FEDEX_ prefix — FedEx renamed the older INTERNATIONAL_PRIORITY_
+  // EXPRESS variant and the un-prefixed form now returns
+  // SELECTED.DESTINATION.SERVICETYPE.INVALID for every lane.
+  serviceType: "FEDEX_INTERNATIONAL_PRIORITY_EXPRESS",
   currency: "USD",
   package: {
     weightLb: 15,
@@ -296,7 +295,7 @@ export const ARMIN_LABS: ShippingProfile = {
     },
     residential: false,
   },
-  serviceType: "INTERNATIONAL_PRIORITY_EXPRESS",
+  serviceType: "FEDEX_INTERNATIONAL_PRIORITY_EXPRESS",
   currency: "EUR",
   package: {
     weightLb: 2,
@@ -380,7 +379,7 @@ export const EPISEEK: ShippingProfile = {
     },
     residential: false,
   },
-  serviceType: "INTERNATIONAL_PRIORITY_EXPRESS",
+  serviceType: "FEDEX_INTERNATIONAL_PRIORITY_EXPRESS",
   currency: "USD",
   package: {
     weightLb: 1,
