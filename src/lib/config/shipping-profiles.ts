@@ -174,7 +174,7 @@ export const MAYO_FROZEN: ShippingProfile = {
   kind: "mayo_frozen",
   displayLabel: "Ship Mayo Frozen",
   displaySubtitle:
-    "Dry-ice package to Mayo Clinic Laboratories · International Priority",
+    "Dry-ice package to Mayo Clinic Laboratories · International Priority Express",
   recipient: {
     contactName: "Global Logistics",
     company: "Mayo Clinic Laboratories",
@@ -190,7 +190,12 @@ export const MAYO_FROZEN: ShippingProfile = {
     },
     residential: false,
   },
-  serviceType: "INTERNATIONAL_PRIORITY",
+  // INTERNATIONAL_PRIORITY_EXPRESS commits earlier AM delivery
+  // (typ. 10:30am) vs INTERNATIONAL_PRIORITY's by-5pm commitment.
+  // Mayo frozen specimens need to land before end-of-run so same-day
+  // processing catches them — the ~7-hour earlier commitment is the
+  // whole point of shipping this profile.
+  serviceType: "INTERNATIONAL_PRIORITY_EXPRESS",
   currency: "USD",
   package: {
     weightLb: 15,
