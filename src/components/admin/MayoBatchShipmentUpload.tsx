@@ -11,7 +11,7 @@ interface EnrichedRow {
   patient_name_on_sheet: string | null;
   collected_at: string | null;
   order_id: string | null;
-  match_key: "web" | "ml" | "mrn" | null;
+  match_key: "web" | "ml" | "mrn" | "name+date" | null;
   order_status: string | null;
   order_total_cad: number | null;
   order_tracking_number: string | null;

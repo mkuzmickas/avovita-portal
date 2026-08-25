@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     patient_name_on_sheet: string | null;
     collected_at: string | null;
     order_id: string | null;
-    match_key: "web" | "ml" | "mrn" | null;
+    match_key: "web" | "ml" | "mrn" | "name+date" | null;
     order_status: string | null;
     order_total_cad: number | null;
     order_tracking_number: string | null;
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
 
   const enriched: EnrichedRow[] = parsed.rows.map((r) => {
     let matched: OrderHit | null = null;
-    let key: "web" | "ml" | "mrn" | null = null;
+    let key: "web" | "ml" | "mrn" | "name+date" | null = null;
     for (const o of hits.values()) {
       if (r.order_no && o.mayo_order_number === r.order_no) {
         matched = o;
@@ -181,6 +181,94 @@ export async function POST(request: NextRequest) {
       portal_patient_name: null,
     };
   });
+
+  // Fallback 4: name + collection-date match. Runs for rows that got
+  // no hit by WEB / ML / MRN — typical for fresh batches where Mayo
+  // hasn't invoiced us yet, so mayo_order_number is still null on
+  // every portal order. Uses `patient_name` ("Last, First") on the
+  // sheet against patient_profiles.last_name + first_name, narrows to
+  // account_ids, then picks the account's order whose anchor date is
+  // closest to the sheet's collected_at within a ±45-day window.
+  const unmatched = enriched.filter(
+    (r) => !r.order_id && r.patient_name_on_sheet,
+  );
+  const MONTHS: Record<string, number> = {
+    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+  };
+  function parseCollected(s: string | null): Date | null {
+    if (!s) return null;
+    const m = /^(\d{1,2})\s+([A-Z][a-z]{2})\s+(\d{4})\s+(\d{2}):(\d{2})$/.exec(s);
+    if (!m) return null;
+    const mon = MONTHS[m[2]];
+    if (mon === undefined) return null;
+    return new Date(Number(m[3]), mon, Number(m[1]), Number(m[4]), Number(m[5]));
+  }
+  interface FallbackOrder {
+    id: string;
+    status: string;
+    total_cad: number | null;
+    fedex_tracking_number: string | null;
+    shipped_at: string | null;
+    created_at: string;
+    appointment_at: string | null;
+    appointment_date: string | null;
+  }
+  for (const row of unmatched) {
+    const anchor = parseCollected(row.collected_at);
+    if (!anchor) continue;
+    const parts = row.patient_name_on_sheet!.split(",").map((s) => s.trim());
+    if (parts.length < 2) continue;
+    const last = parts[0];
+    const first = parts[1].split(" ")[0];
+    if (!last || !first) continue;
+    const { data: profiles } = await service
+      .from("patient_profiles")
+      .select("id, account_id, first_name, last_name")
+      .ilike("last_name", last);
+    type PP = { id: string; account_id: string; first_name: string | null; last_name: string | null };
+    const profs = (profiles ?? []) as PP[];
+    if (profs.length === 0) continue;
+    const narrowed = profs.filter((p) =>
+      (p.first_name ?? "").toUpperCase().startsWith(first.toUpperCase()),
+    );
+    const candidates = narrowed.length > 0 ? narrowed : profs;
+    const accountIds = [...new Set(candidates.map((c) => c.account_id))];
+    if (accountIds.length === 0) continue;
+    const { data: ordersData } = await service
+      .from("orders")
+      .select(
+        "id, status, total_cad, fedex_tracking_number, shipped_at, created_at, appointment_at, appointment_date",
+      )
+      .in("account_id", accountIds);
+    const start = new Date(anchor);
+    start.setDate(anchor.getDate() - 45);
+    const end = new Date(anchor);
+    end.setDate(anchor.getDate() + 5);
+    const inWindow = ((ordersData ?? []) as FallbackOrder[]).filter((o) => {
+      const d = new Date(o.appointment_at || o.appointment_date || o.created_at);
+      return d >= start && d <= end;
+    });
+    if (inWindow.length === 0) continue;
+    inWindow.sort((a, b) => {
+      const ad = Math.abs(
+        new Date(a.appointment_at || a.appointment_date || a.created_at).getTime() -
+          anchor.getTime(),
+      );
+      const bd = Math.abs(
+        new Date(b.appointment_at || b.appointment_date || b.created_at).getTime() -
+          anchor.getTime(),
+      );
+      return ad - bd;
+    });
+    const pick = inWindow[0];
+    row.order_id = pick.id;
+    row.match_key = "name+date";
+    row.order_status = pick.status;
+    row.order_total_cad = pick.total_cad;
+    row.order_tracking_number = pick.fedex_tracking_number;
+    row.order_shipped_at = pick.shipped_at;
+  }
 
   // Enrich portal patient name for the matched orders (single query)
   const matchedIds = enriched
