@@ -55,7 +55,7 @@ export default async function AdminFinancialsPage() {
       id, appointment_at, appointment_date, shipping_date, shipped_at, created_at,
       total_cad, tax_cad, stripe_fee_cad, manifest_id,
       order_lines (
-        quantity,
+        quantity, line_type, unit_price_cad, custom_description,
         test:tests ( cost_cad )
       )
     `,
@@ -76,19 +76,46 @@ export default async function AdminFinancialsPage() {
     manifest_id: string | null;
     order_lines: Array<{
       quantity: number;
+      line_type: string | null;
+      unit_price_cad: number | null;
+      custom_description: string | null;
       test: { cost_cad: number | null } | null;
     }>;
   };
+
+  // Invoice line types the Stripe webhook mirrors as order_lines with
+  // line_type='resource' are pass-through billings — most commonly the
+  // FloLabs collection fee we bake into product invoices. They net to
+  // zero profit (we charge exactly what we pay). Anything matching
+  // this predicate contributes revenue = cost.
+  const isPassthroughResource = (desc: string | null | undefined) =>
+    typeof desc === "string" &&
+    /\b(collect|flolab|shipping\s+fee|delivery\s+fee)\b/i.test(desc);
 
   const orders: ShippedOrder[] = ((ordersRaw ?? []) as unknown as RawOrder[]).map(
     (o) => {
       let testCost = 0;
       let testCount = 0;
       for (const line of o.order_lines ?? []) {
-        const cost = line.test?.cost_cad ?? 0;
         const qty = line.quantity ?? 1;
-        testCost += cost * qty;
-        testCount += qty;
+        // Real test line — cost from the tests catalogue.
+        if (line.line_type === "test" || !line.line_type) {
+          const cost = line.test?.cost_cad ?? 0;
+          testCost += cost * qty;
+          testCount += qty;
+          continue;
+        }
+        // Pass-through fee (collection, FloLabs, shipping) — treat the
+        // charged price as our cost so it contributes zero margin.
+        if (
+          line.line_type === "resource" &&
+          isPassthroughResource(line.custom_description)
+        ) {
+          testCost += (line.unit_price_cad ?? 0) * qty;
+        }
+        // Other resource/supplement/etc. lines: no test cost mapping,
+        // no pass-through — they contribute their full revenue as
+        // margin (correct for admin-time services etc.).
       }
       const revenue_date =
         o.appointment_at ||
