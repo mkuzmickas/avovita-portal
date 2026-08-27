@@ -162,25 +162,46 @@ export async function fetchCalendarAppointments(
       costCad: l.tests!.cost_cad,
     }));
 
-    // Fallback: if there are no joined test lines, look for
-    // resource/custom lines that describe a test — these show up on
-    // invoice-mirrored orders where the invoice entered the test as a
-    // custom line rather than picking from the catalog. Skip only if
-    // the order really has no line items at all AND no test-like
-    // resource description.
+    // Fallback: if there are no joined test lines, cover two more cases
+    // that show up on invoice-mirrored orders:
+    //   (a) test line with test_id = null and custom_description = null
+    //       — the invoice had a freeform test whose SKU isn't in the
+    //       tests catalogue (e.g. MOLD1). We know it's a phlebotomy
+    //       visit; render a generic chip so it doesn't disappear.
+    //   (b) resource/custom lines whose custom_description looks like a
+    //       test — invoice entered it as a custom line rather than
+    //       picking from the catalog.
+    // Suppress pure fee/discount lines so we don't render a
+    // "Collection Fees" chip on an otherwise-empty order.
+    const isFeeOrDiscount = (desc: string | null | undefined) =>
+      typeof desc === "string" &&
+      /\b(collect|flolab|shipping\s+fee|delivery\s+fee|discount)\b/i.test(desc);
+
     if (tests.length === 0) {
-      const custom = (row.order_lines ?? []).filter(
+      const freeformTestLines = (row.order_lines ?? []).filter(
+        (l) => l.line_type === "test" && !l.tests,
+      );
+      const customLines = (row.order_lines ?? []).filter(
         (l) =>
           (l.line_type === "resource" || l.line_type === "custom") &&
           l.custom_description &&
-          // Suppress pure fee/discount lines so we don't render a
-          // "Collection Fees" chip on an otherwise-empty order.
-          !/\b(collect|flolab|shipping\s+fee|delivery\s+fee|discount)\b/i.test(
-            l.custom_description,
-          ),
+          !isFeeOrDiscount(l.custom_description),
       );
-      if (custom.length === 0) continue;
-      for (const l of custom) {
+      if (freeformTestLines.length === 0 && customLines.length === 0) {
+        continue;
+      }
+      for (let i = 0; i < freeformTestLines.length; i++) {
+        const l = freeformTestLines[i];
+        tests.push({
+          id: `freeform-${row.id}-${i}`,
+          name: l.custom_description ?? "Test collection",
+          sku: null,
+          collectionMethod: "phlebotomist_draw",
+          priceCad: null,
+          costCad: null,
+        });
+      }
+      for (const l of customLines) {
         tests.push({
           id: `custom-${row.id}-${l.custom_description}`,
           name: l.custom_description!,
