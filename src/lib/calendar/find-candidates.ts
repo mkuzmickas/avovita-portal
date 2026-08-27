@@ -114,6 +114,31 @@ export async function findCandidateOrders(
     accountsById.set(a.id, a);
   }
 
+  // Primary-profile lookup keyed by account — a display fallback for
+  // orders whose test lines don't have joined patient_profiles (invoice-
+  // mirrored orders on custom or resource lines, order_lines with a
+  // stale profile_id, etc.). Without this the candidate card renders
+  // as "Unknown" even when the profile clearly exists on the account.
+  const { data: primaryProfileRows } = await service
+    .from("patient_profiles")
+    .select("account_id, first_name, last_name")
+    .in("account_id", accountIds)
+    .eq("is_primary", true);
+  const primaryProfileByAccount = new Map<
+    string,
+    { first_name: string | null; last_name: string | null }
+  >();
+  for (const p of (primaryProfileRows ?? []) as Array<{
+    account_id: string;
+    first_name: string | null;
+    last_name: string | null;
+  }>) {
+    primaryProfileByAccount.set(p.account_id, {
+      first_name: p.first_name,
+      last_name: p.last_name,
+    });
+  }
+
   // Order lines with joined tests + patient profiles.
   const { data: lineRows, error: linesErr } = await service
     .from("order_lines")
@@ -202,6 +227,18 @@ export async function findCandidateOrders(
           break;
         }
       }
+      // Fallback for invoice-mirrored orders whose test lines don't
+      // have a joined patient_profiles row: score against the account's
+      // primary profile last name so Dean-style orders still match.
+      const primary = primaryProfileByAccount.get(r.account_id);
+      if (
+        primary?.last_name &&
+        primary.last_name.toLowerCase() === lastNameLower &&
+        !matchedBy.includes("patient last name")
+      ) {
+        score += 20;
+        matchedBy.push("primary profile last name");
+      }
     }
     return { row: r, score, matchedBy };
   });
@@ -231,7 +268,14 @@ export async function findCandidateOrders(
       accountName:
         [s.row.accounts?.first_name, s.row.accounts?.last_name]
           .filter(Boolean)
-          .join(" ") || null,
+          .join(" ") ||
+        (() => {
+          const p = primaryProfileByAccount.get(s.row.account_id);
+          const label = [p?.first_name, p?.last_name]
+            .filter(Boolean)
+            .join(" ");
+          return label.length > 0 ? label : null;
+        })(),
       patientNames,
       tests: testLines
         .map((l) => l.tests?.name)

@@ -39,9 +39,22 @@ export function parseFloLabsEmail(raw: string): ParsedFloLabsEmail {
   );
 
   // Body-side extraction (admin section).
+  //
+  // Three template variants seen in the wild:
+  //   - Confirmation-of-Booking email: has "Name: X" on its own line
+  //     AND "(X)" in the subject.
+  //   - Newer "Appointment Scheduled" template (Aug 2026+): opens with
+  //     "Appointment Scheduled" then "for {First Last}" on the next line.
+  //     No Name: line, no Email: line, subject doesn't carry the name.
+  //   - Any HTML-ish paste where table cells collapsed onto one line.
   const nameFromBody =
     matchLine(text, /^\s*Name:\s*(.+?)\s*$/im) ??
     subjectMatch?.[1]?.trim() ??
+    matchLine(
+      text,
+      /Appointment\s+Scheduled\s*\n\s*for\s+([A-Z][A-Za-z' -]+\s+[A-Z][A-Za-z' -]+)\s*$/im,
+    ) ??
+    matchLine(text, /^\s*for\s+([A-Z][A-Za-z' -]+\s+[A-Z][A-Za-z' -]+)\s*$/im) ??
     null;
   const clientEmail = matchLine(text, /^\s*Email:\s*(\S+@\S+)\s*$/im);
   const clientPhoneRaw = matchLine(text, /^\s*Phone:\s*(\+?[\d\s()-]+)\s*$/im);
