@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingBag, ArrowRight, Tag, AlertTriangle } from "lucide-react";
@@ -57,6 +57,29 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
     };
   }, []);
 
+  // Publish the CartBar's height as a CSS variable so floating siblings
+  // (the "Check available dates" FAB, in-page toasts, etc.) can offset
+  // above it instead of colliding on mobile.
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const publish = () => {
+      const h = el.offsetHeight;
+      document.documentElement.style.setProperty(
+        "--cart-bar-height",
+        `${h}px`,
+      );
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      document.documentElement.style.removeProperty("--cart-bar-height");
+    };
+  }, [cart.length]);
+
   if (cart.length === 0) return null;
 
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -90,10 +113,15 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
   return (
     <>
     <div
+      ref={barRef}
       className="fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur"
       style={{
         backgroundColor: "rgba(15, 38, 20, 0.96)",
         borderColor: "#2d6b35",
+        // Reserve iOS safe-area at the bottom so the Proceed button
+        // isn't tappable in the bottom-edge gesture zone that summons
+        // Safari's URL bar.
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       {/* Amber availability advisory strip — surfaces above the cart

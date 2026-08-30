@@ -179,8 +179,13 @@ export function PreviewAvailabilityFab() {
         className="fixed z-40 inline-flex items-center gap-2 rounded-full font-semibold text-sm transition-transform hover:scale-105 active:scale-95"
         style={{
           // Sit above mobile system gesture areas via safe-area inset.
+          // Bottom offset uses a CSS variable set by CartBar (falls back
+          // to 1rem when the bar isn't mounted), so the FAB always
+          // floats CLEAR of the sticky cart bar on mobile — before this
+          // they overlapped on every phone-width viewport.
           right: "max(1rem, env(safe-area-inset-right))",
-          bottom: "calc(max(1rem, env(safe-area-inset-bottom)) + 0.25rem)",
+          bottom:
+            "calc(var(--cart-bar-height, 0px) + max(1rem, env(safe-area-inset-bottom)) + 0.5rem)",
           backgroundColor: "#c4973a",
           color: "#0a1a0d",
           padding: "0.75rem 1.125rem",

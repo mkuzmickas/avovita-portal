@@ -49,7 +49,51 @@ export function TestTable({
       className="rounded-xl border overflow-hidden"
       style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
     >
-      <div className="overflow-x-auto">
+      {/* Mobile card layout — replaces the sideways-scrolling table on
+          phones. Price and Add-to-Cart are always visible; tap the card
+          to expand its details. */}
+      <div className="sm:hidden">
+        {isEmpty ? (
+          <div className="px-4 py-12 text-center" style={{ backgroundColor: "#0a1a0d" }}>
+            {dbIsEmpty ? (
+              <p style={{ color: "#6ab04c" }}>Test catalogue coming soon</p>
+            ) : (
+              <div className="space-y-4">
+                <p style={{ color: "#6ab04c" }}>
+                  No tests found matching your search
+                </p>
+                {hasFiltersActive && onClearFilters && (
+                  <button
+                    onClick={onClearFilters}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold"
+                    style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <ul className="divide-y" style={{ borderColor: "#2d6b35" }}>
+            {tests.map((test) => (
+              <li key={test.id} style={{ borderColor: "#2d6b35" }}>
+                <TestMobileCard
+                  test={test}
+                  expanded={expandedId === test.id}
+                  inCart={cart.some((c) => cartItemId(c) === `test:${test.id}`)}
+                  highlighted={highlightedId === test.id}
+                  onToggle={() => onToggleExpand(test.id)}
+                  onAdd={onAdd}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Desktop table — hidden on phones */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: "#0f2614" }}>
@@ -477,6 +521,256 @@ function TestTableRow({
         </tr>
       )}
     </>
+  );
+}
+
+// ─── Mobile card layout ───────────────────────────────────────────────────────
+//
+// Full-width card. Header row shows test name + SKU. Middle row shows
+// price on the left and Add-to-Cart on the right — both always visible
+// so users don't have to swipe or expand to buy. Tap the "Show details"
+// footer to expand the description inline.
+
+interface TestMobileCardProps {
+  test: CatalogueTest;
+  expanded: boolean;
+  inCart: boolean;
+  highlighted: boolean;
+  onToggle: () => void;
+  onAdd: (item: CatalogueCartItem) => void;
+}
+
+function TestMobileCard({
+  test,
+  expanded,
+  inCart,
+  highlighted,
+  onToggle,
+  onAdd,
+}: TestMobileCardProps) {
+  const [justAdded, setJustAdded] = useState(false);
+  const { trackEvent } = useAnalytics();
+  const hasPrice = test.price_cad !== null;
+  const showInCart = inCart || justAdded;
+
+  const handleToggle = () => {
+    if (!expanded) {
+      trackEvent("test_viewed", { test_id: test.id, test_name: test.name });
+    }
+    onToggle();
+  };
+
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (inCart || justAdded || !hasPrice) return;
+    onAdd({
+      line_type: "test" as const,
+      test_id: test.id,
+      test_name: test.name,
+      sku: test.sku,
+      price_cad: test.price_cad as number,
+      lab_name: test.lab.name,
+      quantity: 1,
+      collection_method: test.collection_method,
+    });
+    setJustAdded(true);
+    setTimeout(() => setJustAdded(false), 1500);
+  };
+
+  return (
+    <div
+      style={{
+        backgroundColor: highlighted ? "#24492b" : "#0f2614",
+        borderLeft: highlighted ? "3px solid #c4973a" : "none",
+        paddingLeft: highlighted ? "13px" : "16px",
+      }}
+      className="pr-4 py-4"
+    >
+      <div className="mb-2">
+        <div className="flex items-start gap-2 flex-wrap">
+          <span className="font-medium" style={{ color: "#ffffff" }}>
+            {test.name}
+          </span>
+          {test.requisition_url && (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border"
+              style={{
+                backgroundColor: "rgba(196,151,58,0.1)",
+                borderColor: "#c4973a",
+                color: "#c4973a",
+              }}
+            >
+              <FileText className="w-2.5 h-2.5" />
+              Req. Required
+            </span>
+          )}
+        </div>
+        {test.sku && (
+          <span
+            className="block mt-0.5"
+            style={{
+              fontFamily:
+                'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+              fontSize: "11px",
+              color: "rgba(141, 198, 63, 0.6)",
+              letterSpacing: "0.5px",
+            }}
+            aria-label={`Test code: ${test.sku}`}
+          >
+            SKU: {test.sku}
+          </span>
+        )}
+      </div>
+
+      {/* Price + Add-to-Cart row — always visible, no horizontal scroll */}
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <div
+            className="font-semibold text-lg leading-tight"
+            style={{ color: "#c4973a" }}
+          >
+            {hasPrice
+              ? formatCurrency(test.price_cad as number)
+              : "Contact us"}
+          </div>
+          <div className="mt-0.5">
+            <CollectionFeeQualifier
+              hasPrice={hasPrice}
+              collectionMethod={test.collection_method}
+            />
+          </div>
+        </div>
+        {hasPrice ? (
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={showInCart}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+            style={
+              showInCart
+                ? {
+                    backgroundColor: "rgba(141, 198, 63, 0.15)",
+                    color: "#8dc63f",
+                    border: "1px solid #8dc63f",
+                    cursor: "default",
+                  }
+                : {
+                    backgroundColor: "#c4973a",
+                    color: "#0a1a0d",
+                    border: 0,
+                  }
+            }
+          >
+            {showInCart ? (
+              <>
+                <Check className="w-3.5 h-3.5" />
+                In Cart
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="w-3.5 h-3.5" />
+                Add
+              </>
+            )}
+          </button>
+        ) : (
+          <a
+            href="mailto:support@avovita.ca"
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+          >
+            Contact
+          </a>
+        )}
+      </div>
+
+      {/* Expand toggle — full-width tap target */}
+      <button
+        type="button"
+        onClick={handleToggle}
+        aria-expanded={expanded}
+        className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs"
+        style={{
+          color: "#e8d5a3",
+          backgroundColor: "transparent",
+          border: "1px solid #2d6b35",
+        }}
+      >
+        {expanded ? "Hide details" : "Show details"}
+        <ChevronDown
+          className="w-3.5 h-3.5 transition-transform duration-200"
+          style={{
+            color: "#c4973a",
+            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+          }}
+        />
+      </button>
+
+      {/* Expanded details — inline, no horizontal overflow */}
+      <div
+        className="overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
+        style={{
+          maxHeight: expanded ? "720px" : "0px",
+          opacity: expanded ? 1 : 0,
+        }}
+      >
+        <div
+          className="mt-3 pt-3 border-t space-y-3"
+          style={{ borderColor: "#2d6b35" }}
+        >
+          {test.category && (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border"
+              style={{
+                backgroundColor: "#1a3d22",
+                borderColor: "#c4973a",
+                color: "#c4973a",
+              }}
+            >
+              {test.category}
+            </span>
+          )}
+          {test.description && (
+            <p
+              className="text-xs leading-relaxed"
+              style={{ color: "#e8d5a3" }}
+            >
+              {renderInline(test.description)}
+            </p>
+          )}
+          <div className="text-[11px]" style={{ color: "#e8d5a3" }}>
+            <span style={{ color: "#6ab04c" }}>Lab: </span>
+            {test.lab.name}
+          </div>
+          {test.turnaround_display && (
+            <div
+              className="flex items-center gap-1.5 text-xs"
+              style={{ color: "#e8d5a3" }}
+            >
+              <Clock className="w-3.5 h-3.5" style={{ color: "#8dc63f" }} />
+              <span>{test.turnaround_display}</span>
+            </div>
+          )}
+          {test.requisition_url && (
+            <a
+              href={test.requisition_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold"
+              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            >
+              <Download className="w-3.5 h-3.5" />
+              Requisition Form
+            </a>
+          )}
+          {test.panel_tests && test.panel_tests.length > 0 && (
+            <PanelIncludes panelTests={test.panel_tests} variant="detail" />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
