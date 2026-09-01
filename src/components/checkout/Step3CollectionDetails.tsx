@@ -175,13 +175,62 @@ export function Step3CollectionDetails({
     collectionAddress.postal_code.replace(/\s+/g, "").length >= 3;
   const zoneUnserved = postalEntered && postalZone === "unserved";
 
+  // Per-test booking acknowledgements (short-stability tests, weekly
+  // courier-cutoff tests, etc.). tests.booking_ack_text is nullable —
+  // when populated, the customer must tick "I understand" before Step 3
+  // can Continue. Fetched once per Step 3 mount based on the assigned
+  // test ids; small result set (usually 0-1 rows).
+  const [ackMessages, setAckMessages] = useState<string[]>([]);
+  const [ackConfirmed, setAckConfirmed] = useState(false);
+  const testIdKey = useMemo(
+    () =>
+      Array.from(new Set(assignments.map((a) => a.test_id))).sort().join("|"),
+    [assignments],
+  );
+  useEffect(() => {
+    let cancelled = false;
+    setAckMessages([]);
+    setAckConfirmed(false);
+    const ids = testIdKey ? testIdKey.split("|").filter(Boolean) : [];
+    if (ids.length === 0) return;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("tests")
+        .select("id, booking_ack_text")
+        .in("id", ids)
+        .not("booking_ack_text", "is", null);
+      if (cancelled) return;
+      const rows =
+        (data ?? []) as Array<{ id: string; booking_ack_text: string | null }>;
+      const messages = Array.from(
+        new Set(
+          rows
+            .map((r) => r.booking_ack_text?.trim())
+            .filter((v): v is string => !!v),
+        ),
+      );
+      setAckMessages(messages);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [testIdKey]);
+  const needsAck = ackMessages.length > 0;
+  const ackSatisfied = !needsAck || ackConfirmed;
+
   const canContinue =
-    !isOutOfTown && addressValid && namesValid && !zoneUnserved;
+    !isOutOfTown &&
+    addressValid &&
+    namesValid &&
+    !zoneUnserved &&
+    ackSatisfied;
 
   const missingFields: string[] = [];
   if (!isOutOfTown && !addressValid) missingFields.push("your postal code");
   if (!isOutOfTown && zoneUnserved)
     missingFields.push("a serviced postal code");
+  if (needsAck && !ackConfirmed) missingFields.push("the scheduling acknowledgement");
   if (!namesValid) {
     const missing: string[] = [];
     for (const p of persons) {
@@ -228,6 +277,58 @@ export function Step3CollectionDetails({
       {assignments.length >= 2 && (
         <div className="mb-6">
           <DiscountBanner lineCount={assignments.length} />
+        </div>
+      )}
+
+      {/* Per-test scheduling acknowledgement — required before Continue
+          when the cart has a test with a stability / lab-cutoff
+          constraint. Data source: tests.booking_ack_text (migration
+          047), currently populated for FNIRM. Adding more constrained
+          tests is admin-editable, no code change needed. */}
+      {needsAck && (
+        <div
+          className="mb-6 rounded-xl border p-4 sm:p-5"
+          style={{
+            backgroundColor: "rgba(196,151,58,0.10)",
+            borderColor: "#c4973a",
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle
+              className="w-5 h-5 shrink-0 mt-0.5"
+              style={{ color: "#c4973a" }}
+            />
+            <div className="flex-1 min-w-0">
+              <p
+                className="font-heading text-lg font-semibold mb-2"
+                style={{
+                  color: "#ffffff",
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                }}
+              >
+                Please <span style={{ color: "#c4973a" }}>confirm</span> before continuing
+              </p>
+              <ul className="space-y-2 mb-3 text-sm" style={{ color: "#e8d5a3" }}>
+                {ackMessages.map((m, i) => (
+                  <li key={i} className="leading-relaxed">
+                    {m}
+                  </li>
+                ))}
+              </ul>
+              <label className="flex items-start gap-2 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={ackConfirmed}
+                  onChange={(e) => setAckConfirmed(e.target.checked)}
+                  className="mt-0.5 shrink-0"
+                  style={{ accentColor: "#c4973a" }}
+                />
+                <span style={{ color: "#ffffff" }}>
+                  I understand and will book my collection accordingly.
+                </span>
+              </label>
+            </div>
+          </div>
         </div>
       )}
 

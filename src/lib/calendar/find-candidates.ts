@@ -286,13 +286,42 @@ export async function findCandidateOrders(
   });
 }
 
+/**
+ * Minimum score for the relaxed single-candidate auto-assign path.
+ * 20 = a single last-name match on the account's primary profile OR
+ * on a joined patient_profiles row. Not enough on its own if there
+ * are competing candidates, but conclusive when there is only one.
+ */
+export const AUTO_ASSIGN_SINGLE_CANDIDATE_MIN_SCORE = 20;
+
 export function shouldAutoAssign(candidates: CandidateOrder[]): boolean {
   if (candidates.length === 0) return false;
   const top = candidates[0];
-  if (top.matchScore < AUTO_ASSIGN_MIN_SCORE) return false;
-  if (candidates.length === 1) return true;
-  const secondScore = candidates[1].matchScore;
-  return top.matchScore - secondScore >= AUTO_ASSIGN_MIN_LEAD_OVER_SECOND;
+
+  // Original strict rule — an email match (100pt) on the account.
+  // Newer Acuity templates strip the client email from the body, so
+  // this path stopped firing for most 2026-Aug+ bookings. The relaxed
+  // rule below covers those without loosening the multi-candidate
+  // guard.
+  if (top.matchScore >= AUTO_ASSIGN_MIN_SCORE) {
+    if (candidates.length === 1) return true;
+    const secondScore = candidates[1].matchScore;
+    return top.matchScore - secondScore >= AUTO_ASSIGN_MIN_LEAD_OVER_SECOND;
+  }
+
+  // Relaxed rule — exactly one candidate on the account with at least
+  // a last-name confirmation. Safe because ambiguity (2+ orders on the
+  // account) still routes to review; also safe for reschedules because
+  // the same single-candidate path finds Jerome's one order and
+  // overwrites its appointment_at with the New Time from the parser.
+  if (
+    candidates.length === 1 &&
+    top.matchScore >= AUTO_ASSIGN_SINGLE_CANDIDATE_MIN_SCORE
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 function digitsOnly(p: string): string {
