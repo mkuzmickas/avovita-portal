@@ -48,7 +48,23 @@ export interface PollResult {
 }
 
 const SENDER_FILTER = "no-reply@acuityscheduling.com";
-const SUBJECT_PREFIX = "Confirmation of Booking: AvoVita";
+// Acuity ships several confirmation email templates that all reach
+// this inbox. Each Avovita-related booking uses one of these subject
+// prefixes:
+//   - "Confirmation of Booking: AvoVita ..." — original scheduling template
+//   - "Appointment Scheduled" — newer scheduling template used since ~Aug 2026
+//   - "Appointment Rescheduled" — reschedule flow
+//   - "Appointment Canceled" — cancel flow (parser will no-match; we still
+//     want the booking_events row so future automation can act on it)
+// Adding a subject to this list is the whole activation for the
+// corresponding template — parser support is separately handled in
+// parse-flolabs-email.ts.
+const SUBJECT_PREFIXES = [
+  "Confirmation of Booking: AvoVita",
+  "Appointment Scheduled",
+  "Appointment Rescheduled",
+  "Appointment Canceled",
+];
 const PAGE_SIZE = 50;
 // Look back 7 days regardless of read state — Mike or an Outlook rule
 // can read a confirmation before the 5-min cron fires, and the old
@@ -87,7 +103,8 @@ export async function pollFloLabsInbox(
   result.scanned = data.value.length;
 
   for (const msg of data.value) {
-    if (!msg.subject?.startsWith(SUBJECT_PREFIX)) continue;
+    const subject = msg.subject ?? "";
+    if (!SUBJECT_PREFIXES.some((p) => subject.startsWith(p))) continue;
     result.processed++;
 
     // Dedup check: if we've already got a booking_events row for this

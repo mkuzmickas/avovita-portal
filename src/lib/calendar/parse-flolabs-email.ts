@@ -52,7 +52,7 @@ export function parseFloLabsEmail(raw: string): ParsedFloLabsEmail {
     subjectMatch?.[1]?.trim() ??
     matchLine(
       text,
-      /Appointment\s+Scheduled\s*\n\s*for\s+([A-Z][A-Za-z' -]+\s+[A-Z][A-Za-z' -]+)\s*$/im,
+      /Appointment\s+(?:Scheduled|Rescheduled|Canceled|Cancelled)\s*\n\s*for\s+([A-Z][A-Za-z' -]+\s+[A-Z][A-Za-z' -]+)\s*$/im,
     ) ??
     matchLine(text, /^\s*for\s+([A-Z][A-Za-z' -]+\s+[A-Z][A-Za-z' -]+)\s*$/im) ??
     null;
@@ -71,9 +71,14 @@ export function parseFloLabsEmail(raw: string): ParsedFloLabsEmail {
   const address =
     whereMatch?.[1]?.trim() ?? locationBlock?.[1]?.trim() ?? null;
 
-  // Appointment datetime — try subject first, then body "When" line.
+  // Appointment datetime — try (in order): subject-line summary,
+  // reschedule "New Time" line (Acuity's rescheduled template), then
+  // the "When" line used by all other templates. Old Time is
+  // intentionally not read — a reschedule notice always wins with the
+  // new time, and the parser doesn't need to know about the old one.
   const dateSource =
     subjectMatch?.[2]?.trim() ??
+    matchLine(text, /^\s*New\s+Time\s+(.+?)\s*$/im) ??
     matchLine(text, /^\s*When\s+(.+?)\s*$/im) ??
     null;
   const appointmentAtISO = dateSource
