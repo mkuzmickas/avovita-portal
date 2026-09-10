@@ -6,16 +6,23 @@ import type { ParsedFloLabsEmail } from "./parse-flolabs-email";
  * Match a parsed FloLabs booking to unscheduled AvoVita orders.
  *
  * Scoring:
- *   +100  account email exact match
- *   +60   account phone match
- *   +40   patient phone match
- *   +20   account or patient last-name match
+ *   +100  account email exact match (accounts.email)
+ *   +40   patient phone match (patient_profiles.phone on any line)
+ *   +20   waiver-signed-name last name match (accounts.waiver_signed_name)
+ *   +20   patient last-name match (any order_line profile)
+ *   +20   primary profile last-name fallback (for invoice-mirrored
+ *         orders whose test lines don't have a joined profile)
  *
  * Threshold for auto-assign (webhook path):
- *   - Top candidate >= 100 (email match)
- *   - AND either only one candidate, or top score > second by >= 40
+ *   - Top candidate >= 100 (email match), single or beating #2 by >= 40
+ *   - OR relaxed: single candidate with >= 20
  *
  * Anything below that ends up in the review queue for Jenna.
+ *
+ * Note: accounts has no first_name/last_name/phone columns — those
+ * live on patient_profiles. Prior code selected those columns and
+ * PostgREST returned an error silently, so the 100pt email match
+ * never fired for anyone.
  */
 
 export interface CandidateOrder {
@@ -45,9 +52,7 @@ export async function findCandidateOrders(
     account_id: string;
     accounts: {
       email: string | null;
-      first_name: string | null;
-      last_name: string | null;
-      phone: string | null;
+      waiver_signed_name: string | null;
     } | null;
     order_lines: Array<{
       line_type: string;
@@ -90,26 +95,35 @@ export async function findCandidateOrders(
   const orderIds = orderRows.map((o) => o.id);
   const accountIds = Array.from(new Set(orderRows.map((o) => o.account_id).filter(Boolean)));
 
-  // Accounts lookup — email/phone/name lives here for the buyer.
+  // Accounts lookup — only `email` actually lives on this table.
+  // The prior code selected first_name/last_name/phone which don't
+  // exist on public.accounts (they're on patient_profiles), so
+  // PostgREST returned an error, accountRows was null, and every
+  // email/phone/account-last-name scoring signal was silently dead.
+  // That's why the 100pt email match never fired even when the
+  // parser had a clean email address to compare against.
+  //
+  // waiver_signed_name is the closest thing this table has to a
+  // full customer name (populated at waiver acceptance), and we can
+  // use it as a last-name fallback signal.
   const { data: accountRows, error: accountsErr } = await service
     .from("accounts")
-    .select("id, email, first_name, last_name, phone")
+    .select("id, email, waiver_signed_name")
     .in("id", accountIds);
   if (accountsErr) {
     console.error("[find-candidates] accounts query failed:", accountsErr.message);
   }
-  const accountsById = new Map<string, {
-    email: string | null;
-    first_name: string | null;
-    last_name: string | null;
-    phone: string | null;
-  }>();
+  const accountsById = new Map<
+    string,
+    {
+      email: string | null;
+      waiver_signed_name: string | null;
+    }
+  >();
   for (const a of (accountRows ?? []) as Array<{
     id: string;
     email: string | null;
-    first_name: string | null;
-    last_name: string | null;
-    phone: string | null;
+    waiver_signed_name: string | null;
   }>) {
     accountsById.set(a.id, a);
   }
@@ -198,11 +212,10 @@ export async function findCandidateOrders(
       score += 100;
       matchedBy.push("email");
     }
-    const acctPhone = digitsOnly(r.accounts?.phone ?? "");
-    if (phone && acctPhone && stripPlus(acctPhone) === stripPlus(phone)) {
-      score += 60;
-      matchedBy.push("account phone");
-    }
+    // Account-side phone is not stored on the accounts table — the
+    // buyer's phone lives on their primary patient_profile. The
+    // per-line patient_profiles.phone check below still catches
+    // patient-phone matches (worth 40pt).
     if (phone) {
       for (const line of r.order_lines) {
         const p = digitsOnly(line.patient_profiles?.phone ?? "");
@@ -214,10 +227,13 @@ export async function findCandidateOrders(
       }
     }
     if (lastNameLower) {
-      const acctLast = r.accounts?.last_name?.toLowerCase() ?? "";
-      if (acctLast === lastNameLower) {
+      // Waiver-signed-name is the closest thing accounts has to a
+      // legal customer name — split into words and check the last one.
+      const waiverName = r.accounts?.waiver_signed_name ?? "";
+      const waiverLast = waiverName.trim().split(/\s+/).pop()?.toLowerCase() ?? "";
+      if (waiverLast && waiverLast === lastNameLower) {
         score += 20;
-        matchedBy.push("account last name");
+        matchedBy.push("waiver name");
       }
       for (const line of r.order_lines) {
         const pl = line.patient_profiles?.last_name?.toLowerCase() ?? "";
@@ -266,9 +282,7 @@ export async function findCandidateOrders(
       createdAt: s.row.created_at,
       accountEmail: s.row.accounts?.email ?? null,
       accountName:
-        [s.row.accounts?.first_name, s.row.accounts?.last_name]
-          .filter(Boolean)
-          .join(" ") ||
+        (s.row.accounts?.waiver_signed_name ?? "").trim() ||
         (() => {
           const p = primaryProfileByAccount.get(s.row.account_id);
           const label = [p?.first_name, p?.last_name]
