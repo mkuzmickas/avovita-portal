@@ -148,15 +148,43 @@ async function processOneMessage(
 ): Promise<"auto_assigned" | "needs_review" | "no_match"> {
   const bodyContent = msg.body?.content ?? msg.bodyPreview ?? "";
   const fromAddress = msg.from?.emailAddress?.address ?? "";
+  const subject = msg.subject ?? "";
 
   const rawEmail = [
-    `Subject: ${msg.subject ?? ""}`,
+    `Subject: ${subject}`,
     `From: ${fromAddress}`,
     "",
     bodyContent,
   ].join("\n");
 
   const parsed = parseFloLabsEmail(rawEmail);
+
+  // Reschedule / cancel supersession — before doing anything with the
+  // new email, mark any prior OPEN booking_events for the same client
+  // as 'superseded' so Jenna's queue doesn't fill up with stale rows.
+  //
+  // "Open" = resolution in ('needs_review','no_match'). Auto-assigned
+  // rows stay in place because they represent an appointment that was
+  // actually stamped on an order; the new email's own reschedule will
+  // overwrite that order's appointment_at anyway.
+  //
+  // Matching is by parsed_client_name because the Outlook message id
+  // differs between the original booking and the reschedule notice,
+  // and Acuity's own appointment id lives in the ICS attachment we
+  // don't currently read. Name is coarse but works within the 7-day
+  // lookback window we scan.
+  const isRescheduleOrCancel =
+    subject.startsWith("Appointment Rescheduled") ||
+    subject.startsWith("Appointment Canceled") ||
+    subject.startsWith("Appointment Cancelled");
+  if (isRescheduleOrCancel && parsed.clientName) {
+    await supabase
+      .from("booking_events")
+      .update({ resolution: "superseded" })
+      .eq("parsed_client_name", parsed.clientName)
+      .in("resolution", ["needs_review", "no_match"]);
+  }
+
   const candidates = await findCandidateOrders(supabase, parsed);
 
   const autoAssign = parsed.appointmentAtISO && shouldAutoAssign(candidates);
