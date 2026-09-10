@@ -186,24 +186,61 @@ async function processOneMessage(
     subject.startsWith("Appointment Cancelled");
   const currentReceivedAt =
     msg.receivedDateTime ?? new Date().toISOString();
+
+  // Look for any newer row for the same client. Graph returns emails
+  // newest-first, so within a single poll cycle we insert the newest
+  // reschedule first; the older ones that follow shouldn't overwrite
+  // the newer state OR appear in the queue in parallel. If a newer
+  // row already exists (open OR auto-assigned), this incoming email
+  // is stale from the outset — insert it directly as 'superseded' so
+  // it doesn't show up in review.
+  let precomputedResolution: string | null = null;
   if (isRescheduleOrCancel && parsed.clientName) {
+    // Mark any OLDER open rows as superseded — the normal path when
+    // we process oldest-first or receive a fresh reschedule.
     await supabase
       .from("booking_events")
       .update({ resolution: "superseded" })
       .eq("parsed_client_name", parsed.clientName)
       .in("resolution", ["needs_review", "no_match"])
       .lt("received_at", currentReceivedAt);
+
+    // Check for a newer row that already exists — the newest-first
+    // processing order edge case.
+    const { data: newerRows } = await supabase
+      .from("booking_events")
+      .select("id")
+      .eq("parsed_client_name", parsed.clientName)
+      .gt("received_at", currentReceivedAt)
+      .in("resolution", ["needs_review", "no_match", "auto_assigned"])
+      .limit(1);
+    if (newerRows && newerRows.length > 0) {
+      precomputedResolution = "superseded";
+    }
   }
 
   const candidates = await findCandidateOrders(supabase, parsed);
 
   const autoAssign = parsed.appointmentAtISO && shouldAutoAssign(candidates);
-  let resolution: string = candidates.length === 0 ? "no_match" : "needs_review";
+  // If we already know this row is stale (a newer email for the same
+  // client is already in booking_events), start as 'superseded' so it
+  // doesn't reach the queue. Otherwise use the normal derivation.
+  let resolution: string =
+    precomputedResolution ??
+    (candidates.length === 0 ? "no_match" : "needs_review");
   let matchedOrderId: string | null = null;
   let matchScore: number | null = null;
   let matchedBy: string[] = [];
 
-  if (autoAssign && candidates.length > 0 && parsed.appointmentAtISO) {
+  // Skip auto-assign when this row is already superseded — a newer
+  // email for the same client is already in the queue and will (or
+  // did) drive the actual appointment_at update.
+  if (
+    precomputedResolution !== "superseded" &&
+    autoAssign &&
+    candidates.length > 0 &&
+    parsed.appointmentAtISO
+  ) {
     const top = candidates[0];
     const start = new Date(parsed.appointmentAtISO);
     const end = new Date(start.getTime() + 30 * 60 * 1000);

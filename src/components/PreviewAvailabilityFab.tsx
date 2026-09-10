@@ -7,9 +7,8 @@ import {
   useState,
 } from "react";
 import { usePathname } from "next/navigation";
-import { Calendar, X, Loader2, Info, ExternalLink } from "lucide-react";
+import { Calendar, X, Loader2, Info } from "lucide-react";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
-import { FLOLABS_BOOKING_URL as FLOLABS_FULL_URL } from "@/lib/config/booking";
 
 /**
  * Floating "Check availability" button + preview-only calendar modal.
@@ -372,16 +371,10 @@ export function PreviewAvailabilityFab() {
                   <p className="text-sm" style={{ color: "#e8d5a3" }}>
                     {error}
                   </p>
-                  <a
-                    href={FLOLABS_FULL_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold"
-                    style={{ color: "#c4973a" }}
-                  >
-                    Open FloLabs booking page
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
+                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                    Order your tests first and you&apos;ll get a direct
+                    booking link with your confirmation email.
+                  </p>
                 </div>
               )}
               {data && data.days.length > 0 && (
@@ -480,16 +473,11 @@ export function PreviewAvailabilityFab() {
               className="p-5 border-t shrink-0 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between"
               style={{ borderColor: "#2d6b35" }}
             >
-              <a
-                href={FLOLABS_FULL_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-semibold"
-                style={{ color: "#c4973a" }}
-              >
-                Open FloLabs booking page
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+              <p className="text-xs" style={{ color: "#e8d5a3" }}>
+                To book a specific slot, order your tests first — your
+                confirmation email includes the direct FloLabs booking
+                link.
+              </p>
               <button
                 type="button"
                 onClick={closeModal}
