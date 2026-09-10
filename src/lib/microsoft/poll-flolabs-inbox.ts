@@ -160,13 +160,20 @@ async function processOneMessage(
   const parsed = parseFloLabsEmail(rawEmail);
 
   // Reschedule / cancel supersession — before doing anything with the
-  // new email, mark any prior OPEN booking_events for the same client
+  // new email, mark any OLDER open booking_events for the same client
   // as 'superseded' so Jenna's queue doesn't fill up with stale rows.
   //
   // "Open" = resolution in ('needs_review','no_match'). Auto-assigned
   // rows stay in place because they represent an appointment that was
   // actually stamped on an order; the new email's own reschedule will
   // overwrite that order's appointment_at anyway.
+  //
+  // CRITICAL: the received_at guard. Graph returns emails newest-first,
+  // so within a single poll cycle we process the newest reschedule
+  // first, then the older ones. Without this guard, each older
+  // message would supersede the NEWER row we just inserted — exactly
+  // backwards. The guard fires supersede only against rows whose
+  // received_at is strictly older than this message.
   //
   // Matching is by parsed_client_name because the Outlook message id
   // differs between the original booking and the reschedule notice,
@@ -177,12 +184,15 @@ async function processOneMessage(
     subject.startsWith("Appointment Rescheduled") ||
     subject.startsWith("Appointment Canceled") ||
     subject.startsWith("Appointment Cancelled");
+  const currentReceivedAt =
+    msg.receivedDateTime ?? new Date().toISOString();
   if (isRescheduleOrCancel && parsed.clientName) {
     await supabase
       .from("booking_events")
       .update({ resolution: "superseded" })
       .eq("parsed_client_name", parsed.clientName)
-      .in("resolution", ["needs_review", "no_match"]);
+      .in("resolution", ["needs_review", "no_match"])
+      .lt("received_at", currentReceivedAt);
   }
 
   const candidates = await findCandidateOrders(supabase, parsed);
