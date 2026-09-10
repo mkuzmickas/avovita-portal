@@ -340,6 +340,36 @@ function QueueRow({
                         fontSize: "11px",
                         opacity: 0.75,
                         marginTop: "3px",
+                        display: "flex",
+                        gap: "10px",
+                        flexWrap: "wrap",
+                        color: "#c4973a",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily:
+                            'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
+                        }}
+                      >
+                        #{c.orderId.slice(0, 8).toUpperCase()}
+                      </span>
+                      {c.createdAt && (
+                        <span style={{ color: "#e8d5a3" }}>
+                          Placed {formatShortDate(c.createdAt)}
+                        </span>
+                      )}
+                      {c.totalCad != null && (
+                        <span style={{ color: "#e8d5a3" }}>
+                          ${c.totalCad.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        opacity: 0.75,
+                        marginTop: "3px",
                       }}
                     >
                       {c.tests.slice(0, 4).join(" · ")}
@@ -478,5 +508,15 @@ function formatLocal(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+  }).format(new Date(iso));
+}
+
+/** Compact date used in candidate-card metadata — e.g. "Sep 5, 2026". */
+function formatShortDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Edmonton",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   }).format(new Date(iso));
 }

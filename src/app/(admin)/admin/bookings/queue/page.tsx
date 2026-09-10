@@ -73,6 +73,8 @@ export interface QueuedEvent {
     patientNames: string[];
     tests: string[];
     totalCad: number | null;
+    /** Optional: older rows in booking_events pre-date this field. */
+    createdAt?: string | null;
     matchScore: number;
     matchedBy: string[];
   }> | null;
