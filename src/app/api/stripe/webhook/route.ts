@@ -1319,35 +1319,56 @@ async function handleInvoicePaid(stripeInvoice: Stripe.Invoice) {
       profileIdForLines =
         (primaryProfile as { id: string } | null)?.id ?? null;
     }
+    // Mirror only 'test' and 'supplement' invoice lines onto order_lines.
+    //
+    // Why: order_lines has a compound check constraint
+    // (`order_lines_type_fk_check`) that requires resource lines to
+    // have `resource_id NOT NULL`. Invoice `custom` / `service` /
+    // `shipping` lines are pass-through fees (Collection Fees,
+    // shipping, expedite) with no matching row in the `resources`
+    // catalog, so the prior mirror wrote a `resource` row with
+    // `resource_id = NULL` — the whole batch insert then failed the
+    // constraint and rolled back, so NO lines got created (including
+    // the perfectly valid test/supplement rows). That silent bug is
+    // why Dean, Adam, allan, Colleen, Kelvin, Karene, Brian and
+    // anyone else with a Collection Fees invoice all had zero
+    // order_lines even though their orders posted.
+    //
+    // Test/supplement lines carry the medical + fulfillment data;
+    // fee lines only need to exist in `invoice_line_items` (which
+    // stays as the source of truth for the PDF, portal display via
+    // the details API fallback, and financial totals). Skipping the
+    // fee mirror unblocks every future paid invoice with no data loss.
+    const MIRRORABLE_LINE_TYPES = new Set(["test", "supplement"]);
     if (lineRows.length > 0 && profileIdForLines) {
       const orderLineInserts = lineRows
-        .filter((l) => l.line_type !== "discount") // discounts already in totals
-        .map((l) => {
-          // order_lines accepts 'test' / 'supplement' / 'resource' line
-          // types. Map invoice-line 'service' / 'custom' / 'shipping'
-          // onto 'resource' so the existing UI renders them as a row
-          // without exploding on an unknown enum. Discounts are
-          // skipped above.
-          let mappedType: "test" | "supplement" | "resource" = "resource";
-          if (l.line_type === "test") mappedType = "test";
-          else if (l.line_type === "supplement") mappedType = "supplement";
-          return {
-            order_id: newOrderId,
-            line_type: mappedType,
-            test_id: l.line_type === "test" ? l.test_id : null,
-            supplement_id:
-              l.line_type === "supplement" ? l.supplement_id : null,
-            profile_id: profileIdForLines,
-            quantity: l.quantity,
-            unit_price_cad: l.unit_price_cad,
-            custom_description:
-              l.line_type === "test" || l.line_type === "supplement"
-                ? null
-                : l.description,
-            payment_status: "paid",
-          };
-        });
-      await supabase.from("order_lines").insert(orderLineInserts);
+        .filter(
+          (l) =>
+            MIRRORABLE_LINE_TYPES.has(l.line_type) &&
+            // Skip malformed lines: test line without a test_id or
+            // supplement line without a supplement_id would also fail
+            // the check constraint. This shouldn't happen for lines
+            // picked from the catalog, but guards against freeform
+            // entries.
+            ((l.line_type === "test" && l.test_id) ||
+              (l.line_type === "supplement" && l.supplement_id)),
+        )
+        .map((l) => ({
+          order_id: newOrderId,
+          line_type: l.line_type as "test" | "supplement",
+          test_id: l.line_type === "test" ? l.test_id : null,
+          supplement_id:
+            l.line_type === "supplement" ? l.supplement_id : null,
+          // profile_id constraint per migration 012:
+          //   test lines require it, supplement lines require it null.
+          profile_id: l.line_type === "test" ? profileIdForLines : null,
+          quantity: l.quantity,
+          unit_price_cad: l.unit_price_cad,
+          payment_status: "paid",
+        }));
+      if (orderLineInserts.length > 0) {
+        await supabase.from("order_lines").insert(orderLineInserts);
+      }
     }
 
     // Link the invoice back to the new order for the portal join.

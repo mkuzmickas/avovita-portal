@@ -47,14 +47,33 @@ export function parseFloLabsEmail(raw: string): ParsedFloLabsEmail {
   //     "Appointment Scheduled" then "for {First Last}" on the next line.
   //     No Name: line, no Email: line, subject doesn't carry the name.
   //   - Any HTML-ish paste where table cells collapsed onto one line.
+  // Name capture — stop at newline OR a recognized Acuity section
+  // keyword. The old pattern used `[A-Za-z' -]+` which includes space,
+  // so when Outlook flattens the HTML table cells onto a single line
+  // ("for Jeff Saponja What AvoVita Wellness Mobile Lab Collection")
+  // the regex greedily ate the whole line as the "name" and Jenna
+  // ended up with clients called "Jeff Saponja What AvoVita Wellness
+  // Mobile Lab Collection". Non-greedy match + lookahead to the next
+  // section keyword bounds it properly; supports multi-word last
+  // names like "Paula da Silva".
+  const NAME_STOP = "(?=\\s*(?:$|\\n|What\\b|When\\b|Where\\b|Old\\s+Time\\b|New\\s+Time\\b))";
   const nameFromBody =
     matchLine(text, /^\s*Name:\s*(.+?)\s*$/im) ??
     subjectMatch?.[1]?.trim() ??
     matchLine(
       text,
-      /Appointment\s+(?:Scheduled|Rescheduled|Canceled|Cancelled)\s*\n\s*for\s+([A-Z][A-Za-z' -]+\s+[A-Z][A-Za-z' -]+)\s*$/im,
+      new RegExp(
+        `Appointment\\s+(?:Scheduled|Rescheduled|Canceled|Cancelled)\\s*\\n\\s*for\\s+([A-Z][A-Za-z' -]+?)${NAME_STOP}`,
+        "im",
+      ),
     ) ??
-    matchLine(text, /^\s*for\s+([A-Z][A-Za-z' -]+\s+[A-Z][A-Za-z' -]+)\s*$/im) ??
+    matchLine(
+      text,
+      new RegExp(
+        `(?:^|\\n)\\s*for\\s+([A-Z][A-Za-z' -]+?)${NAME_STOP}`,
+        "im",
+      ),
+    ) ??
     null;
   const clientEmail = matchLine(text, /^\s*Email:\s*(\S+@\S+)\s*$/im);
   const clientPhoneRaw = matchLine(text, /^\s*Phone:\s*(\+?[\d\s()-]+)\s*$/im);
