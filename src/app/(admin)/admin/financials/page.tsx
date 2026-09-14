@@ -306,20 +306,27 @@ export default async function AdminFinancialsPage() {
   //     the exact string used here — flagged separately for clarity.
   const MAYO_SYNTHETIC_CATEGORY = "mayo_invoices";
   try {
-    const { data: mayoInvoicesRaw } = await service
+    // Mayo bills in USD. Migration 040 renamed total_cad → total_usd
+    // and added a per-invoice fx_rate (default 1.43). CAD is computed
+    // at display time as total_usd * fx_rate — the DB deliberately
+    // doesn't store CAD so the spread lives on ONE canonical column.
+    const { data: mayoInvoicesRaw, error: mayoErr } = await service
       .from("mayo_invoices")
-      .select("invoice_number, invoice_date, total_cad")
+      .select("invoice_number, invoice_date, total_usd, fx_rate")
       .gte("invoice_date", qboSinceDate)
       .order("invoice_date", { ascending: true });
+    if (mayoErr) throw mayoErr;
     const mayoInvoices = (mayoInvoicesRaw ?? []) as Array<{
       invoice_number: string;
       invoice_date: string;
-      total_cad: number;
+      total_usd: number;
+      fx_rate: number;
     }>;
     for (const inv of mayoInvoices) {
+      const cad = Number(inv.total_usd) * Number(inv.fx_rate);
       qboTxns.push({
         txn_date: inv.invoice_date,
-        amount_cad: Number(inv.total_cad),
+        amount_cad: Number(cad.toFixed(2)),
         direction: "expense",
         category: MAYO_SYNTHETIC_CATEGORY,
         supplier_name: `Mayo invoice ${inv.invoice_number}`,
