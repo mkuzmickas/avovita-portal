@@ -600,8 +600,39 @@ function PnLBreakdown({
       </div>
       <table style={{ width: "100%", fontSize: 13 }}>
         <tbody>
-          {/* REVENUE */}
-          <PnLSectionRow label="Revenue (pre-tax)" amount={revenue} accent />
+          {/* REVENUE — click to expand into a per-order list */}
+          <PnLSectionRow
+            label="Revenue (pre-tax)"
+            amount={revenue}
+            accent
+            expandable
+            expanded={expanded.has("revenue")}
+            onToggle={() => toggle("revenue")}
+            secondary={`${orders.length} order${orders.length === 1 ? "" : "s"}`}
+          />
+          {expanded.has("revenue") &&
+            [...orders]
+              .sort((a, b) => b.total_cad - a.total_cad)
+              .map((o) => (
+                <tr key={`revenue:${o.id}`}>
+                  <td style={{ ...pnlCell, paddingLeft: 38 }}>
+                    <span style={{ color: "#c4973a" }}>#{o.id.slice(0, 8).toUpperCase()}</span>
+                    <span style={{ marginLeft: 10, color: "#ffffff" }}>{o.client_label}</span>
+                  </td>
+                  <td style={{ ...pnlCellR, color: "#8dc63f" }}>
+                    {new Date(o.revenue_date).toLocaleDateString("en-CA", {
+                      timeZone: "America/Edmonton",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                    {" · "}
+                    {o.test_count} {o.test_count === 1 ? "test" : "tests"}
+                  </td>
+                  <td style={{ ...pnlCellR, color: "#e8d5a3" }}>
+                    {formatCurrency(o.total_cad)}
+                  </td>
+                </tr>
+              ))}
 
           {/* COGS */}
           <PnLBreak />
@@ -736,14 +767,26 @@ function PnLSectionRow({
   amount,
   accent,
   secondary,
+  expandable,
+  expanded,
+  onToggle,
 }: {
   label: string;
   amount: number;
   accent?: boolean;
   secondary?: string;
+  expandable?: boolean;
+  expanded?: boolean;
+  onToggle?: () => void;
 }) {
   return (
-    <tr style={{ backgroundColor: accent ? "#1a3d22" : undefined }}>
+    <tr
+      style={{
+        backgroundColor: accent ? "#1a3d22" : undefined,
+        cursor: expandable ? "pointer" : undefined,
+      }}
+      onClick={expandable ? onToggle : undefined}
+    >
       <td
         style={{
           ...pnlCell,
@@ -752,6 +795,11 @@ function PnLSectionRow({
           fontSize: accent ? 15 : 13,
         }}
       >
+        {expandable && (
+          <span style={{ color: "#c4973a", marginRight: 6 }}>
+            {expanded ? "▾" : "▸"}
+          </span>
+        )}
         {label}
       </td>
       <td style={{ ...pnlCellR, color: "#8dc63f" }}>{secondary ?? ""}</td>

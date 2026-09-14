@@ -19,6 +19,10 @@ export type ShippedOrder = {
    *  balance_transaction. Null when not yet backfilled. Counted as
    *  OpEx in the Financials view. */
   stripe_fee_cad: number | null;
+  /** Display label for the Revenue drill-down: primary profile name
+   *  when we have it, waiver signature name second, account email
+   *  last-resort. Never null so the drill-down row always renders. */
+  client_label: string;
 };
 
 /**
@@ -54,9 +58,11 @@ export default async function AdminFinancialsPage() {
       `
       id, appointment_at, appointment_date, shipping_date, shipped_at, created_at,
       total_cad, tax_cad, stripe_fee_cad, manifest_id,
+      account:accounts ( email, waiver_signed_name ),
       order_lines (
         quantity, line_type, unit_price_cad, custom_description,
-        test:tests ( cost_cad )
+        test:tests ( cost_cad ),
+        profile:patient_profiles ( first_name, last_name, is_primary )
       )
     `,
     )
@@ -74,12 +80,18 @@ export default async function AdminFinancialsPage() {
     tax_cad: number | null;
     stripe_fee_cad: number | null;
     manifest_id: string | null;
+    account: { email: string | null; waiver_signed_name: string | null } | null;
     order_lines: Array<{
       quantity: number;
       line_type: string | null;
       unit_price_cad: number | null;
       custom_description: string | null;
       test: { cost_cad: number | null } | null;
+      profile: {
+        first_name: string | null;
+        last_name: string | null;
+        is_primary: boolean | null;
+      } | null;
     }>;
   };
 
@@ -128,6 +140,26 @@ export default async function AdminFinancialsPage() {
       // appear in the P&L. Was previously using total_cad which
       // inflated revenue by ~5%.
       const pretax = (o.total_cad ?? 0) - (o.tax_cad ?? 0);
+
+      // Client label — primary profile first, any-profile second,
+      // waiver_signed_name third, account email as the final
+      // fallback. Ensures every drilldown row has a human-readable
+      // client name even for invoice-mirrored orders where the
+      // primary profile hasn't been linked to the test lines.
+      const profiles = (o.order_lines ?? [])
+        .map((l) => l.profile)
+        .filter((p): p is NonNullable<typeof p> => p != null);
+      const primaryProfile = profiles.find((p) => p.is_primary);
+      const anyProfile = profiles[0];
+      const nameFromProfile = primaryProfile ?? anyProfile;
+      const client_label =
+        (nameFromProfile
+          ? `${nameFromProfile.first_name ?? ""} ${nameFromProfile.last_name ?? ""}`.trim()
+          : "") ||
+        (o.account?.waiver_signed_name ?? "").trim() ||
+        (o.account?.email ?? "").trim() ||
+        "(unknown client)";
+
       return {
         id: o.id,
         revenue_date,
@@ -136,6 +168,7 @@ export default async function AdminFinancialsPage() {
         test_count: testCount,
         manifest_id: o.manifest_id,
         stripe_fee_cad: o.stripe_fee_cad,
+        client_label,
       };
     },
   );
