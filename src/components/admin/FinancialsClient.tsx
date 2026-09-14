@@ -911,6 +911,7 @@ function formatCategoryLabel(cat: string): string {
     inventory: "Inventory (supplements resale)",
     other: "Other",
     uncategorized: "Uncategorized",
+    mayo_invoices: "Mayo Clinic Labs (from uploaded invoices)",
   };
   return map[cat] ?? cat;
 }

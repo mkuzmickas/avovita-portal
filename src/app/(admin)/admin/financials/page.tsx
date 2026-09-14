@@ -263,6 +263,48 @@ export default async function AdminFinancialsPage() {
     // migration 037 not applied yet — keep defaults, UI degrades gracefully
   }
 
+  // 3b. Mayo Clinic Laboratories — synthesize a COGS bucket straight
+  //     from the mayo_invoices table so the FULL invoice (matched +
+  //     overhead + unmatched) lands in the month it was invoiced,
+  //     regardless of which lines are still awaiting a portal-order
+  //     match. Every dollar Mayo billed us is a real dollar out.
+  //     Bypasses QBO because Mayo bills weren't being categorized in
+  //     QBO at all (Aug had $0 Mayo COGS in QBO but $6,780 real
+  //     matched invoice cost + $2,965 in yet-unmatched lines across
+  //     May-Aug — the $18k August profit illusion).
+  //
+  //     Rendered as a first-class COGS category so the drill-down
+  //     shows one row per invoice. Won't double-count QBO Mayo entries
+  //     unless the user explicitly categorizes future QBO txns under
+  //     the exact string used here — flagged separately for clarity.
+  const MAYO_SYNTHETIC_CATEGORY = "mayo_invoices";
+  try {
+    const { data: mayoInvoicesRaw } = await service
+      .from("mayo_invoices")
+      .select("invoice_number, invoice_date, total_cad")
+      .gte("invoice_date", qboSinceDate)
+      .order("invoice_date", { ascending: true });
+    const mayoInvoices = (mayoInvoicesRaw ?? []) as Array<{
+      invoice_number: string;
+      invoice_date: string;
+      total_cad: number;
+    }>;
+    for (const inv of mayoInvoices) {
+      qboTxns.push({
+        txn_date: inv.invoice_date,
+        amount_cad: Number(inv.total_cad),
+        direction: "expense",
+        category: MAYO_SYNTHETIC_CATEGORY,
+        supplier_name: `Mayo invoice ${inv.invoice_number}`,
+      });
+    }
+    if (mayoInvoices.length > 0 && !cogsCategories.includes(MAYO_SYNTHETIC_CATEGORY)) {
+      cogsCategories.push(MAYO_SYNTHETIC_CATEGORY);
+    }
+  } catch {
+    // migration 039 not applied — degrade silently, financials still work
+  }
+
   // 4. QBO integration status
   let qboConnected = false;
   let qboConnectedBy: string | null = null;
