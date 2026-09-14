@@ -364,7 +364,7 @@ function OverviewTab({
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card label="Total Revenue" value={formatCurrency(revenue)} />
-        <Card label="COGS (real, QBO)" value={formatCurrency(cogs)} />
+        <Card label="COGS (labs + QBO)" value={formatCurrency(cogs)} />
         <Card
           label="Gross Profit"
           value={formatCurrency(grossProfit)}
@@ -912,6 +912,7 @@ function formatCategoryLabel(cat: string): string {
     other: "Other",
     uncategorized: "Uncategorized",
     mayo_invoices: "Mayo Clinic Labs (from uploaded invoices)",
+    non_mayo_lab_costs: "Non-Mayo lab tests (Armin, EpiSeek, ReligenDx, LabCorp — catalog cost)",
   };
   return map[cat] ?? cat;
 }

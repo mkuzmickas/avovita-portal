@@ -61,7 +61,7 @@ export default async function AdminFinancialsPage() {
       account:accounts ( email, waiver_signed_name ),
       order_lines (
         quantity, line_type, unit_price_cad, custom_description,
-        test:tests ( cost_cad ),
+        test:tests ( cost_cad, lab:labs ( name ) ),
         profile:patient_profiles ( first_name, last_name, is_primary )
       )
     `,
@@ -86,7 +86,10 @@ export default async function AdminFinancialsPage() {
       line_type: string | null;
       unit_price_cad: number | null;
       custom_description: string | null;
-      test: { cost_cad: number | null } | null;
+      test: {
+        cost_cad: number | null;
+        lab: { name: string | null } | null;
+      } | null;
       profile: {
         first_name: string | null;
         last_name: string | null;
@@ -104,10 +107,19 @@ export default async function AdminFinancialsPage() {
     typeof desc === "string" &&
     /\b(collect|flolab|shipping\s+fee|delivery\s+fee)\b/i.test(desc);
 
+  // Per-order test cost tally broken out by lab so we can bucket
+  // non-Mayo lab COGS (Armin, EpiSeek, ReligenDX, LabCorp, ...) into
+  // their own monthly total downstream. Mayo test-catalog costs are
+  // deliberately EXCLUDED — Mayo's actual invoice total is folded in
+  // separately via the mayo_invoices synthesis so we don't double-
+  // count what the real bill covers.
+  const nonMayoLabCostByMonth = new Map<string, number>();
+
   const orders: ShippedOrder[] = ((ordersRaw ?? []) as unknown as RawOrder[]).map(
     (o) => {
       let testCost = 0;
       let testCount = 0;
+      let nonMayoLabCost = 0;
       for (const line of o.order_lines ?? []) {
         const qty = line.quantity ?? 1;
         // Real test line — cost from the tests catalogue.
@@ -115,6 +127,10 @@ export default async function AdminFinancialsPage() {
           const cost = line.test?.cost_cad ?? 0;
           testCost += cost * qty;
           testCount += qty;
+          const labName = line.test?.lab?.name ?? "";
+          if (labName && !/mayo/i.test(labName)) {
+            nonMayoLabCost += cost * qty;
+          }
           continue;
         }
         // Pass-through fee (collection, FloLabs, shipping) — treat the
@@ -135,6 +151,17 @@ export default async function AdminFinancialsPage() {
         o.shipping_date ||
         o.shipped_at ||
         o.created_at;
+
+      // Bucket non-Mayo lab cost into a per-month total, keyed by the
+      // YYYY-MM-01 anchor of the revenue_date so it lines up with the
+      // month the corresponding revenue was recognized.
+      if (nonMayoLabCost > 0) {
+        const anchor = `${revenue_date.slice(0, 7)}-01`;
+        nonMayoLabCostByMonth.set(
+          anchor,
+          (nonMayoLabCostByMonth.get(anchor) ?? 0) + nonMayoLabCost,
+        );
+      }
       // Pre-tax revenue: exclude GST. GST is money we collect on
       // behalf of CRA and remit — it is NOT income and mustn't
       // appear in the P&L. Was previously using total_cad which
@@ -301,8 +328,33 @@ export default async function AdminFinancialsPage() {
     if (mayoInvoices.length > 0 && !cogsCategories.includes(MAYO_SYNTHETIC_CATEGORY)) {
       cogsCategories.push(MAYO_SYNTHETIC_CATEGORY);
     }
-  } catch {
-    // migration 039 not applied — degrade silently, financials still work
+  } catch (err) {
+    // Log so a silent schema/RLS drop is visible in Vercel logs
+    // instead of just showing "0 Mayo COGS" and being called a bug.
+    console.error("[financials] mayo_invoices fold failed:", err);
+  }
+
+  // 3c. Non-Mayo lab COGS — synthesize a monthly bucket from the
+  //     per-order test_cost_cad for every test line where the lab is
+  //     NOT Mayo (Armin Labs, EpiSeek/Precision Epigenomics, ReligenDx,
+  //     LabCorp, ...). These labs don't send us a consolidated monthly
+  //     invoice like Mayo does, so we use the catalog cost per test as
+  //     an accrual estimate. Bucketed by the order's revenue_date
+  //     month so cost lines up with the revenue.
+  const NON_MAYO_LAB_CATEGORY = "non_mayo_lab_costs";
+  if (nonMayoLabCostByMonth.size > 0) {
+    for (const [anchor, cost] of nonMayoLabCostByMonth.entries()) {
+      qboTxns.push({
+        txn_date: anchor,
+        amount_cad: Number(cost.toFixed(2)),
+        direction: "expense",
+        category: NON_MAYO_LAB_CATEGORY,
+        supplier_name: `Non-Mayo labs (${anchor.slice(0, 7)})`,
+      });
+    }
+    if (!cogsCategories.includes(NON_MAYO_LAB_CATEGORY)) {
+      cogsCategories.push(NON_MAYO_LAB_CATEGORY);
+    }
   }
 
   // 4. QBO integration status
