@@ -41,6 +41,11 @@ export type PortalOrder = {
   fedex_tracking_number: string | null;
   shipped_at: string | null;
   created_at: string;
+  /** ISO of the FloLabs appointment on this order, if one has been
+   *  booked. When populated, the "Book FloLabs Appointment" CTA is
+   *  hidden so the customer can't open the Acuity page a second time
+   *  and inadvertently book an unpaid duplicate. */
+  appointment_at: string | null;
   order_lines: PortalOrderLine[];
 };
 
@@ -52,7 +57,17 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const testCount = order.order_lines.length;
-  const needsBooking = order.status === "confirmed";
+  // "Needs booking" ONLY when the order is confirmed (paid) AND no
+  // FloLabs appointment has been booked yet. Previously this was a
+  // status-only check, so the CTA re-appeared for every subsequent
+  // visit even after the customer had booked their appointment —
+  // letting them open Acuity again and book duplicate slots against
+  // the same single paid order. Christopher Eggerston's Sep 2026
+  // incident (booked a post-results appointment without paying for
+  // a new test) traces back to this: any prior confirmed order still
+  // had the button live.
+  const needsBooking =
+    order.status === "confirmed" && !order.appointment_at;
   // Invoice PDF: paid statuses + non-zero total. Mirrors the API gate
   // so we don't surface a button that 409s — and excludes AVOVITA-TEST
   // internal zero-dollar orders the same way the route does.

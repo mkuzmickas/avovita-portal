@@ -21,6 +21,7 @@ type OrderRow = {
   status: string;
   total_cad: number | null;
   created_at: string;
+  appointment_at: string | null;
   order_lines: Array<{
     id: string;
     quantity: number;
@@ -60,7 +61,7 @@ export default async function PortalDashboard() {
       .from("orders")
       .select(
         `
-        id, status, total_cad, created_at,
+        id, status, total_cad, created_at, appointment_at,
         order_lines(
           id, quantity,
           test:tests(name),

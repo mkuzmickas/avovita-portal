@@ -21,7 +21,7 @@ export default async function OrdersPage() {
     .select(
       `
       id, status, total_cad, subtotal_cad, home_visit_fee_cad, notes,
-      fedex_tracking_number, shipped_at, created_at,
+      fedex_tracking_number, shipped_at, created_at, appointment_at,
       order_lines(
         id, quantity, unit_price_cad,
         test:tests(
