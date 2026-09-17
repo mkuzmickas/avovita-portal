@@ -5,6 +5,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/utils";
 import { PatientResultsRepository } from "@/components/admin/PatientResultsRepository";
 import { ProfileEditTrigger } from "@/components/admin/ProfileEditTrigger";
+import { SendPasswordResetButton } from "@/components/admin/SendPasswordResetButton";
 import type { AdminPatientProfile } from "@/app/(admin)/admin/patients/page";
 import type { OrderStatus } from "@/types/database";
 
@@ -300,6 +301,11 @@ export default async function AdminPatientDetailPage({
             <Calendar className="w-3.5 h-3.5" />
             Joined {formatDate(account.created_at)}
           </span>
+          <SendPasswordResetButton
+            accountId={accountId}
+            hasEmail={!!account.email}
+            email={account.email}
+          />
         </div>
       </div>
 
