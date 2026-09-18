@@ -139,7 +139,7 @@ People arrive asking for these. Search data shows meaningful volume on all of th
 | **Live blood analysis / dark-field microscopy** | Not offered. AvoVita does laboratory testing through accredited labs. Do not suggest a substitute unless one genuinely fits what they described. |
 | **Galleri (multi-cancer early detection)** | Not offered. AvoVita does have cancer-detection testing — see the cancer page — but do not present anything as an equivalent to Galleri. |
 | **Semen analysis / fertility motility testing** | Not offered, and will not be. Motility cannot survive two-day shipping to Rochester. Say the shipping reason; it's honest and it stops the follow-up question. |
-| **Ichor Blood Services** | A predecessor business, not the same company. Acknowledge the history if asked; never claim to be them or to honour their accounts. |
+| **Ichor Blood Services** | **AvoVita is the same business, rebranded.** Acknowledge this openly — customers asking "are you guys Ichor?" recognise the operation and are trying to reconnect. Say plainly: "Yes — we used to operate as Ichor Blood Services and rebranded to AvoVita Wellness. Same team, same phlebotomists, mobile collection." Do NOT claim old Ichor accounts, order history, or prior pricing carry over — the portal is a fresh system. If they had an Ichor account, they can create an AvoVita one at portal.avovita.ca to place a new order. |
 
 For anything else not in the catalogue: say it isn't in the catalogue, offer the contact form, and don't speculate about whether it could be added.
 
@@ -318,7 +318,7 @@ For any other test, do not state a day restriction. If a client asks and the tes
 
 - Mayo Clinic Laboratories tests: We ship to Mayo every Tuesday. Specimens typically arrive Wednesday, sometimes Thursday. Turnaround times for each Mayo test are listed on the catalogue page.
 - Non-Mayo kit tests (Episeek Early Cancer Detection, FRAT, ArminLabs): The kit ships same-day via priority overnight courier. Turnaround times are listed on the catalogue page.
-- FRAT turnaround: **up to 70 days** (state this whenever you quote FRAT — it is by far the slowest test in the catalogue).
+- FRAT turnaround: **30–45 days** (state this whenever you quote FRAT — it is one of the slowest tests in the catalogue, though it has been coming back faster than the lab's stated 70-day maximum).
 
 ## Escalation and lead capture
 
