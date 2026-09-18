@@ -9,6 +9,7 @@ import {
   FlaskConical,
   Truck,
   Download,
+  CheckCircle,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
@@ -193,6 +194,55 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                 <Download className="w-4 h-4" />
                 Download Invoice PDF
               </a>
+            </div>
+          )}
+
+          {/* Collection scheduled — reassurance panel visible whenever
+              an appointment_at is stamped on the order, from either an
+              Acuity auto-match, an admin Add-appointment override
+              (Greg Fulton's mismatched-email case), or the queue
+              picker. Shown for every status from confirmed through
+              shipped so the customer always has one place to
+              double-check the date/time they booked. */}
+          {order.appointment_at && (
+            <div
+              className="mx-4 sm:mx-6 my-5 rounded-xl border p-4 sm:p-5"
+              style={{
+                backgroundColor: "rgba(141, 198, 63, 0.10)",
+                borderColor: "#8dc63f",
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <CheckCircle
+                  className="w-5 h-5 shrink-0 mt-0.5"
+                  style={{ color: "#8dc63f" }}
+                />
+                <div className="min-w-0">
+                  <h4
+                    className="font-heading text-lg font-semibold mb-1"
+                    style={{
+                      color: "#ffffff",
+                      fontFamily: '"Cormorant Garamond", Georgia, serif',
+                    }}
+                  >
+                    Collection scheduled
+                  </h4>
+                  <p
+                    className="text-sm font-semibold"
+                    style={{ color: "#ffffff" }}
+                  >
+                    {formatAppointment(order.appointment_at)}
+                  </p>
+                  <p
+                    className="text-xs mt-1"
+                    style={{ color: "#e8d5a3" }}
+                  >
+                    A FloLabs phlebotomist will meet you at the address you
+                    gave Acuity. To reschedule, use the Change / Cancel
+                    Appointment link in your FloLabs confirmation email.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -438,4 +488,27 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
       )}
     </div>
   );
+}
+
+/**
+ * Render a stored appointment_at ISO as "Monday, Sep 28, 2026 · 7:00 AM"
+ * in Calgary local time so the customer sees the same clock they
+ * booked against on FloLabs — regardless of the browser's own zone.
+ */
+function formatAppointment(iso: string): string {
+  const d = new Date(iso);
+  const datePart = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Edmonton",
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(d);
+  const timePart = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Edmonton",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(d);
+  return `${datePart} · ${timePart}`;
 }
