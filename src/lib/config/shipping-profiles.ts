@@ -105,6 +105,18 @@ export interface CommercialInvoiceOverlay {
   /** Where to embed the shipper's signature image (optional — if the
    *  template is pre-signed, leave undefined). */
   signatureOverlay?: OverlayImagePoint;
+  /** Arbitrary text stamps for templates where a cell needs a
+   *  different value than what's baked in. Used by Mayo Ambient to
+   *  overwrite the "15 PCS" quantity on the shared Mayo CI template
+   *  with "1 PCS". If blankoutRect is set, a white rectangle is drawn
+   *  first to clear the existing baked-in text before the new text
+   *  lands on top. */
+  textStamps?: Array<
+    OverlayTextPoint & {
+      text: string;
+      blankoutRect?: { x: number; y: number; width: number; height: number };
+    }
+  >;
 }
 
 export interface OverlayTextPoint {
@@ -516,6 +528,23 @@ export const MAYO_AMBIENT: ShippingProfile = {
     dateOverlays: [
       { pageIndex: 0, x: 340, y: 695, fontSize: 12, format: "iso" },
       { pageIndex: 0, x: 110, y: 192, fontSize: 10, format: "iso" },
+    ],
+    // Mayo Frozen's CI template has "15" baked into the quantity cell
+    // on the first goods row (one row per vial for a 15-vial frozen
+    // kit). Ambient shipments are a single specimen — blank the "15"
+    // with a white rectangle and stamp "1" over it so the CI matches
+    // the FedEx waybill (which already declares qty=1 via commodity).
+    // Coordinates are a best-guess first pass — iterate visually if
+    // the "1" ends up off-center or the blank doesn't fully cover.
+    textStamps: [
+      {
+        pageIndex: 0,
+        x: 625,
+        y: 491,
+        fontSize: 10,
+        text: "1",
+        blankoutRect: { x: 610, y: 488, width: 25, height: 13 },
+      },
     ],
     signatureOverlay: undefined,
   },

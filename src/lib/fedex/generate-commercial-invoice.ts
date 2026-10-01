@@ -74,6 +74,30 @@ export async function generateCommercialInvoice(params: {
     });
   }
 
+  // Arbitrary text stamps for templates whose baked-in cells need
+  // overwriting (Mayo Ambient reuses Mayo Frozen's "15 PCS" template
+  // but ships 1 specimen, so we blank out the 15 and stamp 1).
+  const white = rgb(1, 1, 1);
+  for (const stamp of overlay.textStamps ?? []) {
+    const page = pdf.getPage(stamp.pageIndex);
+    if (stamp.blankoutRect) {
+      page.drawRectangle({
+        x: stamp.blankoutRect.x,
+        y: stamp.blankoutRect.y,
+        width: stamp.blankoutRect.width,
+        height: stamp.blankoutRect.height,
+        color: white,
+      });
+    }
+    page.drawText(stamp.text, {
+      x: stamp.x,
+      y: stamp.y,
+      size: stamp.fontSize ?? 10,
+      font,
+      color: black,
+    });
+  }
+
   // Stamp signature if the profile wants one and the file exists
   if (overlay.signatureOverlay) {
     const sig = await loadSignatureImage(supabase);
