@@ -436,9 +436,101 @@ export const EPISEEK: ShippingProfile = {
   etdDocumentPaths: [],
 };
 
+// ─── Mayo Clinic Labs, Ambient shipment ────────────────────────────
+// Same destination, consignee, and paperwork as MAYO_FROZEN — the
+// difference is specimen handling: ambient-temperature tests (HFET,
+// serology that doesn't need frozen, etc.) ship in a FedEx Pak with
+// no dry ice, like Armin and EpiSeek. All the Mayo customs paperwork
+// still applies because the destination lab is the same.
+//
+// Reuses mayo-commercial-invoice.pdf and mayo-cdc-paperwork.pdf —
+// they're keyed on the destination (Mayo in Rochester) not on the
+// shipment's temperature regime.
+export const MAYO_AMBIENT: ShippingProfile = {
+  kind: "mayo_ambient",
+  displayLabel: "Ship Mayo Ambient",
+  displaySubtitle:
+    "Ambient FedEx Pak to Mayo Clinic Laboratories · International Priority Express",
+  recipient: {
+    contactName: "Global Logistics",
+    company: "Mayo Clinic Laboratories",
+    phone: "8005331710",
+    email: "mliintl@mayo.edu",
+    address: {
+      line1: "3050 Superior Dr. NW",
+      line2: null,
+      city: "Rochester",
+      stateOrProvince: "MN",
+      postalCode: "55905",
+      country: "US",
+    },
+    residential: false,
+  },
+  serviceType: "FEDEX_INTERNATIONAL_PRIORITY_EXPRESS",
+  currency: "USD",
+  package: {
+    weightLb: 2,
+    weightUnit: "LB",
+    packagingType: "FEDEX_PAK",
+    // FedEx-branded Pak uses standard internal dimensions.
+    lengthIn: null,
+    widthIn: null,
+    heightIn: null,
+    dimensionUnit: "IN",
+    declaredValue: 1,
+    dryIceWeightKg: 0,
+  },
+  commodity: {
+    description:
+      "Human UN3373 Biological Substance Non Infectious, Non Hazardous For lab diagnostics only",
+    harmonizedCode: "3002.12.00.20",
+    netWeightLb: 1,
+    quantity: 1,
+    quantityUnit: "PCS",
+    customsValue: 1,
+    countryOfManufacture: "CA",
+  },
+  shipmentPurpose: "NOT_SOLD",
+  incoterm: "DDP",
+  // Mirrors Mayo Frozen: recipient pays per the invoice text, despite
+  // DDP on the FedEx waybill.
+  dutiesPaidBy: "RECIPIENT",
+  consigneeForInvoice: {
+    name: "Dr. William G. Morice II",
+    company: "Mayo Clinic Laboratories",
+    address:
+      "Specimen Operations - Dock\n3050 Superior Drive NW\nRochester, MN 55905",
+    phone: "1-800-533-1710",
+  },
+  recipientNotifications: {
+    email: "RSTMMLTRANSINTL@mayo.edu",
+    events: ["ON_TENDER", "ON_EXCEPTION"],
+  },
+  commercialInvoice: {
+    // Same template Mayo Frozen uses — Mayo doesn't care which temp
+    // regime the shipment travels at; the CI is destination-anchored.
+    templatePath: "mayo-commercial-invoice.pdf",
+    trackingNumberOverlays: [
+      { pageIndex: 0, x: 105, y: 695, fontSize: 12 },
+    ],
+    dateOverlays: [
+      { pageIndex: 0, x: 340, y: 695, fontSize: 12, format: "iso" },
+      { pageIndex: 0, x: 110, y: 192, fontSize: 10, format: "iso" },
+    ],
+    signatureOverlay: undefined,
+  },
+  etdDocumentPaths: [
+    // Same 7-page Mayo declaration + CDC import permit bundle — CDC
+    // permits are tied to the Mayo authorized-user list, not to the
+    // shipment's temperature.
+    "mayo-cdc-paperwork.pdf",
+  ],
+};
+
 // ─── Registry ─────────────────────────────────────────────────────
 export const SHIPPING_PROFILES: Record<string, ShippingProfile> = {
   [MAYO_FROZEN.kind]: MAYO_FROZEN,
+  [MAYO_AMBIENT.kind]: MAYO_AMBIENT,
   [ARMIN_LABS.kind]: ARMIN_LABS,
   [EPISEEK.kind]: EPISEEK,
 };
