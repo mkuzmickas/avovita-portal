@@ -519,80 +519,18 @@ export const MAYO_AMBIENT: ShippingProfile = {
     events: ["ON_TENDER", "ON_EXCEPTION"],
   },
   commercialInvoice: {
-    // Same template Mayo Frozen uses — Mayo doesn't care which temp
-    // regime the shipment travels at; the CI is destination-anchored.
-    templatePath: "mayo-commercial-invoice.pdf",
+    // Ambient uses its own template PDF (edited copy of the Mayo
+    // Frozen template with QTY changed from 15→1 and TYPE OF PACKAGE
+    // changed from "Fibreboard box" to "FedEx UN3373 Overpak"). The
+    // overlay coordinates below are identical to Mayo Frozen's, so
+    // tracking number and dates stamp into the same cells.
+    templatePath: "mayo-ambient-commercial-invoice.pdf",
     trackingNumberOverlays: [
       { pageIndex: 0, x: 105, y: 695, fontSize: 12 },
     ],
     dateOverlays: [
       { pageIndex: 0, x: 340, y: 695, fontSize: 12, format: "iso" },
       { pageIndex: 0, x: 110, y: 192, fontSize: 10, format: "iso" },
-    ],
-    // Mayo Frozen's CI template has "15" baked into the quantity cell
-    // on the first goods row (one row per vial for a 15-vial frozen
-    // kit). Ambient shipments are a single specimen — blank the "15"
-    // with a white rectangle and stamp "1" over it so the CI matches
-    // the FedEx waybill (which already declares qty=1 via commodity).
-    //
-    // First attempt (x=625, y=491) landed off-page: US Letter is
-    // 612pt wide so x=625 was past the right margin, invisible.
-    // Second pass uses a wider blank rect (40pt) and a safer x so
-    // we don't need pixel-perfect coordinates to kill the "15" —
-    // the rect goes well under 612. Iterate if the "1" sits
-    // off-center of the QTY cell on the first live print.
-    // Fifth pass. Fourth landed between the goods-table header row
-    // and the first data row — taking a bite out of "Line Value ($)"
-    // header and leaving the "15" visible one row below. Dropping
-    // y by ~12 and pulling x in by ~20 to land squarely on the
-    // Human serum row's QTY cell. Rect height trimmed to 11 so it
-    // doesn't reach up into the header row above.
-    //
-    // Second stamp overwrites "TYPE OF PACKAGE: Fibreboard box" with
-    // "FedEx UN3373 Overpak" — the ambient shipment uses the FedEx
-    // overpak, not the fibreboard box used for frozen Mayo kits.
-    // y=490 lands on the correct row per the second-pass evidence
-    // (that stamp also landed near TYPE OF PACKAGE). Smaller font
-    // (8pt) so the longer string fits within the cell's horizontal
-    // extent without crowding the TOTAL VALUE field to its left.
-    // Sixth pass.
-    // QTY cell: fifth landed on-row but the 11pt-tall blank only
-    // covered the lower half of "15" — ascenders of the digits
-    // showed above. Taller rect (18pt) centered on the actual "15"
-    // baseline (~y=410) kills the whole glyph; the "1" moves to
-    // y=405 to sit centered inside the new rect.
-    // TYPE OF PACKAGE: fifth stamped under the Fibreboard row
-    // instead of on it. "Fibreboard box" baseline is at y≈503, not
-    // y=490. Raising both the rect and the text to actually overlap
-    // the baked-in value.
-    // Seventh pass. Pass 2 confirmed y=490 lands AT the TYPE OF
-    // PACKAGE row (that's where the "1" showed). Pass 6 at y=503
-    // overshot by ~13pt. Reverting to y=490 for Overpak and widening
-    // the blank rect left by 13pt because pass 6 left "Fibreb"
-    // visible — the baked-in value starts further left than x=498.
-    //
-    // QTY cell: pass 6 at y=405 put the "1" just below the Human
-    // serum row — bumping to y=420 which aligns with the row
-    // ("1" was 13pt too low; same offset as the Overpak miss).
-    // Blank rect y=413 so it covers y=413-435 (the row's full
-    // vertical extent).
-    textStamps: [
-      {
-        pageIndex: 0,
-        x: 470,
-        y: 420,
-        fontSize: 10,
-        text: "1",
-        blankoutRect: { x: 440, y: 413, width: 70, height: 22 },
-      },
-      {
-        pageIndex: 0,
-        x: 487,
-        y: 490,
-        fontSize: 8,
-        text: "FedEx UN3373 Overpak",
-        blankoutRect: { x: 485, y: 485, width: 110, height: 18 },
-      },
     ],
     signatureOverlay: undefined,
   },
