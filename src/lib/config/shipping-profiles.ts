@@ -541,21 +541,20 @@ export const MAYO_AMBIENT: ShippingProfile = {
     // we don't need pixel-perfect coordinates to kill the "15" —
     // the rect goes well under 612. Iterate if the "1" sits
     // off-center of the QTY cell on the first live print.
-    // Third pass. Second pass landed on-page but was ~80pt too high
-    // (next to TYPE OF PACKAGE row, well above the goods table) and
-    // x slightly too far right (sat in the right margin outside the
-    // QTY cell). "15" baked-in sits in the first goods-table row,
-    // which is below the DESCRIPTION OF PACKAGE paragraph — so y
-    // drops from 490 to around 347, and x comes in from 557 to 510
-    // for a true center of the QTY column.
+    // Fourth pass. Third pass overshot — "1" dropped into the Line
+    // Value column five rows down and the "15" survived. Measured
+    // against known-good overlay points (date at y=192 lands bottom
+    // of page, y=695 lands top), the Human serum row with "15" is at
+    // y≈412 and the QTY column center is at x≈490. Blank rect widens
+    // to 60pt to leave zero chance of a sliver of "15" showing.
     textStamps: [
       {
         pageIndex: 0,
-        x: 510,
-        y: 347,
+        x: 490,
+        y: 412,
         fontSize: 10,
         text: "1",
-        blankoutRect: { x: 485, y: 343, width: 55, height: 14 },
+        blankoutRect: { x: 460, y: 408, width: 60, height: 14 },
       },
     ],
     signatureOverlay: undefined,
