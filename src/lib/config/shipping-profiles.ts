@@ -534,16 +534,21 @@ export const MAYO_AMBIENT: ShippingProfile = {
     // kit). Ambient shipments are a single specimen — blank the "15"
     // with a white rectangle and stamp "1" over it so the CI matches
     // the FedEx waybill (which already declares qty=1 via commodity).
-    // Coordinates are a best-guess first pass — iterate visually if
-    // the "1" ends up off-center or the blank doesn't fully cover.
+    //
+    // First attempt (x=625, y=491) landed off-page: US Letter is
+    // 612pt wide so x=625 was past the right margin, invisible.
+    // Second pass uses a wider blank rect (40pt) and a safer x so
+    // we don't need pixel-perfect coordinates to kill the "15" —
+    // the rect goes well under 612. Iterate if the "1" sits
+    // off-center of the QTY cell on the first live print.
     textStamps: [
       {
         pageIndex: 0,
-        x: 625,
-        y: 491,
+        x: 557,
+        y: 490,
         fontSize: 10,
         text: "1",
-        blankoutRect: { x: 610, y: 488, width: 25, height: 13 },
+        blankoutRect: { x: 530, y: 486, width: 55, height: 14 },
       },
     ],
     signatureOverlay: undefined,
