@@ -565,22 +565,33 @@ export const MAYO_AMBIENT: ShippingProfile = {
     // instead of on it. "Fibreboard box" baseline is at y≈503, not
     // y=490. Raising both the rect and the text to actually overlap
     // the baked-in value.
+    // Seventh pass. Pass 2 confirmed y=490 lands AT the TYPE OF
+    // PACKAGE row (that's where the "1" showed). Pass 6 at y=503
+    // overshot by ~13pt. Reverting to y=490 for Overpak and widening
+    // the blank rect left by 13pt because pass 6 left "Fibreb"
+    // visible — the baked-in value starts further left than x=498.
+    //
+    // QTY cell: pass 6 at y=405 put the "1" just below the Human
+    // serum row — bumping to y=420 which aligns with the row
+    // ("1" was 13pt too low; same offset as the Overpak miss).
+    // Blank rect y=413 so it covers y=413-435 (the row's full
+    // vertical extent).
     textStamps: [
       {
         pageIndex: 0,
         x: 470,
-        y: 405,
+        y: 420,
         fontSize: 10,
         text: "1",
-        blankoutRect: { x: 440, y: 397, width: 70, height: 18 },
+        blankoutRect: { x: 440, y: 413, width: 70, height: 22 },
       },
       {
         pageIndex: 0,
-        x: 502,
-        y: 503,
+        x: 487,
+        y: 490,
         fontSize: 8,
         text: "FedEx UN3373 Overpak",
-        blankoutRect: { x: 498, y: 500, width: 100, height: 14 },
+        blankoutRect: { x: 485, y: 485, width: 110, height: 18 },
       },
     ],
     signatureOverlay: undefined,
