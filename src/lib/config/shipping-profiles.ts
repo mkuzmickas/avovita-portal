@@ -541,20 +541,36 @@ export const MAYO_AMBIENT: ShippingProfile = {
     // we don't need pixel-perfect coordinates to kill the "15" —
     // the rect goes well under 612. Iterate if the "1" sits
     // off-center of the QTY cell on the first live print.
-    // Fourth pass. Third pass overshot — "1" dropped into the Line
-    // Value column five rows down and the "15" survived. Measured
-    // against known-good overlay points (date at y=192 lands bottom
-    // of page, y=695 lands top), the Human serum row with "15" is at
-    // y≈412 and the QTY column center is at x≈490. Blank rect widens
-    // to 60pt to leave zero chance of a sliver of "15" showing.
+    // Fifth pass. Fourth landed between the goods-table header row
+    // and the first data row — taking a bite out of "Line Value ($)"
+    // header and leaving the "15" visible one row below. Dropping
+    // y by ~12 and pulling x in by ~20 to land squarely on the
+    // Human serum row's QTY cell. Rect height trimmed to 11 so it
+    // doesn't reach up into the header row above.
+    //
+    // Second stamp overwrites "TYPE OF PACKAGE: Fibreboard box" with
+    // "FedEx UN3373 Overpak" — the ambient shipment uses the FedEx
+    // overpak, not the fibreboard box used for frozen Mayo kits.
+    // y=490 lands on the correct row per the second-pass evidence
+    // (that stamp also landed near TYPE OF PACKAGE). Smaller font
+    // (8pt) so the longer string fits within the cell's horizontal
+    // extent without crowding the TOTAL VALUE field to its left.
     textStamps: [
       {
         pageIndex: 0,
-        x: 490,
-        y: 412,
+        x: 470,
+        y: 400,
         fontSize: 10,
         text: "1",
-        blankoutRect: { x: 460, y: 408, width: 60, height: 14 },
+        blankoutRect: { x: 440, y: 397, width: 60, height: 11 },
+      },
+      {
+        pageIndex: 0,
+        x: 502,
+        y: 490,
+        fontSize: 8,
+        text: "FedEx UN3373 Overpak",
+        blankoutRect: { x: 500, y: 487, width: 100, height: 11 },
       },
     ],
     signatureOverlay: undefined,
