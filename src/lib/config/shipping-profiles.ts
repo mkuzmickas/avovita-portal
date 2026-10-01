@@ -555,22 +555,32 @@ export const MAYO_AMBIENT: ShippingProfile = {
     // (that stamp also landed near TYPE OF PACKAGE). Smaller font
     // (8pt) so the longer string fits within the cell's horizontal
     // extent without crowding the TOTAL VALUE field to its left.
+    // Sixth pass.
+    // QTY cell: fifth landed on-row but the 11pt-tall blank only
+    // covered the lower half of "15" — ascenders of the digits
+    // showed above. Taller rect (18pt) centered on the actual "15"
+    // baseline (~y=410) kills the whole glyph; the "1" moves to
+    // y=405 to sit centered inside the new rect.
+    // TYPE OF PACKAGE: fifth stamped under the Fibreboard row
+    // instead of on it. "Fibreboard box" baseline is at y≈503, not
+    // y=490. Raising both the rect and the text to actually overlap
+    // the baked-in value.
     textStamps: [
       {
         pageIndex: 0,
         x: 470,
-        y: 400,
+        y: 405,
         fontSize: 10,
         text: "1",
-        blankoutRect: { x: 440, y: 397, width: 60, height: 11 },
+        blankoutRect: { x: 440, y: 397, width: 70, height: 18 },
       },
       {
         pageIndex: 0,
         x: 502,
-        y: 490,
+        y: 503,
         fontSize: 8,
         text: "FedEx UN3373 Overpak",
-        blankoutRect: { x: 500, y: 487, width: 100, height: 11 },
+        blankoutRect: { x: 498, y: 500, width: 100, height: 14 },
       },
     ],
     signatureOverlay: undefined,
