@@ -154,6 +154,92 @@ function TrackingStatusChip({
   );
 }
 
+/**
+ * Admin-only ✕ Remove button on each row of Recent Shipments.
+ * Deletes the local manual_shipments row via DELETE
+ * /api/shipping/manual-shipments/[id]. Does NOT void the label at
+ * FedEx — if the label was never used FedEx charges nothing; if it
+ * WAS used, cancel inside FedEx first. The confirm dialog surfaces
+ * both facts so a careless click doesn't nuke a real shipment.
+ */
+function RemoveShipmentButton({
+  shipment,
+  onRemoved,
+}: {
+  shipment: Shipment;
+  onRemoved: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleRemove = async () => {
+    if (busy) return;
+    const ok = window.confirm(
+      `Remove shipment ${shipment.tracking_number} from the Recent Shipments list?\n\n` +
+        "This only clears the local audit row. It does NOT void the FedEx label — " +
+        "if the label was never used FedEx charges nothing for it. If the shipment " +
+        "actually went out, do NOT delete this row — the record is your reconciliation " +
+        "trail.",
+    );
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/shipping/manual-shipments/${shipment.id}`,
+        { method: "DELETE" },
+      );
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(body.error ?? `Remove failed (HTTP ${res.status})`);
+        setBusy(false);
+        return;
+      }
+      onRemoved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Remove failed.");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <button
+        type="button"
+        onClick={handleRemove}
+        disabled={busy}
+        title={`Remove ${shipment.tracking_number} from Recent Shipments`}
+        style={{
+          backgroundColor: "transparent",
+          color: busy ? "#6ab04c" : "#e05252",
+          border: `1px solid ${busy ? "#6ab04c" : "#e05252"}`,
+          padding: "4px 10px",
+          borderRadius: "6px",
+          fontSize: "11px",
+          fontWeight: 600,
+          cursor: busy ? "not-allowed" : "pointer",
+          fontFamily: "inherit",
+          opacity: busy ? 0.6 : 1,
+        }}
+      >
+        {busy ? "Removing…" : "✕ Remove"}
+      </button>
+      {error && (
+        <span
+          style={{
+            fontSize: "11px",
+            color: "#e05252",
+            maxWidth: "180px",
+            lineHeight: 1.3,
+          }}
+        >
+          {error}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function statusChipStyle(s: Shipment): React.CSSProperties {
   if (s.delivered_at) {
     return { backgroundColor: "#8dc63f", color: "#0a1a0d" }; // green
@@ -975,6 +1061,7 @@ export function ShippingPageClient({
                     <th style={thStyle}>Tracking</th>
                     <th style={thStyle}>Status</th>
                     <th style={thStyle}>Label</th>
+                    {isAdmin && <th style={thStyle}></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -1043,6 +1130,18 @@ export function ShippingPageClient({
                           "—"
                         )}
                       </td>
+                      {isAdmin && (
+                        <td style={tdStyle}>
+                          <RemoveShipmentButton
+                            shipment={s}
+                            onRemoved={() =>
+                              setShipments((prev) =>
+                                prev.filter((row) => row.id !== s.id),
+                              )
+                            }
+                          />
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
