@@ -79,12 +79,12 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      if (!p.is_account_holder && !p.relationship) {
-        return NextResponse.json(
-          { error: `Person ${p.index + 1} is missing a relationship` },
-          { status: 400 }
-        );
-      }
+      // Relationship for additional persons is NOT collected pre-pay
+      // anymore — the Aug 2026 flow moved per-person account routing
+      // (which is where relationship actually matters) into the
+      // post-payment onboarding step. patient_profiles.relationship
+      // is nullable; materialise.ts stamps whatever is there, and the
+      // onboarding step fills it in later.
     }
 
     // ─── Resolve tests server-side and verify prices ──────────────
