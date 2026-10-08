@@ -159,8 +159,13 @@ export function splitMayoName(full: string): {
   last: string;
   first: string;
 } {
-  const parts = full.split(",").map((s) => s.trim());
-  if (parts.length < 2) return { last: full.trim(), first: "" };
+  // Strip Mayo's occasional leading account/entity code (e.g. the
+  // "011 " on "011 WICK, STEVE" — a one-off on invoice 7044716 that
+  // broke last-name ILIKE). Pattern: digits followed by whitespace at
+  // the very start. Doesn't touch digits embedded in the real name.
+  const cleaned = full.replace(/^\d+\s+/, "").trim();
+  const parts = cleaned.split(",").map((s) => s.trim());
+  if (parts.length < 2) return { last: cleaned, first: "" };
   return { last: parts[0].toUpperCase(), first: parts[1].toUpperCase() };
 }
 
