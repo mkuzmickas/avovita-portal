@@ -109,17 +109,21 @@ export default async function AdminFinancialsPage() {
 
   // Per-order test cost tally broken out by lab so we can bucket
   // non-Mayo lab COGS (Armin, EpiSeek, ReligenDX, LabCorp, ...) into
-  // their own monthly total downstream. Mayo test-catalog costs are
-  // deliberately EXCLUDED — Mayo's actual invoice total is folded in
-  // separately via the mayo_invoices synthesis so we don't double-
-  // count what the real bill covers.
+  // their own monthly total downstream. Mayo catalog cost is also
+  // bucketed per-month HERE as an accrual estimate — but only used
+  // downstream for months that don't yet have a real mayo_invoices
+  // row. The invoice total is still source of truth when available;
+  // the accrual exists only to prevent the "0 COGS, 97% margin"
+  // illusion while Mayo bills in arrears.
   const nonMayoLabCostByMonth = new Map<string, number>();
+  const mayoCatalogCostByMonth = new Map<string, number>();
 
   const orders: ShippedOrder[] = ((ordersRaw ?? []) as unknown as RawOrder[]).map(
     (o) => {
       let testCost = 0;
       let testCount = 0;
       let nonMayoLabCost = 0;
+      let mayoCatalogCost = 0;
       for (const line of o.order_lines ?? []) {
         const qty = line.quantity ?? 1;
         // Real test line — cost from the tests catalogue.
@@ -128,7 +132,9 @@ export default async function AdminFinancialsPage() {
           testCost += cost * qty;
           testCount += qty;
           const labName = line.test?.lab?.name ?? "";
-          if (labName && !/mayo/i.test(labName)) {
+          if (labName && /mayo/i.test(labName)) {
+            mayoCatalogCost += cost * qty;
+          } else if (labName) {
             nonMayoLabCost += cost * qty;
           }
           continue;
@@ -155,11 +161,17 @@ export default async function AdminFinancialsPage() {
       // Bucket non-Mayo lab cost into a per-month total, keyed by the
       // YYYY-MM-01 anchor of the revenue_date so it lines up with the
       // month the corresponding revenue was recognized.
+      const anchor = `${revenue_date.slice(0, 7)}-01`;
       if (nonMayoLabCost > 0) {
-        const anchor = `${revenue_date.slice(0, 7)}-01`;
         nonMayoLabCostByMonth.set(
           anchor,
           (nonMayoLabCostByMonth.get(anchor) ?? 0) + nonMayoLabCost,
+        );
+      }
+      if (mayoCatalogCost > 0) {
+        mayoCatalogCostByMonth.set(
+          anchor,
+          (mayoCatalogCostByMonth.get(anchor) ?? 0) + mayoCatalogCost,
         );
       }
       // Pre-tax revenue: exclude GST. GST is money we collect on
@@ -305,6 +317,10 @@ export default async function AdminFinancialsPage() {
   //     unless the user explicitly categorizes future QBO txns under
   //     the exact string used here — flagged separately for clarity.
   const MAYO_SYNTHETIC_CATEGORY = "mayo_invoices";
+  // Set of YYYY-MM anchors that already have at least one real Mayo
+  // invoice imported. Downstream, the Mayo catalog-cost accrual
+  // skips these months so we don't double-count.
+  const mayoInvoicedMonths = new Set<string>();
   try {
     // Mayo bills in USD. Migration 040 renamed total_cad → total_usd
     // and added a per-invoice fx_rate (default 1.43). CAD is computed
@@ -331,6 +347,7 @@ export default async function AdminFinancialsPage() {
         category: MAYO_SYNTHETIC_CATEGORY,
         supplier_name: `Mayo invoice ${inv.invoice_number}`,
       });
+      mayoInvoicedMonths.add(inv.invoice_date.slice(0, 7));
     }
     if (mayoInvoices.length > 0 && !cogsCategories.includes(MAYO_SYNTHETIC_CATEGORY)) {
       cogsCategories.push(MAYO_SYNTHETIC_CATEGORY);
@@ -339,6 +356,35 @@ export default async function AdminFinancialsPage() {
     // Log so a silent schema/RLS drop is visible in Vercel logs
     // instead of just showing "0 Mayo COGS" and being called a bug.
     console.error("[financials] mayo_invoices fold failed:", err);
+  }
+
+  // 3b.i. Mayo COGS ACCRUAL — for every month that has shipped Mayo
+  //     orders but no imported mayo_invoices row yet, synthesize a
+  //     COGS estimate from the per-test catalog cost_cad. Prevents the
+  //     "0 COGS, 97% margin" illusion for the current/recent month
+  //     while Mayo bills in arrears. The moment a real invoice for
+  //     that month is imported, the month drops out of this set and
+  //     the real total takes over — no double-count.
+  //
+  //     Rendered as its own category so the drill-down labels these
+  //     rows as "estimate" and distinguishes them from invoice-backed
+  //     COGS visually.
+  const MAYO_ACCRUAL_CATEGORY = "mayo_catalog_accrual";
+  let anyAccrual = false;
+  for (const [anchor, cost] of mayoCatalogCostByMonth.entries()) {
+    const monthKey = anchor.slice(0, 7);
+    if (mayoInvoicedMonths.has(monthKey)) continue;
+    qboTxns.push({
+      txn_date: anchor,
+      amount_cad: Number(cost.toFixed(2)),
+      direction: "expense",
+      category: MAYO_ACCRUAL_CATEGORY,
+      supplier_name: `Mayo catalog estimate (${monthKey}) — awaiting invoice`,
+    });
+    anyAccrual = true;
+  }
+  if (anyAccrual && !cogsCategories.includes(MAYO_ACCRUAL_CATEGORY)) {
+    cogsCategories.push(MAYO_ACCRUAL_CATEGORY);
   }
 
   // 3c. Non-Mayo lab COGS — synthesize a monthly bucket from the
