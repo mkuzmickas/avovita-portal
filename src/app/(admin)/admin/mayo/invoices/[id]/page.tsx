@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { candidatesForLine } from "@/lib/mayo/match-candidates";
 import { MayoInvoiceMatcher } from "@/components/admin/MayoInvoiceMatcher";
+import { MayoFxReconcilePanel } from "@/components/admin/MayoFxReconcilePanel";
 import type { OrderCandidate } from "@/lib/mayo/match-candidates";
 
 export const dynamic = "force-dynamic";
@@ -134,6 +135,44 @@ export default async function MayoInvoiceMatcherPage({
     });
   }
 
+  // Reconciliation data — find the next-later invoice to bound the
+  // AMEX payment window, then sum the Mayo QBO rows that fall between
+  // this invoice's date (exclusive) and the next invoice (inclusive).
+  // Mayo bills monthly on NET 30, so all payments between invoice N
+  // and invoice N+1 clear invoice N. For the latest invoice, no upper
+  // bound — the window extends to "now".
+  const { data: allInvDatesRaw } = await service
+    .from("mayo_invoices")
+    .select("invoice_date")
+    .order("invoice_date", { ascending: true });
+  const allInvDates = ((allInvDatesRaw ?? []) as Array<{
+    invoice_date: string;
+  }>).map((r) => r.invoice_date);
+  const myIdx = allInvDates.indexOf(invoice.invoice_date);
+  const nextInvoiceDate =
+    myIdx >= 0 && myIdx + 1 < allInvDates.length
+      ? allInvDates[myIdx + 1]
+      : null;
+
+  let amexPaymentsRaw = service
+    .from("qbo_transactions")
+    .select("txn_date, amount_cad")
+    .ilike("supplier_name", "%mayo%clinic%")
+    .gt("txn_date", invoice.invoice_date);
+  if (nextInvoiceDate) {
+    amexPaymentsRaw = amexPaymentsRaw.lte("txn_date", nextInvoiceDate);
+  }
+  const { data: payRaw } = await amexPaymentsRaw.order("txn_date", {
+    ascending: true,
+  });
+  const amexPayments = ((payRaw ?? []) as Array<{
+    txn_date: string;
+    amount_cad: number;
+  }>).map((p) => ({
+    txn_date: p.txn_date,
+    amount_cad: Number(p.amount_cad),
+  }));
+
   const linesWithCandidates: MatchLine[] = await Promise.all(
     lineRows.map(async (l) => ({
       ...l,
@@ -195,6 +234,16 @@ export default async function MayoInvoiceMatcherPage({
           {lineRows.length === 1 ? "" : "s"}
         </p>
       </div>
+
+      <MayoFxReconcilePanel
+        invoiceId={invoice.id}
+        invoiceDate={invoice.invoice_date}
+        totalUsd={Number(invoice.total_usd)}
+        currentFxRate={Number(invoice.fx_rate)}
+        estimatedCad={Number(invoice.total_usd) * Number(invoice.fx_rate)}
+        payments={amexPayments}
+        nextInvoiceDate={nextInvoiceDate}
+      />
 
       <MayoInvoiceMatcher
         invoiceId={invoice.id}
