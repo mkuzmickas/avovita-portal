@@ -636,14 +636,34 @@ export function CatalogueClient({
               type="text"
               value={searchQuery}
               onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (
-                  e.target.value.trim().length > 0 &&
-                  catalogueRef.current
-                ) {
+                const next = e.target.value;
+                const wasEmpty = searchQuery.trim().length === 0;
+                const nowFilled = next.trim().length > 0;
+                setSearchQuery(next);
+                // Only on the FIRST non-empty character: scroll the
+                // catalogue section into view AND move focus down to
+                // the catalogue's own search input. Without the focus
+                // shift the browser keeps scrolling back up to this
+                // hero input on each keystroke (focused inputs get
+                // auto-scrolled into view), causing the "bounce"
+                // bug Mike flagged. After the shift, all subsequent
+                // typing goes to the bottom bar which stays visible.
+                if (wasEmpty && nowFilled && catalogueRef.current) {
                   catalogueRef.current.scrollIntoView({
                     behavior: "smooth",
                     block: "start",
+                  });
+                  requestAnimationFrame(() => {
+                    const bottom = document.getElementById(
+                      "catalogue-search-input",
+                    );
+                    if (bottom instanceof HTMLInputElement) {
+                      bottom.focus();
+                      // Put the cursor at the end so continuing to
+                      // type appends rather than overwriting.
+                      const len = bottom.value.length;
+                      bottom.setSelectionRange(len, len);
+                    }
                   });
                 }
               }}
@@ -742,6 +762,7 @@ export function CatalogueClient({
           {/* Filter row */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <SearchBar
+              inputId="catalogue-search-input"
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search by test name or SKU..."
