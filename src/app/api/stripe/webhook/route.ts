@@ -204,14 +204,60 @@ async function sendAdminSms(session: Stripe.Checkout.Session) {
 async function sendAdminNotificationEmail(session: Stripe.Checkout.Session) {
   let patientName = "Unknown";
   let lineItemCount = 0;
+  let payload: ReturnType<typeof reassembleMetadata> | null = null;
   try {
-    const p = reassembleMetadata(
+    payload = reassembleMetadata(
       session.metadata as Record<string, string>
     );
-    const holder = p?.persons?.find((per) => per.is_account_holder);
+    const holder = payload?.persons?.find((per) => per.is_account_holder);
     if (holder) patientName = `${holder.first_name} ${holder.last_name}`;
-    lineItemCount = p?.assignments?.length ?? 0;
+    lineItemCount = payload?.assignments?.length ?? 0;
   } catch { /* ignore */ }
+
+  // Resolve test names + SKUs for the ordered-tests list. Mirrors the
+  // SMS lookup pattern so the email and SMS stay in sync; falls back
+  // to the plain count row if the lookup fails or returns nothing.
+  const testIds = [
+    ...new Set(payload?.assignments?.map((a) => a.test_id) ?? []),
+  ];
+  const testLines: Array<{ name: string; sku: string | null }> = [];
+  if (testIds.length > 0) {
+    try {
+      const service = createServiceRoleClient();
+      const { data: testsRaw } = await service
+        .from("tests")
+        .select("id, name, sku")
+        .in("id", testIds);
+      const byId = new Map(
+        ((testsRaw ?? []) as Array<{ id: string; name: string; sku: string | null }>).map(
+          (t) => [t.id, t]
+        )
+      );
+      const seen = new Set<string>();
+      for (const a of payload?.assignments ?? []) {
+        if (seen.has(a.test_id)) continue;
+        seen.add(a.test_id);
+        const t = byId.get(a.test_id);
+        if (t) testLines.push({ name: t.name, sku: t.sku });
+      }
+    } catch (err) {
+      console.warn(
+        "[stripe-webhook] admin email test lookup failed, falling back to count:",
+        String(err)
+      );
+    }
+  }
+
+  const testListHtml = testLines.length
+    ? `<ul style="margin:0;padding:0 0 0 18px;color:#ffffff;font-size:13px;line-height:1.5;">
+         ${testLines
+           .map(
+             (t) =>
+               `<li style="margin:2px 0;">${escapeHtml(t.name)}${t.sku ? ` <span style="color:#8dc63f;font-size:11px;">(${escapeHtml(t.sku)})</span>` : ""}</li>`
+           )
+           .join("")}
+       </ul>`
+    : `<span style="color:#ffffff;font-size:14px;font-weight:600;">${lineItemCount}</span>`;
 
   const amountCad = ((session.amount_total ?? 0) / 100).toFixed(2);
 
@@ -235,8 +281,8 @@ async function sendAdminNotificationEmail(session: Stripe.Checkout.Session) {
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
       <tr><td style="padding:8px 0;color:#6ab04c;font-size:13px;border-bottom:1px solid #1a3d22;">Client</td>
           <td style="padding:8px 0;color:#ffffff;font-size:14px;font-weight:600;text-align:right;border-bottom:1px solid #1a3d22;">${escapeHtml(patientName)}</td></tr>
-      <tr><td style="padding:8px 0;color:#6ab04c;font-size:13px;border-bottom:1px solid #1a3d22;">Tests</td>
-          <td style="padding:8px 0;color:#ffffff;font-size:14px;font-weight:600;text-align:right;border-bottom:1px solid #1a3d22;">${lineItemCount}</td></tr>
+      <tr><td style="padding:8px 0;color:#6ab04c;font-size:13px;border-bottom:1px solid #1a3d22;vertical-align:top;">Tests${testLines.length > 1 ? ` (${testLines.length})` : ""}</td>
+          <td style="padding:8px 0;text-align:right;border-bottom:1px solid #1a3d22;vertical-align:top;">${testListHtml}</td></tr>
       <tr><td style="padding:8px 0;color:#6ab04c;font-size:13px;border-bottom:1px solid #1a3d22;">Total</td>
           <td style="padding:8px 0;color:#c4973a;font-size:14px;font-weight:600;text-align:right;border-bottom:1px solid #1a3d22;">$${amountCad} CAD</td></tr>
     </table>
