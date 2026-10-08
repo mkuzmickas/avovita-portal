@@ -153,9 +153,18 @@ function OverviewTab({
 
   const { start, end, label } = useMemo(() => {
     if (customStart && customEnd) {
+      // `end` is EXCLUSIVE throughout the file (sumTxnsInPeriod uses
+      // `bucketDate < endISO` on YYYY-MM-DD strings, chart buckets
+      // use first-of-next-month). customEnd is the user's inclusive
+      // end date, so advance it by one day to match that convention.
+      // Without this, any txn dated exactly on customEnd was silently
+      // dropped — a July 31 Mayo invoice disappeared from the July
+      // drilldown even though the July chart bar included it.
+      const endInclusive = new Date(`${customEnd}T00:00:00`);
+      endInclusive.setDate(endInclusive.getDate() + 1);
       return {
         start: new Date(`${customStart}T00:00:00`),
-        end: new Date(`${customEnd}T23:59:59`),
+        end: endInclusive,
         label: `${formatDateLong(customStart)} → ${formatDateLong(customEnd)}`,
       };
     }
