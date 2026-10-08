@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Check, X, Info } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, X, Info, Search } from "lucide-react";
 import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
 import { TestCard } from "./TestCard";
 import { TestTable } from "./TestTable";
@@ -45,6 +45,9 @@ export function CatalogueClient({
   const [notFoundBanner, setNotFoundBanner] = useState<string | null>(null);
   const [askPromptOpen, setAskPromptOpen] = useState(false);
   const [askPromptTestName, setAskPromptTestName] = useState<string | null>(null);
+  // Ref on the Full Test Catalogue section so the hero search can
+  // scroll filtered results into view as the user types.
+  const catalogueRef = useRef<HTMLElement | null>(null);
 
   const handleAdd = (item: CatalogueCartItem) => {
     addItem({ ...item, line_type: "test" });
@@ -605,6 +608,64 @@ export function CatalogueClient({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
+        {/* ─── Hero search ──────────────────────────────────────────────
+            First-time visitors reported "I don't know where to type" —
+            the only search input used to live below two carousels of
+            featured tests, mentally invisible unless you scrolled. The
+            search bar on the Full Catalogue section is kept in place
+            (same state), so this is purely a prominence boost: large
+            label, large input, right under Ask AvoVita so the two
+            search affordances sit side-by-side at the top. Typing here
+            auto-scrolls to the catalogue section so the user actually
+            sees the results. */}
+        <section>
+          <label
+            htmlFor="hero-catalogue-search"
+            className="block mb-2 font-semibold"
+            style={{ color: "#c4973a", fontSize: 14, letterSpacing: "0.05em" }}
+          >
+            Search our catalogue
+          </label>
+          <div className="relative">
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none"
+              style={{ color: "#c4973a" }}
+            />
+            <input
+              id="hero-catalogue-search"
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (
+                  e.target.value.trim().length > 0 &&
+                  catalogueRef.current
+                ) {
+                  catalogueRef.current.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }
+              }}
+              placeholder={`Try "testosterone", "DHVD", "thyroid" — ${allTests.length} tests to browse`}
+              className="w-full rounded-xl border-2 py-4 pl-12 pr-4 text-base font-medium focus:outline-none"
+              style={{
+                backgroundColor: "#0f2614",
+                borderColor: "#c4973a",
+                color: "#ffffff",
+                fontSize: "16px",
+              }}
+            />
+          </div>
+          <p
+            className="mt-2"
+            style={{ color: "#8dc63f", fontSize: 12 }}
+          >
+            Browse the full list and filters below, or scroll for Featured
+            Tests and Comprehensive Panels.
+          </p>
+        </section>
+
         {/* ─── SECTION 1: Featured ────────────────────────────────────── */}
         <section>
           <SectionHeading title="Featured Tests" hint="(scroll down for full catalogue)" />
@@ -646,7 +707,7 @@ export function CatalogueClient({
         )}
 
         {/* ─── SECTION 2: Full catalogue ──────────────────────────────── */}
-        <section>
+        <section ref={catalogueRef} id="full-catalogue">
           <SectionHeading title="Full Test Catalogue" />
 
           <p style={{ color: "#e8d5a3", fontSize: "13px" }}>
