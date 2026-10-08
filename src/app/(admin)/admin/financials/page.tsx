@@ -259,7 +259,16 @@ export default async function AdminFinancialsPage() {
       .select("txn_date, amount_cad, direction, category, supplier_name")
       .gte("txn_date", qboSinceDate)
       .order("txn_date", { ascending: true });
-    qboTxns = (txnsRaw ?? []) as unknown as QboTxn[];
+    // Suppress QBO Mayo-payment rows — they're cash-flow records of
+    // the AMEX hits against Mayo invoices. The invoice-line fold below
+    // is the authoritative Mayo COGS source (billed amount bucketed by
+    // actual collection date), so leaving the payment rows in COGS
+    // produces a double-count. For July alone the overlap was ~$8.9k
+    // (three QBO Mayo lines totalling $8,862 on top of $14k invoice-
+    // line fold), inflating COGS and manufacturing a phantom loss.
+    qboTxns = ((txnsRaw ?? []) as unknown as QboTxn[]).filter(
+      (t) => !/mayo\s*clinic/i.test(t.supplier_name ?? ""),
+    );
 
     const { data: catsRaw } = await service
       .from("expense_categories")
@@ -317,69 +326,102 @@ export default async function AdminFinancialsPage() {
   //     unless the user explicitly categorizes future QBO txns under
   //     the exact string used here — flagged separately for clarity.
   const MAYO_SYNTHETIC_CATEGORY = "mayo_invoices";
-  // Set of YYYY-MM anchors that already have at least one real Mayo
-  // invoice imported. Downstream, the Mayo catalog-cost accrual
-  // skips these months so we don't double-count.
-  const mayoInvoicedMonths = new Set<string>();
+  // Map of YYYY-MM → actual Mayo cost (CAD) bucketed by COLLECTION
+  // date, not invoice date. Every mayo invoice straddles two months
+  // (end-of-month billing captures the prior month's lingering tests
+  // plus the current month's early tests), so folding the whole
+  // invoice at invoice_date mis-dated $3-4k of cost per month and
+  // produced phantom losses. Using collection_date puts each line's
+  // cost in the month the test was actually delivered — matching
+  // when the revenue was recognized.
+  const mayoActualCostByMonth = new Map<string, number>();
   try {
     // Mayo bills in USD. Migration 040 renamed total_cad → total_usd
     // and added a per-invoice fx_rate (default 1.43). CAD is computed
     // at display time as total_usd * fx_rate — the DB deliberately
     // doesn't store CAD so the spread lives on ONE canonical column.
-    const { data: mayoInvoicesRaw, error: mayoErr } = await service
-      .from("mayo_invoices")
-      .select("invoice_number, invoice_date, total_usd, fx_rate")
-      .gte("invoice_date", qboSinceDate)
-      .order("invoice_date", { ascending: true });
-    if (mayoErr) throw mayoErr;
-    const mayoInvoices = (mayoInvoicesRaw ?? []) as Array<{
-      invoice_number: string;
-      invoice_date: string;
-      total_usd: number;
-      fx_rate: number;
+    //
+    // Fold at the LINE level: join lines to their invoice for fx_rate,
+    // then bucket charge_usd × fx_rate by collection_date month.
+    const { data: linesRaw, error: linesErr } = await service
+      .from("mayo_invoice_lines")
+      .select(
+        "collection_date, charge_usd, invoice:mayo_invoices!inner ( id, invoice_number, invoice_date, fx_rate )",
+      )
+      .gte("collection_date", qboSinceDate);
+    if (linesErr) throw linesErr;
+    const invoiceLines = (linesRaw ?? []) as unknown as Array<{
+      collection_date: string;
+      charge_usd: number;
+      invoice: {
+        id: string;
+        invoice_number: string;
+        invoice_date: string;
+        fx_rate: number;
+      };
     }>;
-    for (const inv of mayoInvoices) {
-      const cad = Number(inv.total_usd) * Number(inv.fx_rate);
+    // Bucket per collection DAY, keyed by the actual YYYY-MM-DD.
+    // Day-level matches the matcher's model: each invoice line is
+    // tied to a specific collection date, which equals the portal
+    // appointment date for matched orders. Cost lands on the same
+    // day the revenue was recognized.
+    const perDay = new Map<string, { cad: number; invoiceNumbers: Set<string> }>();
+    for (const l of invoiceLines) {
+      if (!l.collection_date || !l.invoice) continue;
+      const dateKey = l.collection_date; // YYYY-MM-DD
+      const cad = Number(l.charge_usd) * Number(l.invoice.fx_rate);
+      const bucket = perDay.get(dateKey) ?? { cad: 0, invoiceNumbers: new Set() };
+      bucket.cad += cad;
+      bucket.invoiceNumbers.add(l.invoice.invoice_number);
+      perDay.set(dateKey, bucket);
+    }
+    for (const [dateKey, bucket] of perDay.entries()) {
+      const invoiceList = [...bucket.invoiceNumbers].sort().join(", ");
       qboTxns.push({
-        txn_date: inv.invoice_date,
-        amount_cad: Number(cad.toFixed(2)),
+        txn_date: dateKey,
+        amount_cad: Number(bucket.cad.toFixed(2)),
         direction: "expense",
         category: MAYO_SYNTHETIC_CATEGORY,
-        supplier_name: `Mayo invoice ${inv.invoice_number}`,
+        supplier_name: `Mayo collections ${dateKey} · invoice${bucket.invoiceNumbers.size === 1 ? "" : "s"} ${invoiceList}`,
       });
-      mayoInvoicedMonths.add(inv.invoice_date.slice(0, 7));
+      // Track per-month total for the accrual-gap calc below.
+      const monthKey = dateKey.slice(0, 7);
+      mayoActualCostByMonth.set(
+        monthKey,
+        (mayoActualCostByMonth.get(monthKey) ?? 0) + bucket.cad,
+      );
     }
-    if (mayoInvoices.length > 0 && !cogsCategories.includes(MAYO_SYNTHETIC_CATEGORY)) {
+    if (perDay.size > 0 && !cogsCategories.includes(MAYO_SYNTHETIC_CATEGORY)) {
       cogsCategories.push(MAYO_SYNTHETIC_CATEGORY);
     }
   } catch (err) {
     // Log so a silent schema/RLS drop is visible in Vercel logs
     // instead of just showing "0 Mayo COGS" and being called a bug.
-    console.error("[financials] mayo_invoices fold failed:", err);
+    console.error("[financials] mayo_invoice_lines fold failed:", err);
   }
 
   // 3b.i. Mayo COGS ACCRUAL — for every month that has shipped Mayo
-  //     orders but no imported mayo_invoices row yet, synthesize a
-  //     COGS estimate from the per-test catalog cost_cad. Prevents the
-  //     "0 COGS, 97% margin" illusion for the current/recent month
-  //     while Mayo bills in arrears. The moment a real invoice for
-  //     that month is imported, the month drops out of this set and
-  //     the real total takes over — no double-count.
-  //
-  //     Rendered as its own category so the drill-down labels these
-  //     rows as "estimate" and distinguishes them from invoice-backed
-  //     COGS visually.
+  //     orders, compare the catalog-cost estimate to the invoice-line
+  //     actual (bucketed by collection_date above). If the actual is
+  //     short of the estimate, synthesize the GAP as an accrual —
+  //     meaning: tests collected in this month that haven't been
+  //     invoiced yet. Fully-invoiced months get zero accrual
+  //     automatically. Prevents the "0 COGS, 97% margin" illusion for
+  //     the current month while keeping invoiced months on the
+  //     actual.
   const MAYO_ACCRUAL_CATEGORY = "mayo_catalog_accrual";
   let anyAccrual = false;
-  for (const [anchor, cost] of mayoCatalogCostByMonth.entries()) {
+  for (const [anchor, catalogCost] of mayoCatalogCostByMonth.entries()) {
     const monthKey = anchor.slice(0, 7);
-    if (mayoInvoicedMonths.has(monthKey)) continue;
+    const actual = mayoActualCostByMonth.get(monthKey) ?? 0;
+    const gap = catalogCost - actual;
+    if (gap <= 0.01) continue; // fully (or over-) invoiced for this month
     qboTxns.push({
       txn_date: anchor,
-      amount_cad: Number(cost.toFixed(2)),
+      amount_cad: Number(gap.toFixed(2)),
       direction: "expense",
       category: MAYO_ACCRUAL_CATEGORY,
-      supplier_name: `Mayo catalog estimate (${monthKey}) — awaiting invoice`,
+      supplier_name: `Mayo catalog estimate gap (${monthKey}) — awaiting invoice`,
     });
     anyAccrual = true;
   }
