@@ -57,7 +57,7 @@ export default async function AdminFinancialsPage() {
     .select(
       `
       id, appointment_at, appointment_date, shipping_date, shipped_at, created_at,
-      total_cad, tax_cad, stripe_fee_cad, manifest_id,
+      total_cad, tax_cad, stripe_fee_cad, home_visit_fee_cad, manifest_id,
       account:accounts ( email, waiver_signed_name ),
       order_lines (
         quantity, line_type, unit_price_cad, custom_description,
@@ -79,6 +79,7 @@ export default async function AdminFinancialsPage() {
     total_cad: number | null;
     tax_cad: number | null;
     stripe_fee_cad: number | null;
+    home_visit_fee_cad: number | null;
     manifest_id: string | null;
     account: { email: string | null; waiver_signed_name: string | null } | null;
     order_lines: Array<{
@@ -117,6 +118,12 @@ export default async function AdminFinancialsPage() {
   // illusion while Mayo bills in arrears.
   const nonMayoLabCostByMonth = new Map<string, number>();
   const mayoCatalogCostByMonth = new Map<string, number>();
+  // FloLabs collection fees are pass-through (we charge the client exactly
+  // what we pay FloLabs). The orders.home_visit_fee_cad column is the
+  // exact amount. Bucketed per revenue month, this becomes a service-date
+  // FloLabs COGS accrual that replaces the payment-date QBO contractor
+  // rows (which land weeks after the service and distort monthly P&L).
+  const floLabsFeeByMonth = new Map<string, number>();
 
   const orders: ShippedOrder[] = ((ordersRaw ?? []) as unknown as RawOrder[]).map(
     (o) => {
@@ -172,6 +179,16 @@ export default async function AdminFinancialsPage() {
         mayoCatalogCostByMonth.set(
           anchor,
           (mayoCatalogCostByMonth.get(anchor) ?? 0) + mayoCatalogCost,
+        );
+      }
+      // FloLabs home-visit pass-through — add this order's visit fee to
+      // its revenue month. Zero for out-of-town drop-ins (no FloLabs
+      // visit happened, so no cost).
+      const visitFee = o.home_visit_fee_cad ?? 0;
+      if (visitFee > 0) {
+        floLabsFeeByMonth.set(
+          anchor,
+          (floLabsFeeByMonth.get(anchor) ?? 0) + visitFee,
         );
       }
       // Pre-tax revenue: exclude GST. GST is money we collect on
@@ -259,16 +276,36 @@ export default async function AdminFinancialsPage() {
       .select("txn_date, amount_cad, direction, category, supplier_name")
       .gte("txn_date", qboSinceDate)
       .order("txn_date", { ascending: true });
-    // Suppress QBO Mayo-payment rows — they're cash-flow records of
-    // the AMEX hits against Mayo invoices. The invoice-line fold below
-    // is the authoritative Mayo COGS source (billed amount bucketed by
-    // actual collection date), so leaving the payment rows in COGS
-    // produces a double-count. For July alone the overlap was ~$8.9k
-    // (three QBO Mayo lines totalling $8,862 on top of $14k invoice-
-    // line fold), inflating COGS and manufacturing a phantom loss.
-    qboTxns = ((txnsRaw ?? []) as unknown as QboTxn[]).filter(
-      (t) => !/mayo\s*clinic/i.test(t.supplier_name ?? ""),
-    );
+    // Suppress QBO payment-date rows for every supplier we accrue by
+    // service date elsewhere. The problem these payments cause: FloLabs
+    // and the labs invoice us weeks after the service, so leaving the
+    // payment rows in COGS pins them to the wrong month and distorts
+    // monthly P&L (September showed $4,628 of August FloLabs cost
+    // because that was the Sep 7 payment date; September's Armin
+    // payment on Sep 3 was for a July test).
+    //
+    // Replacements by supplier:
+    //   - Mayo Clinic → mayo_invoice_lines fold by collection_date
+    //   - FloLabs     → orders.home_visit_fee_cad by revenue_date
+    //   - Non-Mayo labs (Armin, EpiSeek, ReligenDx, LabCorp, Dynacare)
+    //                 → tests.cost_cad × qty by revenue_date (catalog)
+    //
+    // Suppliers not in this list keep their QBO txn_date (payment
+    // date is close enough for SaaS, marketing, travel, bank fees).
+    const SERVICE_DATE_SUPPLIERS = [
+      /mayo\s*clinic/i,
+      /\bflolabs?\b/i,
+      /armin/i,
+      /religendx/i,
+      /religen\s*dx/i,
+      /episeek/i,
+      /labcorp/i,
+      /dynacare/i,
+    ];
+    qboTxns = ((txnsRaw ?? []) as unknown as QboTxn[]).filter((t) => {
+      const sup = t.supplier_name ?? "";
+      return !SERVICE_DATE_SUPPLIERS.some((rx) => rx.test(sup));
+    });
 
     const { data: catsRaw } = await service
       .from("expense_categories")
@@ -427,6 +464,29 @@ export default async function AdminFinancialsPage() {
   }
   if (anyAccrual && !cogsCategories.includes(MAYO_ACCRUAL_CATEGORY)) {
     cogsCategories.push(MAYO_ACCRUAL_CATEGORY);
+  }
+
+  // 3b.ii. FloLabs home-visit pass-through — synthesize a monthly
+  //     COGS bucket from orders.home_visit_fee_cad bucketed by the
+  //     order's revenue_date. This replaces the payment-date QBO
+  //     contractor rows for FloLabs (which were suppressed above)
+  //     with service-date accruals. The visit fee column is the exact
+  //     amount we pay FloLabs (we charge the client the same, so it's
+  //     a zero-margin pass-through).
+  const FLOLABS_CATEGORY = "flolabs_visits";
+  if (floLabsFeeByMonth.size > 0) {
+    for (const [anchor, fee] of floLabsFeeByMonth.entries()) {
+      qboTxns.push({
+        txn_date: anchor,
+        amount_cad: Number(fee.toFixed(2)),
+        direction: "expense",
+        category: FLOLABS_CATEGORY,
+        supplier_name: `FloLabs home visits (${anchor.slice(0, 7)})`,
+      });
+    }
+    if (!cogsCategories.includes(FLOLABS_CATEGORY)) {
+      cogsCategories.push(FLOLABS_CATEGORY);
+    }
   }
 
   // 3c. Non-Mayo lab COGS — synthesize a monthly bucket from the

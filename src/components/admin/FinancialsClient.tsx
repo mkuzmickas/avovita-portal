@@ -923,6 +923,7 @@ function formatCategoryLabel(cat: string): string {
     mayo_invoices: "Mayo Clinic Labs (invoice lines, bucketed by collection date)",
     mayo_catalog_accrual: "Mayo Clinic Labs — catalog estimate for days not yet invoiced",
     non_mayo_lab_costs: "Non-Mayo lab tests (Armin, EpiSeek, ReligenDx, LabCorp — catalog cost)",
+    flolabs_visits: "FloLabs home visits (pass-through, bucketed by appointment date)",
   };
   return map[cat] ?? cat;
 }
