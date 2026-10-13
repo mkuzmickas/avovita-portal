@@ -72,7 +72,7 @@ export async function sendFloLabsRequisition(
   const { data: testsRaw } = await supabase
     .from("tests")
     .select(
-      "id, name, sku, specimen_type, ship_temp, stability_days, stability_days_frozen, handling_instructions, turnaround_display, lab:labs(name, shipping_notes)"
+      "id, name, sku, specimen_type, ship_temp, stability_days, stability_days_frozen, handling_instructions, turnaround_display, mayo_test_id, lab:labs(name, shipping_notes)"
     )
     .in("id", testIds);
 
@@ -86,6 +86,7 @@ export async function sendFloLabsRequisition(
     stability_days_frozen: number | null;
     handling_instructions: string | null;
     turnaround_display: string | null;
+    mayo_test_id: string | null;
     lab: { name: string; shipping_notes: string | null } | { name: string; shipping_notes: string | null }[] | null;
   };
   const testMap = new Map<string, TestRow>();
@@ -103,8 +104,9 @@ export async function sendFloLabsRequisition(
         const t = testMap.get(a.test_id);
         const lab = Array.isArray(t?.lab) ? t?.lab[0] : t?.lab;
         const fasting = /fasting/i.test(t?.turnaround_display ?? "");
+        const mayoLink = mayoCatalogLink(t?.mayo_test_id ?? null);
         return `<tr>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(t?.name ?? "Unknown")}</td>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(t?.name ?? "Unknown")}${mayoLink ? `<div style="margin-top:3px;line-height:1;">${mayoLink}</div>` : ""}</td>
           <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(lab?.name ?? "")}</td>
           <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(t?.specimen_type ?? "—")}</td>
           <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(formatShipTempLong(t?.ship_temp ?? null))}</td>
@@ -193,8 +195,10 @@ export async function sendFloLabsRequisition(
         t.handling_instructions && t.handling_instructions.trim()
           ? t.handling_instructions
           : "—";
+      const mayoLink = mayoCatalogLink(t.mayo_test_id ?? null);
       return `<li style="margin:0 0 14px;padding:0;list-style:none;">
         <div style="font-size:14px;font-weight:600;color:#111827;">${esc(t.name)}${skuSuffix}</div>
+        ${mayoLink ? `<div style="margin-top:2px;">${mayoLink}</div>` : ""}
         <div style="font-size:13px;color:#4b5563;margin-top:2px;">Specimen: ${esc(specimen)}</div>
         <div style="font-size:13px;color:#4b5563;">Ship temp: ${esc(shipTempStr)}</div>
         <div style="font-size:13px;color:#4b5563;">Stability: ${esc(stabilityStr)}</div>
@@ -288,4 +292,21 @@ function esc(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/**
+ * Builds a deep-link to the Mayo Clinic Labs test catalog page for one
+ * test. Returns empty string when there's no mayo_test_id (non-Mayo
+ * tests, or Mayo tests we haven't mapped yet) so the row renders
+ * cleanly without a dangling link.
+ *
+ * Jenna at FloLabs asked for this because she was switching to the
+ * Mayo catalogue on every requisition to re-check specimen type,
+ * container, handling. One click from the email now lands her on the
+ * exact test page.
+ */
+function mayoCatalogLink(mayoTestId: string | null): string {
+  if (!mayoTestId) return "";
+  const url = `https://www.mayocliniclabs.com/test-catalog/Overview/${encodeURIComponent(mayoTestId)}`;
+  return `<a href="${url}" style="font-size:11px;color:#2563eb;text-decoration:underline;" target="_blank" rel="noopener">Mayo catalog ↗</a>`;
 }
