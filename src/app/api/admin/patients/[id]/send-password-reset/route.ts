@@ -123,7 +123,18 @@ export async function POST(
       { status: 500 },
     );
   }
-  const resetUrl = linkData.properties.action_link;
+  // Wrap the Supabase URL in an interstitial so inbox prefetchers
+  // (Outlook Safe Links, Gmail, iOS Mail, corporate AV proxies) can't
+  // consume the one-time recovery token before the real user clicks.
+  // The interstitial renders a static form; only the user's manual
+  // click POSTs the token, which /api/auth/reset-start then 302s to
+  // Supabase. See /src/app/auth/reset-start/page.tsx for the full
+  // reasoning. Fixes the "link says expired after 20 minutes" reports.
+  const supabaseActionLink = linkData.properties.action_link;
+  const encodedToken = Buffer.from(supabaseActionLink, "utf8").toString(
+    "base64url",
+  );
+  const resetUrl = `${appUrl}/auth/reset-start?rt=${encodedToken}`;
 
   // ── Send via Resend ────────────────────────────────────────
   try {
