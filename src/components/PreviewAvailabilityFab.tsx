@@ -168,7 +168,7 @@ export function PreviewAvailabilityFab() {
 
   return (
     <>
-      {/* â”€â”€ Floating action button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Floating action button ─────────────────────────────────── */}
       <button
         ref={fabRef}
         type="button"
@@ -196,7 +196,7 @@ export function PreviewAvailabilityFab() {
         <span>Check available dates</span>
       </button>
 
-      {/* â”€â”€ Preview modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Preview modal ──────────────────────────────────────────── */}
       {open && (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6"
@@ -271,58 +271,23 @@ export function PreviewAvailabilityFab() {
               className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
               style={{ maxHeight: "calc(100vh - 12rem)" }}
             >
-              {/* Loud "no booking here" banner — payment must happen
-                  BEFORE the appointment can be booked. Prominent solid
-                  amber so a hesitating shopper reads it before scrolling
-                  the calendar. */}
+              {/* Short, loud banner (Mike, Oct 2026). The earlier
+                  three-paragraph wall was unreadable on mobile and
+                  burying the one thing that actually mattered. */}
               <div
-                className="rounded-xl border-2 p-4 sm:p-5"
-                style={{
-                  backgroundColor: "#C6A04B",
-                  borderColor: "#ffffff",
-                }}
+                className="rounded-xl p-4 sm:p-5"
+                style={{ backgroundColor: "#C6A04B" }}
               >
-                <div className="flex items-start gap-3">
-                  <span
-                    aria-hidden="true"
-                    className="shrink-0"
-                    style={{
-                      color: "#092819",
-                      fontSize: "28px",
-                      lineHeight: 1,
-                      fontWeight: 700,
-                    }}
-                  >
-                    âš 
-                  </span>
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    <p
-                      className="uppercase tracking-widest font-bold text-xs"
-                      style={{ color: "#092819" }}
-                    >
-                      This View Is Preview Only — You Cannot Book Here
-                    </p>
-                    <p
-                      className="text-sm leading-snug font-semibold"
-                      style={{ color: "#092819" }}
-                    >
-                      Your collection appointment is booked{" "}
-                      <span style={{ textDecoration: "underline" }}>
-                        after
-                      </span>{" "}
-                      you complete checkout, so the appointment is linked
-                      to your paid tests. We work this way because a
-                      booked appointment with no paid tests attached
-                      leaves us with an orphaned slot that no phlebotomist
-                      can fulfill — everyone loses the time.
-                    </p>
-                    <p className="text-xs" style={{ color: "#092819" }}>
-                      Use this view to gauge how busy the next two weeks
-                      look. Real booking happens on the confirmation page
-                      right after payment.
-                    </p>
-                  </div>
-                </div>
+                <p
+                  className="font-semibold leading-snug text-center"
+                  style={{
+                    color: "#092819",
+                    fontSize: "17px",
+                  }}
+                >
+                  This is a preview only — actual booking happens after
+                  checkout.
+                </p>
               </div>
 
               {/* Secondary note — stability-window / fasting nuance. */}
@@ -396,7 +361,7 @@ export function PreviewAvailabilityFab() {
                     ))}
                   </div>
 
-                  {/* Desktop: 7-col grid aligned Sunâ†’Sat like a real
+                  {/* Desktop: 7-col grid aligned Sun─Sat like a real
                       calendar. Leading + trailing empty cells pad the
                       first and last rows so the columns stay honest to
                       day-of-week. Weekday header row above the grid
@@ -494,7 +459,7 @@ export function PreviewAvailabilityFab() {
   );
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ──────────────────────────────────────────────────────────
 
 function LegendSwatch({ color, label }: { color: string; label: string }) {
   return (
