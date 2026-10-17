@@ -218,7 +218,10 @@ export function PreviewAvailabilityFab() {
             style={{
               backgroundColor: "#FFFFFF",
               borderColor: "#C6A04B",
-              maxHeight: "calc(100vh - 3rem)",
+              // 100dvh uses the dynamic viewport (excludes Safari's
+              // collapsing bottom chrome) so the modal never overflows
+              // under the URL bar on mobile.
+              maxHeight: "calc(100dvh - 3rem)",
             }}
           >
             {/* Header */}
@@ -437,7 +440,16 @@ export function PreviewAvailabilityFab() {
             {/* Footer */}
             <div
               className="p-5 border-t shrink-0 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between"
-              style={{ borderColor: "#E5E2D4" }}
+              style={{
+                borderColor: "#E5E2D4",
+                // Respect iOS Safari's bottom chrome (home indicator + URL
+                // bar). Without this the Close button on mobile hid
+                // behind the browser nav; the max() clamp keeps the
+                // regular 1.25rem bottom padding on desktop where the
+                // inset is 0.
+                paddingBottom:
+                  "max(1.25rem, calc(1rem + env(safe-area-inset-bottom)))",
+              }}
             >
               <p className="text-xs" style={{ color: "#154D31" }}>
                 To book a specific slot, order your tests first — the
