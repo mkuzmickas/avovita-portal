@@ -23,7 +23,6 @@ import { TestTable } from "./TestTable";
 import { SearchBar } from "./SearchBar";
 import { CartBar } from "./CartBar";
 import { InsightsChatModal } from "./InsightsChatModal";
-import { AskPromptLauncher } from "./AskPromptLauncher";
 import { useCart } from "@/components/cart/CartContext";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
@@ -932,18 +931,13 @@ export function CatalogueClient({
       {/* Sticky cart bar */}
       <CartBar cart={cart} />
 
-      {/* Post-add Ask AvoVita nudge — appears once after the first
-          add of the session, above the CartBar, dismissible. Never
-          obscures Checkout: the launcher yields to the CartBar and
-          uses a fixed offset above it. */}
-      {askPromptOpen && (
-        <AskPromptLauncher
-          testName={askPromptTestName}
-          totalTestCount={allTests.length}
-          onAccept={handleAskPromptAccept}
-          onDismiss={handleAskPromptDismiss}
-        />
-      )}
+      {/* Post-add Ask AvoVita nudge removed Oct 2026 (Mike): the
+          popup overlapped the Check-available-dates FAB on mobile
+          and crowded the Proceed-to-Checkout CTA. Flow is now
+          cleaner — once a test is added, only the sticky CartBar
+          shows; adding more tests means scrolling back up to the
+          search bar. The Ask AvoVita entry point lives in the hero
+          for anyone who wants it before adding. */}
 
       {/* AI Test Finder modal */}
       <InsightsChatModal
