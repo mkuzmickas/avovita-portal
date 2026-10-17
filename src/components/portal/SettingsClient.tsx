@@ -12,7 +12,7 @@ interface SettingsClientProps {
 
 /**
  * Client settings widget handling:
- *   - "Change password" → Supabase password reset email to the current address
+ *   - "Change password" â†’ Supabase password reset email to the current address
  *   - Communication preferences stored in Supabase Auth user_metadata
  *     (email_notifications + sms_notifications booleans). Stored on the
  *     auth user so no schema change is needed.
@@ -88,7 +88,7 @@ export function SettingsClient({
       {/* Account section */}
       <section
         className="rounded-xl border p-6"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
       >
         <h2
           className="font-heading text-xl font-semibold mb-4"
@@ -104,7 +104,7 @@ export function SettingsClient({
           <div>
             <p
               className="text-xs font-medium uppercase tracking-wider mb-1"
-              style={{ color: "#6ab04c" }}
+              style={{ color: "#4a7a56" }}
             >
               Email
             </p>
@@ -116,7 +116,7 @@ export function SettingsClient({
           <div>
             <p
               className="text-xs font-medium uppercase tracking-wider mb-2"
-              style={{ color: "#6ab04c" }}
+              style={{ color: "#4a7a56" }}
             >
               Password
             </p>
@@ -127,7 +127,7 @@ export function SettingsClient({
               className="mf-btn-secondary px-4 py-2 text-sm"
             >
               {resetting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {resetting ? "Sending…" : "Change Password"}
+              {resetting ? "Sendingâ€¦" : "Change Password"}
             </button>
 
             {resetSent && (
@@ -135,8 +135,8 @@ export function SettingsClient({
                 className="mt-3 flex items-center gap-2 text-sm rounded-lg px-3 py-2 border"
                 style={{
                   backgroundColor: "rgba(141, 198, 63, 0.125)",
-                  borderColor: "#8dc63f",
-                  color: "#8dc63f",
+                  borderColor: "#88D45D",
+                  color: "#88D45D",
                 }}
               >
                 <Check className="w-4 h-4 shrink-0" />
@@ -164,7 +164,7 @@ export function SettingsClient({
       {/* Communication preferences */}
       <section
         className="rounded-xl border p-6"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
       >
         <h2
           className="font-heading text-xl font-semibold mb-2"
@@ -175,7 +175,7 @@ export function SettingsClient({
         >
           Communication Preferences
         </h2>
-        <p className="text-xs mb-5" style={{ color: "#6ab04c" }}>
+        <p className="text-xs mb-5" style={{ color: "#4a7a56" }}>
           Critical transactional notifications (order confirmations,
           results-ready alerts) are always sent regardless of these settings.
         </p>
@@ -205,13 +205,13 @@ export function SettingsClient({
             className="mf-btn-primary px-5 py-2.5"
           >
             {savingPrefs && <Loader2 className="w-4 h-4 animate-spin" />}
-            {savingPrefs ? "Saving…" : "Save Preferences"}
+            {savingPrefs ? "Savingâ€¦" : "Save Preferences"}
           </button>
 
           {prefsSaved && (
             <span
               className="flex items-center gap-1 text-sm font-medium"
-              style={{ color: "#8dc63f" }}
+              style={{ color: "#88D45D" }}
             >
               <Check className="w-4 h-4" />
               Saved
@@ -258,27 +258,27 @@ function PrefToggle({
       aria-checked={value}
       className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-colors"
       style={{
-        backgroundColor: "#0f2614",
-        borderColor: "#2d6b35",
+        backgroundColor: "#F7F6F0",
+        borderColor: "#E5E2D4",
       }}
     >
-      <Icon className="w-4 h-4 shrink-0" style={{ color: "#8dc63f" }} />
+      <Icon className="w-4 h-4 shrink-0" style={{ color: "#88D45D" }} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium" style={{ color: "#ffffff" }}>
           {label}
         </p>
-        <p className="text-xs" style={{ color: "#6ab04c" }}>
+        <p className="text-xs" style={{ color: "#4a7a56" }}>
           {description}
         </p>
       </div>
       <span
         className="relative inline-block w-10 h-5 rounded-full transition-colors shrink-0"
-        style={{ backgroundColor: value ? "#c4973a" : "#2d6b35" }}
+        style={{ backgroundColor: value ? "#C6A04B" : "#E5E2D4" }}
       >
         <span
           className="absolute top-0.5 w-4 h-4 rounded-full transition-transform"
           style={{
-            backgroundColor: value ? "#0a1a0d" : "#e8d5a3",
+            backgroundColor: value ? "#F7F6F0" : "#154D31",
             transform: value ? "translateX(22px)" : "translateX(2px)",
           }}
         />

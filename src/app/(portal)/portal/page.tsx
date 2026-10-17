@@ -123,7 +123,7 @@ export default async function PortalDashboard() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-      {/* Welcome header — variant for new users with no profiles */}
+      {/* Welcome header â€” variant for new users with no profiles */}
       {hasProfile ? (
         <div className="mb-6">
           <h1
@@ -134,9 +134,9 @@ export default async function PortalDashboard() {
             }}
           >
             Welcome back,{" "}
-            <span style={{ color: "#c4973a" }}>{firstName}</span>
+            <span style={{ color: "#C6A04B" }}>{firstName}</span>
           </h1>
-          <p className="mt-1 text-sm sm:text-base" style={{ color: "#e8d5a3" }}>
+          <p className="mt-1 text-sm sm:text-base" style={{ color: "#154D31" }}>
             {isRepresentative
               ? "Manage orders, results, and collection appointments for the clients in your care."
               : "Manage your lab tests and results from your AvoVita patient portal."}
@@ -145,7 +145,7 @@ export default async function PortalDashboard() {
       ) : (
         <div
           className="mb-6 rounded-xl border p-6 sm:p-8"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
         >
           <h1
             className="font-heading text-3xl sm:text-4xl font-semibold mb-2"
@@ -154,9 +154,9 @@ export default async function PortalDashboard() {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Welcome to <span style={{ color: "#c4973a" }}>AvoVita</span>
+            Welcome to <span style={{ color: "#C6A04B" }}>AvoVita</span>
           </h1>
-          <p className="text-sm sm:text-base mb-5" style={{ color: "#e8d5a3" }}>
+          <p className="text-sm sm:text-base mb-5" style={{ color: "#154D31" }}>
             Browse our test catalogue to place your first order.
           </p>
           <Link
@@ -175,16 +175,16 @@ export default async function PortalDashboard() {
         <div
           className="rounded-xl border p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4"
           style={{
-            backgroundColor: "#1a3d22",
-            borderColor: "#c4973a",
-            boxShadow: "0 0 0 1px #c4973a",
+            backgroundColor: "#FFFFFF",
+            borderColor: "#C6A04B",
+            boxShadow: "0 0 0 1px #C6A04B",
           }}
         >
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border"
-            style={{ backgroundColor: "#0f2614", borderColor: "#c4973a" }}
+            style={{ backgroundColor: "#F7F6F0", borderColor: "#C6A04B" }}
           >
-            <Eye className="w-6 h-6" style={{ color: "#c4973a" }} />
+            <Eye className="w-6 h-6" style={{ color: "#C6A04B" }} />
           </div>
           <div className="flex-1 min-w-0">
             <p
@@ -195,12 +195,12 @@ export default async function PortalDashboard() {
               }}
             >
               You have{" "}
-              <span style={{ color: "#c4973a" }}>
+              <span style={{ color: "#C6A04B" }}>
                 {unviewedCount} new result{unviewedCount !== 1 ? "s" : ""}
               </span>{" "}
               ready to view
             </p>
-            <p className="text-sm mt-0.5" style={{ color: "#e8d5a3" }}>
+            <p className="text-sm mt-0.5" style={{ color: "#154D31" }}>
               Log in to view and download your lab results securely.
             </p>
           </div>
@@ -214,7 +214,7 @@ export default async function PortalDashboard() {
         </div>
       )}
 
-      {/* Metric cards — 2 cols mobile, 4 cols desktop */}
+      {/* Metric cards â€” 2 cols mobile, 4 cols desktop */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
         <MetricCard
           label="Active Orders"
@@ -249,7 +249,7 @@ export default async function PortalDashboard() {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Clients in Your <span style={{ color: "#c4973a" }}>Care</span>
+            Clients in Your <span style={{ color: "#C6A04B" }}>Care</span>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {dependents.map((d) => (
@@ -257,19 +257,19 @@ export default async function PortalDashboard() {
                 key={d.id}
                 className="rounded-xl border p-4"
                 style={{
-                  backgroundColor: "#1a3d22",
-                  borderColor: "#2d6b35",
+                  backgroundColor: "#FFFFFF",
+                  borderColor: "#E5E2D4",
                 }}
               >
                 <div className="flex items-start gap-3">
                   <div
                     className="w-10 h-10 rounded-lg flex items-center justify-center border shrink-0"
                     style={{
-                      backgroundColor: "#0f2614",
-                      borderColor: "#c4973a",
+                      backgroundColor: "#F7F6F0",
+                      borderColor: "#C6A04B",
                     }}
                   >
-                    <Users className="w-5 h-5" style={{ color: "#c4973a" }} />
+                    <Users className="w-5 h-5" style={{ color: "#C6A04B" }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
@@ -280,7 +280,7 @@ export default async function PortalDashboard() {
                     </p>
                     <p
                       className="text-xs mt-0.5"
-                      style={{ color: "#6ab04c" }}
+                      style={{ color: "#4a7a56" }}
                     >
                       DOB {formatDate(d.date_of_birth)}
                     </p>
@@ -307,7 +307,7 @@ export default async function PortalDashboard() {
           <Link
             href="/portal/orders"
             className="text-sm font-medium flex items-center gap-1"
-            style={{ color: "#c4973a" }}
+            style={{ color: "#C6A04B" }}
           >
             All orders <ArrowRight className="w-3.5 h-3.5" />
           </Link>
@@ -317,17 +317,17 @@ export default async function PortalDashboard() {
       {recentOrders.length === 0 ? (
         <div
           className="rounded-xl border px-6 py-12 text-center"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <FlaskConical
             className="w-10 h-10 mx-auto mb-3"
-            style={{ color: "#2d6b35" }}
+            style={{ color: "#E5E2D4" }}
           />
-          <p style={{ color: "#6ab04c" }}>No orders yet</p>
+          <p style={{ color: "#4a7a56" }}>No orders yet</p>
           <Link
             href="/tests"
             className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 text-sm font-semibold rounded-lg"
-            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
           >
             Browse Tests
           </Link>
@@ -338,13 +338,13 @@ export default async function PortalDashboard() {
             <div
               key={order.id}
               className="rounded-xl border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4"
-              style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <span
                     className="font-mono text-xs"
-                    style={{ color: "#6ab04c" }}
+                    style={{ color: "#4a7a56" }}
                   >
                     #{order.id.slice(0, 8).toUpperCase()}
                   </span>
@@ -357,27 +357,27 @@ export default async function PortalDashboard() {
                   {order.order_lines
                     .map((l) => l.test?.name)
                     .filter(Boolean)
-                    .join(", ") || "—"}
+                    .join(", ") || "â€”"}
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: "#6ab04c" }}>
+                <p className="text-xs mt-0.5" style={{ color: "#4a7a56" }}>
                   {formatDate(order.created_at)}
                 </p>
               </div>
               <div className="flex items-center gap-3 sm:gap-4 shrink-0">
                 <p
                   className="text-base font-semibold"
-                  style={{ color: "#c4973a" }}
+                  style={{ color: "#C6A04B" }}
                 >
                   {order.total_cad != null
                     ? formatCurrency(order.total_cad)
-                    : "—"}
+                    : "â€”"}
                 </p>
                 <Link
                   href="/portal/orders"
                   className="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors"
                   style={{
-                    color: "#e8d5a3",
-                    borderColor: "#2d6b35",
+                    color: "#154D31",
+                    borderColor: "#E5E2D4",
                     backgroundColor: "transparent",
                   }}
                 >
@@ -393,7 +393,7 @@ export default async function PortalDashboard() {
       <Link
         href="/tests"
         className="flex items-center justify-center gap-2 w-full sm:w-auto sm:inline-flex mx-auto px-6 py-3 text-sm font-semibold rounded-xl transition-colors"
-        style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+        style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
       >
         <FlaskConical className="w-4 h-4" />
         Browse More Tests
@@ -418,33 +418,33 @@ function MetricCard({
     <div
       className="rounded-xl border p-4 sm:p-5"
       style={{
-        backgroundColor: "#1a3d22",
-        borderColor: highlight ? "#c4973a" : "#2d6b35",
+        backgroundColor: "#FFFFFF",
+        borderColor: highlight ? "#C6A04B" : "#E5E2D4",
       }}
     >
       <div className="flex items-center gap-2 mb-2">
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center border shrink-0"
           style={{
-            backgroundColor: "#0f2614",
-            borderColor: highlight ? "#c4973a" : "#2d6b35",
+            backgroundColor: "#F7F6F0",
+            borderColor: highlight ? "#C6A04B" : "#E5E2D4",
           }}
         >
           <Icon
             className="w-4 h-4"
-            style={{ color: highlight ? "#c4973a" : "#8dc63f" }}
+            style={{ color: highlight ? "#C6A04B" : "#88D45D" }}
           />
         </div>
         <p
           className="text-xs font-medium truncate"
-          style={{ color: "#e8d5a3" }}
+          style={{ color: "#154D31" }}
         >
           {label}
         </p>
       </div>
       <p
         className="text-2xl sm:text-3xl font-semibold"
-        style={{ color: highlight ? "#c4973a" : "#ffffff" }}
+        style={{ color: highlight ? "#C6A04B" : "#ffffff" }}
       >
         {value}
       </p>

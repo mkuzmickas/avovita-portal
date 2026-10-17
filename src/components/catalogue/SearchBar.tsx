@@ -6,7 +6,7 @@ interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  /** Optional DOM id — exposed so another input (e.g. the hero
+  /** Optional DOM id â€” exposed so another input (e.g. the hero
    *  search) can focus this one via document.getElementById. */
   inputId?: string;
 }
@@ -14,14 +14,14 @@ interface SearchBarProps {
 export function SearchBar({
   value,
   onChange,
-  placeholder = "Search by test name…",
+  placeholder = "Search by test nameâ€¦",
   inputId,
 }: SearchBarProps) {
   return (
     <div className="relative flex-1 min-w-[200px]">
       <Search
         className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-        style={{ color: "#6ab04c" }}
+        style={{ color: "#4a7a56" }}
       />
       <input
         id={inputId}

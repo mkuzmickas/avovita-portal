@@ -114,7 +114,7 @@ export function CheckoutClient({
     useState<CollectionAddress>(defaultAddress);
   // Out-of-town toggle on Step 3. When true, the address form is
   // hidden and Step 3 renders a contact-us gate that blocks the
-  // customer from advancing to payment — OOT collections are
+  // customer from advancing to payment â€” OOT collections are
   // coordinated case-by-case over email.
   const [isOutOfTown, setIsOutOfTown] = useState(false);
   // Stash whatever the customer typed before switching to out-of-town
@@ -128,18 +128,18 @@ export function CheckoutClient({
   const [representative, setRepresentative] = useState<RepresentativeBlock>(
     BLANK_REPRESENTATIVE
   );
-  // Permission-to-order acknowledgement — captured on Step 1 whenever
+  // Permission-to-order acknowledgement â€” captured on Step 1 whenever
   // the order is on behalf of someone other than the account holder
   // (mode picks "Myself and someone else" or "Someone else"). Persisted
   // downstream so it's an auditable record, not just a UI gate.
   const [permissionAcknowledged, setPermissionAcknowledged] = useState(false);
-  // Supplement fulfillment state — only used when showSupplementFulfillmentStep
+  // Supplement fulfillment state â€” only used when showSupplementFulfillmentStep
   const [suppFulfillment, setSuppFulfillment] =
     useState<SupplementFulfillment | null>(null);
   const [suppShippingAddress, setSuppShippingAddress] =
     useState<SupplementShippingAddress | null>(null);
 
-  // Org tagging — when the user arrived via /org/[slug]/checkout the
+  // Org tagging â€” when the user arrived via /org/[slug]/checkout the
   // server redirect drops org_slug into the query string. We persist it
   // to localStorage so any in-flight cart from the same browser session
   // keeps its org affinity even if the user wanders out and back.
@@ -218,10 +218,10 @@ export function CheckoutClient({
             quantity: 1,
           });
         }
-        // Quote custom lines → cart custom items. Stable ids keyed on
+        // Quote custom lines â†’ cart custom items. Stable ids keyed on
         // quote number + index so re-accepting the same quote doesn't
         // duplicate. Notes are NOT in the public /api/quotes/[number]
-        // response (admin-only), so they don't appear here either —
+        // response (admin-only), so they don't appear here either â€”
         // the webhook hydrates them from the original quote row.
         for (let i = 0; i < customLines.length; i++) {
           const c = customLines[i];
@@ -281,7 +281,7 @@ export function CheckoutClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, searchParams]);
 
-  // ─── Restore persisted state ──────────────────────────────────────────
+  // â”€â”€â”€ Restore persisted state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -289,7 +289,7 @@ export function CheckoutClient({
       if (raw) {
         const parsed = JSON.parse(raw) as PersistedCheckoutState;
         if (parsed && typeof parsed === "object") {
-          // Clamp to [1, 2] — Step 1 now offers two options only
+          // Clamp to [1, 2] â€” Step 1 now offers two options only
           // (bigger groups route through support); a stale localStorage
           // value from before that change would leave the select blank
           // on hydration.
@@ -321,7 +321,7 @@ export function CheckoutClient({
           });
           setPersons(aligned);
           if (Array.isArray(parsed.assignments)) {
-            // Dedupe by test_id — older versions of the wizard allowed
+            // Dedupe by test_id â€” older versions of the wizard allowed
             // multiple assignments per test, but the new rule is one
             // assignment per test, so we collapse duplicates by keeping
             // the most recently-pushed entry.
@@ -357,20 +357,20 @@ export function CheckoutClient({
         }
       }
     } catch {
-      // Ignore parse errors — start fresh
+      // Ignore parse errors â€” start fresh
     }
 
     // Historically we pre-selected the caregiver flow for a specific
     // white-label org partner whose customers almost always ordered
     // on behalf of a resident. That org was decommissioned in Aug
-    // 2026; the block is retained as a hook — if a future org
+    // 2026; the block is retained as a hook â€” if a future org
     // partner wants a caregiver-first default, add their slug here.
     // Otherwise the customer picks their own mode on Step 1.
 
     setRestored(true);
   }, []);
 
-  // ─── Reconcile assignments to cart + personCount ─────────────────────
+  // â”€â”€â”€ Reconcile assignments to cart + personCount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Single authoritative sync: assignments is fully derived from cart,
   // personCount, and prior per-person split choices. Any path that
   // changes the cart (quote-accept deep-link, add from another tab,
@@ -396,7 +396,7 @@ export function CheckoutClient({
     });
   }, [restored, hydrated, cart, personCount]);
 
-  // ─── Persist on every change ──────────────────────────────────────────
+  // â”€â”€â”€ Persist on every change â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!restored || typeof window === "undefined") return;
     try {
@@ -426,12 +426,12 @@ export function CheckoutClient({
     restored,
   ]);
 
-  // ─── Cart composition for fee gating ──────────────────────────────────
+  // â”€â”€â”€ Cart composition for fee gating â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const kitFeeInfo = computeKitServiceFee(cart);
-  // Kit-only orders have no phlebotomist visit — skip people step + visit fee
+  // Kit-only orders have no phlebotomist visit â€” skip people step + visit fee
   const isKitOnly = kitFeeInfo.hasKitTests && !kitFeeInfo.hasPhlebotomistTests;
 
-  // ─── Analytics: checkout started ─────────────────────────────────────
+  // â”€â”€â”€ Analytics: checkout started â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const trackedStartRef = useRef(false);
   useEffect(() => {
     if (hydrated && restored && cart.length > 0 && !trackedStartRef.current) {
@@ -440,7 +440,7 @@ export function CheckoutClient({
     }
   }, [hydrated, restored, cart.length, trackEvent]);
 
-  // ─── Kit-only auto-advance: skip Step 1 (people count) ────────────
+  // â”€â”€â”€ Kit-only auto-advance: skip Step 1 (people count) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // For kit-only orders there's no phlebotomist visit, so person count
   // is always 1. The reconcile effect above populates assignments
   // from the cart whenever personCount changes, so we only need to
@@ -451,7 +451,7 @@ export function CheckoutClient({
     setStep(3);
   }, [hydrated, restored, isKitOnly, step, cart]);
 
-  // ─── Analytics: checkout abandoned (beforeunload) ──────────────────
+  // â”€â”€â”€ Analytics: checkout abandoned (beforeunload) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!hydrated || !restored || cart.length === 0) return;
     const handleUnload = () => {
@@ -461,9 +461,9 @@ export function CheckoutClient({
     return () => window.removeEventListener("beforeunload", handleUnload);
   }, [hydrated, restored, cart.length, step, trackEvent]);
 
-  // ─── Cart redirect ────────────────────────────────────────────────────
+  // â”€â”€â”€ Cart redirect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Don't bounce to /tests while a ?quote= deep-link is loading items or
-  // while a quote error banner is being shown — the user should see the
+  // while a quote error banner is being shown â€” the user should see the
   // message on /checkout, not get kicked back to the catalogue.
   useEffect(() => {
     if (quoteLoading || quoteError) return;
@@ -481,8 +481,8 @@ export function CheckoutClient({
     appliedQuoteNumber,
   ]);
 
-  // ─── Adjust persons when count changes ────────────────────────────────
-  // `assignments` is handled by the reconcile effect above — no direct
+  // â”€â”€â”€ Adjust persons when count changes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // `assignments` is handled by the reconcile effect above â€” no direct
   // filter/rebuild needed here. We just keep `persons` in step.
   const handlePersonCountChange = (count: number) => {
     setPersonCount(count);
@@ -502,13 +502,13 @@ export function CheckoutClient({
     });
   };
 
-  // ─── Step navigation ──────────────────────────────────────────────────
+  // â”€â”€â”€ Step navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const skipStep2 = personCount === 1;
 
   const handleStep1Continue = () => {
     trackEvent("checkout_step_completed", { step: 1 });
     // `assignments` is auto-kept-in-sync by the reconcile effect, so
-    // there's nothing to populate here — just advance.
+    // there's nothing to populate here â€” just advance.
     setStep(personCount === 1 ? 3 : 2);
   };
 
@@ -539,7 +539,7 @@ export function CheckoutClient({
       if (isKitOnly) return null;
       // Person count is known from Step 1 (the three-button picker
       // sets it before Continue), so compute the fee from Step 1
-      // onward — hiding it until later was a leftover from the old
+      // onward â€” hiding it until later was a leftover from the old
       // pre-Step-1-picker flow. Postal code isn't known until Step 3;
       // computeVisitFees falls back to Zone 1 pricing ($85 base +
       // $55 per additional person) when postal is empty, which
@@ -552,8 +552,8 @@ export function CheckoutClient({
   );
 
   // Sidebar always reflects the cart, never the partial assignment state.
-  // Each cart item is exactly one order line — assigning it to a person
-  // moves it but never duplicates it — so the cart is the single source
+  // Each cart item is exactly one order line â€” assigning it to a person
+  // moves it but never duplicates it â€” so the cart is the single source
   // of truth for line count, subtotal, and discount preview on every
   // checkout step. The Step 2 step body uses the same numbers, so the
   // sidebar and step body always agree.
@@ -564,15 +564,15 @@ export function CheckoutClient({
     0
   );
 
-  // Don't render anything until hydration is done — avoids React mismatch
+  // Don't render anything until hydration is done â€” avoids React mismatch
   if (!hydrated || !restored) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#0a1a0d" }}
+        style={{ backgroundColor: "#ffffff" }}
       >
-        <p className="text-sm" style={{ color: "#6ab04c" }}>
-          Loading checkout…
+        <p className="text-sm" style={{ color: "#4a7a56" }}>
+          Loading checkoutâ€¦
         </p>
       </div>
     );
@@ -583,10 +583,10 @@ export function CheckoutClient({
       return (
         <div
           className="min-h-screen flex items-center justify-center"
-          style={{ backgroundColor: "#0a1a0d" }}
+          style={{ backgroundColor: "#ffffff" }}
         >
-          <p className="text-sm" style={{ color: "#6ab04c" }}>
-            Loading your quote…
+          <p className="text-sm" style={{ color: "#4a7a56" }}>
+            Loading your quoteâ€¦
           </p>
         </div>
       );
@@ -595,11 +595,11 @@ export function CheckoutClient({
       return (
         <div
           className="min-h-screen flex items-center justify-center px-4"
-          style={{ backgroundColor: "#0a1a0d" }}
+          style={{ backgroundColor: "#ffffff" }}
         >
           <div
             className="max-w-md w-full rounded-2xl border p-6 text-center"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
           >
             <h1
               className="font-heading text-2xl font-semibold mb-3"
@@ -608,15 +608,15 @@ export function CheckoutClient({
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
               }}
             >
-              Quote <span style={{ color: "#c4973a" }}>unavailable</span>
+              Quote <span style={{ color: "#C6A04B" }}>unavailable</span>
             </h1>
-            <p className="text-sm mb-5" style={{ color: "#e8d5a3" }}>
+            <p className="text-sm mb-5" style={{ color: "#154D31" }}>
               {quoteError}
             </p>
             <Link
               href="/tests"
               className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold"
-              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+              style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
             >
               Browse our test catalogue
             </Link>
@@ -627,29 +627,29 @@ export function CheckoutClient({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#0a1a0d" }}
+        style={{ backgroundColor: "#ffffff" }}
       >
-        <p className="text-sm" style={{ color: "#6ab04c" }}>
-          Redirecting to test catalogue…
+        <p className="text-sm" style={{ color: "#4a7a56" }}>
+          Redirecting to test catalogueâ€¦
         </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#0a1a0d" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#ffffff" }}>
       <OrgAwareHeader
         rightSlot={
           <Link
             href="/tests"
             className="text-xs font-medium px-3 py-1.5 rounded-lg border whitespace-nowrap"
             style={{
-              color: "#e8d5a3",
-              borderColor: "#2d6b35",
+              color: "#154D31",
+              borderColor: "#E5E2D4",
               backgroundColor: "transparent",
             }}
           >
-            ← Back to catalogue
+            â† Back to catalogue
           </Link>
         }
       />
@@ -716,7 +716,7 @@ export function CheckoutClient({
             )}
             {/* Step 3.5 = supplement fulfillment, injected between address (3) and review (4)
                 when cart contains supplements. Non-integer step ID avoids renumbering the
-                existing test-flow step sequence (1→2→3→4), which would have rippled into
+                existing test-flow step sequence (1â†’2â†’3â†’4), which would have rippled into
                 step navigation, progress indicators, and analytics events. Only rendered
                 when showSupplementFulfillmentStep === true. */}
             {step === 35 && showSupplementFulfillmentStep && (
@@ -748,7 +748,7 @@ export function CheckoutClient({
             )}
           </div>
 
-          {/* Sidebar — stacks below step content on mobile, beside on desktop */}
+          {/* Sidebar â€” stacks below step content on mobile, beside on desktop */}
           <div className="order-2 lg:order-none">
             <CheckoutCartSummary
               cart={cart}

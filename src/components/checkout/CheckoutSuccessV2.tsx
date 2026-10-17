@@ -69,7 +69,7 @@ export interface CheckoutSuccessV2Props {
   representativeRelationship: string | null;
   /** Defaults to FloLabs Acuity URL when not provided. */
   acuityUrl: string;
-  /** Carried for prop-shape stability after the OOT revert — Step 3
+  /** Carried for prop-shape stability after the OOT revert â€” Step 3
    *  now blocks OOT customers before they ever reach this page, so
    *  these are effectively dead but a prior pending order with the
    *  flag set could still land here. */
@@ -80,7 +80,7 @@ export interface CheckoutSuccessV2Props {
   /** Optional org-specific waiver addendum (shown below the standard waiver). */
   waiverAddendum?: string | null;
   waiverAddendumTitle?: string | null;
-  // ── Composition flags (added in Phase 4) ──────────────────────
+  // â”€â”€ Composition flags (added in Phase 4) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   /** True if the order contained tests (defaults true for v1 compat). */
   hasTests?: boolean;
   /** True if the order contained supplements. */
@@ -170,7 +170,7 @@ export function CheckoutSuccessV2({
 
   // Booking-confirmed gate over the Acuity iframe. Customers were
   // running into Acuity's "this time is no longer available" message
-  // AFTER they'd already booked — Acuity treats the customer's own
+  // AFTER they'd already booked â€” Acuity treats the customer's own
   // just-taken slot as "taken" on a second submit. They'd panic, pick
   // another slot, and end up with two confirmed FloLabs appointments.
   // Locking the iframe behind a manual "I've booked" button (with
@@ -207,7 +207,7 @@ export function CheckoutSuccessV2({
   };
   // Bonus auto-detect: Acuity's embedded scheduler postMessages the
   // parent on successful booking. Shapes have varied across Acuity /
-  // Squarespace Scheduling versions — match defensively on
+  // Squarespace Scheduling versions â€” match defensively on
   // origin + any appointment-related keyword in the payload. False
   // positives just lock the iframe a little eagerly; the customer
   // can re-open if they hadn't actually booked yet.
@@ -247,7 +247,7 @@ export function CheckoutSuccessV2({
 
   // Fire the terminal funnel events on mount. The old CheckoutSuccessClient
   // had these but was orphaned when V2 replaced it, which left the admin
-  // analytics dashboard showing 0 for "Step 4 — Review" and
+  // analytics dashboard showing 0 for "Step 4 â€” Review" and
   // "Order Completed" despite real orders going through. The sessionStorage
   // guard keys off the Stripe sessionId so a page refresh on the success
   // URL doesn't double-count.
@@ -268,16 +268,16 @@ export function CheckoutSuccessV2({
   return (
     <div
       className="min-h-screen px-4 py-8 sm:py-12"
-      style={{ backgroundColor: "#0a1a0d" }}
+      style={{ backgroundColor: "#ffffff" }}
     >
       <div className="max-w-3xl mx-auto">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-6">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
-            <Leaf className="w-5 h-5" style={{ color: "#8dc63f" }} />
+            <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
           <span
             className="font-heading text-2xl font-semibold"
@@ -293,13 +293,13 @@ export function CheckoutSuccessV2({
         {/* Confirmation hero */}
         <div
           className="rounded-2xl border px-5 sm:px-7 py-5 sm:py-6 mb-5 flex items-start gap-4"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#8dc63f" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#88D45D" }}
         >
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border"
-            style={{ backgroundColor: "#0f2614", borderColor: "#8dc63f" }}
+            style={{ backgroundColor: "#F7F6F0", borderColor: "#88D45D" }}
           >
-            <CheckCircle className="w-6 h-6" style={{ color: "#8dc63f" }} />
+            <CheckCircle className="w-6 h-6" style={{ color: "#88D45D" }} />
           </div>
           <div className="flex-1 min-w-0">
             <h1
@@ -309,22 +309,22 @@ export function CheckoutSuccessV2({
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
               }}
             >
-              Payment <span style={{ color: "#c4973a" }}>received</span>
+              Payment <span style={{ color: "#C6A04B" }}>received</span>
             </h1>
-            <p className="text-sm mt-1" style={{ color: "#e8d5a3" }}>
+            <p className="text-sm mt-1" style={{ color: "#154D31" }}>
               Order{" "}
-              <span className="font-mono" style={{ color: "#c4973a" }}>
+              <span className="font-mono" style={{ color: "#C6A04B" }}>
                 #{orderIdShort}
               </span>{" "}
-              · Total{" "}
-              <span style={{ color: "#c4973a", fontWeight: 600 }}>
+              Â· Total{" "}
+              <span style={{ color: "#C6A04B", fontWeight: 600 }}>
                 {formatCurrency(total)}
               </span>
             </p>
             {itemNames.length > 0 && (
               <p
                 className="text-xs mt-1 truncate"
-                style={{ color: "#6ab04c" }}
+                style={{ color: "#4a7a56" }}
                 title={itemNames.join(", ")}
               >
                 {itemNames.join(", ")}
@@ -333,7 +333,7 @@ export function CheckoutSuccessV2({
           </div>
         </div>
 
-        {/* ── Mandatory password gate ───────────────────────────────────
+        {/* â”€â”€ Mandatory password gate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
          *   The customer must set a password before they can reach the
          *   waiver or booking steps. We dropped the magic-link flow
          *   entirely so this is the only path to a working portal
@@ -351,20 +351,20 @@ export function CheckoutSuccessV2({
 
         {passwordSet && (
           <>
-            <p className="text-sm mb-6 text-center" style={{ color: "#e8d5a3" }}>
+            <p className="text-sm mb-6 text-center" style={{ color: "#154D31" }}>
               {hasKitOnlyTests
-                ? "Two quick steps to finish — please complete both below before we send your kit."
-                : "Two quick steps to finish — please complete both below before your collection appointment."}
+                ? "Two quick steps to finish â€” please complete both below before we send your kit."
+                : "Two quick steps to finish â€” please complete both below before your collection appointment."}
             </p>
 
-            {/* Profile completion card removed — patient identity
+            {/* Profile completion card removed â€” patient identity
                 (name / DOB / biological sex) is captured pre-payment
                 on Step 3 again. Post-payment is just password + waiver
                 + booking; nothing to fetch, nothing to hang on. */}
 
-            {/* ── Waiver + booking/kit steps — waiver for ALL test orders ── */}
+            {/* â”€â”€ Waiver + booking/kit steps â€” waiver for ALL test orders â”€â”€ */}
             {hasTests && (<>
-            {/* Step 1 — Waiver */}
+            {/* Step 1 â€” Waiver */}
         <StepCard
           number={1}
           title={
@@ -378,7 +378,7 @@ export function CheckoutSuccessV2({
           done={waiverDone}
         >
           {waiverDone ? (
-            <div className="flex items-center gap-2" style={{ color: "#8dc63f" }}>
+            <div className="flex items-center gap-2" style={{ color: "#88D45D" }}>
               <CheckCircle className="w-5 h-5" />
               <span className="text-sm font-semibold">Waiver Complete</span>
             </div>
@@ -389,12 +389,12 @@ export function CheckoutSuccessV2({
               className="mf-btn-primary px-5 py-2.5"
             >
               <FileText className="w-4 h-4" />
-              Complete Waiver →
+              Complete Waiver â†’
             </button>
           )}
         </StepCard>
 
-        {/* Step 2 — Booking (phlebotomist orders only) OR Kit delivery (kit-only) */}
+        {/* Step 2 â€” Booking (phlebotomist orders only) OR Kit delivery (kit-only) */}
         {!hasKitOnlyTests ? (
         <StepCard
           number={2}
@@ -402,7 +402,7 @@ export function CheckoutSuccessV2({
           icon={Calendar}
           done={false}
         >
-          {/* Stability disclaimer gate — blocks iframe until acknowledged */}
+          {/* Stability disclaimer gate â€” blocks iframe until acknowledged */}
           {hasStabilityWarning && !stabilityAcknowledged && (
             <StabilityDisclaimerModal
               constrainedTestNames={stabilityConstrainedTests}
@@ -430,13 +430,13 @@ export function CheckoutSuccessV2({
               className="rounded-xl border p-5"
               style={{
                 backgroundColor: "rgba(141,198,63,0.08)",
-                borderColor: "#8dc63f",
+                borderColor: "#88D45D",
               }}
             >
               <div className="flex items-start gap-3">
                 <CheckCircle
                   className="w-6 h-6 shrink-0 mt-0.5"
-                  style={{ color: "#8dc63f" }}
+                  style={{ color: "#88D45D" }}
                 />
                 <div className="flex-1 min-w-0">
                   <p
@@ -447,14 +447,14 @@ export function CheckoutSuccessV2({
                   </p>
                   <p
                     className="text-sm mt-1"
-                    style={{ color: "#e8d5a3" }}
+                    style={{ color: "#154D31" }}
                   >
                     Look for a confirmation email from FloLabs in the next
                     few minutes (check your junk folder if it doesn&apos;t
                     arrive). If you need to change the time, please email{" "}
                     <a
                       href="mailto:support@avovita.ca"
-                      style={{ color: "#c4973a", textDecoration: "underline" }}
+                      style={{ color: "#C6A04B", textDecoration: "underline" }}
                     >
                       support@avovita.ca
                     </a>{" "}
@@ -464,21 +464,21 @@ export function CheckoutSuccessV2({
                     type="button"
                     onClick={reopenScheduler}
                     className="text-xs mt-3 underline"
-                    style={{ color: "#6ab04c" }}
+                    style={{ color: "#4a7a56" }}
                   >
-                    I didn&apos;t book yet — re-open the scheduler
+                    I didn&apos;t book yet â€” re-open the scheduler
                   </button>
                 </div>
               </div>
             </div>
           ) : (
             <>
-              <p className="text-sm mb-3" style={{ color: "#e8d5a3" }}>
+              <p className="text-sm mb-3" style={{ color: "#154D31" }}>
                 Pick the date and time that works best for the in-home
                 visit.
               </p>
 
-              {/* The "time is no longer available" trap — Acuity treats
+              {/* The "time is no longer available" trap â€” Acuity treats
                *   your own just-taken slot as "taken" if you click
                *   Confirm twice, so customers re-booked another slot
                *   thinking the first one failed. Prominent banner is
@@ -488,16 +488,16 @@ export function CheckoutSuccessV2({
                 className="flex items-start gap-2 rounded-lg border px-3 py-2.5 mb-4"
                 style={{
                   backgroundColor: "rgba(196,151,58,0.08)",
-                  borderColor: "#c4973a",
+                  borderColor: "#C6A04B",
                 }}
               >
                 <Info
                   className="w-4 h-4 shrink-0 mt-0.5"
-                  style={{ color: "#c4973a" }}
+                  style={{ color: "#C6A04B" }}
                 />
                 <p
                   className="text-xs leading-relaxed"
-                  style={{ color: "#e8d5a3" }}
+                  style={{ color: "#154D31" }}
                 >
                   <strong style={{ color: "#ffffff" }}>
                     Important:
@@ -505,7 +505,7 @@ export function CheckoutSuccessV2({
                   If you see a &ldquo;this time is no longer
                   available&rdquo; message right after pressing Confirm,
                   your booking probably DID go through. Check your email
-                  for a FloLabs confirmation before picking another time —
+                  for a FloLabs confirmation before picking another time â€”
                   selecting again creates a second appointment that we
                   have to cancel manually.
                 </p>
@@ -514,22 +514,22 @@ export function CheckoutSuccessV2({
               <div
                 className="relative rounded-xl border overflow-hidden"
                 style={{
-                  backgroundColor: "#0f2614",
-                  borderColor: "#2d6b35",
+                  backgroundColor: "#F7F6F0",
+                  borderColor: "#E5E2D4",
                   minHeight: "700px",
                 }}
               >
                 {!iframeLoaded && (
                   <div
                     className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10"
-                    style={{ backgroundColor: "#0f2614" }}
+                    style={{ backgroundColor: "#F7F6F0" }}
                   >
                     <Loader2
                       className="w-6 h-6 animate-spin"
-                      style={{ color: "#c4973a" }}
+                      style={{ color: "#C6A04B" }}
                     />
-                    <p className="text-xs" style={{ color: "#e8d5a3" }}>
-                      Loading scheduler…
+                    <p className="text-xs" style={{ color: "#154D31" }}>
+                      Loading schedulerâ€¦
                     </p>
                   </div>
                 )}
@@ -556,13 +556,13 @@ export function CheckoutSuccessV2({
                 I&apos;ve booked my appointment
               </button>
 
-              <p className="text-xs mt-3 text-center" style={{ color: "#6ab04c" }}>
+              <p className="text-xs mt-3 text-center" style={{ color: "#4a7a56" }}>
                 Trouble loading the scheduler?{" "}
                 <a
                   href={acuityUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: "#c4973a", textDecoration: "underline" }}
+                  style={{ color: "#C6A04B", textDecoration: "underline" }}
                 >
                   Open in a new tab <ExternalLink className="inline w-3 h-3" />
                 </a>
@@ -571,7 +571,7 @@ export function CheckoutSuccessV2({
           )}
           </>)}
           {hasStabilityWarning && !stabilityAcknowledged && (
-            <p className="text-sm" style={{ color: "#6ab04c" }}>
+            <p className="text-sm" style={{ color: "#4a7a56" }}>
               Please review the scheduling note above to continue.
             </p>
           )}
@@ -583,16 +583,16 @@ export function CheckoutSuccessV2({
           icon={Calendar}
           done={false}
         >
-          <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
-            Your collection kit will be delivered within 2–3 business days.
+          <p className="text-sm mb-4" style={{ color: "#154D31" }}>
+            Your collection kit will be delivered within 2â€“3 business days.
             Detailed instructions for sample collection and return will be
             included in the package.
           </p>
-          <p className="text-sm" style={{ color: "#6ab04c" }}>
+          <p className="text-sm" style={{ color: "#4a7a56" }}>
             Questions? Contact{" "}
             <a
               href="mailto:support@avovita.ca"
-              style={{ color: "#c4973a", textDecoration: "underline" }}
+              style={{ color: "#C6A04B", textDecoration: "underline" }}
             >
               support@avovita.ca
             </a>
@@ -602,11 +602,11 @@ export function CheckoutSuccessV2({
 
         </>)}
 
-        {/* ── Supplement delivery section ─────────────────────────── */}
+        {/* â”€â”€ Supplement delivery section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {hasSupplements && (
           <div
             className="rounded-2xl border overflow-hidden mt-6"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <div className="px-6 py-5">
               <h3
@@ -617,10 +617,10 @@ export function CheckoutSuccessV2({
                 }}
               >
                 Supplement{" "}
-                <span style={{ color: "#c4973a" }}>Delivery</span>
+                <span style={{ color: "#C6A04B" }}>Delivery</span>
               </h3>
               {supplementFulfillment === "shipping" ? (
-                <div className="text-sm" style={{ color: "#e8d5a3" }}>
+                <div className="text-sm" style={{ color: "#154D31" }}>
                   <p>
                     Your supplements will be shipped to{" "}
                     {supplementShippingAddress ? (
@@ -635,12 +635,12 @@ export function CheckoutSuccessV2({
                     )}
                     .
                   </p>
-                  <p className="mt-1" style={{ color: "#6ab04c" }}>
+                  <p className="mt-1" style={{ color: "#4a7a56" }}>
                     Tracking will be emailed when dispatched.
                   </p>
                 </div>
               ) : (
-                <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                <p className="text-sm" style={{ color: "#154D31" }}>
                   You&apos;ve indicated you&apos;ve coordinated delivery or
                   pickup with us directly. We&apos;ll be in touch if we need
                   anything further.
@@ -650,11 +650,11 @@ export function CheckoutSuccessV2({
           </div>
         )}
 
-        {/* ── Resource download section ───────────────────────────── */}
+        {/* â”€â”€ Resource download section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {hasResources && (
           <div
             className="rounded-2xl border overflow-hidden mt-6"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <div className="px-6 py-5">
               <h3
@@ -665,9 +665,9 @@ export function CheckoutSuccessV2({
                 }}
               >
                 Your{" "}
-                <span style={{ color: "#c4973a" }}>Resources</span>
+                <span style={{ color: "#C6A04B" }}>Resources</span>
               </h3>
-              <p className="text-sm" style={{ color: "#e8d5a3" }}>
+              <p className="text-sm" style={{ color: "#154D31" }}>
                 Your download link(s) have been emailed to{" "}
                 <strong style={{ color: "#ffffff" }}>{email}</strong>.
                 Please check your inbox (and junk folder). Links expire
@@ -677,13 +677,13 @@ export function CheckoutSuccessV2({
           </div>
         )}
 
-        {/* ── Resources-only: back to browse button ──────────────── */}
+        {/* â”€â”€ Resources-only: back to browse button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {hasResources && !hasTests && !hasSupplements && (
           <div className="text-center mt-6">
             <a
               href="/resources"
               className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold"
-              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+              style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
             >
               Browse More Resources
             </a>
@@ -693,19 +693,19 @@ export function CheckoutSuccessV2({
           </>
         )}
 
-        {/* Footer — always visible, including during the password gate
+        {/* Footer â€” always visible, including during the password gate
          *   so customers always have a support contact in front of them. */}
-        <p className="text-center text-xs mt-8" style={{ color: "#6ab04c" }}>
+        <p className="text-center text-xs mt-8" style={{ color: "#4a7a56" }}>
           Questions? Contact{" "}
           <a
             href="mailto:support@avovita.ca"
-            style={{ color: "#c4973a", textDecoration: "underline" }}
+            style={{ color: "#C6A04B", textDecoration: "underline" }}
           >
             support@avovita.ca
           </a>
         </p>
-        <p className="text-center text-[10px] mt-3" style={{ color: "#6ab04c" }}>
-          AvoVita Wellness Inc. · GST/HST #: 735160749RT0001
+        <p className="text-center text-[10px] mt-3" style={{ color: "#4a7a56" }}>
+          AvoVita Wellness Inc. Â· GST/HST #: 735160749RT0001
         </p>
       </div>
 
@@ -747,28 +747,28 @@ function StepCard({
     <div
       className="rounded-2xl border px-5 sm:px-7 py-5 sm:py-6 mb-5"
       style={{
-        backgroundColor: "#1a3d22",
-        borderColor: done ? "#8dc63f" : "#2d6b35",
+        backgroundColor: "#FFFFFF",
+        borderColor: done ? "#88D45D" : "#E5E2D4",
       }}
     >
       <div className="flex items-center gap-3 mb-4">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center border shrink-0"
           style={{
-            backgroundColor: "#0f2614",
-            borderColor: done ? "#8dc63f" : "#c4973a",
+            backgroundColor: "#F7F6F0",
+            borderColor: done ? "#88D45D" : "#C6A04B",
           }}
         >
           {done ? (
-            <CheckCircle className="w-5 h-5" style={{ color: "#8dc63f" }} />
+            <CheckCircle className="w-5 h-5" style={{ color: "#88D45D" }} />
           ) : (
-            <Icon className="w-5 h-5" style={{ color: "#c4973a" }} />
+            <Icon className="w-5 h-5" style={{ color: "#C6A04B" }} />
           )}
         </div>
         <div className="flex-1 min-w-0">
           <p
             className="text-xs font-semibold uppercase tracking-wider"
-            style={{ color: done ? "#8dc63f" : "#c4973a" }}
+            style={{ color: done ? "#88D45D" : "#C6A04B" }}
           >
             Step {number}
           </p>
@@ -788,7 +788,7 @@ function StepCard({
   );
 }
 
-// ─── Waiver modal ────────────────────────────────────────────────────────
+// â”€â”€â”€ Waiver modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function WaiverModal({
   sessionId,
@@ -889,16 +889,16 @@ function WaiverModal({
     >
       <div
         className="rounded-2xl border w-full max-w-2xl max-h-[92vh] overflow-y-auto"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         onClick={(e) => e.stopPropagation()}
       >
         {signed ? (
           <div className="flex flex-col items-center justify-center p-12 text-center gap-3">
             <div
               className="w-16 h-16 rounded-full flex items-center justify-center border-2"
-              style={{ backgroundColor: "#0f2614", borderColor: "#8dc63f" }}
+              style={{ backgroundColor: "#F7F6F0", borderColor: "#88D45D" }}
             >
-              <CheckCircle className="w-10 h-10" style={{ color: "#8dc63f" }} />
+              <CheckCircle className="w-10 h-10" style={{ color: "#88D45D" }} />
             </div>
             <h3
               className="font-heading text-2xl font-semibold"
@@ -907,10 +907,10 @@ function WaiverModal({
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
               }}
             >
-              Waiver signed — thank you!
+              Waiver signed â€” thank you!
             </h3>
-            <p className="text-sm" style={{ color: "#e8d5a3" }}>
-              Returning to your booking step…
+            <p className="text-sm" style={{ color: "#154D31" }}>
+              Returning to your booking stepâ€¦
             </p>
           </div>
         ) : (
@@ -919,7 +919,7 @@ function WaiverModal({
               <div className="flex items-center gap-2">
                 <Shield
                   className="w-5 h-5 shrink-0"
-                  style={{ color: "#c4973a" }}
+                  style={{ color: "#C6A04B" }}
                 />
                 <h2
                   className="font-heading text-xl sm:text-2xl font-semibold"
@@ -931,12 +931,12 @@ function WaiverModal({
                   {isRepresentative ? (
                     <>
                       Waiver for{" "}
-                      <span style={{ color: "#c4973a" }}>{clientNames}</span>
+                      <span style={{ color: "#C6A04B" }}>{clientNames}</span>
                     </>
                   ) : (
                     <>
                       Review and sign your{" "}
-                      <span style={{ color: "#c4973a" }}>waiver</span>
+                      <span style={{ color: "#C6A04B" }}>waiver</span>
                     </>
                   )}
                 </h2>
@@ -946,13 +946,13 @@ function WaiverModal({
                 onClick={onClose}
                 disabled={submitting}
                 aria-label="Close"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-sm" style={{ color: "#e8d5a3" }}>
+            <p className="text-sm" style={{ color: "#154D31" }}>
               {isRepresentative
                 ? `As ${relationshipLabel}, please read carefully and sign on behalf of your client${dependents.length !== 1 ? "s" : ""}.`
                 : "Please read the following carefully before signing."}
@@ -963,8 +963,8 @@ function WaiverModal({
                 className="rounded-lg border p-3 text-sm"
                 style={{
                   backgroundColor: "rgba(196, 151, 58, 0.08)",
-                  borderColor: "#c4973a",
-                  color: "#e8d5a3",
+                  borderColor: "#C6A04B",
+                  color: "#154D31",
                 }}
               >
                 I,{" "}
@@ -972,7 +972,7 @@ function WaiverModal({
                   {signedName.trim() || "[your full name]"}
                 </span>
                 , am signing this waiver as{" "}
-                <span style={{ color: "#c4973a", fontWeight: 600 }}>
+                <span style={{ color: "#C6A04B", fontWeight: 600 }}>
                   {relationshipLabel}
                 </span>{" "}
                 with legal authority to consent on behalf of{" "}
@@ -987,9 +987,9 @@ function WaiverModal({
               ref={scrollRef}
               className="rounded-xl border p-4 max-h-[260px] overflow-y-auto text-xs leading-relaxed whitespace-pre-line"
               style={{
-                backgroundColor: "#0a1a0d",
-                borderColor: "#2d6b35",
-                color: "#e8d5a3",
+                backgroundColor: "#ffffff",
+                borderColor: "#E5E2D4",
+                color: "#154D31",
               }}
             >
               {WAIVER_TEXT}
@@ -998,9 +998,9 @@ function WaiverModal({
             {!scrolledToBottom && (
               <p
                 className="text-xs italic text-center"
-                style={{ color: "#c4973a" }}
+                style={{ color: "#C6A04B" }}
               >
-                ↓ Scroll down to read the full waiver before signing
+                â†“ Scroll down to read the full waiver before signing
               </p>
             )}
 
@@ -1031,14 +1031,14 @@ function WaiverModal({
                 className="rounded-xl border p-4 space-y-3"
                 style={{
                   backgroundColor: "rgba(196, 151, 58, 0.08)",
-                  borderColor: "#c4973a",
+                  borderColor: "#C6A04B",
                 }}
               >
                 {addendumTitle && (
                   <h3
                     className="font-heading text-base sm:text-lg font-semibold"
                     style={{
-                      color: "#c4973a",
+                      color: "#C6A04B",
                       fontFamily: '"Cormorant Garamond", Georgia, serif',
                     }}
                   >
@@ -1047,7 +1047,7 @@ function WaiverModal({
                 )}
                 <p
                   className="text-xs leading-relaxed whitespace-pre-line"
-                  style={{ color: "#e8d5a3" }}
+                  style={{ color: "#154D31" }}
                 >
                   {addendum}
                 </p>
@@ -1062,7 +1062,7 @@ function WaiverModal({
             <div>
               <label
                 className="block text-sm font-medium mb-1.5"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 {isRepresentative
                   ? "Type your (the representative's) full legal name to sign"
@@ -1101,7 +1101,7 @@ function WaiverModal({
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {submitting
-                ? "Saving…"
+                ? "Savingâ€¦"
                 : canSign
                   ? "I Agree and Sign"
                   : (() => {
@@ -1140,19 +1140,19 @@ function CheckboxRow({
     >
       <span className="mt-0.5 shrink-0">
         {checked ? (
-          <CheckSquare className="w-5 h-5" style={{ color: "#c4973a" }} />
+          <CheckSquare className="w-5 h-5" style={{ color: "#C6A04B" }} />
         ) : (
-          <Square className="w-5 h-5" style={{ color: "#6ab04c" }} />
+          <Square className="w-5 h-5" style={{ color: "#4a7a56" }} />
         )}
       </span>
-      <span className="text-sm leading-relaxed" style={{ color: "#e8d5a3" }}>
+      <span className="text-sm leading-relaxed" style={{ color: "#154D31" }}>
         {label}
       </span>
     </button>
   );
 }
 
-// ─── Set password card ──────────────────────────────────────────────────
+// â”€â”€â”€ Set password card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SetPasswordCard({
   email,
@@ -1185,7 +1185,7 @@ function SetPasswordCard({
     // Stripe redirects, often before the webhook has finished writing
     // the orders.account_id. The set-initial-password route returns
     // 425 in that window. Retry every 2s for ~30s while messaging the
-    // wait — almost all webhooks land in <3s.
+    // wait â€” almost all webhooks land in <3s.
     const MAX_ATTEMPTS = 15;
     const DELAY_MS = 2000;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -1223,7 +1223,7 @@ function SetPasswordCard({
       }
     }
     setError(
-      "Account is still being set up. Please refresh and try again in a moment — if this persists, email support@avovita.ca.",
+      "Account is still being set up. Please refresh and try again in a moment â€” if this persists, email support@avovita.ca.",
     );
     setSubmitting(false);
     setWaitingForAccount(false);
@@ -1232,19 +1232,19 @@ function SetPasswordCard({
   return (
     <div
       className="rounded-2xl border px-5 sm:px-7 py-5 sm:py-6 mb-5"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-3 mb-4">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center border shrink-0"
-          style={{ backgroundColor: "#0f2614", borderColor: "#c4973a" }}
+          style={{ backgroundColor: "#F7F6F0", borderColor: "#C6A04B" }}
         >
-          <Shield className="w-5 h-5" style={{ color: "#c4973a" }} />
+          <Shield className="w-5 h-5" style={{ color: "#C6A04B" }} />
         </div>
         <div className="flex-1 min-w-0">
           <p
             className="text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "#c4973a" }}
+            style={{ color: "#C6A04B" }}
           >
             Required
           </p>
@@ -1261,7 +1261,7 @@ function SetPasswordCard({
       </div>
 
       <>
-        <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
+        <p className="text-sm mb-4" style={{ color: "#154D31" }}>
           Choose a password so you can sign in at portal.avovita.ca to
           view your waiver, book your appointment, and read results. Use
           your email{" "}
@@ -1274,7 +1274,7 @@ function SetPasswordCard({
             <div>
               <label
                 className="block text-xs font-medium mb-1.5"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 New password (8+ characters)
               </label>
@@ -1289,7 +1289,7 @@ function SetPasswordCard({
             <div>
               <label
                 className="block text-xs font-medium mb-1.5"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 Confirm password
               </label>
@@ -1330,9 +1330,9 @@ function SetPasswordCard({
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             {waitingForAccount
-              ? "Setting up your account…"
+              ? "Setting up your accountâ€¦"
               : submitting
-                ? "Saving…"
+                ? "Savingâ€¦"
                 : "Set password and continue"}
           </button>
         </>

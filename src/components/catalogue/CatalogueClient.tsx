@@ -3,18 +3,62 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Check, X, Info, Search } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X,
+  Info,
+  Search,
+  Mic,
+  MicOff,
+  ArrowRight,
+  ArrowUpRight,
+  FlaskConical,
+  Sparkles,
+} from "lucide-react";
 import { OrgAwareHeader } from "@/components/org/OrgAwareHeader";
 import { TestCard } from "./TestCard";
 import { TestTable } from "./TestTable";
 import { SearchBar } from "./SearchBar";
-import { CategoryFilter } from "./CategoryFilter";
 import { CartBar } from "./CartBar";
 import { InsightsChatModal } from "./InsightsChatModal";
 import { AskPromptLauncher } from "./AskPromptLauncher";
 import { useCart } from "@/components/cart/CartContext";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
-import type { CatalogueTest, CatalogueCartItem, CartItemTest } from "./types";
+import type { CatalogueTest, CatalogueCartItem } from "./types";
+
+// Shortcut tiles under the hero search. Clicking one fills the search
+// query with the label text, which filters the catalogue table below
+// via the shared searchQuery state. Chosen to match the four most
+// common first-timer intents.
+const POPULAR_TILES: Array<{ label: string; query: string }> = [
+  { label: "Vitamin D", query: "vitamin d" },
+  { label: "Hormones", query: "hormone" },
+  { label: "Thyroid", query: "thyroid" },
+  { label: "Allergy & Immune", query: "allergy" },
+];
+
+// New Oct 2026 palette (ivory-first "lighter premium healthcare"):
+//   Forest Green  #092819  header / footer / premium brand sections
+//   Warm Ivory    #F7F6F0  primary page background
+//   White         #FFFFFF  search fields, cards, test listings
+//   Deep Green    #154D31  primary buttons, important actions
+//   Muted Gold    #C6A04B  small accents, dividers, highlights
+//   Avocado Lime  #88D45D  brand highlights, icons, selected states
+// Only the hero region on /tests uses this palette today; rest of the
+// portal still runs the old dark forest. Full migration is a separate
+// larger piece of work gated on sign-off of this preview.
+const C = {
+  forest: "#092819",
+  ivory: "#F7F6F0",
+  white: "#FFFFFF",
+  deepGreen: "#154D31",
+  gold: "#C6A04B",
+  lime: "#88D45D",
+  textMuted: "rgba(9, 40, 25, 0.6)",
+  border: "#E5E2D4",
+};
 
 interface CatalogueClientProps {
   featuredTests: CatalogueTest[];
@@ -49,6 +93,88 @@ export function CatalogueClient({
   // scroll filtered results into view as the user types.
   const catalogueRef = useRef<HTMLElement | null>(null);
 
+  // Hero input state â€” a single prominent input at the top of /tests
+  // that routes every query through the AI chat. Mobile-first:
+  // elderly / non-technical users don't want to toggle between
+  // "search" and "AI" modes, so there's one entry point. Pressing
+  // Enter or the "Ask" button opens the chat modal and auto-sends
+  // the query as the first message (via initialQuery on the modal).
+  const [heroQuery, setHeroQuery] = useState("");
+  const [pendingAiQuery, setPendingAiQuery] = useState<string | null>(null);
+
+  // Voice dictation via the Web Speech API (Chrome/Edge/Safari â€”
+  // webkit-prefixed on iOS Safari). Appends recognised speech into
+  // the hero input so the user can edit before submitting.
+  const [listening, setListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(true);
+  type SpeechRecognitionInstance = {
+    lang: string;
+    continuous: boolean;
+    interimResults: boolean;
+    start: () => void;
+    stop: () => void;
+    onresult: ((e: unknown) => void) | null;
+    onend: (() => void) | null;
+    onerror: (() => void) | null;
+  };
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const w = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionInstance;
+      webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+    };
+    if (!w.SpeechRecognition && !w.webkitSpeechRecognition) {
+      setVoiceSupported(false);
+    }
+  }, []);
+
+  const toggleVoice = () => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const w = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionInstance;
+      webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+    };
+    const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!Ctor) return;
+    const r = new Ctor();
+    r.lang = "en-US";
+    r.continuous = false;
+    r.interimResults = true;
+    r.onresult = (e) => {
+      const results = (e as { results: ArrayLike<ArrayLike<{ transcript: string }>> })
+        .results;
+      let transcript = "";
+      for (let i = 0; i < results.length; i++) {
+        transcript += results[i][0].transcript;
+      }
+      setHeroQuery(transcript);
+    };
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    recognitionRef.current = r;
+    setListening(true);
+    try {
+      r.start();
+    } catch {
+      setListening(false);
+    }
+  };
+
+  const submitHeroQuery = () => {
+    const q = heroQuery.trim();
+    if (!q) return;
+    recognitionRef.current?.stop();
+    setListening(false);
+    setPendingAiQuery(q);
+    setAiOpen(true);
+  };
+
   const handleAdd = (item: CatalogueCartItem) => {
     addItem({ ...item, line_type: "test" });
   };
@@ -69,7 +195,7 @@ export function CatalogueClient({
 
   // Deep-link support: /tests?category=<exact label> pre-selects the
   // matching filter. Keyed on `categories` so the effect re-fires
-  // once the server-rendered list has populated — fixes the case
+  // once the server-rendered list has populated â€” fixes the case
   // where the initial render had an empty categories array.
   // Diagnostic: trace every selectedCategory state transition so we
   // can see in DevTools whether the URL-param effect is being overridden.
@@ -126,10 +252,10 @@ export function CatalogueClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Cart handoff from Ask AvoVita (and any other src) ────────────
+  // â”€â”€â”€ Cart handoff from Ask AvoVita (and any other src) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Contract: /tests?add=SKU1,SKU2&src=ask
   //   - Match each SKU on tests.sku (case-insensitive, trimmed both
-  //     sides — one legacy row has a trailing space in its SKU).
+  //     sides â€” one legacy row has a trailing space in its SKU).
   //   - Skip quote-only tests (price_cad === null).
   //   - Add each match to the cart in the given order via the normal
   //     addItem() path, so Tuesday-only tests still trigger the
@@ -137,7 +263,7 @@ export function CatalogueClient({
   //   - Fallback for schedule-constrained tests: stay on /tests so
   //     the ack modal is visible in context. Otherwise redirect to
   //     /checkout so the customer lands ready to pay.
-  //   - Zero matches → quiet "we couldn't find those tests" banner
+  //   - Zero matches â†’ quiet "we couldn't find those tests" banner
   //     (an assistant that hallucinates a code should cost the
   //     customer nothing).
   //   - Strip the query params via router.replace so a refresh or a
@@ -146,7 +272,7 @@ export function CatalogueClient({
   //     the checkout flow can plumb it through onto orders.src for
   //     attribution analytics.
   // URL handoff shares a ref with the post-add launcher so a batch of
-  // ?add= adds doesn't trigger the "want suggestions?" nudge — that
+  // ?add= adds doesn't trigger the "want suggestions?" nudge â€” that
   // arrival already means the customer's intent was formed elsewhere
   // (the Ask AvoVita widget on the marketing site, an SMS link, etc.).
   const handoffAdding = useRef(false);
@@ -183,7 +309,7 @@ export function CatalogueClient({
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
-    // Build a lookup once — normalise both sides (uppercase, trim).
+    // Build a lookup once â€” normalise both sides (uppercase, trim).
     // Some catalogue rows carry a stray trailing space (ALBR ), so a
     // simple .toUpperCase() on both sides isn't enough on its own.
     const skuIndex = new Map<string, CatalogueTest>();
@@ -200,12 +326,12 @@ export function CatalogueClient({
       if (hit && hit.price_cad != null) matches.push(hit);
     }
 
-    // Strip the query params either way — a refresh must not re-add.
+    // Strip the query params either way â€” a refresh must not re-add.
     router.replace("/tests", { scroll: false });
 
     if (matches.length === 0) {
       setNotFoundBanner(
-        "We couldn't find those tests — here's the full catalogue.",
+        "We couldn't find those tests â€” here's the full catalogue.",
       );
       return;
     }
@@ -247,10 +373,10 @@ export function CatalogueClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated]);
 
-  // ─── Post-add Ask AvoVita nudge ──────────────────────────────────
+  // â”€â”€â”€ Post-add Ask AvoVita nudge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Fires when the customer adds a test on /tests. The visit fee is
   // the most likely cause of the 81% checkout drop-off, and once one
-  // test is in the cart it's a sunk cost — a second test on the same
+  // test is in the cart it's a sunk cost â€” a second test on the same
   // appointment costs only the test price. Telling the customer that
   // at the exact moment of the first add turns the biggest surprise
   // in the funnel into an argument for a second test, where nearly
@@ -258,7 +384,7 @@ export function CatalogueClient({
   //
   // Trigger rules (all must be true):
   //   - test count strictly increased
-  //   - test count BEFORE the add was < 2 (i.e. 0 → 1 or 1 → 2 —
+  //   - test count BEFORE the add was < 2 (i.e. 0 â†’ 1 or 1 â†’ 2 â€”
   //     someone already at 2+ tests has understood the model)
   //   - not a ?add= URL handoff (their intent was already formed
   //     elsewhere)
@@ -266,7 +392,7 @@ export function CatalogueClient({
   //   - hasn't been dismissed this session (sessionStorage sticks)
   //
   // Once dismissed we set BOTH refs so a mid-session refresh of the
-  // page doesn't re-arm the prompt — the sessionStorage flag survives
+  // page doesn't re-arm the prompt â€” the sessionStorage flag survives
   // the refresh and the effect skips on cart mount.
   const prevTestCountRef = useRef<number | null>(null);
   const askPromptFiredRef = useRef(false);
@@ -276,7 +402,7 @@ export function CatalogueClient({
     const testCount = totals.testItems.length;
     const prev = prevTestCountRef.current;
     prevTestCountRef.current = testCount;
-    // First run after hydration primes the ref without triggering —
+    // First run after hydration primes the ref without triggering â€”
     // whatever was in the cart from a previous session isn't a fresh
     // add.
     if (prev === null) return;
@@ -293,7 +419,7 @@ export function CatalogueClient({
         return;
       }
     } catch {
-      /* sessionStorage disabled — no persistence, that's fine */
+      /* sessionStorage disabled â€” no persistence, that's fine */
     }
     const newestTest = totals.testItems[totals.testItems.length - 1];
     setAskPromptTestName(newestTest?.test_name ?? null);
@@ -343,7 +469,7 @@ export function CatalogueClient({
   const filteredTests = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     console.log(
-      "[catalogue] filter run — selectedCategory:",
+      "[catalogue] filter run â€” selectedCategory:",
       JSON.stringify(selectedCategory),
       "selectedLab:",
       JSON.stringify(selectedLab),
@@ -399,7 +525,7 @@ export function CatalogueClient({
         continue;
       }
 
-      // Tier 1: name / sku / category hit — existing behaviour.
+      // Tier 1: name / sku / category hit â€” existing behaviour.
       const primary =
         test.name.toLowerCase().includes(query) ||
         (test.sku !== null && test.sku.toLowerCase().includes(query)) ||
@@ -408,7 +534,7 @@ export function CatalogueClient({
         scored.push({ test, tier: 1 });
         continue;
       }
-      // Tier 2: description-only hit — new this pass. Catches tests
+      // Tier 2: description-only hit â€” new this pass. Catches tests
       // like Cytokine Panel 13 when a customer searches "interleukin"
       // but the term only appears in the long description.
       if (
@@ -420,18 +546,18 @@ export function CatalogueClient({
     }
 
     // Order when a query is active:
-    //   1. search_priority DESC — admin-boosted rows always jump the
+    //   1. search_priority DESC â€” admin-boosted rows always jump the
     //      queue. A bundle at priority 100 whose description contains
     //      the searched term must beat individual tests at priority 0
     //      whose names contain the term, otherwise the bundle upsell
     //      never gets a chance (Fatigue Bundle vs individual Vitamin D
     //      rows was the case that surfaced this).
-    //   2. tier ASC as tiebreaker — for the ~445 rows that never got a
+    //   2. tier ASC as tiebreaker â€” for the ~445 rows that never got a
     //      priority set (default 0), the old "name/sku hit beats
     //      description-only hit" ordering still applies.
     //   3. Stable sort preserves alphabetical for same-priority same-tier.
     // Browse / no-query lists stay in the alphabetical order Supabase
-    // returned — priority is a search-ranking signal, not a browse one.
+    // returned â€” priority is a search-ranking signal, not a browse one.
     const hasQuery = query !== "";
     scored.sort((a, b) => {
       if (hasQuery) {
@@ -455,8 +581,8 @@ export function CatalogueClient({
   };
 
   return (
-    <div className="min-h-screen pb-32" style={{ backgroundColor: "#0a1a0d" }}>
-      {/* Top nav — auto-swaps to org branding when wrapped in OrgProvider */}
+    <div className="min-h-screen pb-32" style={{ backgroundColor: "#ffffff" }}>
+      {/* Top nav â€” auto-swaps to org branding when wrapped in OrgProvider */}
       {/* AccountIndicator inside OrgAwareHeader handles Sign In / account
           dropdown for both logged-in and logged-out visitors. */}
       <OrgAwareHeader />
@@ -473,21 +599,21 @@ export function CatalogueClient({
           <div
             className="flex items-start gap-2.5 rounded-lg border px-4 py-3"
             style={{
-              backgroundColor: "#1a3d22",
-              borderColor: "#c4973a",
-              color: "#e8d5a3",
+              backgroundColor: "#FFFFFF",
+              borderColor: "#C6A04B",
+              color: "#154D31",
             }}
           >
             <Info
               className="w-4 h-4 shrink-0 mt-0.5"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             />
             <p className="text-sm flex-1">{notFoundBanner}</p>
             <button
               type="button"
               onClick={() => setNotFoundBanner(null)}
               className="p-0.5"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
               aria-label="Dismiss"
             >
               <X className="w-3.5 h-3.5" />
@@ -496,158 +622,77 @@ export function CatalogueClient({
         </div>
       )}
 
-      {/* Page title */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-6">
-        {/* Availability advisory removed from /tests deliberately.
-         *   /tests is the primary landing surface — an apology-shaped
-         *   banner in the highest-impression slot tells first-timers
-         *   "this will be difficult" at the exact moment they're
-         *   deciding whether to bother. The advisory now surfaces on
-         *   the CartBar (when a customer has added a test — they're
-         *   invested, the constraint is now actionable) and stays
-         *   loud on the checkout appointment step. Content is driven
-         *   from the availability_advisories Supabase table so date
-         *   windows are editable in admin, not baked into the deploy.
-         */}
-
+      {/* Hero region â€” new Oct 2026 ivory palette.
+       *   Full-width ivory band so the lighter aesthetic reads cleanly
+       *   on mobile. The forest-green nav above and the dark catalogue
+       *   section below act as the "25% green" from the palette ratio.
+       *   Rest of the portal still runs the old dark palette; full
+       *   migration pending Mike's sign-off on this preview.
+       */}
+      <div
+        className="w-full"
+        style={{ backgroundColor: C.ivory }}
+      >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-8">
         <h1
-          className="font-heading text-4xl md:text-5xl font-semibold mb-3"
+          className="font-heading text-3xl md:text-4xl font-semibold mb-2"
           style={{
-            color: "#ffffff",
+            color: C.forest,
             fontFamily: '"Cormorant Garamond", Georgia, serif',
+            lineHeight: 1.1,
           }}
         >
-          Lab Test <span style={{ color: "#c4973a" }}>Catalogue</span>
+          Your health.{" "}
+          <span style={{ color: C.deepGreen }}>Your answers.</span>
         </h1>
-
-        {/* Three trust facts, inline, above the fold.
-         *   These answer the three objections that stop a first-time
-         *   private-lab visitor cold: "I'm not in Calgary so I can't",
-         *   "I need a doctor's referral", "my results will end up on
-         *   my public record." Rendered as small icon-prefixed lines
-         *   rather than a section heading so a returner scanning for
-         *   the catalogue can eye-skip them without friction.
-         *
-         *   Copy is deliberately NOT the "Private blood testing in
-         *   Calgary" phrasing that avovita.ca uses — the portal is
-         *   noindex-bound and duplicating marketing keywords is what
-         *   put us in the cannibalization hole in the first place.
-         */}
-        <ul
-          className="flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-1.5 text-sm mb-4"
-          style={{ color: "#e8d5a3" }}
+        <p
+          className="mb-6"
+          style={{ color: C.textMuted, fontSize: "14px" }}
         >
-          <li className="flex items-center gap-2">
-            <Check
-              className="w-4 h-4 shrink-0"
-              style={{ color: "#8dc63f" }}
-            />
-            <span>A FloLabs phlebotomist comes to you, anywhere in Calgary</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <Check
-              className="w-4 h-4 shrink-0"
-              style={{ color: "#8dc63f" }}
-            />
-            <span>No physician requisition for most tests</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <Check
-              className="w-4 h-4 shrink-0"
-              style={{ color: "#8dc63f" }}
-            />
-            <span>Results delivered to your private client portal</span>
-          </li>
-        </ul>
+          Specialized blood testing, delivered to your door in Calgary.
+        </p>
 
-        {/* Ask AvoVita card — was "AI Test Finder" until Aug 2026 rename */}
+        {/* â”€â”€â”€ Clean hero card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            Oct 2026 redesign (Mike, GPT mockup reference): minimal
+            chrome, one obvious action. "What test are you looking
+            for?" + search input that filters the catalogue table
+            below as the user types. "Browse All Tests" scrolls to
+            the table. "Not sure? Ask AvoVita AI" link opens the chat
+            as a secondary / fallback path for people who can't name
+            what they want. */}
         <div
-          className="mt-5 rounded-xl border px-4 sm:px-6 py-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-6"
+          className="rounded-xl border p-5 shadow-sm"
           style={{
-            backgroundColor: "rgba(196,151,58,0.08)",
-            borderColor: "#c4973a",
+            backgroundColor: C.white,
+            borderColor: C.border,
           }}
         >
-          <div className="flex-1 min-w-0">
-            <p
-              className="font-semibold uppercase mb-1.5"
-              style={{
-                color: "#c4973a",
-                fontSize: "11px",
-                letterSpacing: "0.15em",
-              }}
-            >
-              AI-POWERED ASSISTANT
-            </p>
-            <h3
-              className="font-heading mb-1.5"
-              style={{
-                color: "#ffffff",
-                fontFamily: '"Cormorant Garamond", Georgia, serif',
-                fontSize: "22px",
-              }}
-            >
-              Ask AvoVita
-            </h3>
-            <p style={{ color: "#e8d5a3", fontSize: "14px" }}>
-              Tests, pricing, and how it all works — describe your symptoms
-              or ask us anything about the service.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setAiOpen(true)}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg text-base font-semibold transition-colors shrink-0 w-full md:w-auto"
-            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
-          >
-            <span aria-hidden>💬</span>
-            Ask AvoVita
-            <span aria-hidden>→</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
-        {/* ─── Hero search ──────────────────────────────────────────────
-            First-time visitors reported "I don't know where to type" —
-            the only search input used to live below two carousels of
-            featured tests, mentally invisible unless you scrolled. The
-            search bar on the Full Catalogue section is kept in place
-            (same state), so this is purely a prominence boost: large
-            label, large input, right under Ask AvoVita so the two
-            search affordances sit side-by-side at the top. Typing here
-            auto-scrolls to the catalogue section so the user actually
-            sees the results. */}
-        <section>
           <label
-            htmlFor="hero-catalogue-search"
-            className="block mb-2 font-semibold"
-            style={{ color: "#c4973a", fontSize: 14, letterSpacing: "0.05em" }}
+            htmlFor="hero-ai-input"
+            className="block mb-3"
+            style={{
+              color: C.forest,
+              fontSize: "15px",
+              fontWeight: 600,
+            }}
           >
-            Search our catalogue
+            What test are you looking for?
           </label>
-          <div className="relative">
+          <div className="relative mb-4">
             <Search
               className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none"
-              style={{ color: "#c4973a" }}
+              style={{ color: C.textMuted }}
             />
             <input
-              id="hero-catalogue-search"
+              id="hero-ai-input"
               type="text"
-              value={searchQuery}
+              value={heroQuery}
               onChange={(e) => {
                 const next = e.target.value;
                 const wasEmpty = searchQuery.trim().length === 0;
                 const nowFilled = next.trim().length > 0;
+                setHeroQuery(next);
                 setSearchQuery(next);
-                // Only on the FIRST non-empty character: scroll the
-                // catalogue section into view AND move focus down to
-                // the catalogue's own search input. Without the focus
-                // shift the browser keeps scrolling back up to this
-                // hero input on each keystroke (focused inputs get
-                // auto-scrolled into view), causing the "bounce"
-                // bug Mike flagged. After the shift, all subsequent
-                // typing goes to the bottom bar which stays visible.
                 if (wasEmpty && nowFilled && catalogueRef.current) {
                   catalogueRef.current.scrollIntoView({
                     behavior: "smooth",
@@ -659,86 +704,133 @@ export function CatalogueClient({
                     );
                     if (bottom instanceof HTMLInputElement) {
                       bottom.focus();
-                      // Put the cursor at the end so continuing to
-                      // type appends rather than overwriting.
                       const len = bottom.value.length;
                       bottom.setSelectionRange(len, len);
                     }
                   });
                 }
               }}
-              placeholder={`Try "testosterone", "DHVD", "thyroid" — ${allTests.length} tests to browse`}
-              className="w-full rounded-xl border-2 py-4 pl-12 pr-4 text-base font-medium focus:outline-none"
+              placeholder={`Search ${allTests.length} lab testsâ€¦`}
+              className="w-full rounded-xl border py-3.5 pl-12 pr-4 focus:outline-none"
               style={{
-                backgroundColor: "#0f2614",
-                borderColor: "#c4973a",
-                color: "#ffffff",
+                backgroundColor: C.ivory,
+                borderColor: C.border,
+                color: C.forest,
                 fontSize: "16px",
               }}
+              aria-label="Search lab tests"
             />
           </div>
-          <p
-            className="mt-2"
-            style={{ color: "#8dc63f", fontSize: 12 }}
+          <button
+            type="button"
+            onClick={() => {
+              catalogueRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }}
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg font-semibold transition-colors"
+            style={{
+              backgroundColor: C.deepGreen,
+              color: C.white,
+              fontSize: "15px",
+            }}
           >
-            Browse the full list and filters below, or scroll for Featured
-            Tests and Comprehensive Panels.
+            Browse All Tests
+            <ArrowRight className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setAiOpen(true)}
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 text-sm"
+            style={{ color: C.deepGreen, fontWeight: 500 }}
+          >
+            <Sparkles className="w-4 h-4" style={{ color: C.gold }} />
+            Not sure? Ask AvoVita AI
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* â”€â”€â”€ Popular tests grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            Four category shortcuts. Taps set the search query to the
+            tile's label; the catalogue filters live and the page
+            scrolls down to show results. Chosen for first-time
+            visitors who have a vague idea ("something about my
+            hormones") but can't name a specific test. */}
+        <div
+          className="mt-6"
+          aria-label="Popular test categories"
+        >
+          <p
+            className="mb-3 font-semibold"
+            style={{ color: C.forest, fontSize: "14px" }}
+          >
+            Popular tests
           </p>
-        </section>
+          <div className="grid grid-cols-2 gap-3">
+            {POPULAR_TILES.map((t) => (
+              <button
+                key={t.label}
+                type="button"
+                onClick={() => {
+                  setHeroQuery(t.query);
+                  setSearchQuery(t.query);
+                  if (catalogueRef.current) {
+                    catalogueRef.current.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }
+                }}
+                className="text-left rounded-xl border px-4 py-4 transition-colors shadow-sm"
+                style={{
+                  backgroundColor: C.white,
+                  borderColor: C.border,
+                }}
+              >
+                <div
+                  className="rounded-lg inline-flex items-center justify-center mb-2"
+                  style={{
+                    backgroundColor: "rgba(136,212,93,0.18)",
+                    width: 36,
+                    height: 36,
+                  }}
+                >
+                  <FlaskConical
+                    className="w-4 h-4"
+                    style={{ color: C.deepGreen }}
+                  />
+                </div>
+                <p
+                  style={{ color: C.forest, fontSize: "14px", fontWeight: 600 }}
+                >
+                  {t.label}
+                </p>
+                <ArrowUpRight
+                  className="w-3.5 h-3.5 mt-1"
+                  style={{ color: C.textMuted }}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      </div>
 
-        {/* ─── SECTION 1: Featured ────────────────────────────────────── */}
-        <section>
-          <SectionHeading title="Featured Tests" hint="(scroll down for full catalogue)" />
-          {featuredTests.length === 0 ? (
-            <div
-              className="rounded-xl border px-6 py-12 text-center"
-              style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
-            >
-              <p className="text-sm" style={{ color: "#6ab04c" }}>
-                Featured tests coming soon
-              </p>
-            </div>
-          ) : (
-            <FeaturedCarousel
-              tests={featuredTests}
-              cart={cart.filter((c) => c.line_type === "test") as CartItemTest[]}
-              onAdd={handleAdd}
-              expandedId={expandedCardId}
-              onToggleExpand={toggleExpanded}
-            />
-          )}
-        </section>
-
-        {/* ─── SECTION 1b: Comprehensive Panels ──────────────────────── */}
-        {panelTests.length > 0 && (
-          <section>
-            <SectionHeading
-              title="Comprehensive Panels"
-              subtitle="Complete multi-marker panels for deeper health insight"
-            />
-            <FeaturedCarousel
-              tests={panelTests}
-              cart={cart.filter((c) => c.line_type === "test") as CartItemTest[]}
-              onAdd={handleAdd}
-              expandedId={expandedCardId}
-              onToggleExpand={toggleExpanded}
-            />
-          </section>
-        )}
-
-        {/* ─── SECTION 2: Full catalogue ──────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-12 mt-10">
+        {/* â”€â”€â”€ Full catalogue â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <section ref={catalogueRef} id="full-catalogue">
           <SectionHeading title="Full Test Catalogue" />
 
-          <p style={{ color: "#e8d5a3", fontSize: "13px" }}>
+          <p style={{ color: "#154D31", fontSize: "13px" }}>
             Choose from our {allTests.length} test catalogue.
           </p>
-          <p style={{ color: "#e8d5a3", fontSize: "13px" }}>
-            Tests without pricing —{" "}
+          <p style={{ color: "#154D31", fontSize: "13px" }}>
+            Tests without pricing â€”{" "}
             <a
               href="mailto:support@avovita.ca"
               className="no-underline hover:underline"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             >
               contact us
             </a>{" "}
@@ -746,40 +838,32 @@ export function CatalogueClient({
           </p>
           <p
             className="mb-5"
-            style={{ color: "#e8d5a3", fontSize: "13px" }}
+            style={{ color: "#154D31", fontSize: "13px" }}
           >
-            Don&apos;t see the test you&apos;re looking for? We have access to thousands of Mayo Clinic tests not listed here —{" "}
+            Don&apos;t see the test you&apos;re looking for? We have access to thousands of Mayo Clinic tests not listed here â€”{" "}
             <a
               href="mailto:support@avovita.ca"
               className="no-underline hover:underline"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             >
               contact us
             </a>{" "}
             and we&apos;ll get it added.
           </p>
 
-          {/* Filter row */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          {/* Filter row â€” search only. The category + lab dropdowns
+              were removed Oct 2026 (Mike): nobody filters by "Allergy
+              & Sensitivity", they just type "food allergies" or
+              "dog dander" into the search. Keeping fewer controls on
+              the primary surface. categories + labs props still flow
+              in so clearFilters stays correct if we add filters back
+              later via admin surfaces. */}
+          <div className="mb-6">
             <SearchBar
               inputId="catalogue-search-input"
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search by test name or SKU..."
-            />
-            <CategoryFilter
-              label="Categories"
-              options={categories}
-              value={selectedCategory}
-              onChange={setSelectedCategory}
-              allLabel="All Categories"
-            />
-            <CategoryFilter
-              label="Labs"
-              options={labs}
-              value={selectedLab}
-              onChange={setSelectedLab}
-              allLabel="All Labs"
             />
           </div>
 
@@ -800,7 +884,7 @@ export function CatalogueClient({
       {/* Sticky cart bar */}
       <CartBar cart={cart} />
 
-      {/* Post-add Ask AvoVita nudge — appears once after the first
+      {/* Post-add Ask AvoVita nudge â€” appears once after the first
           add of the session, above the CartBar, dismissible. Never
           obscures Checkout: the launcher yields to the CartBar and
           uses a fixed offset above it. */}
@@ -816,8 +900,17 @@ export function CatalogueClient({
       {/* AI Test Finder modal */}
       <InsightsChatModal
         open={aiOpen}
-        onClose={() => setAiOpen(false)}
+        onClose={() => {
+          setAiOpen(false);
+          // Clear the pending query so the next open with a different
+          // or null query triggers a fresh auto-send instead of being
+          // suppressed by the "already sent" ref inside the modal.
+          setPendingAiQuery(null);
+          // Also clear the hero input â€” the chat now has the state.
+          setHeroQuery("");
+        }}
         onScrollToTest={scrollToTest}
+        initialQuery={pendingAiQuery}
       />
     </div>
   );
@@ -937,7 +1030,7 @@ function FeaturedCarousel({
                 style={{
                   width: i === index ? "20px" : "8px",
                   height: "8px",
-                  backgroundColor: i === index ? "#c4973a" : "#2d6b35",
+                  backgroundColor: i === index ? "#C6A04B" : "#E5E2D4",
                 }}
               />
             ))}
@@ -966,8 +1059,8 @@ function CarouselArrow({
       aria-label={direction === "left" ? "Previous" : "Next"}
       className="absolute top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center z-10 transition-opacity shadow-md"
       style={{
-        backgroundColor: "#c4973a",
-        color: "#0a1a0d",
+        backgroundColor: "#C6A04B",
+        color: "#ffffff",
         border: "none",
         opacity: disabled ? 0.3 : 1,
         cursor: disabled ? "default" : "pointer",
@@ -1004,7 +1097,7 @@ function SectionHeading({
           <span
             className="text-sm"
             style={{
-              color: "#e8d5a3",
+              color: "#154D31",
               fontFamily: '"DM Sans", system-ui, sans-serif',
               fontSize: "14px",
             }}
@@ -1017,7 +1110,7 @@ function SectionHeading({
         <p
           className="mb-2"
           style={{
-            color: "#e8d5a3",
+            color: "#154D31",
             fontFamily: '"DM Sans", system-ui, sans-serif',
             fontSize: "14px",
           }}
@@ -1027,7 +1120,7 @@ function SectionHeading({
       )}
       <div
         className="h-[3px] w-16 rounded-full"
-        style={{ backgroundColor: "#c4973a" }}
+        style={{ backgroundColor: "#C6A04B" }}
       />
     </div>
   );

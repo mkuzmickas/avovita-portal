@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { PatientProfile } from "@/types/database";
 
 /**
- * Canadian provinces + territories — alphabetical by abbreviation for
+ * Canadian provinces + territories â€” alphabetical by abbreviation for
  * quick admin entry.
  */
 const CA_PROVINCES: Array<{ code: string; name: string }> = [
@@ -27,7 +27,7 @@ const CA_PROVINCES: Array<{ code: string; name: string }> = [
 ];
 
 /**
- * Lightweight prefill shape — a subset of PatientProfile fields used to
+ * Lightweight prefill shape â€” a subset of PatientProfile fields used to
  * pre-populate the form from checkout metadata without requiring a full
  * Supabase row to exist yet.
  */
@@ -54,7 +54,7 @@ export interface ProfileFormProps {
   existingProfile?: PatientProfile;
   /**
    * Pre-fill form fields from checkout metadata. Lower priority than
-   * existingProfile — if both are provided existingProfile wins.
+   * existingProfile â€” if both are provided existingProfile wins.
    */
   prefillData?: ProfilePrefillData;
   /** Override the submit button text (e.g. "Confirm and Continue"). */
@@ -167,7 +167,7 @@ export function ProfileForm({
     }
   };
 
-  const labelStyle = { color: "#e8d5a3" };
+  const labelStyle = { color: "#154D31" };
   const reqMark = <span style={{ color: "#e05252" }}> *</span>;
 
   return (
@@ -226,7 +226,7 @@ export function ProfileForm({
             onChange={(e) => handleChange("biological_sex", e.target.value)}
             className="mf-input cursor-pointer"
           >
-            <option value="">Select…</option>
+            <option value="">Selectâ€¦</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
@@ -246,7 +246,7 @@ export function ProfileForm({
           placeholder="+1 (403) 555-0000"
           autoComplete="tel"
         />
-        <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
+        <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
           Required for SMS notifications when your order ships and results are ready
         </p>
       </div>
@@ -304,7 +304,7 @@ export function ProfileForm({
           >
             {CA_PROVINCES.map((p) => (
               <option key={p.code} value={p.code}>
-                {p.code} — {p.name}
+                {p.code} â€” {p.name}
               </option>
             ))}
           </select>
@@ -329,7 +329,7 @@ export function ProfileForm({
 
       <div
         className="flex items-start gap-2 rounded-lg border p-3"
-        style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+        style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
       >
         <input
           type="checkbox"
@@ -337,16 +337,16 @@ export function ProfileForm({
           checked={form.is_minor}
           onChange={(e) => handleChange("is_minor", e.target.checked)}
           className="w-4 h-4 rounded mt-0.5 shrink-0"
-          style={{ accentColor: "#c4973a" }}
+          style={{ accentColor: "#C6A04B" }}
         />
         <label htmlFor="is_minor" className="flex-1 cursor-pointer">
           <span
             className="block text-sm font-medium"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
           >
             This patient is a minor (under 18)
           </span>
-          <span className="block text-xs mt-1" style={{ color: "#6ab04c" }}>
+          <span className="block text-xs mt-1" style={{ color: "#4a7a56" }}>
             Minor profiles will be linked to your account. You remain the
             legal guardian responsible for consent and result access.
           </span>

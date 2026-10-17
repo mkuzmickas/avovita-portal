@@ -61,7 +61,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
   // "Needs booking" ONLY when the order is confirmed (paid) AND no
   // FloLabs appointment has been booked yet. Previously this was a
   // status-only check, so the CTA re-appeared for every subsequent
-  // visit even after the customer had booked their appointment —
+  // visit even after the customer had booked their appointment â€”
   // letting them open Acuity again and book duplicate slots against
   // the same single paid order. Christopher Eggerston's Sep 2026
   // incident (booked a post-results appointment without paying for
@@ -70,7 +70,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
   const needsBooking =
     order.status === "confirmed" && !order.appointment_at;
   // Invoice PDF: paid statuses + non-zero total. Mirrors the API gate
-  // so we don't surface a button that 409s — and excludes AVOVITA-TEST
+  // so we don't surface a button that 409s â€” and excludes AVOVITA-TEST
   // internal zero-dollar orders the same way the route does.
   const PAID_STATUSES = new Set([
     "confirmed",
@@ -86,7 +86,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
   return (
     <div
       className="rounded-xl border overflow-hidden"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       {/* Collapsed header (always visible, clickable) */}
       <button
@@ -99,7 +99,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span
               className="font-mono text-xs"
-              style={{ color: "#6ab04c" }}
+              style={{ color: "#4a7a56" }}
             >
               #{order.id.slice(0, 8).toUpperCase()}
             </span>
@@ -109,8 +109,8 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                 className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border tracking-wider"
                 style={{
                   backgroundColor: "rgba(196, 151, 58, 0.125)",
-                  borderColor: "#c4973a",
-                  color: "#c4973a",
+                  borderColor: "#C6A04B",
+                  color: "#C6A04B",
                 }}
               >
                 Action needed
@@ -119,24 +119,24 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
           </div>
           <p
             className="text-xs"
-            style={{ color: "#6ab04c" }}
+            style={{ color: "#4a7a56" }}
           >
-            {formatDate(order.created_at)} · {testCount}{" "}
+            {formatDate(order.created_at)} Â· {testCount}{" "}
             {testCount === 1 ? "test" : "tests"}
           </p>
         </div>
         <div className="text-right shrink-0">
           <p
             className="text-lg sm:text-xl font-semibold"
-            style={{ color: "#c4973a" }}
+            style={{ color: "#C6A04B" }}
           >
-            {order.total_cad != null ? formatCurrency(order.total_cad) : "—"}
+            {order.total_cad != null ? formatCurrency(order.total_cad) : "â€”"}
           </p>
         </div>
         <ChevronDown
           className="w-5 h-5 shrink-0 transition-transform duration-200"
           style={{
-            color: "#c4973a",
+            color: "#C6A04B",
             transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
           }}
         />
@@ -146,14 +146,14 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
       {expanded && (
         <div
           className="border-t"
-          style={{ borderColor: "#2d6b35", backgroundColor: "#0f2614" }}
+          style={{ borderColor: "#E5E2D4", backgroundColor: "#F7F6F0" }}
         >
           {/* Timeline */}
-          <div className="px-4 sm:px-6 py-5 border-b" style={{ borderColor: "#2d6b35" }}>
+          <div className="px-4 sm:px-6 py-5 border-b" style={{ borderColor: "#E5E2D4" }}>
             <OrderTimeline status={order.status} />
           </div>
 
-          {/* Invoice / Receipt PDF — top placement because customers
+          {/* Invoice / Receipt PDF â€” top placement because customers
               have specifically been looking for this for insurance
               submissions and we want them to find it on first scan. */}
           {invoiceAvailable && (
@@ -161,13 +161,13 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
               className="mx-4 sm:mx-6 my-5 rounded-xl border p-4 sm:p-5"
               style={{
                 backgroundColor: "rgba(141, 198, 63, 0.06)",
-                borderColor: "#8dc63f",
+                borderColor: "#88D45D",
               }}
             >
               <div className="flex items-start gap-3 mb-3">
                 <FileText
                   className="w-5 h-5 shrink-0 mt-0.5"
-                  style={{ color: "#8dc63f" }}
+                  style={{ color: "#88D45D" }}
                 />
                 <div>
                   <h4
@@ -179,8 +179,8 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   >
                     Download your invoice
                   </h4>
-                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
-                    A PDF receipt for this order — useful for insurance
+                  <p className="text-sm" style={{ color: "#154D31" }}>
+                    A PDF receipt for this order â€” useful for insurance
                     claims, FSA / HSA reimbursement, and your records.
                   </p>
                 </div>
@@ -197,7 +197,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
             </div>
           )}
 
-          {/* Collection scheduled — reassurance panel visible whenever
+          {/* Collection scheduled â€” reassurance panel visible whenever
               an appointment_at is stamped on the order, from either an
               Acuity auto-match, an admin Add-appointment override
               (Greg Fulton's mismatched-email case), or the queue
@@ -209,13 +209,13 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
               className="mx-4 sm:mx-6 my-5 rounded-xl border p-4 sm:p-5"
               style={{
                 backgroundColor: "rgba(141, 198, 63, 0.10)",
-                borderColor: "#8dc63f",
+                borderColor: "#88D45D",
               }}
             >
               <div className="flex items-start gap-3">
                 <CheckCircle
                   className="w-5 h-5 shrink-0 mt-0.5"
-                  style={{ color: "#8dc63f" }}
+                  style={{ color: "#88D45D" }}
                 />
                 <div className="min-w-0">
                   <h4
@@ -235,7 +235,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   </p>
                   <p
                     className="text-xs mt-1"
-                    style={{ color: "#e8d5a3" }}
+                    style={{ color: "#154D31" }}
                   >
                     A FloLabs phlebotomist will meet you at the address you
                     gave Acuity. To reschedule, use the Change / Cancel
@@ -252,13 +252,13 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
               className="mx-4 sm:mx-6 my-5 rounded-xl border p-4 sm:p-5"
               style={{
                 backgroundColor: "rgba(196, 151, 58, 0.08)",
-                borderColor: "#c4973a",
+                borderColor: "#C6A04B",
               }}
             >
               <div className="flex items-start gap-3 mb-3">
                 <Calendar
                   className="w-5 h-5 shrink-0 mt-0.5"
-                  style={{ color: "#c4973a" }}
+                  style={{ color: "#C6A04B" }}
                 />
                 <div>
                   <h4
@@ -270,7 +270,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   >
                     Book your FloLabs home visit
                   </h4>
-                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                  <p className="text-sm" style={{ color: "#154D31" }}>
                     Your home collection visit needs to be scheduled. Click
                     below to book your FloLabs appointment.
                   </p>
@@ -289,7 +289,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
             </div>
           )}
 
-          {/* FedEx tracking — shown when shipped or later */}
+          {/* FedEx tracking â€” shown when shipped or later */}
           {order.fedex_tracking_number && (
             <div
               className="mx-4 sm:mx-6 my-5 rounded-xl border p-4 sm:p-5"
@@ -313,12 +313,12 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   >
                     Specimens shipped
                   </h4>
-                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                  <p className="text-sm" style={{ color: "#154D31" }}>
                     Your specimens are en route to the laboratory.
                     {order.shipped_at && (
-                      <span style={{ color: "#6ab04c" }}>
+                      <span style={{ color: "#4a7a56" }}>
                         {" "}
-                        · Shipped {formatDate(order.shipped_at)}
+                        Â· Shipped {formatDate(order.shipped_at)}
                       </span>
                     )}
                   </p>
@@ -347,7 +347,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
           <div className="px-4 sm:px-6 py-5">
             <h4
               className="text-xs uppercase tracking-wider mb-3"
-              style={{ color: "#6ab04c" }}
+              style={{ color: "#4a7a56" }}
             >
               Tests in this order
             </h4>
@@ -357,21 +357,21 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   key={line.id}
                   className="rounded-lg border p-3"
                   style={{
-                    backgroundColor: "#1a3d22",
-                    borderColor: "#2d6b35",
+                    backgroundColor: "#FFFFFF",
+                    borderColor: "#E5E2D4",
                   }}
                 >
                   <div className="flex items-start gap-3">
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border"
                       style={{
-                        backgroundColor: "#0f2614",
-                        borderColor: "#2d6b35",
+                        backgroundColor: "#F7F6F0",
+                        borderColor: "#E5E2D4",
                       }}
                     >
                       <FlaskConical
                         className="w-4 h-4"
-                        style={{ color: "#8dc63f" }}
+                        style={{ color: "#88D45D" }}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -383,12 +383,12 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                       </p>
                       <p
                         className="text-xs mt-0.5"
-                        style={{ color: "#e8d5a3" }}
+                        style={{ color: "#154D31" }}
                       >
                         {line.test?.lab?.name && (
                           <>
                             {line.test.lab.name}
-                            {" · "}
+                            {" Â· "}
                           </>
                         )}
                         For:{" "}
@@ -398,14 +398,14 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                       </p>
                       <div
                         className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 text-xs"
-                        style={{ color: "#6ab04c" }}
+                        style={{ color: "#4a7a56" }}
                       >
                         {line.test?.specimen_type && (
                           <span>{line.test.specimen_type}</span>
                         )}
                         {line.test?.turnaround_display && (
                           <>
-                            {line.test?.specimen_type && <span>·</span>}
+                            {line.test?.specimen_type && <span>Â·</span>}
                             <span>{line.test.turnaround_display}</span>
                           </>
                         )}
@@ -413,7 +413,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                     </div>
                     <p
                       className="text-sm font-semibold shrink-0"
-                      style={{ color: "#c4973a" }}
+                      style={{ color: "#C6A04B" }}
                     >
                       {formatCurrency(line.unit_price_cad)}
                     </p>
@@ -427,21 +427,21 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
           {order.notes && (
             <div
               className="px-4 sm:px-6 py-4 border-t"
-              style={{ borderColor: "#2d6b35" }}
+              style={{ borderColor: "#E5E2D4" }}
             >
               <div className="flex items-start gap-2">
                 <FileText
                   className="w-4 h-4 shrink-0 mt-0.5"
-                  style={{ color: "#c4973a" }}
+                  style={{ color: "#C6A04B" }}
                 />
                 <div>
                   <p
                     className="text-xs uppercase tracking-wider mb-1"
-                    style={{ color: "#6ab04c" }}
+                    style={{ color: "#4a7a56" }}
                   >
                     Notes
                   </p>
-                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                  <p className="text-sm" style={{ color: "#154D31" }}>
                     {order.notes}
                   </p>
                 </div>
@@ -452,12 +452,12 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
           {/* Totals */}
           <div
             className="px-4 sm:px-6 py-4 border-t space-y-1"
-            style={{ borderColor: "#2d6b35", backgroundColor: "#1a3d22" }}
+            style={{ borderColor: "#E5E2D4", backgroundColor: "#FFFFFF" }}
           >
             {order.subtotal_cad != null && (
               <div
                 className="flex justify-between text-sm"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 <span>Tests subtotal</span>
                 <span>{formatCurrency(order.subtotal_cad)}</span>
@@ -466,7 +466,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
             {order.home_visit_fee_cad != null && order.home_visit_fee_cad > 0 && (
               <div
                 className="flex justify-between text-sm"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 <span>Home visit fee</span>
                 <span>{formatCurrency(order.home_visit_fee_cad)}</span>
@@ -474,13 +474,13 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
             )}
             <div
               className="flex justify-between text-base font-semibold pt-2 border-t mt-1"
-              style={{ borderColor: "#2d6b35" }}
+              style={{ borderColor: "#E5E2D4" }}
             >
               <span style={{ color: "#ffffff" }}>Total</span>
-              <span style={{ color: "#c4973a" }}>
+              <span style={{ color: "#C6A04B" }}>
                 {order.total_cad != null
                   ? `${formatCurrency(order.total_cad)} CAD`
-                  : "—"}
+                  : "â€”"}
               </span>
             </div>
           </div>
@@ -491,9 +491,9 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
 }
 
 /**
- * Render a stored appointment_at ISO as "Monday, Sep 28, 2026 · 7:00 AM"
+ * Render a stored appointment_at ISO as "Monday, Sep 28, 2026 Â· 7:00 AM"
  * in Calgary local time so the customer sees the same clock they
- * booked against on FloLabs — regardless of the browser's own zone.
+ * booked against on FloLabs â€” regardless of the browser's own zone.
  */
 function formatAppointment(iso: string): string {
   const d = new Date(iso);
@@ -510,5 +510,5 @@ function formatAppointment(iso: string): string {
     minute: "2-digit",
     hour12: true,
   }).format(d);
-  return `${datePart} · ${timePart}`;
+  return `${datePart} Â· ${timePart}`;
 }

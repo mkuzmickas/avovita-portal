@@ -15,7 +15,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 
 /**
  * Lands here after a password-reset email link is clicked. Supabase has
- * already verified the recovery token and put `#access_token=…&type=
+ * already verified the recovery token and put `#access_token=â€¦&type=
  * recovery` in the URL hash; the browser client auto-detects it and
  * sets the session. We just need to ask for a new password and call
  * supabase.auth.updateUser({ password }).
@@ -84,15 +84,15 @@ export default function UpdatePasswordPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#0a1a0d" }}
+      style={{ backgroundColor: "#ffffff" }}
     >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
-            <Leaf className="w-7 h-7" style={{ color: "#8dc63f" }} />
+            <Leaf className="w-7 h-7" style={{ color: "#88D45D" }} />
           </div>
           <h1
             className="font-heading text-3xl font-semibold"
@@ -103,20 +103,20 @@ export default function UpdatePasswordPage() {
           >
             Set a new password
           </h1>
-          <p className="mt-2 text-sm" style={{ color: "#e8d5a3" }}>
+          <p className="mt-2 text-sm" style={{ color: "#154D31" }}>
             Choose a strong password you&apos;ll remember.
           </p>
         </div>
 
         <div
           className="rounded-2xl border p-6 sm:p-8"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           {authState === "checking" && (
             <div className="flex items-center justify-center py-10">
               <Loader2
                 className="w-6 h-6 animate-spin"
-                style={{ color: "#c4973a" }}
+                style={{ color: "#C6A04B" }}
               />
             </div>
           )}
@@ -133,7 +133,7 @@ export default function UpdatePasswordPage() {
               >
                 Link expired or invalid
               </h2>
-              <p className="text-sm mb-6" style={{ color: "#e8d5a3" }}>
+              <p className="text-sm mb-6" style={{ color: "#154D31" }}>
                 Reset links expire after a short time. Please request a fresh
                 one from the forgot-password page.
               </p>
@@ -150,7 +150,7 @@ export default function UpdatePasswordPage() {
             <div className="text-center py-4">
               <CheckCircle
                 className="w-12 h-12 mx-auto mb-4"
-                style={{ color: "#8dc63f" }}
+                style={{ color: "#88D45D" }}
               />
               <h2
                 className="font-heading text-xl font-semibold mb-2"
@@ -158,8 +158,8 @@ export default function UpdatePasswordPage() {
               >
                 Password updated
               </h2>
-              <p className="text-sm" style={{ color: "#e8d5a3" }}>
-                Redirecting you to your portal…
+              <p className="text-sm" style={{ color: "#154D31" }}>
+                Redirecting you to your portalâ€¦
               </p>
             </div>
           )}
@@ -169,7 +169,7 @@ export default function UpdatePasswordPage() {
               <div>
                 <label
                   className="block text-sm font-medium mb-1.5"
-                  style={{ color: "#e8d5a3" }}
+                  style={{ color: "#154D31" }}
                 >
                   New password
                 </label>
@@ -185,7 +185,7 @@ export default function UpdatePasswordPage() {
               <div>
                 <label
                   className="block text-sm font-medium mb-1.5"
-                  style={{ color: "#e8d5a3" }}
+                  style={{ color: "#154D31" }}
                 >
                   Confirm new password
                 </label>
@@ -227,8 +227,8 @@ export default function UpdatePasswordPage() {
           )}
         </div>
 
-        <p className="text-center text-xs mt-6" style={{ color: "#6ab04c" }}>
-          Protected by Alberta PIPA · AvoVita Wellness
+        <p className="text-center text-xs mt-6" style={{ color: "#4a7a56" }}>
+          Protected by Alberta PIPA Â· AvoVita Wellness
         </p>
       </div>
     </div>

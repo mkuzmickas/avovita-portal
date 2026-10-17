@@ -77,9 +77,9 @@ export function OrderTimeline({ status }: OrderTimelineProps) {
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2"
               style={{
-                backgroundColor: active ? "#c4973a" : "#0f2614",
-                borderColor: isCurrentStep || active ? "#c4973a" : "#2d6b35",
-                color: active ? "#0a1a0d" : "#6ab04c",
+                backgroundColor: active ? "#C6A04B" : "#F7F6F0",
+                borderColor: isCurrentStep || active ? "#C6A04B" : "#E5E2D4",
+                color: active ? "#F7F6F0" : "#4a7a56",
               }}
             >
               {completed ? <Check className="w-3.5 h-3.5" /> : idx + 1}
@@ -88,10 +88,10 @@ export function OrderTimeline({ status }: OrderTimelineProps) {
               className="mt-1 text-[10px] sm:text-xs text-center leading-tight"
               style={{
                 color: isCurrentStep
-                  ? "#c4973a"
+                  ? "#C6A04B"
                   : active
-                  ? "#e8d5a3"
-                  : "#6ab04c",
+                  ? "#154D31"
+                  : "#4a7a56",
                 fontWeight: isCurrentStep ? 600 : 400,
               }}
             >

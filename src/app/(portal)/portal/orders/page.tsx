@@ -47,9 +47,9 @@ export default async function OrdersPage() {
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          My <span style={{ color: "#c4973a" }}>Orders</span>
+          My <span style={{ color: "#C6A04B" }}>Orders</span>
         </h1>
-        <p className="mt-1 text-sm sm:text-base" style={{ color: "#e8d5a3" }}>
+        <p className="mt-1 text-sm sm:text-base" style={{ color: "#154D31" }}>
           Track all your lab test orders and book your home visit.
         </p>
       </div>
@@ -57,13 +57,13 @@ export default async function OrdersPage() {
       {orders.length === 0 ? (
         <div
           className="rounded-xl border px-6 py-16 text-center"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <Package
             className="w-12 h-12 mx-auto mb-4"
-            style={{ color: "#2d6b35" }}
+            style={{ color: "#E5E2D4" }}
           />
-          <p style={{ color: "#6ab04c" }}>No orders yet.</p>
+          <p style={{ color: "#4a7a56" }}>No orders yet.</p>
         </div>
       ) : (
         <div className="space-y-4">

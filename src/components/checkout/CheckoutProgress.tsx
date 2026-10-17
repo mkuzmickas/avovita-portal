@@ -38,9 +38,9 @@ export function CheckoutProgress({
               <span
                 className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold border-2 shrink-0"
                 style={{
-                  backgroundColor: completed || active ? "#c4973a" : "#0f2614",
-                  borderColor: completed || active ? "#c4973a" : "#2d6b35",
-                  color: completed || active ? "#0a1a0d" : "#6ab04c",
+                  backgroundColor: completed || active ? "#C6A04B" : "#F7F6F0",
+                  borderColor: completed || active ? "#C6A04B" : "#E5E2D4",
+                  color: completed || active ? "#F7F6F0" : "#4a7a56",
                 }}
               >
                 {completed ? <Check className="w-4 h-4" /> : idx + 1}
@@ -51,8 +51,8 @@ export function CheckoutProgress({
                   color: active
                     ? "#ffffff"
                     : completed
-                    ? "#c4973a"
-                    : "#6ab04c",
+                    ? "#C6A04B"
+                    : "#4a7a56",
                 }}
               >
                 {s.label}
@@ -63,7 +63,7 @@ export function CheckoutProgress({
                 aria-hidden
                 className="h-0.5 flex-1 rounded-full"
                 style={{
-                  backgroundColor: completed ? "#c4973a" : "#2d6b35",
+                  backgroundColor: completed ? "#C6A04B" : "#E5E2D4",
                   minWidth: 12,
                 }}
               />

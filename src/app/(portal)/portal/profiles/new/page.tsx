@@ -10,7 +10,7 @@ export default async function NewProfilePage() {
 
   if (!user) redirect("/login?returnUrl=/portal/profiles/new");
 
-  // Determine whether this will be the account's first profile (→ primary)
+  // Determine whether this will be the account's first profile (â†’ primary)
   const { count: profileCount } = await supabase
     .from("patient_profiles")
     .select("id", { count: "exact", head: true })
@@ -28,15 +28,15 @@ export default async function NewProfilePage() {
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          Add Patient <span style={{ color: "#c4973a" }}>Profile</span>
+          Add Patient <span style={{ color: "#C6A04B" }}>Profile</span>
         </h1>
-        <p className="mt-1" style={{ color: "#e8d5a3" }}>
+        <p className="mt-1" style={{ color: "#154D31" }}>
           Each profile can be a separate patient (e.g. a family member).
         </p>
       </div>
       <div
         className="rounded-2xl border p-6 sm:p-8"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
       >
         <ProfileFormWithConsent
           accountId={user.id}

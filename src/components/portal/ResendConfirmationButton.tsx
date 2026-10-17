@@ -24,7 +24,7 @@ export function ResendConfirmationButton() {
       }
       setState("sent");
     } catch {
-      setErrorMsg("Network error — please try again");
+      setErrorMsg("Network error â€” please try again");
       setState("error");
     }
   };
@@ -35,12 +35,12 @@ export function ResendConfirmationButton() {
         className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border"
         style={{
           backgroundColor: "rgba(141, 198, 63, 0.12)",
-          borderColor: "#8dc63f",
-          color: "#8dc63f",
+          borderColor: "#88D45D",
+          color: "#88D45D",
         }}
       >
         <CheckCircle className="w-4 h-4" />
-        Confirmation email sent — check your inbox
+        Confirmation email sent â€” check your inbox
       </div>
     );
   }
@@ -53,8 +53,8 @@ export function ResendConfirmationButton() {
         disabled={state === "sending"}
         className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
         style={{
-          backgroundColor: "#c4973a",
-          color: "#0a1a0d",
+          backgroundColor: "#C6A04B",
+          color: "#ffffff",
           opacity: state === "sending" ? 0.6 : 1,
         }}
       >
@@ -63,7 +63,7 @@ export function ResendConfirmationButton() {
         ) : (
           <Send className="w-4 h-4" />
         )}
-        {state === "sending" ? "Sending…" : "Resend Confirmation Email"}
+        {state === "sending" ? "Sendingâ€¦" : "Resend Confirmation Email"}
       </button>
       {state === "error" && errorMsg && (
         <div

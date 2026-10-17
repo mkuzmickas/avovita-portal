@@ -1,88 +1,165 @@
-import { Suspense } from "react";
-import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { CatalogueClient } from "@/components/catalogue/CatalogueClient";
-import { CatalogueSkeleton } from "@/components/catalogue/Skeleton";
-import { OrgProvider } from "@/components/org/OrgContext";
-import { getOrgBySlug, ORGS_FEATURE_ENABLED } from "@/lib/org";
-import { pickPanels } from "@/lib/catalogue/panels";
-import type { CatalogueTest } from "@/components/catalogue/types";
+import { redirect } from "next/navigation";
+import { createServiceRoleClient, createClient } from "@/lib/supabase/server";
+import { fetchCalendarAppointments } from "@/lib/calendar/fetch-appointments";
+import { CalendarClient } from "@/app/(admin)/admin/calendar/CalendarClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function OrgTestsPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  if (!ORGS_FEATURE_ENABLED) notFound();
-  const { slug } = await params;
-  const org = await getOrgBySlug(slug);
-  if (!org) notFound();
+/**
+ * /calendar â€” public token-gated read-only view of the FloLabs
+ * collection calendar. Two ways to reach it:
+ *   1. FloLabs bookmarked URL: /calendar?token=<CALENDAR_ACCESS_TOKEN>
+ *   2. Admin sidebar link:      /admin/calendar (session-authenticated)
+ *
+ * Same pattern as /shipping: this route lives outside the (admin)
+ * route group so FloLabs never sees admin chrome, cannot log 'FloLabs
+ * booking' entries, and cannot click appointment chips through to
+ * order records. If the token leaks, rotate CALENDAR_ACCESS_TOKEN in
+ * Vercel env vars and hand FloLabs a fresh URL.
+ */
 
-  return (
-    <OrgProvider
-      org={{
-        id: org.id,
-        name: org.name,
-        slug: org.slug,
-        logo_url: org.logo_url,
-        primary_color: org.primary_color,
-        accent_color: org.accent_color,
-      }}
-    >
-      <Suspense fallback={<CatalogueSkeleton />}>
-        <CatalogueData />
-      </Suspense>
-    </OrgProvider>
-  );
+interface SearchParams {
+  token?: string;
+  /** ISO YYYY-MM-DD â€” the day whose week or month is displayed. */
+  date?: string;
+  /** 'week' (default) or 'month'. */
+  view?: string;
 }
 
-async function CatalogueData() {
+async function isAdminSession(): Promise<boolean> {
   const supabase = await createClient();
-  const { data: testsRaw } = await supabase
-    .from("tests")
-    .select(
-      `
-      id, name, slug, description, category, price_cad,
-      turnaround_display, specimen_type, ship_temp_legacy_freeform,
-      ship_temp, handling_instructions, stability_days, stability_days_frozen,
-      search_priority,
-      collection_method, featured, sku, requisition_url, panel_tests,
-      lab:labs(id, name)
-      `
-    )
-    .eq("active", true)
-    .order("name", { ascending: true });
-
-  type RawRow = Omit<CatalogueTest, "lab"> & {
-    lab: { id: string; name: string } | { id: string; name: string }[] | null;
-  };
-  const allTests: CatalogueTest[] = ((testsRaw ?? []) as unknown as RawRow[]).map(
-    (row) => {
-      const lab = Array.isArray(row.lab) ? row.lab[0] : row.lab;
-      return { ...row, lab: lab ?? { id: "", name: "—" } };
-    }
-  );
-  const featuredTests = allTests.filter((t) => t.featured);
-  const panelTests = pickPanels(allTests);
-  const categories = Array.from(
-    new Set(allTests.map((t) => t.category).filter((c): c is string => !!c))
-  ).sort();
-  const labs = Array.from(new Set(allTests.map((t) => t.lab.name))).sort();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data: account } = (await supabase
+    .from("accounts")
+    .select("role")
+    .eq("id", user.id)
+    .single()) as { data: { role: string } | null };
+  return (
+    account?.role === "admin" || account?.role === "calendar_viewer"
+  );
+}
+
+export default async function PublicCalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const { token, date, view } = await searchParams;
+  const expected = process.env.CALENDAR_ACCESS_TOKEN;
+  const isAdmin = await isAdminSession();
+
+  const tokenValid = !!expected && token === expected;
+  if (!tokenValid && !isAdmin) {
+    redirect("/");
+  }
+
+  const anchorISO = date ?? todayCalgaryISO();
+  const activeView: "week" | "month" = view === "month" ? "month" : "week";
+  const { startISO, endISO } = rangeFor(anchorISO, activeView);
+
+  const service = createServiceRoleClient();
+  const appointments = await fetchCalendarAppointments(
+    service,
+    startISO,
+    endISO,
+  );
+
+  const extraQuery = tokenValid ? `token=${encodeURIComponent(token!)}` : "";
 
   return (
-    <CatalogueClient
-      featuredTests={featuredTests}
-      panelTests={panelTests}
-      allTests={allTests}
-      categories={categories}
-      labs={labs}
-      isLoggedIn={!!user}
-    />
+    <div
+      style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}
+      className="p-6"
+    >
+      <div className="max-w-[1800px] mx-auto">
+        <div className="mb-6">
+          <h1
+            className="font-heading text-3xl font-semibold"
+            style={{
+              color: "#ffffff",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+            }}
+          >
+            <span style={{ color: "#C6A04B" }}>FloLabs Collection Calendar</span>
+          </h1>
+          <p className="mt-1" style={{ color: "#154D31" }}>
+            Read-only view of upcoming appointments â€” updated automatically as
+            Acuity confirmations arrive.
+          </p>
+        </div>
+        <CalendarClient
+          anchorISO={anchorISO}
+          activeView={activeView}
+          appointments={appointments}
+          basePath="/calendar"
+          extraQuery={extraQuery}
+          readOnly
+        />
+      </div>
+    </div>
   );
+}
+
+/** Today's date in Calgary local (YYYY-MM-DD). */
+function todayCalgaryISO(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Edmonton",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const y = parts.find((p) => p.type === "year")?.value ?? "1970";
+  const m = parts.find((p) => p.type === "month")?.value ?? "01";
+  const d = parts.find((p) => p.type === "day")?.value ?? "01";
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Given an anchor date in Calgary local and a view mode, return the
+ * ISO range covered by that view. Week = Monâ€“Sun containing the
+ * anchor; month = 1stâ€“last of the anchor's month.
+ */
+function rangeFor(
+  anchorISO: string,
+  view: "week" | "month",
+): { startISO: string; endISO: string } {
+  const [y, m, d] = anchorISO.split("-").map((n) => parseInt(n, 10));
+  const anchor = new Date(Date.UTC(y, m - 1, d));
+  if (view === "week") {
+    const dow = (anchor.getUTCDay() + 6) % 7; // Mon=0..Sun=6
+    const start = new Date(anchor);
+    start.setUTCDate(anchor.getUTCDate() - dow);
+    const end = new Date(start);
+    end.setUTCDate(start.getUTCDate() + 7);
+    return {
+      startISO: isoAtCalgaryMidnight(start),
+      endISO: isoAtCalgaryMidnight(end),
+    };
+  }
+  const start = new Date(Date.UTC(y, m - 1, 1));
+  const end = new Date(Date.UTC(y, m, 1));
+  return {
+    startISO: isoAtCalgaryMidnight(start),
+    endISO: isoAtCalgaryMidnight(end),
+  };
+}
+
+function isoAtCalgaryMidnight(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const probeDate = new Date(
+    Date.UTC(y, d.getUTCMonth(), d.getUTCDate(), 12),
+  );
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Edmonton",
+    timeZoneName: "longOffset",
+  }).formatToParts(probeDate);
+  const raw =
+    parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT-06:00";
+  const offset = raw.startsWith("GMT") ? raw.slice(3) : "-06:00";
+  return `${y}-${m}-${day}T00:00:00${offset}`;
 }

@@ -13,7 +13,7 @@ interface TestCardProps {
   test: CatalogueTest;
   inCart: boolean;
   onAdd: (item: CatalogueCartItem) => void;
-  /** Controlled by parent — when true, inline details are shown. */
+  /** Controlled by parent â€” when true, inline details are shown. */
   expanded?: boolean;
 }
 
@@ -50,7 +50,7 @@ export function TestCard({
     <article
       id={`test-${test.id}`}
       className="flex flex-col rounded-xl border overflow-hidden transition-colors h-full"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="px-5 pt-5 pb-4 flex-1 flex flex-col">
         {/* Badges */}
@@ -58,9 +58,9 @@ export function TestCard({
           <span
             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
             style={{
-              backgroundColor: "#0f2614",
-              borderColor: "#8dc63f",
-              color: "#8dc63f",
+              backgroundColor: "#F7F6F0",
+              borderColor: "#88D45D",
+              color: "#88D45D",
             }}
           >
             {test.lab.name}
@@ -69,9 +69,9 @@ export function TestCard({
             <span
               className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
               style={{
-                backgroundColor: "#0f2614",
-                borderColor: "#c4973a",
-                color: "#c4973a",
+                backgroundColor: "#F7F6F0",
+                borderColor: "#C6A04B",
+                color: "#C6A04B",
               }}
             >
               {test.category}
@@ -79,7 +79,7 @@ export function TestCard({
           )}
         </div>
 
-        {/* Test name — links to /tests?test=SKU (or ?id= fallback) so the
+        {/* Test name â€” links to /tests?test=SKU (or ?id= fallback) so the
             catalogue detail view scrolls/expands to this test. */}
         <h3
           className="font-heading font-semibold leading-tight mb-3 break-words"
@@ -107,14 +107,14 @@ export function TestCard({
         {/* Price */}
         <p
           className="font-semibold mb-1"
-          style={{ color: "#c4973a", fontSize: "26px" }}
+          style={{ color: "#C6A04B", fontSize: "26px" }}
         >
           {hasPrice ? (
             <>
               {formatCurrency(test.price_cad as number)}
               <span
                 className="text-xs font-normal ml-1.5"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 CAD
               </span>
@@ -135,15 +135,15 @@ export function TestCard({
             className="flex items-start gap-2 rounded-md border px-3 py-2 mb-3"
             style={{
               backgroundColor: "rgba(196,151,58,0.1)",
-              borderColor: "#c4973a",
+              borderColor: "#C6A04B",
             }}
           >
             <FileText
               className="w-3.5 h-3.5 shrink-0 mt-0.5"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             />
-            <span className="text-xs" style={{ color: "#c4973a" }}>
-              Physician requisition required — must be present at time of collection
+            <span className="text-xs" style={{ color: "#C6A04B" }}>
+              Physician requisition required â€” must be present at time of collection
             </span>
           </div>
         )}
@@ -157,11 +157,11 @@ export function TestCard({
         {test.turnaround_display && (
           <div
             className="flex items-start gap-1.5 text-xs mb-4"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
           >
             <Clock
               className="w-3.5 h-3.5 shrink-0 mt-0.5"
-              style={{ color: "#8dc63f" }}
+              style={{ color: "#88D45D" }}
             />
             <span
               className="min-w-0 flex-1 break-words"
@@ -181,14 +181,14 @@ export function TestCard({
             {test.description && (
               <p
                 className="text-sm leading-relaxed"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 {renderInline(test.description)}
               </p>
             )}
 
             {/* Handling + Stability intentionally removed from the
-                client-side view — Tuesday-only / short-stability
+                client-side view â€” Tuesday-only / short-stability
                 tests are already flagged upstream (schedule-ack modal
                 on add, dedicated banners on Step 3 + Step 4). Showing
                 the raw fields here just added clutter to every card
@@ -206,8 +206,8 @@ export function TestCard({
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors"
                 style={{
-                  backgroundColor: "#c4973a",
-                  color: "#0a1a0d",
+                  backgroundColor: "#C6A04B",
+                  color: "#ffffff",
                   border: "none",
                   fontWeight: 600,
                 }}
@@ -221,7 +221,7 @@ export function TestCard({
 
         <div className="flex-1" />
 
-        {/* Add to cart — or Contact Us when no price */}
+        {/* Add to cart â€” or Contact Us when no price */}
         {hasPrice ? (
           <button
             type="button"
@@ -232,13 +232,13 @@ export function TestCard({
               showInCart
                 ? {
                     backgroundColor: "rgba(141, 198, 63, 0.15)",
-                    color: "#8dc63f",
-                    border: "1px solid #8dc63f",
+                    color: "#88D45D",
+                    border: "1px solid #88D45D",
                     cursor: "default",
                   }
                 : {
-                    backgroundColor: "#c4973a",
-                    color: "#0a1a0d",
+                    backgroundColor: "#C6A04B",
+                    color: "#ffffff",
                   }
             }
           >
@@ -259,7 +259,7 @@ export function TestCard({
             href="mailto:support@avovita.ca"
             onClick={(e) => e.stopPropagation()}
             className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
           >
             Contact Us to Order
           </a>
@@ -294,7 +294,7 @@ function DetailField({
     <div className="min-w-0">
       <p
         className="text-xs uppercase tracking-wider mb-0.5"
-        style={{ color: "#6ab04c" }}
+        style={{ color: "#4a7a56" }}
       >
         {label}
       </p>
@@ -302,7 +302,7 @@ function DetailField({
         className="text-sm break-words"
         style={{ color: "#ffffff", overflowWrap: "anywhere" }}
       >
-        {value ?? "—"}
+        {value ?? "â€”"}
       </p>
     </div>
   );

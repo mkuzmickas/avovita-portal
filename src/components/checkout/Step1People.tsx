@@ -15,7 +15,7 @@ interface Step1PeopleProps {
 }
 
 /**
- * Step 1 — who's this order for?
+ * Step 1 â€” who's this order for?
  *
  * Three mutually-exclusive pickers driven by the combination of
  * (orderMode, personCount):
@@ -27,7 +27,7 @@ interface Step1PeopleProps {
  *   Someone else     caregiver    1
  *
  * The "someone else" flavour used to be gated behind a POA / caregiver
- * / healthcare-worker representative form on Step 3. That's gone —
+ * / healthcare-worker representative form on Step 3. That's gone â€”
  * Mike wants a lighter model: a single "I have permission" checkbox
  * that covers us legally, plus a note reminding the customer that the
  * post-payment account will be set up in the tested person's name
@@ -73,7 +73,7 @@ export function Step1People({
 
   const handlePermissionChange = (checked: boolean) => {
     onPermissionChange(checked);
-    // Auditable event — the events table records timestamp + session,
+    // Auditable event â€” the events table records timestamp + session,
     // giving a defensible legal record that the customer ticked the
     // acknowledgement box for this specific order mode. A proper
     // orders column lands in the DOB/sex post-payment phase.
@@ -95,13 +95,13 @@ export function Step1People({
   return (
     <div
       className="rounded-2xl border p-6 sm:p-8"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <Users className="w-5 h-5" style={{ color: "#c4973a" }} />
+        <Users className="w-5 h-5" style={{ color: "#C6A04B" }} />
         <p
           className="text-xs uppercase tracking-wider font-semibold"
-          style={{ color: "#c4973a" }}
+          style={{ color: "#C6A04B" }}
         >
           Step 1 of 4
         </p>
@@ -114,12 +114,12 @@ export function Step1People({
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
-        Who is this <span style={{ color: "#c4973a" }}>order for?</span>
+        Who is this <span style={{ color: "#C6A04B" }}>order for?</span>
       </h1>
 
-      <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
+      <p className="text-sm mb-4" style={{ color: "#154D31" }}>
         Adding someone else to this appointment costs $55, not another
-        $85 visit — one phlebotomist, one trip, both collections done
+        $85 visit â€” one phlebotomist, one trip, both collections done
         together.
       </p>
 
@@ -147,7 +147,7 @@ export function Step1People({
         />
       </div>
 
-      {/* Permission acknowledgement — required when someone other than
+      {/* Permission acknowledgement â€” required when someone other than
           the account holder is being tested. Reset on every pick change
           so it can't be inherited from a previous selection. */}
       {needsPermission && (
@@ -156,8 +156,8 @@ export function Step1People({
           style={{
             backgroundColor: permissionAcknowledged
               ? "rgba(141, 198, 63, 0.08)"
-              : "#0f2614",
-            borderColor: permissionAcknowledged ? "#8dc63f" : "#2d6b35",
+              : "#F7F6F0",
+            borderColor: permissionAcknowledged ? "#88D45D" : "#E5E2D4",
           }}
         >
           <input
@@ -169,7 +169,7 @@ export function Step1People({
           <span
             className="text-sm leading-relaxed"
             style={{
-              color: permissionAcknowledged ? "#8dc63f" : "#e8d5a3",
+              color: permissionAcknowledged ? "#88D45D" : "#154D31",
             }}
           >
             I confirm I have permission to order testing and receive
@@ -178,7 +178,7 @@ export function Step1People({
         </label>
       )}
 
-      {/* Note for "someone else" only — the post-payment account will
+      {/* Note for "someone else" only â€” the post-payment account will
           be set up in the tested person's name so lab results attribute
           correctly. Doesn't show for "myself + someone" because the
           account holder is still one of the people being tested. */}
@@ -187,30 +187,30 @@ export function Step1People({
           className="flex items-start gap-2 rounded-lg border px-3 py-2.5 mb-4"
           style={{
             backgroundColor: "rgba(196, 151, 58, 0.08)",
-            borderColor: "#c4973a",
+            borderColor: "#C6A04B",
           }}
         >
           <UserCheck
             className="w-4 h-4 shrink-0 mt-0.5"
-            style={{ color: "#c4973a" }}
+            style={{ color: "#C6A04B" }}
           />
-          <p className="text-xs leading-relaxed" style={{ color: "#e8d5a3" }}>
+          <p className="text-xs leading-relaxed" style={{ color: "#154D31" }}>
             After payment we&apos;ll create the account in{" "}
             <strong style={{ color: "#ffffff" }}>
               the name and date of birth of the person being tested
             </strong>{" "}
-            — that&apos;s how results are matched to the right person on
+            â€” that&apos;s how results are matched to the right person on
             the portal.
           </p>
         </div>
       )}
 
-      <p className="text-xs mb-6" style={{ color: "#6ab04c" }}>
+      <p className="text-xs mb-6" style={{ color: "#4a7a56" }}>
         Testing with more than two people?{" "}
         <a
-          href="mailto:support@avovita.ca?subject=Group%20booking%20—%20more%20than%202%20people"
+          href="mailto:support@avovita.ca?subject=Group%20booking%20â€”%20more%20than%202%20people"
           className="underline"
-          style={{ color: "#c4973a" }}
+          style={{ color: "#C6A04B" }}
         >
           Contact us
         </a>{" "}
@@ -250,21 +250,21 @@ function PickOption({
       onClick={onClick}
       className="text-left rounded-xl border px-4 py-3 transition-colors h-full"
       style={{
-        backgroundColor: active ? "rgba(196,151,58,0.12)" : "#0f2614",
-        borderColor: active ? "#c4973a" : "#2d6b35",
+        backgroundColor: active ? "rgba(196,151,58,0.12)" : "#F7F6F0",
+        borderColor: active ? "#C6A04B" : "#E5E2D4",
       }}
       aria-pressed={active}
     >
       <div className="flex items-center gap-2 mb-1">
-        <span style={{ color: active ? "#c4973a" : "#6ab04c" }}>{icon}</span>
+        <span style={{ color: active ? "#C6A04B" : "#4a7a56" }}>{icon}</span>
         <span
           className="font-semibold text-sm"
-          style={{ color: active ? "#c4973a" : "#ffffff" }}
+          style={{ color: active ? "#C6A04B" : "#ffffff" }}
         >
           {title}
         </span>
       </div>
-      <p className="text-xs leading-relaxed" style={{ color: "#e8d5a3" }}>
+      <p className="text-xs leading-relaxed" style={{ color: "#154D31" }}>
         {subtitle}
       </p>
     </button>

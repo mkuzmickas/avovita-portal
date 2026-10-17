@@ -11,32 +11,32 @@ import { useOrg } from "./OrgContext";
  * footer) but pulls colours and copy from the org via OrgContext.
  */
 // Palette rules for org landing on Midnight Forest:
-//   - Large text + headings → AvoVita gold (#c4973a). Org primary_color
+//   - Large text + headings â†’ AvoVita gold (#C6A04B). Org primary_color
 //     is often a deep brand colour (navy, maroon) that washes out on
-//     #0a1a0d, so we don't use it for type.
-//   - Section labels → AvoVita light green (#8dc63f) for consistency.
+//     #F7F6F0, so we don't use it for type.
+//   - Section labels â†’ AvoVita light green (#88D45D) for consistency.
 //   - Org primary_color is reserved for small badges/avatars only
 //     (handled inside OrgAwareHeader).
-const HEADING_GOLD = "#c4973a";
-const LABEL_GREEN = "#8dc63f";
+const HEADING_GOLD = "#C6A04B";
+const LABEL_GREEN = "#88D45D";
 
 export function OrgLanding() {
   const org = useOrg();
 
   return (
-    <div style={{ backgroundColor: "#0a1a0d" }}>
+    <div style={{ backgroundColor: "#ffffff" }}>
       <OrgAwareHeader transparent />
 
       {/* Hero */}
       <section
         className="relative flex items-center justify-center px-4 sm:px-6 pt-40 pb-16 md:pt-48 md:pb-20"
-        style={{ backgroundColor: "#0a1a0d" }}
+        style={{ backgroundColor: "#ffffff" }}
       >
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "radial-gradient(ellipse at center, #0f2614 0%, #0a1a0d 70%)",
+              "radial-gradient(ellipse at center, #F7F6F0 0%, #F7F6F0 70%)",
           }}
         />
 
@@ -63,10 +63,10 @@ export function OrgLanding() {
           </h1>
           <p
             className="text-base sm:text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
           >
             Browse our full catalogue of private lab tests or speak with our
-            AI test advisor — all delivered to your door by AvoVita Wellness
+            AI test advisor â€” all delivered to your door by AvoVita Wellness
             in Calgary.
           </p>
 
@@ -75,8 +75,8 @@ export function OrgLanding() {
               href={org ? `/org/${org.slug}/tests` : "/tests"}
               className="inline-flex items-center justify-center gap-2.5 px-8 py-4 text-base font-semibold rounded-xl transition-colors w-full sm:w-auto"
               style={{
-                backgroundColor: "#c4973a",
-                color: "#0a1a0d",
+                backgroundColor: "#C6A04B",
+                color: "#ffffff",
               }}
             >
               <FlaskConical className="w-5 h-5" />
@@ -102,7 +102,7 @@ export function OrgLanding() {
       {/* Reassurance band */}
       <section
         className="px-4 sm:px-6 py-12"
-        style={{ backgroundColor: "#0f2614" }}
+        style={{ backgroundColor: "#F7F6F0" }}
       >
         <div className="max-w-3xl mx-auto text-center">
           <p
@@ -118,9 +118,9 @@ export function OrgLanding() {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Private, professional lab testing — at your home
+            Private, professional lab testing â€” at your home
           </h2>
-          <p className="text-sm" style={{ color: "#e8d5a3" }}>
+          <p className="text-sm" style={{ color: "#154D31" }}>
             FloLabs phlebotomists collect at your address, samples ship to
             world-class labs, and results land securely in your private portal.
             Protected under Alberta PIPA.
@@ -132,17 +132,17 @@ export function OrgLanding() {
       <footer
         className="px-4 sm:px-6 py-8 text-center text-xs border-t"
         style={{
-          backgroundColor: "#0a1a0d",
-          borderColor: "#1a3d22",
-          color: "#6ab04c",
+          backgroundColor: "#ffffff",
+          borderColor: "#FFFFFF",
+          color: "#4a7a56",
         }}
       >
         <p>
-          © {new Date().getFullYear()} AvoVita Wellness · Calgary, AB
+          Â© {new Date().getFullYear()} AvoVita Wellness Â· Calgary, AB
         </p>
         <p className="mt-2">
           Partnered with{" "}
-          <span style={{ color: "#e8d5a3", fontWeight: 600 }}>
+          <span style={{ color: "#154D31", fontWeight: 600 }}>
             {org?.name}
           </span>
         </p>

@@ -20,7 +20,7 @@ export function PasswordInput(props: PasswordInputProps) {
         type="button"
         onClick={() => setVisible((v) => !v)}
         className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5"
-        style={{ color: "#c4973a", background: "transparent", border: "none" }}
+        style={{ color: "#C6A04B", background: "transparent", border: "none" }}
         tabIndex={-1}
         aria-label={visible ? "Hide password" : "Show password"}
       >

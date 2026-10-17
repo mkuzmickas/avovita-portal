@@ -85,7 +85,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
         message:
           err instanceof Error
             ? err.message
-            : "Network error — please try again.",
+            : "Network error â€” please try again.",
       });
     }
   };
@@ -106,17 +106,17 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
   return (
     <div
       className="min-h-screen interpretation-root"
-      style={{ backgroundColor: "#0a1a0d" }}
+      style={{ backgroundColor: "#ffffff" }}
     >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        {/* Print / back controls — hidden when printing */}
+        {/* Print / back controls â€” hidden when printing */}
         <div className="ai-no-print mb-5 flex items-center justify-between gap-3">
           <Link
             href="/portal/results"
             className="text-sm"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
           >
-            ← Back to My Results
+            â† Back to My Results
           </Link>
           <button
             type="button"
@@ -124,8 +124,8 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
             style={{
               backgroundColor: "transparent",
-              borderColor: "#c4973a",
-              color: "#c4973a",
+              borderColor: "#C6A04B",
+              color: "#C6A04B",
             }}
           >
             <Printer className="w-4 h-4" />
@@ -136,12 +136,12 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
         {/* Header card */}
         <section
           className="rounded-2xl border p-6 sm:p-8 mb-6 print-safe"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-5">
             <div
               className="rounded-xl px-4 py-3"
-              style={{ backgroundColor: "#0f2614" }}
+              style={{ backgroundColor: "#F7F6F0" }}
             >
               <Image
                 src="/logo-white.png"
@@ -154,7 +154,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
             <div className="flex-1 min-w-0">
               <p
                 className="text-xs uppercase tracking-wider font-semibold"
-                style={{ color: "#c4973a", letterSpacing: "0.15em" }}
+                style={{ color: "#C6A04B", letterSpacing: "0.15em" }}
               >
                 AI Lab Interpretation Report
               </p>
@@ -167,8 +167,8 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
               >
                 {fileName}
               </p>
-              <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
-                Report #{reportId} · Generated {formatDate(generatedAt)} · Source uploaded {formatDate(uploadedAt)}
+              <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
+                Report #{reportId} Â· Generated {formatDate(generatedAt)} Â· Source uploaded {formatDate(uploadedAt)}
               </p>
             </div>
           </div>
@@ -190,7 +190,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           </div>
         </section>
 
-        {/* 1 — Results at a glance */}
+        {/* 1 â€” Results at a glance */}
         <Section
           icon={<Activity className="w-5 h-5" />}
           title="Results at a Glance"
@@ -204,7 +204,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                 <thead>
                   <tr
                     className="text-left text-xs uppercase tracking-wider"
-                    style={{ color: "#c4973a" }}
+                    style={{ color: "#C6A04B" }}
                   >
                     <th className="px-3 py-2">Marker</th>
                     <th className="px-3 py-2">Value</th>
@@ -217,7 +217,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                     <tr
                       key={i}
                       style={{
-                        backgroundColor: i % 2 === 0 ? "#0f2614" : "transparent",
+                        backgroundColor: i % 2 === 0 ? "#F7F6F0" : "transparent",
                         color: "#ffffff",
                       }}
                     >
@@ -228,9 +228,9 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                       </td>
                       <td
                         className="px-3 py-2.5 align-top text-xs"
-                        style={{ color: "#e8d5a3" }}
+                        style={{ color: "#154D31" }}
                       >
-                        {row.reference_range || "—"}
+                        {row.reference_range || "â€”"}
                       </td>
                       <td className="px-3 py-2.5 align-top text-right">
                         <StatusBadge status={row.status} />
@@ -243,11 +243,11 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           )}
         </Section>
 
-        {/* 2 — What this may indicate */}
+        {/* 2 â€” What this may indicate */}
         <Section
           icon={<Lightbulb className="w-5 h-5" />}
           title="What This May Indicate"
-          subtitle="Plain-language interpretation — not a diagnosis"
+          subtitle="Plain-language interpretation â€” not a diagnosis"
         >
           <p
             className="text-sm leading-relaxed whitespace-pre-line"
@@ -257,7 +257,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           </p>
         </Section>
 
-        {/* 3 — Follow-up testing */}
+        {/* 3 â€” Follow-up testing */}
         <Section
           icon={<FlaskConical className="w-5 h-5" />}
           title="Follow-Up Testing to Consider"
@@ -267,7 +267,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
               href="/tests"
               target="_blank"
               className="ai-no-print text-xs font-semibold inline-flex items-center gap-1"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             >
               Browse catalogue
               <ExternalLink className="w-3 h-3" />
@@ -282,21 +282,21 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                 <li
                   key={i}
                   className="rounded-lg border p-4"
-                  style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+                  style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
                 >
                   <a
                     href={CATALOGUE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="ai-no-print font-semibold text-sm inline-flex items-center gap-1.5"
-                    style={{ color: "#c4973a" }}
+                    style={{ color: "#C6A04B" }}
                   >
                     {t.test_name}
                     <ExternalLink className="w-3 h-3" />
                   </a>
                   <span
                     className="ai-print-only font-semibold text-sm hidden"
-                    style={{ color: "#c4973a" }}
+                    style={{ color: "#C6A04B" }}
                   >
                     {t.test_name}
                   </span>
@@ -312,7 +312,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           )}
         </Section>
 
-        {/* 4 — Supplement considerations */}
+        {/* 4 â€” Supplement considerations */}
         <Section
           icon={<Pill className="w-5 h-5" />}
           title="Nutrition & Supplement Considerations"
@@ -323,7 +323,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
               target="_blank"
               rel="noopener noreferrer"
               className="ai-no-print text-xs font-semibold inline-flex items-center gap-1"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             >
               Shop supplements
               <ExternalLink className="w-3 h-3" />
@@ -338,10 +338,10 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                 <li
                   key={i}
                   className="rounded-lg border p-4 flex flex-col sm:flex-row sm:items-start gap-3"
-                  style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+                  style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs uppercase tracking-wider" style={{ color: "#8dc63f" }}>
+                    <p className="text-xs uppercase tracking-wider" style={{ color: "#88D45D" }}>
                       {s.marker}
                     </p>
                     <a
@@ -349,14 +349,14 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ai-no-print font-semibold text-sm inline-flex items-center gap-1.5"
-                      style={{ color: "#c4973a" }}
+                      style={{ color: "#C6A04B" }}
                     >
                       {s.supplement_name}
                       <ExternalLink className="w-3 h-3" />
                     </a>
                     <span
                       className="ai-print-only font-semibold text-sm hidden"
-                      style={{ color: "#c4973a" }}
+                      style={{ color: "#C6A04B" }}
                     >
                       {s.supplement_name}
                     </span>
@@ -373,7 +373,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           )}
         </Section>
 
-        {/* 5 — Lifestyle */}
+        {/* 5 â€” Lifestyle */}
         <Section
           icon={<Heart className="w-5 h-5" />}
           title="Lifestyle Factors to Explore"
@@ -387,11 +387,11 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                 <div
                   key={i}
                   className="rounded-lg border p-4"
-                  style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+                  style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
                 >
                   <p
                     className="text-xs uppercase tracking-wider mb-1 font-semibold"
-                    style={{ color: "#8dc63f" }}
+                    style={{ color: "#88D45D" }}
                   >
                     {l.factor}
                   </p>
@@ -407,7 +407,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           )}
         </Section>
 
-        {/* 6 — Next steps */}
+        {/* 6 â€” Next steps */}
         <Section
           icon={<ListChecks className="w-5 h-5" />}
           title="Your Next Steps"
@@ -421,11 +421,11 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                 <div
                   key={i}
                   className="rounded-lg border p-4 flex flex-col gap-2"
-                  style={{ backgroundColor: "#0f2614", borderColor: "#c4973a" }}
+                  style={{ backgroundColor: "#F7F6F0", borderColor: "#C6A04B" }}
                 >
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center font-bold"
-                    style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                    style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
                   >
                     {i + 1}
                   </div>
@@ -443,9 +443,9 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
 
         <p
           className="ai-no-print text-xs text-center mt-8"
-          style={{ color: "#6ab04c" }}
+          style={{ color: "#4a7a56" }}
         >
-          Educational only — not a diagnosis. Always discuss results with a
+          Educational only â€” not a diagnosis. Always discuss results with a
           qualified healthcare provider.
         </p>
       </div>
@@ -453,7 +453,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
   );
 }
 
-// ─── Subcomponents ────────────────────────────────────────────────────
+// â”€â”€â”€ Subcomponents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function Section({
   icon,
@@ -471,16 +471,16 @@ function Section({
   return (
     <section
       className="rounded-2xl border p-5 sm:p-6 mb-5 print-safe"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-start gap-3">
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
             style={{
-              backgroundColor: "#0f2614",
-              border: "1px solid #c4973a",
-              color: "#c4973a",
+              backgroundColor: "#F7F6F0",
+              border: "1px solid #C6A04B",
+              color: "#C6A04B",
             }}
           >
             {icon}
@@ -496,7 +496,7 @@ function Section({
               {title}
             </h2>
             {subtitle && (
-              <p className="text-xs mt-0.5" style={{ color: "#6ab04c" }}>
+              <p className="text-xs mt-0.5" style={{ color: "#4a7a56" }}>
                 {subtitle}
               </p>
             )}
@@ -513,7 +513,7 @@ function StatusBadge({ status }: { status: MarkerStatus }) {
   const palette =
     status === "HIGH" || status === "LOW"
       ? { bg: "rgba(224,82,82,0.12)", fg: "#e05252", border: "#e05252" }
-      : { bg: "rgba(141,198,63,0.12)", fg: "#8dc63f", border: "#8dc63f" };
+      : { bg: "rgba(141,198,63,0.12)", fg: "#88D45D", border: "#88D45D" };
   return (
     <span
       className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border"
@@ -533,9 +533,9 @@ function EmptyRow({ text }: { text: string }) {
     <p
       className="text-sm italic px-3 py-4 rounded-lg text-center border"
       style={{
-        color: "#6ab04c",
-        backgroundColor: "#0f2614",
-        borderColor: "#2d6b35",
+        color: "#4a7a56",
+        backgroundColor: "#F7F6F0",
+        borderColor: "#E5E2D4",
       }}
     >
       {text}
@@ -547,12 +547,12 @@ function LoadingState() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#0a1a0d" }}
+      style={{ backgroundColor: "#ffffff" }}
     >
       <div className="text-center">
         <div
           className="rounded-2xl px-6 py-5 mx-auto mb-6 inline-block"
-          style={{ backgroundColor: "#1a3d22", border: "1px solid #2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E2D4" }}
         >
           <Image
             src="/logo-white.png"
@@ -565,19 +565,19 @@ function LoadingState() {
         <div className="flex items-center justify-center gap-2.5 mb-3">
           <Loader2
             className="w-5 h-5 animate-spin"
-            style={{ color: "#c4973a" }}
+            style={{ color: "#C6A04B" }}
           />
           <p
             className="font-heading text-xl"
             style={{
-              color: "#c4973a",
+              color: "#C6A04B",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Analyzing your results…
+            Analyzing your resultsâ€¦
           </p>
         </div>
-        <p className="text-sm" style={{ color: "#6ab04c" }}>
+        <p className="text-sm" style={{ color: "#4a7a56" }}>
           This can take up to a minute.
         </p>
       </div>
@@ -595,12 +595,12 @@ function ErrorState({
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#0a1a0d" }}
+      style={{ backgroundColor: "#ffffff" }}
     >
       <div className="w-full max-w-md text-center">
         <div
           className="rounded-2xl border p-8"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#e05252" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#e05252" }}
         >
           <div className="flex justify-center mb-4">
             <AlertCircle
@@ -617,7 +617,7 @@ function ErrorState({
           >
             Interpretation unavailable
           </h1>
-          <p className="text-sm mb-5" style={{ color: "#e8d5a3" }}>
+          <p className="text-sm mb-5" style={{ color: "#154D31" }}>
             {message}
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
@@ -625,7 +625,7 @@ function ErrorState({
               type="button"
               onClick={onRetry}
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+              style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
             >
               <RefreshCw className="w-4 h-4" />
               Try again
@@ -635,8 +635,8 @@ function ErrorState({
               className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold border"
               style={{
                 backgroundColor: "transparent",
-                borderColor: "#2d6b35",
-                color: "#e8d5a3",
+                borderColor: "#E5E2D4",
+                color: "#154D31",
               }}
             >
               Back to results

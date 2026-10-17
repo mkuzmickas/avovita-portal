@@ -136,7 +136,7 @@ export function Step3CollectionDetails({
     return () => {
       cancelled = true;
     };
-    // Run once on mount — persons[0] is intentionally read but not a dep
+    // Run once on mount â€” persons[0] is intentionally read but not a dep
     // to avoid re-fetching on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -147,12 +147,12 @@ export function Step3CollectionDetails({
 
   // Full patient identity is required pre-payment (name + DOB +
   // biological sex) so post-payment is just password + waiver +
-  // booking — no separate profile-completion step that could hang.
+  // booking â€” no separate profile-completion step that could hang.
   // Phase 2 tried to split this and it broke enough downstream
   // things (notifications lost names, some customers hung at the
   // profile step and bailed) that it was net-negative. Postal code
   // stays as the ONE remaining pre-payment simplification (Phase 1)
-  // because address collection is genuinely redundant — FloLabs
+  // because address collection is genuinely redundant â€” FloLabs
   // takes the full street address at booking.
   const identityComplete = (p: (typeof persons)[number]) => {
     const base =
@@ -161,7 +161,7 @@ export function Step3CollectionDetails({
       (p.date_of_birth?.trim().length ?? 0) > 0 &&
       p.biological_sex !== "" &&
       p.biological_sex != null;
-    // Phone required only on the account holder — shared as the
+    // Phone required only on the account holder â€” shared as the
     // single contact for the whole order (see Mobile number field).
     if (p.is_account_holder) {
       return base && (p.phone?.trim().length ?? 0) > 0;
@@ -176,7 +176,7 @@ export function Step3CollectionDetails({
   const zoneUnserved = postalEntered && postalZone === "unserved";
 
   // Per-test booking acknowledgements (short-stability tests, weekly
-  // courier-cutoff tests, etc.). tests.booking_ack_text is nullable —
+  // courier-cutoff tests, etc.). tests.booking_ack_text is nullable â€”
   // when populated, the customer must tick "I understand" before Step 3
   // can Continue. Fetched once per Step 3 mount based on the assigned
   // test ids; small result set (usually 0-1 rows).
@@ -245,19 +245,19 @@ export function Step3CollectionDetails({
     missingFields.push(missing.join(", "));
   }
 
-  const labelStyle = { color: "#e8d5a3" };
+  const labelStyle = { color: "#154D31" };
   const reqMark = <span style={{ color: "#e05252" }}> *</span>;
 
   return (
     <div
       className="rounded-2xl border p-5 sm:p-7"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <MapPin className="w-5 h-5" style={{ color: "#c4973a" }} />
+        <MapPin className="w-5 h-5" style={{ color: "#C6A04B" }} />
         <p
           className="text-xs uppercase tracking-wider font-semibold"
-          style={{ color: "#c4973a" }}
+          style={{ color: "#C6A04B" }}
         >
           Step 3 of 4
         </p>
@@ -270,7 +270,7 @@ export function Step3CollectionDetails({
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
-        Collection <span style={{ color: "#c4973a" }}>Details</span>
+        Collection <span style={{ color: "#C6A04B" }}>Details</span>
       </h1>
 
       {/* Multi-test discount banner */}
@@ -280,7 +280,7 @@ export function Step3CollectionDetails({
         </div>
       )}
 
-      {/* Per-test scheduling acknowledgement — required before Continue
+      {/* Per-test scheduling acknowledgement â€” required before Continue
           when the cart has a test with a stability / lab-cutoff
           constraint. Data source: tests.booking_ack_text (migration
           047), currently populated for FNIRM. Adding more constrained
@@ -290,13 +290,13 @@ export function Step3CollectionDetails({
           className="mb-6 rounded-xl border p-4 sm:p-5"
           style={{
             backgroundColor: "rgba(196,151,58,0.10)",
-            borderColor: "#c4973a",
+            borderColor: "#C6A04B",
           }}
         >
           <div className="flex items-start gap-3">
             <AlertTriangle
               className="w-5 h-5 shrink-0 mt-0.5"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             />
             <div className="flex-1 min-w-0">
               <p
@@ -306,9 +306,9 @@ export function Step3CollectionDetails({
                   fontFamily: '"Cormorant Garamond", Georgia, serif',
                 }}
               >
-                Please <span style={{ color: "#c4973a" }}>confirm</span> before continuing
+                Please <span style={{ color: "#C6A04B" }}>confirm</span> before continuing
               </p>
-              <ul className="space-y-2 mb-3 text-sm" style={{ color: "#e8d5a3" }}>
+              <ul className="space-y-2 mb-3 text-sm" style={{ color: "#154D31" }}>
                 {ackMessages.map((m, i) => (
                   <li key={i} className="leading-relaxed">
                     {m}
@@ -321,7 +321,7 @@ export function Step3CollectionDetails({
                   checked={ackConfirmed}
                   onChange={(e) => setAckConfirmed(e.target.checked)}
                   className="mt-0.5 shrink-0"
-                  style={{ accentColor: "#c4973a" }}
+                  style={{ accentColor: "#C6A04B" }}
                 />
                 <span style={{ color: "#ffffff" }}>
                   I understand and will book my collection accordingly.
@@ -332,18 +332,18 @@ export function Step3CollectionDetails({
         </div>
       )}
 
-      {/* ─── Collection mode ─────────────────────────────────────── */}
+      {/* â”€â”€â”€ Collection mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="mb-6">
         <h2
           className="font-heading text-xl font-semibold mb-1"
           style={{
-            color: "#c4973a",
+            color: "#C6A04B",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
           Where will your collection take place?
         </h2>
-        <p className="text-xs mb-4" style={{ color: "#e8d5a3" }}>
+        <p className="text-xs mb-4" style={{ color: "#154D31" }}>
           Pick one to continue.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -366,19 +366,19 @@ export function Step3CollectionDetails({
         </div>
       </section>
 
-      {/* ─── Out-of-town informational panel ─────────────────────── */}
+      {/* â”€â”€â”€ Out-of-town informational panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {isOutOfTown && (
         <section className="mb-8">
           <div
             className="flex items-start gap-3 rounded-xl border p-5"
             style={{
               backgroundColor: "rgba(217,169,57,0.10)",
-              borderColor: "#d4a84a",
+              borderColor: "#D6AF5B",
             }}
           >
             <Info
               className="w-5 h-5 shrink-0 mt-0.5"
-              style={{ color: "#d4a84a" }}
+              style={{ color: "#D6AF5B" }}
             />
             <div>
               <h3
@@ -393,17 +393,17 @@ export function Step3CollectionDetails({
               </h3>
               <p
                 className="text-sm leading-relaxed mb-2"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 Out-of-town collections are coordinated case-by-case.
                 Please email us before booking and we&apos;ll work out the
                 best option for your trip.
               </p>
-              <p className="text-sm" style={{ color: "#e8d5a3" }}>
+              <p className="text-sm" style={{ color: "#154D31" }}>
                 <a
                   href="mailto:mike@avovita.ca"
                   className="font-semibold underline"
-                  style={{ color: "#c4973a" }}
+                  style={{ color: "#C6A04B" }}
                 >
                   mike@avovita.ca
                 </a>
@@ -413,22 +413,22 @@ export function Step3CollectionDetails({
         </section>
       )}
 
-      {/* ─── Collection Address (in-area only) ───────────────────── */}
+      {/* â”€â”€â”€ Collection Address (in-area only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {!isOutOfTown && (
       <section className="mb-8">
         <h2
           className="font-heading text-xl font-semibold mb-1"
           style={{
-            color: "#c4973a",
+            color: "#C6A04B",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
           Collection Postal Code
         </h2>
-        <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
+        <p className="text-sm mb-4" style={{ color: "#154D31" }}>
           FloLabs will collect the full street address when you book
           your collection slot after payment. All we need now is your
-          postal code — it&apos;s how we confirm we can serve your area
+          postal code â€” it&apos;s how we confirm we can serve your area
           and calculate the visit fee.
         </p>
 
@@ -457,7 +457,7 @@ export function Step3CollectionDetails({
           <p
             id="postal-code-help"
             className="text-xs mt-1.5"
-            style={{ color: "#6ab04c" }}
+            style={{ color: "#4a7a56" }}
           >
             Calgary and surrounding communities (Cochrane, Airdrie,
             Okotoks, Chestermere).
@@ -494,13 +494,13 @@ export function Step3CollectionDetails({
             className="flex items-start gap-2 rounded-lg border px-4 py-3 mt-3"
             style={{
               backgroundColor: "rgba(196, 151, 58, 0.1)",
-              borderColor: "#c4973a",
+              borderColor: "#C6A04B",
             }}
           >
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#c4973a" }} />
-            <p className="text-sm leading-relaxed" style={{ color: "#e8d5a3" }}>
-              Outside Calgary — a{" "}
-              <strong style={{ color: "#c4973a" }}>
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#C6A04B" }} />
+            <p className="text-sm leading-relaxed" style={{ color: "#154D31" }}>
+              Outside Calgary â€” a{" "}
+              <strong style={{ color: "#C6A04B" }}>
                 ${(visitFees.base_fee - 85).toFixed(0)} travel surcharge
               </strong>{" "}
               is added to your home visit fee.
@@ -513,14 +513,14 @@ export function Step3CollectionDetails({
           className="flex items-start gap-2 rounded-lg border px-4 py-3 mt-4"
           style={{
             backgroundColor: "rgba(196, 151, 58, 0.1)",
-            borderColor: "#c4973a",
+            borderColor: "#C6A04B",
           }}
         >
           <AlertTriangle
             className="w-4 h-4 shrink-0 mt-0.5"
-            style={{ color: "#c4973a" }}
+            style={{ color: "#C6A04B" }}
           />
-          <p className="text-xs" style={{ color: "#c4973a" }}>
+          <p className="text-xs" style={{ color: "#C6A04B" }}>
             All people in this order must be at this collection address.
             If any person requires collection at a different address,
             please place a separate order for them.
@@ -530,9 +530,9 @@ export function Step3CollectionDetails({
       </section>
       )}
 
-      {/* ─── Patient details per person (required pre-payment) ──
+      {/* â”€â”€â”€ Patient details per person (required pre-payment) â”€â”€
           Name / DOB / biological sex all live here so post-payment
-          is just password + waiver + booking — no extra "profile
+          is just password + waiver + booking â€” no extra "profile
           completion" step that could hang. Phase 2 tried to move
           this post-payment; the added step wasn't worth the friction
           reduction, so it's back. Every downstream surface (Mayo
@@ -548,7 +548,7 @@ export function Step3CollectionDetails({
         >
           {persons.length === 1 ? "Your Details" : "Patient Details"}
         </h2>
-        <p className="text-xs mb-4" style={{ color: "#e8d5a3" }}>
+        <p className="text-xs mb-4" style={{ color: "#154D31" }}>
           As they should appear on the lab requisition and your account.
           Date of birth and biological sex are required by the lab.
         </p>
@@ -558,14 +558,14 @@ export function Step3CollectionDetails({
               key={person.index}
               className="rounded-lg border p-4"
               style={{
-                backgroundColor: "#0f2614",
-                borderColor: "#2d6b35",
+                backgroundColor: "#F7F6F0",
+                borderColor: "#E5E2D4",
               }}
             >
               {persons.length > 1 && (
                 <p
                   className="text-xs font-semibold mb-2 uppercase tracking-wider"
-                  style={{ color: "#c4973a", letterSpacing: "0.1em" }}
+                  style={{ color: "#C6A04B", letterSpacing: "0.1em" }}
                 >
                   {person.is_account_holder
                     ? "You"
@@ -655,7 +655,7 @@ export function Step3CollectionDetails({
                     }
                     className="mf-input cursor-pointer"
                   >
-                    <option value="">Select…</option>
+                    <option value="">Selectâ€¦</option>
                     <option value="female">Female</option>
                     <option value="male">Male</option>
                     <option value="intersex">Intersex</option>
@@ -663,7 +663,7 @@ export function Step3CollectionDetails({
                 </div>
               </div>
 
-              {/* One phone number per order — captured on the account
+              {/* One phone number per order â€” captured on the account
                   holder's card. FloLabs email falls back to this for
                   any additional persons on the order (single household
                   contact is fine for a 2-person booking). */}
@@ -688,7 +688,7 @@ export function Step3CollectionDetails({
                     placeholder="+1 (403) 555-0000"
                     autoComplete="tel"
                   />
-                  <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
+                  <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
                     Used for SMS notifications and shared with FloLabs
                     as the contact for this order.
                   </p>
@@ -699,12 +699,12 @@ export function Step3CollectionDetails({
         </div>
       </section>
 
-      {/* ─── Visit fee preview ─────────────────────────────────── */}
+      {/* â”€â”€â”€ Visit fee preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section
         className="rounded-xl border p-5 mt-2"
         style={{
-          backgroundColor: "#0f2614",
-          borderColor: "#2d6b35",
+          backgroundColor: "#F7F6F0",
+          borderColor: "#E5E2D4",
         }}
       >
         <h3
@@ -720,7 +720,7 @@ export function Step3CollectionDetails({
         <div className="space-y-1.5 text-sm">
           <div
             className="flex justify-between"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
           >
             <span>Base fee (1st person)</span>
             <span>{formatCurrency(visitFees.base_fee)}</span>
@@ -728,10 +728,10 @@ export function Step3CollectionDetails({
           {visitFees.additional_person_count > 0 && (
             <div
               className="flex justify-between"
-              style={{ color: "#e8d5a3" }}
+              style={{ color: "#154D31" }}
             >
               <span>
-                Additional people ({visitFees.additional_person_count} ×{" "}
+                Additional people ({visitFees.additional_person_count} Ã—{" "}
                 {formatCurrency(visitFees.additional_fee_per_person)})
               </span>
               <span>
@@ -744,22 +744,22 @@ export function Step3CollectionDetails({
           )}
           <div
             className="flex justify-between font-semibold pt-2 border-t mt-2"
-            style={{ borderColor: "#2d6b35" }}
+            style={{ borderColor: "#E5E2D4" }}
           >
             <span style={{ color: "#ffffff" }}>Total visit fee</span>
-            <span style={{ color: "#c4973a" }}>
+            <span style={{ color: "#C6A04B" }}>
               {formatCurrency(visitFees.total)}
             </span>
           </div>
         </div>
       </section>
 
-      {/* ─── Validation block + nav ────────────────────────────── */}
+      {/* â”€â”€â”€ Validation block + nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div
         className="mt-6 pt-5 border-t"
-        style={{ borderColor: "#2d6b35" }}
+        style={{ borderColor: "#E5E2D4" }}
       >
-        {/* Per-person consent block dropped in Aug 2026 — the Step 1
+        {/* Per-person consent block dropped in Aug 2026 â€” the Step 1
             permission acknowledgement (captured before this step)
             replaces it, and per-person account routing decisions
             happen in the post-payment onboarding flow. */}
@@ -769,16 +769,16 @@ export function Step3CollectionDetails({
             className="flex items-start gap-2 rounded-lg border px-4 py-3 mb-4 text-sm"
             style={{
               backgroundColor: "rgba(196, 151, 58, 0.10)",
-              borderColor: "#c4973a",
-              color: "#e8d5a3",
+              borderColor: "#C6A04B",
+              color: "#154D31",
             }}
           >
             <AlertCircle
               className="w-4 h-4 shrink-0 mt-0.5"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             />
             <span>
-              <span className="font-semibold" style={{ color: "#c4973a" }}>
+              <span className="font-semibold" style={{ color: "#C6A04B" }}>
                 To continue:
               </span>{" "}
               please complete {missingFields.join("; ")}.
@@ -811,7 +811,7 @@ export function Step3CollectionDetails({
   );
 }
 
-// ─── Collection-mode toggle button ─────────────────────────────────────
+// â”€â”€â”€ Collection-mode toggle button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CollectionModeButton({
   active,
@@ -831,21 +831,21 @@ function CollectionModeButton({
       aria-pressed={active}
       className="text-left rounded-xl border-2 px-4 py-4 transition-colors"
       style={{
-        backgroundColor: active ? "#c4973a" : "transparent",
-        borderColor: "#c4973a",
-        color: active ? "#0a1a0d" : "#e8d5a3",
+        backgroundColor: active ? "#C6A04B" : "transparent",
+        borderColor: "#C6A04B",
+        color: active ? "#F7F6F0" : "#154D31",
       }}
     >
       <p
         className="text-sm font-semibold"
-        style={{ color: active ? "#0a1a0d" : "#ffffff" }}
+        style={{ color: active ? "#F7F6F0" : "#ffffff" }}
       >
         {title}
       </p>
       <p
         className="text-xs mt-1 leading-relaxed"
         style={{
-          color: active ? "rgba(10,26,13,0.85)" : "#6ab04c",
+          color: active ? "rgba(10,26,13,0.85)" : "#4a7a56",
         }}
       >
         {subtitle}
@@ -854,7 +854,7 @@ function CollectionModeButton({
   );
 }
 
-// ─── Person section subcomponent ───────────────────────────────────────
+// â”€â”€â”€ Person section subcomponent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function PersonSection({
   title,
@@ -873,7 +873,7 @@ function PersonSection({
   person: CheckoutPerson;
   onChange: (patch: Partial<CheckoutPerson>) => void;
   isAccountHolder: boolean;
-  /** In caregiver mode, dependents don't carry their own contact info —
+  /** In caregiver mode, dependents don't carry their own contact info â€”
    *  all notifications go to the rep. Hide the phone field (and any
    *  own-account-email prompt) when this is true. */
   hideContactFields?: boolean;
@@ -882,13 +882,13 @@ function PersonSection({
   showConsent: boolean;
   accountHolderFirstName?: string;
 }) {
-  const labelStyle = { color: "#e8d5a3" };
+  const labelStyle = { color: "#154D31" };
   const reqMark = <span style={{ color: "#e05252" }}> *</span>;
 
   return (
     <section
       className="mb-6 pb-6 border-b"
-      style={{ borderColor: "#2d6b35" }}
+      style={{ borderColor: "#E5E2D4" }}
     >
       <h2
         className="font-heading text-xl font-semibold mb-1"
@@ -900,12 +900,12 @@ function PersonSection({
         {title}
       </h2>
       {subtitle && (
-        <p className="text-xs mb-4" style={{ color: "#6ab04c" }}>
+        <p className="text-xs mb-4" style={{ color: "#4a7a56" }}>
           {subtitle}
         </p>
       )}
       {!isAccountHolder && assignments.length > 0 && (
-        <p className="text-xs mb-4" style={{ color: "#8dc63f" }}>
+        <p className="text-xs mb-4" style={{ color: "#88D45D" }}>
           {assignments.length} test{assignments.length !== 1 ? "s" : ""}{" "}
           assigned
         </p>
@@ -972,7 +972,7 @@ function PersonSection({
             }
             className="mf-input cursor-pointer"
           >
-            <option value="">Select…</option>
+            <option value="">Selectâ€¦</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
@@ -996,7 +996,7 @@ function PersonSection({
             placeholder="+1 (403) 555-0000"
             autoComplete="tel"
           />
-          <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
+          <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
             Required for SMS notifications when your order ships and results are ready
           </p>
         </div>
@@ -1020,7 +1020,7 @@ function PersonSection({
             }
             className="mf-input cursor-pointer"
           >
-            <option value="">Select…</option>
+            <option value="">Selectâ€¦</option>
             {RELATIONSHIP_OPTIONS.map((r) => (
               <option key={r.value} value={r.value}>
                 {r.label}
@@ -1032,7 +1032,7 @@ function PersonSection({
 
       {showConsent && (
         <div className="mt-4 space-y-3">
-          {/* Option A — share account */}
+          {/* Option A â€” share account */}
           <button
             type="button"
             onClick={() =>
@@ -1047,11 +1047,11 @@ function PersonSection({
               backgroundColor:
                 person.consent_acknowledged && !person.wants_own_account
                   ? "rgba(141, 198, 63, 0.08)"
-                  : "#0f2614",
+                  : "#F7F6F0",
               borderColor:
                 person.consent_acknowledged && !person.wants_own_account
-                  ? "#8dc63f"
-                  : "#2d6b35",
+                  ? "#88D45D"
+                  : "#E5E2D4",
             }}
           >
             <div className="flex items-start gap-3">
@@ -1060,25 +1060,25 @@ function PersonSection({
                 style={{
                   borderColor:
                     person.consent_acknowledged && !person.wants_own_account
-                      ? "#8dc63f"
-                      : "#2d6b35",
+                      ? "#88D45D"
+                      : "#E5E2D4",
                 }}
               >
                 {person.consent_acknowledged && !person.wants_own_account && (
                   <span
                     className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: "#8dc63f" }}
+                    style={{ backgroundColor: "#88D45D" }}
                   />
                 )}
               </span>
               <div>
                 <p
                   className="text-sm font-semibold mb-1"
-                  style={{ color: "#c4973a" }}
+                  style={{ color: "#C6A04B" }}
                 >
                   Add results to {accountHolderFirstName || "the account holder"}&apos;s account
                 </p>
-                <p className="text-xs" style={{ color: "#e8d5a3" }}>
+                <p className="text-xs" style={{ color: "#154D31" }}>
                   I confirm that{" "}
                   <strong style={{ color: "#ffffff" }}>
                     {person.first_name.trim() || "this person"}
@@ -1092,7 +1092,7 @@ function PersonSection({
             </div>
           </button>
 
-          {/* Option B — own account */}
+          {/* Option B â€” own account */}
           <button
             type="button"
             onClick={() =>
@@ -1105,10 +1105,10 @@ function PersonSection({
             style={{
               backgroundColor: person.wants_own_account
                 ? "rgba(141, 198, 63, 0.08)"
-                : "#0f2614",
+                : "#F7F6F0",
               borderColor: person.wants_own_account
-                ? "#8dc63f"
-                : "#2d6b35",
+                ? "#88D45D"
+                : "#E5E2D4",
             }}
           >
             <div className="flex items-start gap-3">
@@ -1116,25 +1116,25 @@ function PersonSection({
                 className="w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center"
                 style={{
                   borderColor: person.wants_own_account
-                    ? "#8dc63f"
-                    : "#2d6b35",
+                    ? "#88D45D"
+                    : "#E5E2D4",
                 }}
               >
                 {person.wants_own_account && (
                   <span
                     className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: "#8dc63f" }}
+                    style={{ backgroundColor: "#88D45D" }}
                   />
                 )}
               </span>
               <div className="flex-1 min-w-0">
                 <p
                   className="text-sm font-semibold mb-1"
-                  style={{ color: "#c4973a" }}
+                  style={{ color: "#C6A04B" }}
                 >
                   I&apos;ll create my own account
                 </p>
-                <p className="text-xs" style={{ color: "#e8d5a3" }}>
+                <p className="text-xs" style={{ color: "#154D31" }}>
                   {person.first_name.trim() || "This person"} will receive
                   their own login to view results privately.
                 </p>
@@ -1142,16 +1142,16 @@ function PersonSection({
             </div>
           </button>
 
-          {/* Email input — shown when own account selected */}
+          {/* Email input â€” shown when own account selected */}
           {person.wants_own_account && (
             <div
               className="rounded-lg border p-4"
-              style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+              style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
               onClick={(e) => e.stopPropagation()}
             >
               <label
                 className="block text-sm font-medium mb-1.5"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 Your email address <span style={{ color: "#e05252" }}>*</span>
               </label>
@@ -1165,7 +1165,7 @@ function PersonSection({
                 className="mf-input"
                 onClick={(e) => e.stopPropagation()}
               />
-              <p className="text-xs mt-2" style={{ color: "#6ab04c" }}>
+              <p className="text-xs mt-2" style={{ color: "#4a7a56" }}>
                 We&apos;ll send them an invite to set up their password and
                 access their results.
               </p>
@@ -1177,12 +1177,12 @@ function PersonSection({
   );
 }
 
-// ─── Date of birth dropdowns (Day / Month / Year) ────────────────────────
+// â”€â”€â”€ Date of birth dropdowns (Day / Month / Year) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
 // Replaces the native <input type="date"> with three dropdowns to keep the
 // UX consistent across browsers (mobile especially) and avoid the dd/mm
 // vs mm/dd ambiguity. Emits an ISO YYYY-MM-DD string only when all three
-// parts are filled — partial selections emit "" so the parent's existing
+// parts are filled â€” partial selections emit "" so the parent's existing
 // `date_of_birth.length > 0` validation still gates the Continue button.
 
 const MONTH_LABELS = [
@@ -1227,7 +1227,7 @@ function DobDropdowns({
   const [parts, setParts] = useState(() => parseIsoDob(value));
 
   // Re-sync from the parent value when it is either fully empty or a
-  // complete date — typically prefill on mount or restore after navigating
+  // complete date â€” typically prefill on mount or restore after navigating
   // back to this step. We deliberately ignore parent updates while the
   // user is mid-entry (parent has "" but local has partial parts).
   useEffect(() => {
@@ -1313,7 +1313,7 @@ function DobDropdowns({
   );
 }
 
-// ─── Representative (caregiver / POA) section ──────────────────────────
+// â”€â”€â”€ Representative (caregiver / POA) section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function RepresentativeSection({
   rep,
@@ -1322,7 +1322,7 @@ function RepresentativeSection({
   rep: RepresentativeBlock;
   onChange: (next: RepresentativeBlock) => void;
 }) {
-  const labelStyle = { color: "#e8d5a3" };
+  const labelStyle = { color: "#154D31" };
   const reqMark = <span style={{ color: "#e05252" }}> *</span>;
   const update = <K extends keyof RepresentativeBlock>(
     key: K,
@@ -1332,7 +1332,7 @@ function RepresentativeSection({
   return (
     <section
       className="mb-6 pb-6 rounded-xl border p-5"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
     >
       <h2
         className="font-heading text-xl sm:text-2xl font-semibold mb-1"
@@ -1342,11 +1342,11 @@ function RepresentativeSection({
         }}
       >
         Your Information{" "}
-        <span style={{ color: "#c4973a" }}>(Representative)</span>
+        <span style={{ color: "#C6A04B" }}>(Representative)</span>
       </h2>
-      <p className="text-xs mb-4" style={{ color: "#e8d5a3" }}>
+      <p className="text-xs mb-4" style={{ color: "#154D31" }}>
         We&apos;ll send order confirmations, appointment updates and results to
-        you as the representative — not to the client&apos;s contact info.
+        you as the representative â€” not to the client&apos;s contact info.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1432,7 +1432,7 @@ function RepresentativeSection({
           checked={rep.poa_confirmed}
           onChange={(e) => update("poa_confirmed", e.target.checked)}
           className="mt-1 w-4 h-4 shrink-0"
-          style={{ accentColor: "#c4973a" }}
+          style={{ accentColor: "#C6A04B" }}
         />
         <span className="text-sm leading-relaxed" style={{ color: "#ffffff" }}>
           I confirm that I have legal authority or written consent to authorize

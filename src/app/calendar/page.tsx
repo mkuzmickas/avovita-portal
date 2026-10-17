@@ -6,7 +6,7 @@ import { CalendarClient } from "@/app/(admin)/admin/calendar/CalendarClient";
 export const dynamic = "force-dynamic";
 
 /**
- * /calendar — public token-gated read-only view of the FloLabs
+ * /calendar â€” public token-gated read-only view of the FloLabs
  * collection calendar. Two ways to reach it:
  *   1. FloLabs bookmarked URL: /calendar?token=<CALENDAR_ACCESS_TOKEN>
  *   2. Admin sidebar link:      /admin/calendar (session-authenticated)
@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 
 interface SearchParams {
   token?: string;
-  /** ISO YYYY-MM-DD — the day whose week or month is displayed. */
+  /** ISO YYYY-MM-DD â€” the day whose week or month is displayed. */
   date?: string;
   /** 'week' (default) or 'month'. */
   view?: string;
@@ -71,7 +71,7 @@ export default async function PublicCalendarPage({
 
   return (
     <div
-      style={{ minHeight: "100vh", backgroundColor: "#0a1a0d" }}
+      style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}
       className="p-6"
     >
       <div className="max-w-[1800px] mx-auto">
@@ -83,10 +83,10 @@ export default async function PublicCalendarPage({
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            <span style={{ color: "#c4973a" }}>FloLabs Collection Calendar</span>
+            <span style={{ color: "#C6A04B" }}>FloLabs Collection Calendar</span>
           </h1>
-          <p className="mt-1" style={{ color: "#e8d5a3" }}>
-            Read-only view of upcoming appointments — updated automatically as
+          <p className="mt-1" style={{ color: "#154D31" }}>
+            Read-only view of upcoming appointments â€” updated automatically as
             Acuity confirmations arrive.
           </p>
         </div>
@@ -119,8 +119,8 @@ function todayCalgaryISO(): string {
 
 /**
  * Given an anchor date in Calgary local and a view mode, return the
- * ISO range covered by that view. Week = Mon–Sun containing the
- * anchor; month = 1st–last of the anchor's month.
+ * ISO range covered by that view. Week = Monâ€“Sun containing the
+ * anchor; month = 1stâ€“last of the anchor's month.
  */
 function rangeFor(
   anchorISO: string,

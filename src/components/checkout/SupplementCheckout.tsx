@@ -74,10 +74,10 @@ export function SupplementCheckout({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#0a1a0d" }}
+        style={{ backgroundColor: "#ffffff" }}
       >
-        <p className="text-sm" style={{ color: "#6ab04c" }}>
-          Loading…
+        <p className="text-sm" style={{ color: "#4a7a56" }}>
+          Loadingâ€¦
         </p>
       </div>
     );
@@ -155,19 +155,19 @@ export function SupplementCheckout({
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#0a1a0d" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#ffffff" }}>
       <OrgAwareHeader
         rightSlot={
           <Link
             href="/supplements"
             className="text-xs font-medium px-3 py-1.5 rounded-lg border whitespace-nowrap"
             style={{
-              color: "#e8d5a3",
-              borderColor: "#2d6b35",
+              color: "#154D31",
+              borderColor: "#E5E2D4",
               backgroundColor: "transparent",
             }}
           >
-            ← Back to supplements
+            â† Back to supplements
           </Link>
         }
       />
@@ -185,11 +185,11 @@ export function SupplementCheckout({
                   className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
                   style={{
                     backgroundColor: isDone
-                      ? "#8dc63f"
+                      ? "#88D45D"
                       : isActive
-                        ? "#c4973a"
-                        : "#2d6b35",
-                    color: isDone || isActive ? "#0a1a0d" : "#6ab04c",
+                        ? "#C6A04B"
+                        : "#E5E2D4",
+                    color: isDone || isActive ? "#F7F6F0" : "#4a7a56",
                   }}
                 >
                   {stepNum}
@@ -197,7 +197,7 @@ export function SupplementCheckout({
                 <span
                   className="text-xs font-medium hidden sm:inline"
                   style={{
-                    color: isActive ? "#c4973a" : "#6ab04c",
+                    color: isActive ? "#C6A04B" : "#4a7a56",
                   }}
                 >
                   {label}
@@ -205,7 +205,7 @@ export function SupplementCheckout({
                 {i < 2 && (
                   <div
                     className="w-8 h-px mx-1"
-                    style={{ backgroundColor: "#2d6b35" }}
+                    style={{ backgroundColor: "#E5E2D4" }}
                   />
                 )}
               </div>
@@ -226,11 +226,11 @@ export function SupplementCheckout({
                       '"Cormorant Garamond", Georgia, serif',
                   }}
                 >
-                  Your <span style={{ color: "#c4973a" }}>Details</span>
+                  Your <span style={{ color: "#C6A04B" }}>Details</span>
                 </h2>
                 <p
                   className="text-sm mb-6"
-                  style={{ color: "#e8d5a3" }}
+                  style={{ color: "#154D31" }}
                 >
                   We need your contact info for order confirmation and
                   delivery coordination.
@@ -240,7 +240,7 @@ export function SupplementCheckout({
                     <div>
                       <label
                         className="block text-xs font-medium mb-1"
-                        style={{ color: "#e8d5a3" }}
+                        style={{ color: "#154D31" }}
                       >
                         First Name <span style={{ color: "#e05252" }}>*</span>
                       </label>
@@ -255,7 +255,7 @@ export function SupplementCheckout({
                     <div>
                       <label
                         className="block text-xs font-medium mb-1"
-                        style={{ color: "#e8d5a3" }}
+                        style={{ color: "#154D31" }}
                       >
                         Last Name <span style={{ color: "#e05252" }}>*</span>
                       </label>
@@ -271,7 +271,7 @@ export function SupplementCheckout({
                   <div>
                     <label
                       className="block text-xs font-medium mb-1"
-                      style={{ color: "#e8d5a3" }}
+                      style={{ color: "#154D31" }}
                     >
                       Email <span style={{ color: "#e05252" }}>*</span>
                     </label>
@@ -286,7 +286,7 @@ export function SupplementCheckout({
                   <div>
                     <label
                       className="block text-xs font-medium mb-1"
-                      style={{ color: "#e8d5a3" }}
+                      style={{ color: "#154D31" }}
                     >
                       Phone <span style={{ color: "#e05252" }}>*</span>
                     </label>
@@ -311,9 +311,9 @@ export function SupplementCheckout({
                     className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                     style={{
                       backgroundColor: contactValid
-                        ? "#c4973a"
-                        : "#2d6b35",
-                      color: contactValid ? "#0a1a0d" : "#6ab04c",
+                        ? "#C6A04B"
+                        : "#E5E2D4",
+                      color: contactValid ? "#F7F6F0" : "#4a7a56",
                       cursor: contactValid ? "pointer" : "not-allowed",
                     }}
                   >
@@ -351,15 +351,15 @@ export function SupplementCheckout({
                   }}
                 >
                   Review Your{" "}
-                  <span style={{ color: "#c4973a" }}>Order</span>
+                  <span style={{ color: "#C6A04B" }}>Order</span>
                 </h2>
 
                 {/* Items */}
                 <div
                   className="rounded-xl border p-4 mb-4 space-y-2"
                   style={{
-                    backgroundColor: "#1a3d22",
-                    borderColor: "#2d6b35",
+                    backgroundColor: "#FFFFFF",
+                    borderColor: "#E5E2D4",
                   }}
                 >
                   {cart.map((item, i) => (
@@ -370,17 +370,17 @@ export function SupplementCheckout({
                       <span style={{ color: "#ffffff" }}>
                         {cartItemName(item)}
                       </span>
-                      <span style={{ color: "#c4973a" }}>
+                      <span style={{ color: "#C6A04B" }}>
                         {formatCurrency(item.price_cad)}
                       </span>
                     </div>
                   ))}
                   {fulfillment === "shipping" && (
-                    <div className="flex justify-between text-sm pt-2 border-t" style={{ borderColor: "#2d6b35" }}>
-                      <span style={{ color: "#e8d5a3" }}>
+                    <div className="flex justify-between text-sm pt-2 border-t" style={{ borderColor: "#E5E2D4" }}>
+                      <span style={{ color: "#154D31" }}>
                         Supplement shipping
                       </span>
-                      <span style={{ color: "#c4973a" }}>
+                      <span style={{ color: "#C6A04B" }}>
                         {formatCurrency(shippingFee)}
                       </span>
                     </div>
@@ -391,18 +391,18 @@ export function SupplementCheckout({
                 <div
                   className="rounded-xl border p-4 mb-4"
                   style={{
-                    backgroundColor: "#0f2614",
-                    borderColor: "#2d6b35",
+                    backgroundColor: "#F7F6F0",
+                    borderColor: "#E5E2D4",
                   }}
                 >
-                  <p className="text-xs uppercase tracking-wider font-semibold mb-2" style={{ color: "#6ab04c" }}>
+                  <p className="text-xs uppercase tracking-wider font-semibold mb-2" style={{ color: "#4a7a56" }}>
                     Contact
                   </p>
                   <p className="text-sm" style={{ color: "#ffffff" }}>
                     {firstName} {lastName}
                   </p>
-                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
-                    {email} · {phone}
+                  <p className="text-sm" style={{ color: "#154D31" }}>
+                    {email} Â· {phone}
                   </p>
                 </div>
 
@@ -410,15 +410,15 @@ export function SupplementCheckout({
                 <div
                   className="rounded-xl border p-4 mb-6"
                   style={{
-                    backgroundColor: "#0f2614",
-                    borderColor: "#2d6b35",
+                    backgroundColor: "#F7F6F0",
+                    borderColor: "#E5E2D4",
                   }}
                 >
-                  <p className="text-xs uppercase tracking-wider font-semibold mb-2" style={{ color: "#6ab04c" }}>
+                  <p className="text-xs uppercase tracking-wider font-semibold mb-2" style={{ color: "#4a7a56" }}>
                     Delivery
                   </p>
                   {fulfillment === "shipping" && shippingAddress ? (
-                    <div className="text-sm" style={{ color: "#e8d5a3" }}>
+                    <div className="text-sm" style={{ color: "#154D31" }}>
                       <p style={{ color: "#ffffff" }}>Shipping to:</p>
                       <p>{shippingAddress.street}</p>
                       <p>
@@ -429,7 +429,7 @@ export function SupplementCheckout({
                   ) : (
                     <p
                       className="text-sm"
-                      style={{ color: "#e8d5a3" }}
+                      style={{ color: "#154D31" }}
                     >
                       Coordinated delivery/pickup with AvoVita
                     </p>
@@ -455,12 +455,12 @@ export function SupplementCheckout({
                     onClick={() => setStep(2)}
                     className="px-5 py-2.5 rounded-lg text-sm font-semibold border"
                     style={{
-                      color: "#e8d5a3",
-                      borderColor: "#2d6b35",
+                      color: "#154D31",
+                      borderColor: "#E5E2D4",
                       backgroundColor: "transparent",
                     }}
                   >
-                    ← Back
+                    â† Back
                   </button>
                   <button
                     type="button"
@@ -468,8 +468,8 @@ export function SupplementCheckout({
                     onClick={handleSubmit}
                     className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-colors"
                     style={{
-                      backgroundColor: "#c4973a",
-                      color: "#0a1a0d",
+                      backgroundColor: "#C6A04B",
+                      color: "#ffffff",
                       opacity: submitting ? 0.6 : 1,
                     }}
                   >

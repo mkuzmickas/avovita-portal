@@ -50,7 +50,7 @@ export interface OnboardingCollectionAddress {
 
 export interface OnboardingSummary {
   sessionId: string;
-  /** Full UUID for the underlying order — needed so
+  /** Full UUID for the underlying order â€” needed so
    *  /api/checkout/complete-profile can re-fire the FloLabs
    *  requisition once every profile row has been filled. Optional
    *  for backwards-compat: legacy pre-Aug-2026 orders may not have
@@ -96,7 +96,7 @@ export function PostPurchaseOnboarding({
 
   const [step, setStep] = useState<Step>(initialStep);
 
-  // Guests no longer set a password here — the webhook auto-creates the
+  // Guests no longer set a password here â€” the webhook auto-creates the
   // account and emails a magic confirmation link. Show a simple success
   // card and let them activate from their inbox.
   if (!alreadyLoggedIn) {
@@ -108,16 +108,16 @@ export function PostPurchaseOnboarding({
   return (
     <div
       className="min-h-screen flex flex-col items-center px-4 py-6 sm:py-10"
-      style={{ backgroundColor: "#0a1a0d" }}
+      style={{ backgroundColor: "#ffffff" }}
     >
       <div className="w-full max-w-2xl">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-6">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
-            <Leaf className="w-5 h-5" style={{ color: "#8dc63f" }} />
+            <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
           <span
             className="font-heading text-2xl font-semibold"
@@ -148,10 +148,10 @@ export function PostPurchaseOnboarding({
                     className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold border-2 shrink-0"
                     style={{
                       backgroundColor:
-                        completed || active ? "#c4973a" : "#0f2614",
+                        completed || active ? "#C6A04B" : "#F7F6F0",
                       borderColor:
-                        completed || active ? "#c4973a" : "#2d6b35",
-                      color: completed || active ? "#0a1a0d" : "#6ab04c",
+                        completed || active ? "#C6A04B" : "#E5E2D4",
+                      color: completed || active ? "#F7F6F0" : "#4a7a56",
                     }}
                   >
                     {completed ? <Check className="w-4 h-4" /> : stepNum}
@@ -162,8 +162,8 @@ export function PostPurchaseOnboarding({
                       color: active
                         ? "#ffffff"
                         : completed
-                        ? "#c4973a"
-                        : "#6ab04c",
+                        ? "#C6A04B"
+                        : "#4a7a56",
                     }}
                   >
                     {label}
@@ -174,7 +174,7 @@ export function PostPurchaseOnboarding({
                     aria-hidden
                     className="h-0.5 flex-1 rounded-full"
                     style={{
-                      backgroundColor: completed ? "#c4973a" : "#2d6b35",
+                      backgroundColor: completed ? "#C6A04B" : "#E5E2D4",
                       minWidth: 12,
                     }}
                   />
@@ -187,7 +187,7 @@ export function PostPurchaseOnboarding({
         {/* Card */}
         <div
           className="rounded-2xl border overflow-hidden"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           {step === 1 && (
             <Step1CreateAccount
@@ -224,16 +224,16 @@ export function PostPurchaseOnboarding({
 
         <p
           className="text-center text-xs mt-6"
-          style={{ color: "#6ab04c" }}
+          style={{ color: "#4a7a56" }}
         >
-          Protected by Alberta PIPA · AvoVita Wellness
+          Protected by Alberta PIPA Â· AvoVita Wellness
         </p>
       </div>
     </div>
   );
 }
 
-// ─── Step 1: Create Account ─────────────────────────────────────────
+// â”€â”€â”€ Step 1: Create Account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function Step1CreateAccount({
   sessionId,
@@ -308,9 +308,9 @@ function Step1CreateAccount({
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          Create your <span style={{ color: "#c4973a" }}>AvoVita account</span>
+          Create your <span style={{ color: "#C6A04B" }}>AvoVita account</span>
         </h2>
-        <p className="text-sm" style={{ color: "#e8d5a3" }}>
+        <p className="text-sm" style={{ color: "#154D31" }}>
           Your account gives you secure access to your results and order
           history.
         </p>
@@ -319,7 +319,7 @@ function Step1CreateAccount({
       <div>
         <label
           className="block text-sm font-medium mb-1.5"
-          style={{ color: "#e8d5a3" }}
+          style={{ color: "#154D31" }}
         >
           Email
         </label>
@@ -336,7 +336,7 @@ function Step1CreateAccount({
       <div>
         <label
           className="block text-sm font-medium mb-1.5"
-          style={{ color: "#e8d5a3" }}
+          style={{ color: "#154D31" }}
         >
           Password
         </label>
@@ -352,7 +352,7 @@ function Step1CreateAccount({
       <div>
         <label
           className="block text-sm font-medium mb-1.5"
-          style={{ color: "#e8d5a3" }}
+          style={{ color: "#154D31" }}
         >
           Confirm Password
         </label>
@@ -385,13 +385,13 @@ function Step1CreateAccount({
         className="mf-btn-primary w-full py-3"
       >
         {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-        {submitting ? "Creating account…" : "Create Account"}
+        {submitting ? "Creating accountâ€¦" : "Create Account"}
       </button>
     </form>
   );
 }
 
-// ─── Step 2: Complete Profile(s) ────────────────────────────────────
+// â”€â”€â”€ Step 2: Complete Profile(s) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
 // The webhook creates one patient_profiles row per person on the order
 // with NULL name/DOB/sex fields (migration 030). This step walks the
@@ -457,7 +457,7 @@ function Step2YourInfo({
         )
         .eq("account_id", user.id)
         // Primary (account-holder) profile first, then dependents in
-        // creation order — matches the person-index ordering the
+        // creation order â€” matches the person-index ordering the
         // checkout used before Phase 2.
         .order("is_primary", { ascending: false })
         .order("created_at", { ascending: true });
@@ -470,7 +470,7 @@ function Step2YourInfo({
   const finaliseAndAdvance = async () => {
     setFinalising(true);
     setFinaliseError(null);
-    // Fire the deferred FloLabs requisition — best-effort, we don't
+    // Fire the deferred FloLabs requisition â€” best-effort, we don't
     // block the customer from proceeding if it fails. Non-blocking is
     // safe because the endpoint is idempotent and admin can re-run it
     // manually if this attempt gets missed.
@@ -484,7 +484,7 @@ function Step2YourInfo({
       } catch (err) {
         console.warn("[onboarding] complete-profile call failed:", err);
         setFinaliseError(
-          "We saved your information but had trouble notifying the lab. Your booking still works — email support@avovita.ca if you don't hear from FloLabs within an hour.",
+          "We saved your information but had trouble notifying the lab. Your booking still works â€” email support@avovita.ca if you don't hear from FloLabs within an hour.",
         );
       }
     }
@@ -506,10 +506,10 @@ function Step2YourInfo({
       <div className="px-8 py-12 text-center">
         <Loader2
           className="w-6 h-6 animate-spin mx-auto mb-2"
-          style={{ color: "#c4973a" }}
+          style={{ color: "#C6A04B" }}
         />
-        <p className="text-sm" style={{ color: "#6ab04c" }}>
-          Loading…
+        <p className="text-sm" style={{ color: "#4a7a56" }}>
+          Loadingâ€¦
         </p>
       </div>
     );
@@ -522,10 +522,10 @@ function Step2YourInfo({
       <div className="px-8 py-12 text-center">
         <Loader2
           className="w-6 h-6 animate-spin mx-auto mb-2"
-          style={{ color: "#c4973a" }}
+          style={{ color: "#C6A04B" }}
         />
-        <p className="text-sm" style={{ color: "#6ab04c" }}>
-          Preparing your profile — one moment…
+        <p className="text-sm" style={{ color: "#4a7a56" }}>
+          Preparing your profile â€” one momentâ€¦
         </p>
       </div>
     );
@@ -552,7 +552,7 @@ function Step2YourInfo({
       <div className="mb-6">
         <p
           className="text-xs uppercase tracking-wider font-semibold mb-2"
-          style={{ color: "#c4973a", letterSpacing: "0.1em" }}
+          style={{ color: "#C6A04B", letterSpacing: "0.1em" }}
         >
           {stepBadge}
         </p>
@@ -564,9 +564,9 @@ function Step2YourInfo({
           }}
         >
           Tell us about{" "}
-          <span style={{ color: "#c4973a" }}>{roleLabel}</span>
+          <span style={{ color: "#C6A04B" }}>{roleLabel}</span>
         </h2>
-        <p className="text-sm" style={{ color: "#e8d5a3" }}>
+        <p className="text-sm" style={{ color: "#154D31" }}>
           Name, date of birth and biological sex go on the lab
           requisition. Results are matched to this information on the
           portal, so make sure it&apos;s exactly the name you want on
@@ -601,7 +601,7 @@ function Step2YourInfo({
         existingProfile={current as unknown as import("@/types/database").PatientProfile}
         submitLabel={
           finalising
-            ? "Finalising…"
+            ? "Finalisingâ€¦"
             : isLast
               ? "Save and Continue"
               : "Save and Next Person"
@@ -612,7 +612,7 @@ function Step2YourInfo({
   );
 }
 
-// ─── Step 4: Book Collection ────────────────────────────────────────
+// â”€â”€â”€ Step 4: Book Collection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function Step4BookCollection({
   summary,
@@ -644,10 +644,10 @@ function Step4BookCollection({
           className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 border-2"
           style={{
             backgroundColor: "rgba(196, 151, 58, 0.15)",
-            borderColor: "#c4973a",
+            borderColor: "#C6A04B",
           }}
         >
-          <CheckCircle className="w-9 h-9" style={{ color: "#c4973a" }} />
+          <CheckCircle className="w-9 h-9" style={{ color: "#C6A04B" }} />
         </div>
         <h2
           className="font-heading text-3xl sm:text-4xl font-semibold mb-2"
@@ -656,9 +656,9 @@ function Step4BookCollection({
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          You&apos;re <span style={{ color: "#c4973a" }}>all set!</span>
+          You&apos;re <span style={{ color: "#C6A04B" }}>all set!</span>
         </h2>
-        <p className="text-sm" style={{ color: "#e8d5a3" }}>
+        <p className="text-sm" style={{ color: "#154D31" }}>
           Your order is confirmed and your waiver is on file. The last step
           is to book your in-home collection appointment with FloLabs.
         </p>
@@ -673,8 +673,8 @@ function Step4BookCollection({
               key={idx}
               className="rounded-lg border p-4"
               style={{
-                backgroundColor: "#0f2614",
-                borderColor: "#2d6b35",
+                backgroundColor: "#F7F6F0",
+                borderColor: "#E5E2D4",
               }}
             >
               <p
@@ -685,9 +685,9 @@ function Step4BookCollection({
                 {!person.is_account_holder && person.relationship && (
                   <span
                     className="font-normal text-xs ml-2"
-                    style={{ color: "#6ab04c" }}
+                    style={{ color: "#4a7a56" }}
                   >
-                    · {person.relationship.replace("_", " ")}
+                    Â· {person.relationship.replace("_", " ")}
                   </span>
                 )}
               </p>
@@ -696,24 +696,24 @@ function Step4BookCollection({
                   <li
                     key={ti}
                     className="flex items-center gap-2 text-xs"
-                    style={{ color: "#e8d5a3" }}
+                    style={{ color: "#154D31" }}
                   >
                     <FlaskConical
                       className="w-3 h-3 shrink-0"
-                      style={{ color: "#8dc63f" }}
+                      style={{ color: "#88D45D" }}
                     />
                     <span>{t.test_name}</span>
                     {t.specimen_type && (
-                      <span style={{ color: "#6ab04c" }}>
-                        · {t.specimen_type}
+                      <span style={{ color: "#4a7a56" }}>
+                        Â· {t.specimen_type}
                       </span>
                     )}
                     {t.requires_fasting && (
                       <span
                         className="font-semibold"
-                        style={{ color: "#c4973a" }}
+                        style={{ color: "#C6A04B" }}
                       >
-                        · Fasting
+                        Â· Fasting
                       </span>
                     )}
                   </li>
@@ -730,22 +730,22 @@ function Step4BookCollection({
           className="flex items-start gap-2.5 rounded-lg border p-4 mb-6"
           style={{
             backgroundColor: "rgba(196, 151, 58, 0.1)",
-            borderColor: "#c4973a",
+            borderColor: "#C6A04B",
           }}
         >
           <AlertTriangle
             className="w-5 h-5 shrink-0 mt-0.5"
-            style={{ color: "#c4973a" }}
+            style={{ color: "#C6A04B" }}
           />
           <div>
             <p
               className="text-sm font-semibold mb-1"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             >
               Fasting required
             </p>
-            <p className="text-xs" style={{ color: "#e8d5a3" }}>
-              One or more of your tests require 8–12 hours of fasting
+            <p className="text-xs" style={{ color: "#154D31" }}>
+              One or more of your tests require 8â€“12 hours of fasting
               before collection. Only water is permitted during the fasting
               window. Please schedule your appointment accordingly.
             </p>
@@ -766,7 +766,7 @@ function Step4BookCollection({
       </a>
       <p
         className="text-xs text-center mb-8"
-        style={{ color: "#6ab04c" }}
+        style={{ color: "#4a7a56" }}
       >
         FloLabs will come to your collection address at your chosen time.
         Please have your collection address ready when booking.
@@ -775,7 +775,7 @@ function Step4BookCollection({
       {/* What happens next */}
       <div
         className="rounded-xl border p-5 mb-6"
-        style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+        style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
       >
         <h3
           className="font-heading text-lg font-semibold mb-3"
@@ -786,19 +786,19 @@ function Step4BookCollection({
         >
           What happens next
         </h3>
-        <ol className="space-y-3 text-sm" style={{ color: "#e8d5a3" }}>
+        <ol className="space-y-3 text-sm" style={{ color: "#154D31" }}>
           {[
             "FloLabs visits your collection address and draws your specimens.",
             "AvoVita ships your specimens to the laboratory.",
-            "Your results are uploaded to your portal — you'll receive an email and text when ready.",
+            "Your results are uploaded to your portal â€” you'll receive an email and text when ready.",
           ].map((text, i) => (
             <li key={i} className="flex items-start gap-3">
               <span
                 className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border"
                 style={{
-                  backgroundColor: "#1a3d22",
-                  borderColor: "#2d6b35",
-                  color: "#c4973a",
+                  backgroundColor: "#FFFFFF",
+                  borderColor: "#E5E2D4",
+                  color: "#C6A04B",
                 }}
               >
                 {i + 1}
@@ -814,29 +814,29 @@ function Step4BookCollection({
         type="button"
         onClick={onPortal}
         className="w-full text-center text-sm font-medium py-2"
-        style={{ color: "#c4973a" }}
+        style={{ color: "#C6A04B" }}
       >
-        Go to my portal →
+        Go to my portal â†’
       </button>
     </div>
   );
 }
 
-// ─── Guest "check your email" success card ──────────────────────────────
+// â”€â”€â”€ Guest "check your email" success card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 py-10"
-      style={{ backgroundColor: "#0a1a0d" }}
+      style={{ backgroundColor: "#ffffff" }}
     >
       <div className="w-full max-w-xl text-center">
         <div className="flex items-center justify-center gap-2.5 mb-6">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
-            <Leaf className="w-5 h-5" style={{ color: "#8dc63f" }} />
+            <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
           <span
             className="font-heading text-xl font-semibold"
@@ -851,13 +851,13 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
 
         <div
           className="rounded-2xl border p-6 sm:p-8"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
-            style={{ backgroundColor: "#0f2614", borderColor: "#8dc63f" }}
+            style={{ backgroundColor: "#F7F6F0", borderColor: "#88D45D" }}
           >
-            <CheckCircle className="w-7 h-7" style={{ color: "#8dc63f" }} />
+            <CheckCircle className="w-7 h-7" style={{ color: "#88D45D" }} />
           </div>
           <h1
             className="font-heading text-2xl sm:text-3xl font-semibold mb-2"
@@ -866,17 +866,17 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Your order is <span style={{ color: "#c4973a" }}>confirmed</span>
+            Your order is <span style={{ color: "#C6A04B" }}>confirmed</span>
           </h1>
-          <p className="text-sm mb-1" style={{ color: "#e8d5a3" }}>
-            Order #{summary.orderIdShort} ·{" "}
-            <span style={{ color: "#c4973a", fontWeight: 600 }}>
+          <p className="text-sm mb-1" style={{ color: "#154D31" }}>
+            Order #{summary.orderIdShort} Â·{" "}
+            <span style={{ color: "#C6A04B", fontWeight: 600 }}>
               {formatCurrency(summary.total)} CAD
             </span>
           </p>
           <p
             className="text-sm mt-5 leading-relaxed"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
           >
             We&apos;ve sent a confirmation email to{" "}
             <strong style={{ color: "#ffffff" }}>
@@ -889,16 +889,16 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
             className="mt-5 rounded-lg border p-3 text-left"
             style={{
               backgroundColor: "rgba(141, 198, 63, 0.08)",
-              borderColor: "#2d6b35",
+              borderColor: "#E5E2D4",
             }}
           >
             <p
               className="text-xs leading-relaxed"
-              style={{ color: "#e8d5a3" }}
+              style={{ color: "#154D31" }}
             >
               The email may have landed in your junk or spam folder. If so,
               please move it to your inbox before clicking the activation
-              link — it may not work from the spam folder.
+              link â€” it may not work from the spam folder.
             </p>
           </div>
 
@@ -906,7 +906,7 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
             <a
               href="/portal"
               className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold transition-colors"
-              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+              style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
             >
               Complete Your Profile
               <ArrowRight className="w-4 h-4" />
@@ -918,8 +918,8 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
               className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold border transition-colors"
               style={{
                 backgroundColor: "transparent",
-                borderColor: "#2d6b35",
-                color: "#e8d5a3",
+                borderColor: "#E5E2D4",
+                color: "#154D31",
               }}
             >
               <Calendar className="w-4 h-4" />

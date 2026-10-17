@@ -59,10 +59,10 @@ export function ResourceCheckout({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#0a1a0d" }}
+        style={{ backgroundColor: "#ffffff" }}
       >
-        <p className="text-sm" style={{ color: "#6ab04c" }}>
-          Loading…
+        <p className="text-sm" style={{ color: "#4a7a56" }}>
+          Loadingâ€¦
         </p>
       </div>
     );
@@ -125,19 +125,19 @@ export function ResourceCheckout({
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#0a1a0d" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#ffffff" }}>
       <OrgAwareHeader
         rightSlot={
           <Link
             href="/resources"
             className="text-xs font-medium px-3 py-1.5 rounded-lg border whitespace-nowrap"
             style={{
-              color: "#e8d5a3",
-              borderColor: "#2d6b35",
+              color: "#154D31",
+              borderColor: "#E5E2D4",
               backgroundColor: "transparent",
             }}
           >
-            ← Back to resources
+            â† Back to resources
           </Link>
         }
       />
@@ -155,25 +155,25 @@ export function ResourceCheckout({
                   className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
                   style={{
                     backgroundColor: isDone
-                      ? "#8dc63f"
+                      ? "#88D45D"
                       : isActive
-                        ? "#c4973a"
-                        : "#2d6b35",
-                    color: isDone || isActive ? "#0a1a0d" : "#6ab04c",
+                        ? "#C6A04B"
+                        : "#E5E2D4",
+                    color: isDone || isActive ? "#F7F6F0" : "#4a7a56",
                   }}
                 >
                   {stepNum}
                 </div>
                 <span
                   className="text-xs font-medium hidden sm:inline"
-                  style={{ color: isActive ? "#c4973a" : "#6ab04c" }}
+                  style={{ color: isActive ? "#C6A04B" : "#4a7a56" }}
                 >
                   {label}
                 </span>
                 {i < 1 && (
                   <div
                     className="w-8 h-px mx-1"
-                    style={{ backgroundColor: "#2d6b35" }}
+                    style={{ backgroundColor: "#E5E2D4" }}
                   />
                 )}
               </div>
@@ -193,11 +193,11 @@ export function ResourceCheckout({
                     fontFamily: '"Cormorant Garamond", Georgia, serif',
                   }}
                 >
-                  Your <span style={{ color: "#c4973a" }}>Details</span>
+                  Your <span style={{ color: "#C6A04B" }}>Details</span>
                 </h2>
                 <div className="flex items-center gap-2 mb-6">
-                  <Mail className="w-4 h-4" style={{ color: "#8dc63f" }} />
-                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                  <Mail className="w-4 h-4" style={{ color: "#88D45D" }} />
+                  <p className="text-sm" style={{ color: "#154D31" }}>
                     Your download link will be sent to this email after
                     purchase.
                   </p>
@@ -207,7 +207,7 @@ export function ResourceCheckout({
                     <div>
                       <label
                         className="block text-xs font-medium mb-1"
-                        style={{ color: "#e8d5a3" }}
+                        style={{ color: "#154D31" }}
                       >
                         First Name{" "}
                         <span style={{ color: "#e05252" }}>*</span>
@@ -223,7 +223,7 @@ export function ResourceCheckout({
                     <div>
                       <label
                         className="block text-xs font-medium mb-1"
-                        style={{ color: "#e8d5a3" }}
+                        style={{ color: "#154D31" }}
                       >
                         Last Name{" "}
                         <span style={{ color: "#e05252" }}>*</span>
@@ -240,7 +240,7 @@ export function ResourceCheckout({
                   <div>
                     <label
                       className="block text-xs font-medium mb-1"
-                      style={{ color: "#e8d5a3" }}
+                      style={{ color: "#154D31" }}
                     >
                       Email <span style={{ color: "#e05252" }}>*</span>
                     </label>
@@ -263,8 +263,8 @@ export function ResourceCheckout({
                     }}
                     className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                     style={{
-                      backgroundColor: contactValid ? "#c4973a" : "#2d6b35",
-                      color: contactValid ? "#0a1a0d" : "#6ab04c",
+                      backgroundColor: contactValid ? "#C6A04B" : "#E5E2D4",
+                      color: contactValid ? "#F7F6F0" : "#4a7a56",
                       cursor: contactValid ? "pointer" : "not-allowed",
                     }}
                   >
@@ -286,14 +286,14 @@ export function ResourceCheckout({
                   }}
                 >
                   Review Your{" "}
-                  <span style={{ color: "#c4973a" }}>Order</span>
+                  <span style={{ color: "#C6A04B" }}>Order</span>
                 </h2>
 
                 <div
                   className="rounded-xl border p-4 mb-4 space-y-2"
                   style={{
-                    backgroundColor: "#1a3d22",
-                    borderColor: "#2d6b35",
+                    backgroundColor: "#FFFFFF",
+                    borderColor: "#E5E2D4",
                   }}
                 >
                   {cart.map((item, i) => (
@@ -304,7 +304,7 @@ export function ResourceCheckout({
                       <span style={{ color: "#ffffff" }}>
                         {cartItemName(item)}
                       </span>
-                      <span style={{ color: "#c4973a" }}>
+                      <span style={{ color: "#C6A04B" }}>
                         {formatCurrency(item.price_cad)}
                       </span>
                     </div>
@@ -314,23 +314,23 @@ export function ResourceCheckout({
                 <div
                   className="rounded-xl border p-4 mb-6"
                   style={{
-                    backgroundColor: "#0f2614",
-                    borderColor: "#2d6b35",
+                    backgroundColor: "#F7F6F0",
+                    borderColor: "#E5E2D4",
                   }}
                 >
                   <p
                     className="text-xs uppercase tracking-wider font-semibold mb-2"
-                    style={{ color: "#6ab04c" }}
+                    style={{ color: "#4a7a56" }}
                   >
                     Deliver to
                   </p>
                   <p className="text-sm" style={{ color: "#ffffff" }}>
                     {firstName} {lastName}
                   </p>
-                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                  <p className="text-sm" style={{ color: "#154D31" }}>
                     {email}
                   </p>
-                  <p className="text-xs mt-2" style={{ color: "#8dc63f" }}>
+                  <p className="text-xs mt-2" style={{ color: "#88D45D" }}>
                     Download link will be emailed after purchase
                   </p>
                 </div>
@@ -354,12 +354,12 @@ export function ResourceCheckout({
                     onClick={() => setStep(1)}
                     className="px-5 py-2.5 rounded-lg text-sm font-semibold border"
                     style={{
-                      color: "#e8d5a3",
-                      borderColor: "#2d6b35",
+                      color: "#154D31",
+                      borderColor: "#E5E2D4",
                       backgroundColor: "transparent",
                     }}
                   >
-                    ← Back
+                    â† Back
                   </button>
                   <button
                     type="button"
@@ -367,8 +367,8 @@ export function ResourceCheckout({
                     onClick={handleSubmit}
                     className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-colors"
                     style={{
-                      backgroundColor: "#c4973a",
-                      color: "#0a1a0d",
+                      backgroundColor: "#C6A04B",
+                      color: "#ffffff",
                       opacity: submitting ? 0.6 : 1,
                     }}
                   >

@@ -23,7 +23,7 @@ import { useAnalytics } from "@/lib/analytics/useAnalytics";
 
 const STORAGE_KEY = "avovita-cart-v1";
 
-// ─── Schedule-restricted tests ───────────────────────────────────────
+// â”€â”€â”€ Schedule-restricted tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Tests whose operational constraint (specimen stability + shipping
 // window) requires booking on a specific day of the week. The cart
 // shows a single acknowledgement modal when ANY restricted test is
@@ -42,11 +42,11 @@ const STORAGE_KEY = "avovita-cart-v1";
 const CBC_TEST_ID = "8e46bec5-526c-42be-909c-447235e9ecd0";
 
 interface ScheduleAckEntry {
-  /** Match by test_id OR sku — exactly one is set. */
+  /** Match by test_id OR sku â€” exactly one is set. */
   test_id?: string;
   sku?: string;
   display: string;
-  /** Modal title — short headline mentioning the day constraint. */
+  /** Modal title â€” short headline mentioning the day constraint. */
   headline: string;
   /** Sentence rendered after "**{display}** ". Should end with a period. */
   intro: string;
@@ -60,7 +60,7 @@ const TUESDAY_MAYO_INTRO =
   "requires a Tuesday collection only. The specimen has a 48-hour stability window and must ship same-day to Mayo Clinic Laboratories to meet stability requirements.";
 const TUESDAY_MAYO_BULLETS = [
   "Your FloLabs appointment must be booked on a Tuesday",
-  "FedEx shipping delays can cause the specimen to time out before reaching the lab — if this occurs, this test fee will be refunded but the home visit fee is non-refundable",
+  "FedEx shipping delays can cause the specimen to time out before reaching the lab â€” if this occurs, this test fee will be refunded but the home visit fee is non-refundable",
   "We strongly recommend ordering this test alongside others so your home visit fee is not wasted if the specimen is compromised in transit",
 ];
 
@@ -68,21 +68,21 @@ const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
   {
     test_id: CBC_TEST_ID,
     display: "Complete Blood Count (CBC)",
-    headline: "Important — Tuesday-Only Collection Notice",
+    headline: "Important â€” Tuesday-Only Collection Notice",
     intro: TUESDAY_MAYO_INTRO,
     bullets: TUESDAY_MAYO_BULLETS,
   },
   {
     sku: "DCTR",
     display: "Direct Antiglobulin Test (DCTR)",
-    headline: "Important — Tuesday-Only Collection Notice",
+    headline: "Important â€” Tuesday-Only Collection Notice",
     intro: TUESDAY_MAYO_INTRO,
     bullets: TUESDAY_MAYO_BULLETS,
   },
   {
     sku: "KS",
     display: "Potassium (KS)",
-    headline: "Important — Tuesday-Only Collection Notice",
+    headline: "Important â€” Tuesday-Only Collection Notice",
     intro: TUESDAY_MAYO_INTRO,
     bullets: TUESDAY_MAYO_BULLETS,
   },
@@ -100,7 +100,7 @@ function hasScheduleAck(item: CartItem): item is CartItemTest {
   return item.line_type === "test" && scheduleAckEntryFor(item) !== null;
 }
 
-// ─── Cart calculations ─────────────────────────────────────────────────
+// â”€â”€â”€ Cart calculations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface CartTotals {
   testItems: CartItemTest[];
@@ -170,14 +170,14 @@ function computeCartTotals(
   };
 }
 
-// ─── Legacy migration ──────────────────────────────────────────────────
+// â”€â”€â”€ Legacy migration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Old cart items have no line_type. Backfill to 'test' on hydration.
 
 function migrateCartItems(raw: unknown[]): CartItem[] {
   return raw.map((item) => {
     const obj = item as Record<string, unknown>;
     if (obj.line_type) return obj as unknown as CartItem;
-    // Legacy CatalogueCartItem → CartItemTest
+    // Legacy CatalogueCartItem â†’ CartItemTest
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console
       console.debug("[cart] Migrated legacy cart item to line_type: 'test'");
@@ -193,7 +193,7 @@ function migrateCartItems(raw: unknown[]): CartItem[] {
   });
 }
 
-// ─── Context ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Context â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface CartContextValue {
   cart: CartItem[];
@@ -209,7 +209,7 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | null>(null);
 
 /**
- * Cart provider — single source of truth for the public catalogue cart.
+ * Cart provider â€” single source of truth for the public catalogue cart.
  * Accepts three line types: 'test', 'supplement', 'resource'.
  *
  * Persists to localStorage. Hydration is two-phase: first render is
@@ -219,7 +219,7 @@ const CartContext = createContext<CartContextValue | null>(null);
  *
  * Special case: schedule-restricted tests (CBC + DCTR + KS Tuesday-only)
  * require an acknowledgement modal before the item lands in the cart.
- * One modal per cart-add cycle — if any such test is already in the
+ * One modal per cart-add cycle â€” if any such test is already in the
  * cart the subsequent add commits silently.
  */
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -238,7 +238,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // localStorage), fire cart_restored so the funnel's session-based
   // "test_added_to_cart" stage counts them. Without this the funnel
   // shows checkout_started > test_added_to_cart, because the current
-  // session never fired a fresh add — the customer just picked up
+  // session never fired a fresh add â€” the customer just picked up
   // where they left off in an earlier session.
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -259,7 +259,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch {
-      // localStorage parse error — start with empty cart
+      // localStorage parse error â€” start with empty cart
     }
     setHydrated(true);
   }, []);
@@ -270,7 +270,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
     } catch {
-      // Storage quota exceeded or disabled — silently ignore
+      // Storage quota exceeded or disabled â€” silently ignore
     }
   }, [cart, hydrated]);
 
@@ -316,7 +316,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     (item: CartItem) => {
       // Schedule-restricted gate. Triggers the ack modal when adding
       // any entry in SCHEDULE_ACK_TESTS UNLESS the cart already contains
-      // one — that ack covers the second add.
+      // one â€” that ack covers the second add.
       //
       // `queuedForAck` is an ARRAY, not a slot: the quote-accept loop
       // in CheckoutClient calls addItem synchronously for every quote
@@ -331,12 +331,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           const alreadyAcked = prev.some(hasScheduleAck);
           if (alreadyAcked) {
             // Skip the modal but still commit the add. Use prev here
-            // so we land in the same setCart pass — no race window.
+            // so we land in the same setCart pass â€” no race window.
             const id = cartItemId(item);
             if (prev.some((c) => cartItemId(c) === id)) return prev;
             return [...prev, item];
           }
-          // Not acked yet — queue for the batch. First item drives
+          // Not acked yet â€” queue for the batch. First item drives
           // the modal; rest ride along and commit on the same
           // confirm click.
           setPendingScheduleAck((cur) => cur ?? item);
@@ -436,7 +436,7 @@ export function useCart(): CartContextValue {
   return ctx;
 }
 
-// ─── Schedule-restricted acknowledgement modal ──────────────────────
+// â”€â”€â”€ Schedule-restricted acknowledgement modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
 // One modal renders any of the tests in SCHEDULE_ACK_TESTS. Headline,
 // intro paragraph, and bullets all come from the matched entry so
@@ -457,7 +457,7 @@ function ScheduleAckModal({
 }) {
   const entry = scheduleAckEntryFor(item);
   const display = entry?.display ?? item.test_name;
-  const headline = entry?.headline ?? "Important — Collection Notice";
+  const headline = entry?.headline ?? "Important â€” Collection Notice";
   const intro = entry?.intro ?? "has scheduling restrictions for collection.";
   const bullets = entry?.bullets ?? [];
   // Lock body scroll + Escape closes
@@ -482,22 +482,22 @@ function ScheduleAckModal({
     >
       <div
         className="w-full max-w-lg rounded-2xl border p-6"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center mb-4">
-          <AlertTriangle className="w-12 h-12" style={{ color: "#c4973a" }} />
+          <AlertTriangle className="w-12 h-12" style={{ color: "#C6A04B" }} />
         </div>
         <h2
           className="font-heading text-2xl font-semibold text-center mb-4"
           style={{
-            color: "#c4973a",
+            color: "#C6A04B",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
           {headline}
         </h2>
-        <div className="space-y-3 text-sm" style={{ color: "#e8d5a3" }}>
+        <div className="space-y-3 text-sm" style={{ color: "#154D31" }}>
           <p>
             <strong style={{ color: "#ffffff" }}>{display}</strong> {intro}
           </p>
@@ -505,7 +505,7 @@ function ScheduleAckModal({
           <ul className="space-y-1.5 list-none pl-0">
             {bullets.map((b, i) => (
               <li key={i} className="flex gap-2">
-                <span style={{ color: "#c4973a" }}>•</span>
+                <span style={{ color: "#C6A04B" }}>â€¢</span>
                 <span>{b}</span>
               </li>
             ))}
@@ -516,9 +516,9 @@ function ScheduleAckModal({
             type="button"
             onClick={onConfirm}
             className="flex-1 inline-flex items-center justify-center px-4 py-3 rounded-lg text-sm font-semibold transition-colors"
-            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
           >
-            I Understand — Add to Cart
+            I Understand â€” Add to Cart
           </button>
           <button
             type="button"
@@ -526,8 +526,8 @@ function ScheduleAckModal({
             className="flex-1 inline-flex items-center justify-center px-4 py-3 rounded-lg text-sm font-semibold border transition-colors"
             style={{
               backgroundColor: "transparent",
-              borderColor: "#2d6b35",
-              color: "#e8d5a3",
+              borderColor: "#E5E2D4",
+              color: "#154D31",
             }}
           >
             Remove from Order

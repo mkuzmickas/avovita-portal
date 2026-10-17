@@ -140,7 +140,7 @@ export function MyRecordsUpload() {
   return (
     <section
       className="rounded-xl border p-5 mb-6"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <h2
         className="font-heading text-xl font-semibold mb-1"
@@ -151,9 +151,9 @@ export function MyRecordsUpload() {
       >
         Upload My Records
       </h2>
-      <p className="text-xs mb-4" style={{ color: "#6ab04c" }}>
+      <p className="text-xs mb-4" style={{ color: "#4a7a56" }}>
         Add PDFs from other labs or doctor reports. Stored securely in your
-        portal — max 20 MB per file. You can delete your own uploads at any
+        portal â€” max 20 MB per file. You can delete your own uploads at any
         time.
       </p>
 
@@ -171,19 +171,19 @@ export function MyRecordsUpload() {
         onClick={() => inputRef.current?.click()}
         className="rounded-xl border-2 border-dashed p-6 sm:p-8 text-center cursor-pointer transition-colors"
         style={{
-          backgroundColor: dragOver ? "rgba(196,151,58,0.1)" : "#0f2614",
-          borderColor: dragOver ? "#c4973a" : "#2d6b35",
+          backgroundColor: dragOver ? "rgba(196,151,58,0.1)" : "#F7F6F0",
+          borderColor: dragOver ? "#C6A04B" : "#E5E2D4",
         }}
       >
         <CloudUpload
           className="w-8 h-8 mx-auto mb-2"
-          style={{ color: dragOver ? "#c4973a" : "#6ab04c" }}
+          style={{ color: dragOver ? "#C6A04B" : "#4a7a56" }}
         />
         <p className="text-sm font-medium" style={{ color: "#ffffff" }}>
           Drag and drop PDFs here
         </p>
-        <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
-          or click to browse — multiple files supported, up to 20 MB each
+        <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
+          or click to browse â€” multiple files supported, up to 20 MB each
         </p>
         <input
           ref={inputRef}
@@ -208,7 +208,7 @@ export function MyRecordsUpload() {
               type="button"
               onClick={startUploads}
               className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-              style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+              style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
             >
               <Upload className="w-4 h-4" />
               Upload{" "}
@@ -234,21 +234,21 @@ function QueueRow({
   const s = item.status;
   const icon =
     s.state === "done" ? (
-      <CheckCircle className="w-4 h-4" style={{ color: "#8dc63f" }} />
+      <CheckCircle className="w-4 h-4" style={{ color: "#88D45D" }} />
     ) : s.state === "error" ? (
       <AlertCircle className="w-4 h-4" style={{ color: "#e05252" }} />
     ) : s.state === "uploading" ? (
-      <Loader2 className="w-4 h-4 animate-spin" style={{ color: "#c4973a" }} />
+      <Loader2 className="w-4 h-4 animate-spin" style={{ color: "#C6A04B" }} />
     ) : (
-      <FileText className="w-4 h-4" style={{ color: "#6ab04c" }} />
+      <FileText className="w-4 h-4" style={{ color: "#4a7a56" }} />
     );
 
   return (
     <div
       className="flex items-center gap-3 px-3 py-2 rounded-lg border"
       style={{
-        backgroundColor: "#0f2614",
-        borderColor: s.state === "error" ? "#e05252" : "#2d6b35",
+        backgroundColor: "#F7F6F0",
+        borderColor: s.state === "error" ? "#e05252" : "#E5E2D4",
       }}
     >
       {icon}
@@ -263,11 +263,11 @@ function QueueRow({
         {s.state === "uploading" && (
           <div
             className="mt-1 h-1 rounded-full overflow-hidden"
-            style={{ backgroundColor: "#1a3d22" }}
+            style={{ backgroundColor: "#FFFFFF" }}
           >
             <div
               className="h-full rounded-full transition-all"
-              style={{ width: `${s.progress}%`, backgroundColor: "#c4973a" }}
+              style={{ width: `${s.progress}%`, backgroundColor: "#C6A04B" }}
             />
           </div>
         )}
@@ -282,7 +282,7 @@ function QueueRow({
           type="button"
           onClick={() => onRemove(item.id)}
           aria-label="Remove"
-          style={{ color: "#6ab04c" }}
+          style={{ color: "#4a7a56" }}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>

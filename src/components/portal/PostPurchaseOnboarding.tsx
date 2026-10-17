@@ -42,16 +42,16 @@ export function PostPurchaseOnboarding({
   return (
     <div
       className="min-h-screen flex flex-col items-center px-4 py-8 sm:py-12"
-      style={{ backgroundColor: "#0a1a0d" }}
+      style={{ backgroundColor: "#ffffff" }}
     >
       <div className="w-full max-w-2xl">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
-            <Leaf className="w-5 h-5" style={{ color: "#8dc63f" }} />
+            <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
           <span
             className="font-heading text-2xl font-semibold"
@@ -76,7 +76,7 @@ export function PostPurchaseOnboarding({
         {/* Card */}
         <div
           className="rounded-2xl border overflow-hidden"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           {step === 1 && (
             <div className="px-6 sm:px-8 py-6 sm:py-8">
@@ -88,9 +88,9 @@ export function PostPurchaseOnboarding({
                     fontFamily: '"Cormorant Garamond", Georgia, serif',
                   }}
                 >
-                  Create Your <span style={{ color: "#c4973a" }}>Client Profile</span>
+                  Create Your <span style={{ color: "#C6A04B" }}>Client Profile</span>
                 </h1>
-                <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                <p className="text-sm" style={{ color: "#154D31" }}>
                   This information is required for specimen collection and
                   your lab results. All data is protected under Alberta PIPA.
                 </p>
@@ -115,7 +115,7 @@ export function PostPurchaseOnboarding({
               >
                 Review & Sign Consent
               </h2>
-              <p className="text-sm mb-4" style={{ color: "#e8d5a3" }}>
+              <p className="text-sm mb-4" style={{ color: "#154D31" }}>
                 Please review the consent sections below to continue.
               </p>
 
@@ -133,9 +133,9 @@ export function PostPurchaseOnboarding({
             <div className="px-6 sm:px-8 py-10 text-center">
               <div
                 className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 border-2"
-                style={{ backgroundColor: "#0f2614", borderColor: "#c4973a" }}
+                style={{ backgroundColor: "#F7F6F0", borderColor: "#C6A04B" }}
               >
-                <Check className="w-9 h-9" style={{ color: "#c4973a" }} />
+                <Check className="w-9 h-9" style={{ color: "#C6A04B" }} />
               </div>
               <h2
                 className="font-heading text-3xl font-semibold mb-3"
@@ -144,11 +144,11 @@ export function PostPurchaseOnboarding({
                   fontFamily: '"Cormorant Garamond", Georgia, serif',
                 }}
               >
-                You&apos;re <span style={{ color: "#c4973a" }}>All Set</span>
+                You&apos;re <span style={{ color: "#C6A04B" }}>All Set</span>
               </h2>
               <p
                 className="text-sm max-w-md mx-auto mb-8 leading-relaxed"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 Your profile and consent are on file. A FloLabs phlebotomist
                 will contact you to schedule your home collection. Your
@@ -170,16 +170,16 @@ export function PostPurchaseOnboarding({
 
         <p
           className="text-center text-xs mt-6"
-          style={{ color: "#6ab04c" }}
+          style={{ color: "#4a7a56" }}
         >
-          Protected by Alberta PIPA · AvoVita Wellness
+          Protected by Alberta PIPA Â· AvoVita Wellness
         </p>
       </div>
     </div>
   );
 }
 
-// ─── Progress indicator helpers ───────────────────────────────────────
+// â”€â”€â”€ Progress indicator helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function StepPip({
   number,
@@ -198,9 +198,9 @@ function StepPip({
       <span
         className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 shrink-0"
         style={{
-          backgroundColor: completed || active ? "#c4973a" : "#0f2614",
-          borderColor: completed || active ? "#c4973a" : "#2d6b35",
-          color: completed || active ? "#0a1a0d" : "#6ab04c",
+          backgroundColor: completed || active ? "#C6A04B" : "#F7F6F0",
+          borderColor: completed || active ? "#C6A04B" : "#E5E2D4",
+          color: completed || active ? "#F7F6F0" : "#4a7a56",
         }}
       >
         {completed ? <Check className="w-4 h-4" /> : number}
@@ -208,7 +208,7 @@ function StepPip({
       <span
         className="text-xs sm:text-sm font-medium truncate"
         style={{
-          color: active ? "#ffffff" : completed ? "#c4973a" : "#6ab04c",
+          color: active ? "#ffffff" : completed ? "#C6A04B" : "#4a7a56",
         }}
       >
         {label}
@@ -222,7 +222,7 @@ function Connector({ filled }: { filled: boolean }) {
     <span
       aria-hidden
       className="h-0.5 flex-1 rounded-full"
-      style={{ backgroundColor: filled ? "#c4973a" : "#2d6b35" }}
+      style={{ backgroundColor: filled ? "#C6A04B" : "#E5E2D4" }}
     />
   );
 }

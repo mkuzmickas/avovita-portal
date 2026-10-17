@@ -7,12 +7,12 @@ import type { Account } from "@/types/database";
 export const dynamic = "force-dynamic";
 
 /**
- * /shipping — FedEx label creation console. Two ways to reach it:
+ * /shipping â€” FedEx label creation console. Two ways to reach it:
  *   1. FloLabs bookmarked URL: /shipping?token=<SHIPPING_ACCESS_TOKEN>
- *   2. Admin sidebar link: /shipping (no token — authenticated session)
+ *   2. Admin sidebar link: /shipping (no token â€” authenticated session)
  *
  * Kept outside the (admin) route group so FloLabs never gains admin
- * chrome/perms — they interact with this page only. Admins get access
+ * chrome/perms â€” they interact with this page only. Admins get access
  * via their session so they don't have to memorise the token URL.
  *
  * If the FloLabs token is ever leaked, rotate SHIPPING_ACCESS_TOKEN
@@ -55,7 +55,7 @@ export default async function ShippingPage({
     redirect("/");
   }
 
-  // Bail with a clear error if SHIPPING_ACCESS_TOKEN is missing —
+  // Bail with a clear error if SHIPPING_ACCESS_TOKEN is missing â€”
   // the API routes need it to authenticate label + pickup calls, so
   // the console can't function without it even for admins.
   if (!expected) {
@@ -66,13 +66,13 @@ export default async function ShippingPage({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#0a1a0d",
+          backgroundColor: "#ffffff",
           color: "#e05252",
           padding: "24px",
           fontFamily: "system-ui, sans-serif",
         }}
       >
-        Shipping is not configured on this deployment — set
+        Shipping is not configured on this deployment â€” set
         SHIPPING_ACCESS_TOKEN in Vercel env vars.
       </div>
     );
@@ -92,7 +92,7 @@ export default async function ShippingPage({
 
   // Opportunistically refresh tracking status for any shipment that's
   // still in flight and hasn't been checked recently. Non-blocking on
-  // FedEx errors — page renders with whatever's already in the DB.
+  // FedEx errors â€” page renders with whatever's already in the DB.
   const ids = (initialRows ?? []).map((r) => (r as { id: string }).id);
   await refreshShipmentTracking(supabase, ids);
 
@@ -120,7 +120,7 @@ export default async function ShippingPage({
 
   const recentShipments = (shipmentsRaw ?? []) as unknown as Shipment[];
 
-  // Derive current environment from FEDEX_API_URL — pass to client so
+  // Derive current environment from FEDEX_API_URL â€” pass to client so
   // the header shows an unambiguous SANDBOX vs PRODUCTION badge.
   // "Recent shipments" env comes from historical data; this is live.
   const environment = process.env.FEDEX_API_URL?.includes("sandbox")

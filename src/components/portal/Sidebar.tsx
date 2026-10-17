@@ -48,19 +48,19 @@ export function PortalSidebar({
   return (
     <aside
       className="w-64 shrink-0 flex-col min-h-screen sticky top-0 border-r hidden md:flex"
-      style={{ backgroundColor: "#0f2614", borderColor: "#1a3d22" }}
+      style={{ backgroundColor: "#F7F6F0", borderColor: "#FFFFFF" }}
     >
       {/* Logo + user */}
       <div
         className="px-6 py-5 border-b"
-        style={{ borderColor: "#1a3d22" }}
+        style={{ borderColor: "#FFFFFF" }}
       >
         <Link href="/portal" className="flex items-center gap-2.5 mb-3">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
-            <Leaf className="w-4 h-4" style={{ color: "#8dc63f" }} />
+            <Leaf className="w-4 h-4" style={{ color: "#88D45D" }} />
           </div>
           <div>
             <p
@@ -72,7 +72,7 @@ export function PortalSidebar({
             >
               AvoVita
             </p>
-            <p className="text-xs" style={{ color: "#6ab04c" }}>
+            <p className="text-xs" style={{ color: "#4a7a56" }}>
               Patient Portal
             </p>
           </div>
@@ -88,7 +88,7 @@ export function PortalSidebar({
           {email && email !== displayName && (
             <p
               className="text-xs truncate mt-0.5"
-              style={{ color: "#6ab04c" }}
+              style={{ color: "#4a7a56" }}
             >
               {email}
             </p>
@@ -113,13 +113,13 @@ export function PortalSidebar({
               style={
                 active
                   ? {
-                      color: "#c4973a",
-                      backgroundColor: "#1f4a28",
-                      borderLeft: "3px solid #c4973a",
+                      color: "#C6A04B",
+                      backgroundColor: "#EFECE0",
+                      borderLeft: "3px solid #C6A04B",
                       paddingLeft: "calc(0.75rem - 3px)",
                     }
                   : {
-                      color: "#e8d5a3",
+                      color: "#154D31",
                       backgroundColor: "transparent",
                       borderLeft: "3px solid transparent",
                       paddingLeft: "calc(0.75rem - 3px)",
@@ -131,7 +131,7 @@ export function PortalSidebar({
               {showDot && (
                 <span
                   className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold shrink-0"
-                  style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                  style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
                   aria-label={`${unviewedResultsCount} unviewed results`}
                 >
                   {unviewedResultsCount}
@@ -145,12 +145,12 @@ export function PortalSidebar({
       {/* Logout */}
       <div
         className="px-3 py-4 border-t"
-        style={{ borderColor: "#1a3d22" }}
+        style={{ borderColor: "#FFFFFF" }}
       >
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-left transition-colors"
-          style={{ color: "#e8d5a3" }}
+          style={{ color: "#154D31" }}
         >
           <LogOut className="w-4 h-4 shrink-0" />
           Sign Out

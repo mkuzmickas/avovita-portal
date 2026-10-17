@@ -3,8 +3,8 @@ import { Leaf, FlaskConical, Shield, Clock, ArrowRight } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div style={{ backgroundColor: "#0a1a0d", color: "#e8d5a3" }}>
-      {/* ─── Navbar ─────────────────────────────────────────────────────── */}
+    <div style={{ backgroundColor: "#ffffff", color: "#154D31" }}>
+      {/* â”€â”€â”€ Navbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <header
         className="absolute top-0 left-0 right-0 z-20"
         style={{ backgroundColor: "transparent" }}
@@ -13,9 +13,9 @@ export default function HomePage() {
           <Link href="/" className="flex items-center gap-2.5">
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center border"
-              style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
             >
-              <Leaf className="w-5 h-5" style={{ color: "#8dc63f" }} />
+              <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
             </div>
             <span
               className="font-heading text-xl font-semibold"
@@ -25,13 +25,13 @@ export default function HomePage() {
             </span>
           </Link>
 
-          {/* Understated Existing Client Login — only login entry on homepage */}
+          {/* Understated Existing Client Login â€” only login entry on homepage */}
           <Link
             href="/login"
             className="text-sm font-medium px-4 py-2 rounded-lg border transition-colors"
             style={{
-              color: "#e8d5a3",
-              borderColor: "#2d6b35",
+              color: "#154D31",
+              borderColor: "#E5E2D4",
               backgroundColor: "transparent",
             }}
             onMouseEnter={undefined}
@@ -41,17 +41,17 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* ─── Hero (full viewport) ───────────────────────────────────────── */}
+      {/* â”€â”€â”€ Hero (full viewport) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section
         className="relative flex items-center justify-center px-4 sm:px-6 pt-40 pb-4 md:pt-48 md:pb-6"
-        style={{ backgroundColor: "#0a1a0d" }}
+        style={{ backgroundColor: "#ffffff" }}
       >
         {/* Soft radial glow */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "radial-gradient(ellipse at center, #0f2614 0%, #0a1a0d 70%)",
+              "radial-gradient(ellipse at center, #F7F6F0 0%, #F7F6F0 70%)",
           }}
         />
 
@@ -65,12 +65,12 @@ export default function HomePage() {
           >
             Private Lab Testing,
             <br />
-            <span style={{ color: "#c4973a" }}>Delivered</span> to Your Door
+            <span style={{ color: "#C6A04B" }}>Delivered</span> to Your Door
           </h1>
 
           <p
             className="text-lg md:text-xl mb-12 max-w-2xl mx-auto leading-relaxed"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
           >
             Skip the clinic. A FloLabs phlebotomist visits your home in Calgary,
             we ship your specimen to world-class labs, and deliver your results securely online.
@@ -82,8 +82,8 @@ export default function HomePage() {
               href="/tests"
               className="inline-flex items-center justify-center gap-2.5 px-8 py-4 text-base font-semibold rounded-xl transition-colors w-full sm:w-auto"
               style={{
-                backgroundColor: "#c4973a",
-                color: "#0a1a0d",
+                backgroundColor: "#C6A04B",
+                color: "#ffffff",
               }}
             >
               First Visit? Browse Tests
@@ -94,8 +94,8 @@ export default function HomePage() {
               className="inline-flex items-center justify-center gap-2.5 px-8 py-4 text-base font-semibold rounded-xl border transition-colors w-full sm:w-auto"
               style={{
                 backgroundColor: "transparent",
-                borderColor: "#c4973a",
-                color: "#c4973a",
+                borderColor: "#C6A04B",
+                color: "#C6A04B",
               }}
             >
               Existing Client? Sign In
@@ -105,8 +105,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─── How It Works ───────────────────────────────────────────────── */}
-      <section className="px-4 sm:px-6 pt-12 pb-24" style={{ backgroundColor: "#0a1a0d" }}>
+      {/* â”€â”€â”€ How It Works â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <section className="px-4 sm:px-6 pt-12 pb-24" style={{ backgroundColor: "#ffffff" }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2
@@ -118,8 +118,8 @@ export default function HomePage() {
             >
               How It Works
             </h2>
-            <p className="text-base max-w-xl mx-auto" style={{ color: "#e8d5a3" }}>
-              A seamless experience from order to results — designed for discretion and convenience.
+            <p className="text-base max-w-xl mx-auto" style={{ color: "#154D31" }}>
+              A seamless experience from order to results â€” designed for discretion and convenience.
             </p>
           </div>
 
@@ -148,14 +148,14 @@ export default function HomePage() {
                 key={title}
                 className="p-8 rounded-2xl border text-center transition-colors"
                 style={{
-                  backgroundColor: "#1a3d22",
-                  borderColor: "#2d6b35",
+                  backgroundColor: "#FFFFFF",
+                  borderColor: "#E5E2D4",
                 }}
               >
                 <p
                   className="mb-3 font-semibold uppercase"
                   style={{
-                    color: "#c4973a",
+                    color: "#C6A04B",
                     fontSize: "11px",
                     letterSpacing: "0.15em",
                   }}
@@ -165,11 +165,11 @@ export default function HomePage() {
                 <div
                   className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5 border"
                   style={{
-                    backgroundColor: "#0f2614",
-                    borderColor: "#2d6b35",
+                    backgroundColor: "#F7F6F0",
+                    borderColor: "#E5E2D4",
                   }}
                 >
-                  <Icon className="w-7 h-7" style={{ color: "#8dc63f" }} />
+                  <Icon className="w-7 h-7" style={{ color: "#88D45D" }} />
                 </div>
                 <h3
                   className="font-heading text-2xl font-semibold mb-3"
@@ -180,7 +180,7 @@ export default function HomePage() {
                 >
                   {title}
                 </h3>
-                <p className="text-sm leading-relaxed" style={{ color: "#e8d5a3" }}>
+                <p className="text-sm leading-relaxed" style={{ color: "#154D31" }}>
                   {description}
                 </p>
               </div>
@@ -189,8 +189,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─── CTA band ──────────────────────────────────────────────────── */}
-      <section className="px-4 sm:px-6 py-20" style={{ backgroundColor: "#0f2614" }}>
+      {/* â”€â”€â”€ CTA band â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <section className="px-4 sm:px-6 py-20" style={{ backgroundColor: "#F7F6F0" }}>
         <div className="max-w-3xl mx-auto text-center">
           <h2
             className="font-heading text-3xl md:text-4xl font-semibold mb-4"
@@ -199,15 +199,15 @@ export default function HomePage() {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Ready to take control of <span style={{ color: "#c4973a" }}>your health?</span>
+            Ready to take control of <span style={{ color: "#C6A04B" }}>your health?</span>
           </h2>
-          <p className="mb-8 text-base" style={{ color: "#e8d5a3" }}>
+          <p className="mb-8 text-base" style={{ color: "#154D31" }}>
             Private, convenient, and PIPA-compliant lab testing in Calgary.
           </p>
           <Link
             href="/tests"
             className="inline-flex items-center gap-2 px-8 py-3.5 font-semibold rounded-xl transition-colors"
-            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
           >
             View All Tests
             <ArrowRight className="w-5 h-5" />
@@ -215,22 +215,22 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─── Footer ────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <footer
         className="px-4 sm:px-6 py-10 text-center text-xs border-t"
         style={{
-          backgroundColor: "#0a1a0d",
-          borderColor: "#1a3d22",
-          color: "#6ab04c",
+          backgroundColor: "#ffffff",
+          borderColor: "#FFFFFF",
+          color: "#4a7a56",
         }}
       >
-        <p>© {new Date().getFullYear()} AvoVita Wellness · Calgary, AB</p>
+        <p>Â© {new Date().getFullYear()} AvoVita Wellness Â· Calgary, AB</p>
         <p className="mt-2">
           All health information protected under Alberta PIPA.{" "}
           <Link
             href="/login"
             className="underline"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
           >
             Existing Client Login
           </Link>

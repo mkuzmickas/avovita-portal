@@ -68,7 +68,7 @@ const RELATIONSHIP_LABEL: Record<string, string> = {
   other: "Other",
 };
 
-// ─── Shipping risk test IDs ─────────────────────────────────────────
+// â”€â”€â”€ Shipping risk test IDs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SHIPPING_RISK_TEST_IDS = new Set([
   // Armin Labs
@@ -121,7 +121,7 @@ export function Step4Review({
 
   const kitFee = computeKitServiceFee(cart);
 
-  // Kit-only orders have no phlebotomist visit — no visit fee
+  // Kit-only orders have no phlebotomist visit â€” no visit fee
   const visitFees = useMemo(
     () => {
       if (kitFee.hasKitTests && !kitFee.hasPhlebotomistTests) {
@@ -140,8 +140,8 @@ export function Step4Review({
     [persons.length, collectionAddress.postal_code, kitFee.hasKitTests, kitFee.hasPhlebotomistTests]
   );
 
-  // Single source of truth — same function powers the right-rail summary.
-  // Supplement + resource subtotals — computed alongside test lines so
+  // Single source of truth â€” same function powers the right-rail summary.
+  // Supplement + resource subtotals â€” computed alongside test lines so
   // GST recalculates on the combined pre-tax subtotal.
   const supplementSubtotal = cart
     .filter((i) => i.line_type === "supplement")
@@ -194,11 +194,11 @@ export function Step4Review({
     return m;
   }, [assignments, persons]);
 
-  // ─── Shipping risk logic ──────────────────────────────────────────
+  // â”€â”€â”€ Shipping risk logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const showShippingRisk = useMemo(() => {
     const testIds = assignments.map((a) => a.test_id);
 
-    // Non-CBC risk tests — always trigger if present
+    // Non-CBC risk tests â€” always trigger if present
     const hasNonCbcRiskTest = testIds.some(
       (id) => SHIPPING_RISK_TEST_IDS.has(id) && id !== CBC_TEST_ID
     );
@@ -226,7 +226,7 @@ export function Step4Review({
     // place, assignments should always cover the cart's test items.
     // If somehow they don't (future regression, race, stale localStorage
     // tamper), refuse to hit Stripe rather than charge the customer
-    // for a session with zero tests attached — the exact failure mode
+    // for a session with zero tests attached â€” the exact failure mode
     // from the Step 4 "0 lines" bug. See reconcileAssignments.ts.
     const validation = validateAssignments(cart, assignments);
     if (!validation.ok) {
@@ -241,9 +241,9 @@ export function Step4Review({
       return;
     }
 
-    // Org affinity — set in localStorage by OrgProvider when the user
+    // Org affinity â€” set in localStorage by OrgProvider when the user
     // visited /org/[slug]/* or by CheckoutClient when the URL had
-    // ?org_slug=. Server resolves slug → org_id and tags the order.
+    // ?org_slug=. Server resolves slug â†’ org_id and tags the order.
     let orgSlug: string | null = null;
     try {
       orgSlug =
@@ -254,7 +254,7 @@ export function Step4Review({
       /* ignore */
     }
 
-    // Entry-point attribution — written to localStorage by the /tests
+    // Entry-point attribution â€” written to localStorage by the /tests
     // ?src=... handoff. Persisted onto orders.src so the analytics
     // dashboard can measure revenue by entry point (Ask AvoVita widget
     // sends src=ask). Slice defensively so a runaway URL param can't
@@ -280,7 +280,7 @@ export function Step4Review({
     // beyond plain phlebotomist tests. Custom lines (e.g. the Banff
     // travel surcharge) only flow through the unified path because the
     // V1 route knows nothing about them. Out-of-town orders also use
-    // unified — the V1 /api/stripe/checkout route enforces a complete
+    // unified â€” the V1 /api/stripe/checkout route enforces a complete
     // collection address, which OOT intentionally leaves blank, and
     // the V1 webhook doesn't carry the is_out_of_town flag onto the
     // orders row.
@@ -293,7 +293,7 @@ export function Step4Review({
 
     try {
       if (isMixedCart) {
-        // ── Mixed cart path: pending_order → checkout-unified ────
+        // â”€â”€ Mixed cart path: pending_order â†’ checkout-unified â”€â”€â”€â”€
         const suppShippingFee =
           suppFulfillment === "shipping" ? SUPPLEMENT_SHIPPING_FEE_CAD : 0;
         const subtotalSupplements = cart
@@ -335,12 +335,12 @@ export function Step4Review({
             total: visitFees.total,
           },
           order_mode: orderMode,
-          // Representative block deprecated in Aug 2026 — Step 1's
+          // Representative block deprecated in Aug 2026 â€” Step 1's
           // permission acknowledgement replaced it. Always null now
           // for new orders; webhook still handles populated reps for
           // any pre-migration sessions still in flight.
           representative: null,
-          org_id: orgSlug ?? null, // server resolves slug → id
+          org_id: orgSlug ?? null, // server resolves slug â†’ id
           src: orderSrc,
           supplement_fulfillment: hasSupplements
             ? suppFulfillment
@@ -390,7 +390,7 @@ export function Step4Review({
         if (!stripeRes.ok)
           throw new Error(stripeData.error ?? "Checkout failed");
 
-        // Attribution has been captured on the payload — clear the
+        // Attribution has been captured on the payload â€” clear the
         // localStorage tag so a customer's next visit doesn't
         // mis-attribute a later order.
         try {
@@ -400,7 +400,7 @@ export function Step4Review({
         }
         window.location.href = stripeData.url;
       } else {
-        // ── Pure test cart path: existing route (unchanged) ──────
+        // â”€â”€ Pure test cart path: existing route (unchanged) â”€â”€â”€â”€â”€â”€
         const payload: CheckoutPayload = {
           persons,
           collection_address: collectionAddress,
@@ -417,7 +417,7 @@ export function Step4Review({
           total,
           account_user_id: accountUserId,
           src: orderSrc,
-          // Representative block deprecated in Aug 2026 — Step 1's
+          // Representative block deprecated in Aug 2026 â€” Step 1's
           // permission acknowledgement replaced it. Always null now
           // for new orders; webhook still handles populated reps for
           // any pre-migration sessions still in flight.
@@ -449,13 +449,13 @@ export function Step4Review({
   return (
     <div
       className="rounded-2xl border p-5 sm:p-7"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <Lock className="w-5 h-5" style={{ color: "#c4973a" }} />
+        <Lock className="w-5 h-5" style={{ color: "#C6A04B" }} />
         <p
           className="text-xs uppercase tracking-wider font-semibold"
-          style={{ color: "#c4973a" }}
+          style={{ color: "#C6A04B" }}
         >
           Step 4 of 4
         </p>
@@ -468,7 +468,7 @@ export function Step4Review({
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
-        Review & <span style={{ color: "#c4973a" }}>Pay</span>
+        Review & <span style={{ color: "#C6A04B" }}>Pay</span>
       </h1>
 
       {/* Multi-test discount banner */}
@@ -481,7 +481,7 @@ export function Step4Review({
       {/* Collection address */}
       <section className="mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <MapPin className="w-4 h-4" style={{ color: "#c4973a" }} />
+          <MapPin className="w-4 h-4" style={{ color: "#C6A04B" }} />
           <h3
             className="font-heading text-lg font-semibold"
             style={{
@@ -494,12 +494,12 @@ export function Step4Review({
         </div>
         <div
           className="rounded-lg border px-4 py-3"
-          style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
         >
           <p className="text-sm font-semibold" style={{ color: "#ffffff" }}>
             {collectionAddress.postal_code}
           </p>
-          <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
+          <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
             FloLabs will confirm the full street address when you book
             your collection slot.
           </p>
@@ -529,8 +529,8 @@ export function Step4Review({
                 key={person.index}
                 className="rounded-lg border p-4"
                 style={{
-                  backgroundColor: "#0f2614",
-                  borderColor: "#2d6b35",
+                  backgroundColor: "#F7F6F0",
+                  borderColor: "#E5E2D4",
                 }}
               >
                 <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -539,7 +539,7 @@ export function Step4Review({
                       className="text-sm font-semibold"
                       style={{ color: "#ffffff" }}
                     >
-                      {/* Names moved to post-payment onboarding —
+                      {/* Names moved to post-payment onboarding â€”
                           show a generic label with account-holder /
                           relationship badge for context. */}
                       {person.is_account_holder
@@ -548,31 +548,31 @@ export function Step4Review({
                       {!person.is_account_holder && person.relationship && (
                         <span
                           className="text-xs font-normal ml-2"
-                          style={{ color: "#6ab04c" }}
+                          style={{ color: "#4a7a56" }}
                         >
-                          · {RELATIONSHIP_LABEL[person.relationship]}
+                          Â· {RELATIONSHIP_LABEL[person.relationship]}
                         </span>
                       )}
                       {person.is_account_holder && (
                         <span
                           className="text-xs font-normal ml-2"
-                          style={{ color: "#6ab04c" }}
+                          style={{ color: "#4a7a56" }}
                         >
-                          · Account holder
+                          Â· Account holder
                         </span>
                       )}
                     </p>
                   </div>
                   <span
                     className="text-sm font-semibold"
-                    style={{ color: "#c4973a" }}
+                    style={{ color: "#C6A04B" }}
                   >
                     {formatCurrency(personSubtotal)}
                   </span>
                 </div>
                 <ul
                   className="space-y-1.5 pl-3 border-l-2"
-                  style={{ borderColor: "#2d6b35" }}
+                  style={{ borderColor: "#E5E2D4" }}
                 >
                   {personItems.map((a) => (
                     <li
@@ -580,22 +580,22 @@ export function Step4Review({
                       className="flex flex-col gap-0.5"
                     >
                       <div className="flex items-center justify-between gap-3 text-xs">
-                        <span style={{ color: "#e8d5a3" }}>
+                        <span style={{ color: "#154D31" }}>
                           {a.test_name}{" "}
-                          <span style={{ color: "#6ab04c" }}>
-                            · {a.lab_name}
+                          <span style={{ color: "#4a7a56" }}>
+                            Â· {a.lab_name}
                           </span>
                         </span>
-                        <span style={{ color: "#c4973a" }}>
+                        <span style={{ color: "#C6A04B" }}>
                           {formatCurrency(a.price_cad)}
                         </span>
                       </div>
                       {discount.applies && (
                         <div
                           className="flex items-center justify-end gap-3 text-[10px] font-medium"
-                          style={{ color: "#8dc63f" }}
+                          style={{ color: "#88D45D" }}
                         >
-                          −{formatCurrency(discount.per_line)} multi-test
+                          âˆ’{formatCurrency(discount.per_line)} multi-test
                           discount
                         </div>
                       )}
@@ -611,12 +611,12 @@ export function Step4Review({
       {/* Totals */}
       <section
         className="rounded-lg border p-5 mb-6"
-        style={{ backgroundColor: "#0f2614", borderColor: "#c4973a" }}
+        style={{ backgroundColor: "#F7F6F0", borderColor: "#C6A04B" }}
       >
         <div className="space-y-2 text-sm">
           <div
             className="flex justify-between"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
           >
             <span>Tests subtotal ({assignments.length} lines)</span>
             <span>{formatCurrency(subtotal)}</span>
@@ -625,14 +625,14 @@ export function Step4Review({
             <>
               <div
                 className="flex justify-between font-medium"
-                style={{ color: "#8dc63f" }}
+                style={{ color: "#88D45D" }}
               >
                 <span>Repeat-client discount ($20 off per test)</span>
-                <span>−{formatCurrency(discount.total)}</span>
+                <span>âˆ’{formatCurrency(discount.total)}</span>
               </div>
               <div
                 className="flex justify-between"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 <span>Subtotal after discount</span>
                 <span>{formatCurrency(subtotalAfterDiscount)}</span>
@@ -641,7 +641,7 @@ export function Step4Review({
           )}
           <div
             className="flex justify-between pt-2 mt-1 border-t"
-            style={{ color: "#e8d5a3", borderColor: "#2d6b35" }}
+            style={{ color: "#154D31", borderColor: "#E5E2D4" }}
           >
             <span>Visit fee base</span>
             <span>{formatCurrency(visitFees.base_fee)}</span>
@@ -649,7 +649,7 @@ export function Step4Review({
           {visitFees.additional_person_count > 0 && (
             <div
               className="flex justify-between"
-              style={{ color: "#e8d5a3" }}
+              style={{ color: "#154D31" }}
             >
               <span>
                 Additional people ({visitFees.additional_person_count})
@@ -667,13 +667,13 @@ export function Step4Review({
               key={c.custom_id}
               className="flex justify-between"
               style={{
-                color: c.price_cad < 0 ? "#8dc63f" : "#e8d5a3",
+                color: c.price_cad < 0 ? "#88D45D" : "#154D31",
               }}
             >
               <span>{c.description}</span>
               <span>
                 {c.price_cad < 0
-                  ? `−${formatCurrency(Math.abs(c.price_cad))}`
+                  ? `âˆ’${formatCurrency(Math.abs(c.price_cad))}`
                   : formatCurrency(c.price_cad)}
               </span>
             </div>
@@ -681,7 +681,7 @@ export function Step4Review({
           {supplementSubtotal > 0 && (
             <div
               className="flex justify-between pt-2 mt-1 border-t"
-              style={{ color: "#e8d5a3", borderColor: "#2d6b35" }}
+              style={{ color: "#154D31", borderColor: "#E5E2D4" }}
             >
               <span>Supplements</span>
               <span>{formatCurrency(supplementSubtotal)}</span>
@@ -690,7 +690,7 @@ export function Step4Review({
           {suppShippingFee > 0 && (
             <div
               className="flex justify-between"
-              style={{ color: "#e8d5a3" }}
+              style={{ color: "#154D31" }}
             >
               <span>Supplement shipping</span>
               <span>{formatCurrency(suppShippingFee)}</span>
@@ -699,7 +699,7 @@ export function Step4Review({
           {resourceSubtotal > 0 && (
             <div
               className="flex justify-between"
-              style={{ color: "#e8d5a3" }}
+              style={{ color: "#154D31" }}
             >
               <span>Resources</span>
               <span>{formatCurrency(resourceSubtotal)}</span>
@@ -708,33 +708,33 @@ export function Step4Review({
           {kitFee.amount > 0 && (
             <div
               className="flex justify-between"
-              style={{ color: "#e8d5a3" }}
+              style={{ color: "#154D31" }}
             >
               <span>{kitFee.label}</span>
               <span>{formatCurrency(kitFee.amount)}</span>
             </div>
           )}
           {kitFee.note && (
-            <p className="text-xs italic mt-1" style={{ color: "#6ab04c" }}>
+            <p className="text-xs italic mt-1" style={{ color: "#4a7a56" }}>
               {kitFee.note}
             </p>
           )}
           {totals.quoteDiscount > 0 && (
             <div
               className="flex justify-between font-medium pt-2 mt-1 border-t"
-              style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
+              style={{ color: "#88D45D", borderColor: "#E5E2D4" }}
             >
               <span>
                 Additional discount
                 {acceptedQuoteNumber ? ` (quote ${acceptedQuoteNumber})` : ""}
               </span>
-              <span>−{formatCurrency(totals.quoteDiscount)}</span>
+              <span>âˆ’{formatCurrency(totals.quoteDiscount)}</span>
             </div>
           )}
           {totals.estimatedGST > 0 && (
             <div
               className="flex justify-between pt-2 mt-1 border-t"
-              style={{ color: "#e8d5a3", borderColor: "#2d6b35" }}
+              style={{ color: "#154D31", borderColor: "#E5E2D4" }}
             >
               <span>Estimated GST (5%)</span>
               <span>{formatCurrency(totals.estimatedGST)}</span>
@@ -742,46 +742,46 @@ export function Step4Review({
           )}
           <div
             className="flex justify-between text-xl font-semibold pt-3 border-t mt-2"
-            style={{ borderColor: "#2d6b35" }}
+            style={{ borderColor: "#E5E2D4" }}
           >
             <span style={{ color: "#ffffff" }}>Estimated Total</span>
-            <span style={{ color: "#c4973a" }}>
+            <span style={{ color: "#C6A04B" }}>
               {formatCurrency(total)} CAD
             </span>
           </div>
           <p
             className="text-xs text-right mt-1 italic"
-            style={{ color: "#6ab04c" }}
+            style={{ color: "#4a7a56" }}
           >
-            Tax estimated at Alberta rate — final amount confirmed at checkout.
+            Tax estimated at Alberta rate â€” final amount confirmed at checkout.
           </p>
         </div>
       </section>
 
-      {/* ─── Shipping Risk Disclaimer ──────────────────────────────── */}
+      {/* â”€â”€â”€ Shipping Risk Disclaimer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {showShippingRisk && (
         <section
           className="rounded-lg border p-5 mb-5"
           style={{
             backgroundColor: "rgba(196, 151, 58, 0.1)",
-            borderColor: "#c4973a",
+            borderColor: "#C6A04B",
           }}
         >
           <div className="flex items-start gap-3 mb-3">
             <AlertTriangle
               className="w-5 h-5 shrink-0 mt-0.5"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             />
             <div>
               <h4
                 className="text-sm font-semibold mb-2"
-                style={{ color: "#c4973a" }}
+                style={{ color: "#C6A04B" }}
               >
                 Shipping Risk Acknowledgement
               </h4>
               <p
                 className="text-xs leading-relaxed"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 One or more tests in your order require time-sensitive
                 specimen shipping via FedEx. In the rare event that a FedEx
@@ -804,19 +804,19 @@ export function Step4Review({
               {shippingRiskAcknowledged ? (
                 <CheckSquare
                   className="w-5 h-5"
-                  style={{ color: "#c4973a" }}
+                  style={{ color: "#C6A04B" }}
                 />
               ) : (
                 <Square
                   className="w-5 h-5"
-                  style={{ color: "#6ab04c" }}
+                  style={{ color: "#4a7a56" }}
                 />
               )}
             </span>
             <span
               className="text-sm font-medium"
               style={{
-                color: shippingRiskAcknowledged ? "#c4973a" : "#e8d5a3",
+                color: shippingRiskAcknowledged ? "#C6A04B" : "#154D31",
               }}
             >
               I understand and accept the shipping risk policy
@@ -825,9 +825,9 @@ export function Step4Review({
         </section>
       )}
 
-      <p className="text-xs mb-5" style={{ color: "#6ab04c" }}>
+      <p className="text-xs mb-5" style={{ color: "#4a7a56" }}>
         {total <= 0
-          ? "Total is $0.00 — Stripe will record the order and all notifications will fire normally."
+          ? "Total is $0.00 â€” Stripe will record the order and all notifications will fire normally."
           : `Payment is processed securely by Stripe. ${
               accountUserId
                 ? "Your order will be linked to your existing account."
@@ -866,7 +866,7 @@ export function Step4Review({
           className="mf-btn-primary px-5 py-3 sm:flex-1 sm:max-w-xs text-base"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-          {submitting ? "Redirecting…" : "Proceed to Payment"}
+          {submitting ? "Redirectingâ€¦" : "Proceed to Payment"}
           {!submitting && <ArrowRight className="w-4 h-4" />}
         </button>
       </div>

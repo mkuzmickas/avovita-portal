@@ -14,7 +14,7 @@ export default async function SettingsPage() {
 
   const email = user.email ?? "";
 
-  // Preferences live on the Supabase Auth user_metadata — no schema change
+  // Preferences live on the Supabase Auth user_metadata â€” no schema change
   // required. Default to opted-in for both channels.
   const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
   const emailOptIn =
@@ -36,9 +36,9 @@ export default async function SettingsPage() {
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          Account <span style={{ color: "#c4973a" }}>Settings</span>
+          Account <span style={{ color: "#C6A04B" }}>Settings</span>
         </h1>
-        <p className="mt-1 text-sm sm:text-base" style={{ color: "#e8d5a3" }}>
+        <p className="mt-1 text-sm sm:text-base" style={{ color: "#154D31" }}>
           Manage your account and notification preferences.
         </p>
       </div>

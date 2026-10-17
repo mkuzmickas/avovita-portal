@@ -50,7 +50,7 @@ export default async function ResultsPage() {
 
   if (!user) redirect("/login?returnUrl=/portal/results");
 
-  // Email confirmation gate — results are PHI; we don't show them until
+  // Email confirmation gate â€” results are PHI; we don't show them until
   // the email is confirmed (the magic link from the order email or any
   // subsequent reminder will set this).
   if (!user.email_confirmed_at) {
@@ -58,13 +58,13 @@ export default async function ResultsPage() {
       <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto">
         <div
           className="rounded-2xl border p-6 sm:p-8 text-center"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
         >
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
-            style={{ backgroundColor: "#0f2614", borderColor: "#c4973a" }}
+            style={{ backgroundColor: "#F7F6F0", borderColor: "#C6A04B" }}
           >
-            <Mail className="w-7 h-7" style={{ color: "#c4973a" }} />
+            <Mail className="w-7 h-7" style={{ color: "#C6A04B" }} />
           </div>
           <h1
             className="font-heading text-2xl sm:text-3xl font-semibold mb-2"
@@ -73,9 +73,9 @@ export default async function ResultsPage() {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Please confirm your <span style={{ color: "#c4973a" }}>email</span>
+            Please confirm your <span style={{ color: "#C6A04B" }}>email</span>
           </h1>
-          <p className="text-sm mb-5 leading-relaxed" style={{ color: "#e8d5a3" }}>
+          <p className="text-sm mb-5 leading-relaxed" style={{ color: "#154D31" }}>
             Please confirm your email address to view your results. Check your
             inbox or spam folder.
           </p>
@@ -98,7 +98,7 @@ export default async function ResultsPage() {
     `
     )
     // Sort the column we expect to be populated for the most recent
-    // (manual) uploads — order rows fall back to uploaded_at below.
+    // (manual) uploads â€” order rows fall back to uploaded_at below.
     .order("uploaded_at", { ascending: false });
 
   // Filter out sentinel direct-delivery rows, then re-sort the customer
@@ -113,7 +113,7 @@ export default async function ResultsPage() {
       return kb.localeCompare(ka);
     });
 
-  // Tests per order — only needed for order-attached rows (any row with
+  // Tests per order â€” only needed for order-attached rows (any row with
   // a non-null order_id). Don't trust the source string: production has
   // 'order_attached' on every order row, so source==='order' would miss
   // them all.
@@ -162,10 +162,10 @@ export default async function ResultsPage() {
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          My <span style={{ color: "#c4973a" }}>Results</span>
+          My <span style={{ color: "#C6A04B" }}>Results</span>
         </h1>
-        <p className="mt-1" style={{ color: "#e8d5a3" }}>
-          All your lab results — from AvoVita orders and your own uploads.
+        <p className="mt-1" style={{ color: "#154D31" }}>
+          All your lab results â€” from AvoVita orders and your own uploads.
         </p>
       </div>
 
@@ -174,14 +174,14 @@ export default async function ResultsPage() {
       {results.length === 0 ? (
         <div
           className="rounded-xl border px-6 py-16 text-center"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <FileText
             className="w-12 h-12 mx-auto mb-4"
-            style={{ color: "#2d6b35" }}
+            style={{ color: "#E5E2D4" }}
           />
-          <p style={{ color: "#e8d5a3" }}>No results available yet.</p>
-          <p className="text-sm mt-2" style={{ color: "#6ab04c" }}>
+          <p style={{ color: "#154D31" }}>No results available yet.</p>
+          <p className="text-sm mt-2" style={{ color: "#4a7a56" }}>
             Results will appear here once your specimens have been processed
             by the laboratory, or once you upload your own records above.
           </p>
@@ -252,7 +252,7 @@ export default async function ResultsPage() {
   );
 }
 
-// ─── Order-attached result group (one card per order, N PDFs inside) ──
+// â”€â”€â”€ Order-attached result group (one card per order, N PDFs inside) â”€â”€
 
 function OrderResultCard({
   items,
@@ -261,7 +261,7 @@ function OrderResultCard({
   items: ResultRow[];
   tests: Array<{ name: string; lab: string }>;
 }) {
-  // Status precedence: any 'final' → Final; otherwise → Partial.
+  // Status precedence: any 'final' â†’ Final; otherwise â†’ Partial.
   // "New" if at least one PDF in the group hasn't been viewed yet.
   const isPartial = !items.some((r) => r.result_status === "final");
   const isNew = items.some((r) => !r.viewed_at);
@@ -271,29 +271,29 @@ function OrderResultCard({
     <div
       className="rounded-xl border overflow-hidden"
       style={{
-        backgroundColor: "#1a3d22",
-        borderColor: isNew ? "#c4973a" : "#2d6b35",
+        backgroundColor: "#FFFFFF",
+        borderColor: isNew ? "#C6A04B" : "#E5E2D4",
       }}
     >
       <div className="px-5 sm:px-6 py-4 flex items-start gap-4">
         <div
           className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
           style={{
-            backgroundColor: "#0f2614",
-            borderColor: isNew ? "#c4973a" : "#2d6b35",
+            backgroundColor: "#F7F6F0",
+            borderColor: isNew ? "#C6A04B" : "#E5E2D4",
           }}
         >
           <FileText
             className="w-5 h-5"
-            style={{ color: isNew ? "#c4973a" : "#8dc63f" }}
+            style={{ color: isNew ? "#C6A04B" : "#88D45D" }}
           />
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-2">
-            {isNew && <Badge color="#c4973a" text="New" />}
+            {isNew && <Badge color="#C6A04B" text="New" />}
             <Badge
-              color={isPartial ? "#c4973a" : "#8dc63f"}
+              color={isPartial ? "#C6A04B" : "#88D45D"}
               icon={
                 isPartial ? (
                   <Clock className="w-3 h-3" />
@@ -302,12 +302,12 @@ function OrderResultCard({
                 )
               }
               text={
-                isPartial ? "Partial — additional results may follow" : "Final"
+                isPartial ? "Partial â€” additional results may follow" : "Final"
               }
             />
             {items.length > 1 && (
               <Badge
-                color="#8dc63f"
+                color="#88D45D"
                 text={`${items.length} PDFs attached`}
               />
             )}
@@ -321,9 +321,9 @@ function OrderResultCard({
                   {t.lab && (
                     <span
                       className="text-xs ml-1.5"
-                      style={{ color: "#6ab04c" }}
+                      style={{ color: "#4a7a56" }}
                     >
-                      · {t.lab}
+                      Â· {t.lab}
                     </span>
                   )}
                 </li>
@@ -331,7 +331,7 @@ function OrderResultCard({
             </ul>
           )}
 
-          {/* One row per attached PDF — keeps each individually viewable
+          {/* One row per attached PDF â€” keeps each individually viewable
               and runnable through AI interpretation. */}
           <ul className="space-y-1.5 mb-2">
             {items.map((r) => {
@@ -341,21 +341,21 @@ function OrderResultCard({
                   key={r.id}
                   className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 border"
                   style={{
-                    backgroundColor: "#0f2614",
-                    borderColor: rowIsNew ? "#c4973a" : "#2d6b35",
+                    backgroundColor: "#F7F6F0",
+                    borderColor: rowIsNew ? "#C6A04B" : "#E5E2D4",
                   }}
                 >
                   <div className="min-w-0 flex-1">
                     <p
                       className="text-xs break-words"
                       style={{
-                        color: "#e8d5a3",
+                        color: "#154D31",
                         overflowWrap: "anywhere",
                       }}
                     >
                       {r.file_name}
                     </p>
-                    <p className="text-[11px]" style={{ color: "#6ab04c" }}>
+                    <p className="text-[11px]" style={{ color: "#4a7a56" }}>
                       Uploaded {formatDate(r.uploaded_at)}
                     </p>
                   </div>
@@ -373,7 +373,7 @@ function OrderResultCard({
           </ul>
 
           {newestUploadedAt && (
-            <p className="text-xs" style={{ color: "#6ab04c" }}>
+            <p className="text-xs" style={{ color: "#4a7a56" }}>
               Most recent upload {formatDate(newestUploadedAt)}
             </p>
           )}
@@ -383,7 +383,7 @@ function OrderResultCard({
   );
 }
 
-// ─── Manual admin upload or patient self-upload ────────────────────────
+// â”€â”€â”€ Manual admin upload or patient self-upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function UploadedResultCard({ result }: { result: ResultRow }) {
   const isPatientUpload = classifyResultRow(result) === "patient";
@@ -398,39 +398,39 @@ function UploadedResultCard({ result }: { result: ResultRow }) {
   return (
     <div
       className="rounded-xl border overflow-hidden"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="px-5 sm:px-6 py-4 flex items-start gap-4">
         <div
           className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
-          style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
         >
-          <FileText className="w-5 h-5" style={{ color: "#8dc63f" }} />
+          <FileText className="w-5 h-5" style={{ color: "#88D45D" }} />
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-2">
             {isPatientUpload ? (
               <Badge
-                color="#6ab04c"
+                color="#4a7a56"
                 icon={<User className="w-3 h-3" />}
                 text="Uploaded by you"
               />
             ) : (
               <Badge
-                color="#c4973a"
+                color="#C6A04B"
                 icon={<UserCheck className="w-3 h-3" />}
                 text="Added by AvoVita"
               />
             )}
             {docTypeLabel && (
-              <Badge color="#8dc63f" text={docTypeLabel} />
+              <Badge color="#88D45D" text={docTypeLabel} />
             )}
             {result.result_status === "partial" && (
               <Badge
-                color="#c4973a"
+                color="#C6A04B"
                 icon={<Clock className="w-3 h-3" />}
-                text="Partial — more may follow"
+                text="Partial â€” more may follow"
               />
             )}
           </div>
@@ -445,13 +445,13 @@ function UploadedResultCard({ result }: { result: ResultRow }) {
           {result.description && (
             <p
               className="text-xs mt-1 italic"
-              style={{ color: "#e8d5a3" }}
+              style={{ color: "#154D31" }}
             >
               {result.description}
             </p>
           )}
 
-          <p className="text-xs mt-1" style={{ color: "#6ab04c" }}>
+          <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
             {formatDate(displayDate)}
             {isFallbackDate && " (uploaded)"}
           </p>
@@ -473,7 +473,7 @@ function UploadedResultCard({ result }: { result: ResultRow }) {
   );
 }
 
-// ─── Small reusable badge ──────────────────────────────────────────────
+// â”€â”€â”€ Small reusable badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function Badge({
   color,

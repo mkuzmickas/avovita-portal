@@ -49,16 +49,16 @@ export default async function ProfilesPage() {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            My <span style={{ color: "#c4973a" }}>Profiles</span>
+            My <span style={{ color: "#C6A04B" }}>Profiles</span>
           </h1>
-          <p className="mt-1" style={{ color: "#e8d5a3" }}>
+          <p className="mt-1" style={{ color: "#154D31" }}>
             Manage patient profiles. Each profile can have separate tests and results.
           </p>
         </div>
         <Link
           href="/portal/profiles/new"
           className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg shrink-0 transition-colors"
-          style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+          style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
         >
           <Plus className="w-4 h-4" />
           Add Profile
@@ -74,12 +74,12 @@ export default async function ProfilesPage() {
             <div
               key={profile.id}
               className="rounded-xl border p-6"
-              style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
             >
               <div className="flex items-start gap-4">
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 font-bold"
-                  style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                  style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
                 >
                   {profile.first_name[0]}
                   {profile.last_name[0]}
@@ -98,8 +98,8 @@ export default async function ProfilesPage() {
                         className="text-xs px-2 py-0.5 rounded-full border"
                         style={{
                           backgroundColor: "rgba(196, 151, 58, 0.125)",
-                          color: "#c4973a",
-                          borderColor: "#c4973a",
+                          color: "#C6A04B",
+                          borderColor: "#C6A04B",
                         }}
                       >
                         Primary
@@ -110,8 +110,8 @@ export default async function ProfilesPage() {
                         className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border"
                         style={{
                           backgroundColor: "rgba(141, 198, 63, 0.125)",
-                          color: "#8dc63f",
-                          borderColor: "#8dc63f",
+                          color: "#88D45D",
+                          borderColor: "#88D45D",
                         }}
                       >
                         <Baby className="w-3 h-3" />
@@ -122,26 +122,26 @@ export default async function ProfilesPage() {
 
                   <div
                     className="mt-2 grid grid-cols-2 gap-x-8 gap-y-1 text-sm"
-                    style={{ color: "#e8d5a3" }}
+                    style={{ color: "#154D31" }}
                   >
                     <div>
-                      <span style={{ color: "#6ab04c" }}>DOB: </span>
+                      <span style={{ color: "#4a7a56" }}>DOB: </span>
                       {formatDate(profile.date_of_birth)}
                     </div>
                     <div>
-                      <span style={{ color: "#6ab04c" }}>Sex: </span>
+                      <span style={{ color: "#4a7a56" }}>Sex: </span>
                       {profile.biological_sex.charAt(0).toUpperCase() +
                         profile.biological_sex.slice(1)}
                     </div>
                     {profile.phone && (
                       <div>
-                        <span style={{ color: "#6ab04c" }}>Phone: </span>
+                        <span style={{ color: "#4a7a56" }}>Phone: </span>
                         {profile.phone}
                       </div>
                     )}
                     {profile.address_line1 && (
                       <div className="col-span-2 truncate">
-                        <span style={{ color: "#6ab04c" }}>Address: </span>
+                        <span style={{ color: "#4a7a56" }}>Address: </span>
                         {[
                           profile.address_line1,
                           profile.address_line2,
@@ -160,9 +160,9 @@ export default async function ProfilesPage() {
                       <>
                         <CheckCircle
                           className="w-3.5 h-3.5"
-                          style={{ color: "#8dc63f" }}
+                          style={{ color: "#88D45D" }}
                         />
-                        <span style={{ color: "#8dc63f" }}>
+                        <span style={{ color: "#88D45D" }}>
                           PIPA consent on file
                         </span>
                       </>
@@ -170,9 +170,9 @@ export default async function ProfilesPage() {
                       <>
                         <span
                           className="w-3.5 h-3.5 rounded-full border-2 inline-block"
-                          style={{ borderColor: "#6ab04c" }}
+                          style={{ borderColor: "#4a7a56" }}
                         />
-                        <span style={{ color: "#6ab04c" }}>
+                        <span style={{ color: "#4a7a56" }}>
                           No PIPA consent recorded
                         </span>
                       </>
@@ -184,8 +184,8 @@ export default async function ProfilesPage() {
                   href={`/portal/profiles/${profile.id}/edit`}
                   className="text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors shrink-0"
                   style={{
-                    color: "#e8d5a3",
-                    borderColor: "#2d6b35",
+                    color: "#154D31",
+                    borderColor: "#E5E2D4",
                     backgroundColor: "transparent",
                   }}
                 >
@@ -199,14 +199,14 @@ export default async function ProfilesPage() {
         {profiles.length === 0 && (
           <div
             className="rounded-xl border px-6 py-16 text-center"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <User
               className="w-12 h-12 mx-auto mb-4"
-              style={{ color: "#2d6b35" }}
+              style={{ color: "#E5E2D4" }}
             />
-            <p style={{ color: "#e8d5a3" }}>No profiles yet.</p>
-            <p className="text-sm mt-1" style={{ color: "#6ab04c" }}>
+            <p style={{ color: "#154D31" }}>No profiles yet.</p>
+            <p className="text-sm mt-1" style={{ color: "#4a7a56" }}>
               Create your patient profile to start ordering lab tests.
             </p>
           </div>
@@ -214,12 +214,12 @@ export default async function ProfilesPage() {
       </div>
 
       {profiles.length > 0 && (
-        <p className="text-xs mt-6 text-center" style={{ color: "#6ab04c" }}>
+        <p className="text-xs mt-6 text-center" style={{ color: "#4a7a56" }}>
           To remove a profile, please contact AvoVita support at{" "}
           <a
             href="mailto:support@avovita.ca"
             className="underline"
-            style={{ color: "#c4973a" }}
+            style={{ color: "#C6A04B" }}
           >
             support@avovita.ca
           </a>

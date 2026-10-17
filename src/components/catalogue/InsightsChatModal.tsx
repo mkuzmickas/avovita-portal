@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Send, Sparkles, Loader2, ShoppingCart, Check, ExternalLink, ArrowRight, AlertCircle, FileText, Phone } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +15,12 @@ interface InsightsChatModalProps {
   onClose: () => void;
   /** Called when the user clicks "View" on a recommended test. The modal closes itself first. */
   onScrollToTest?: (testId: string) => void;
+  /** Optional pre-filled first user message. When the modal opens with
+   *  this set, it's auto-sent as the first turn so the user doesn't
+   *  have to re-type what they already typed in the hero search. The
+   *  parent clears/updates this to drive a fresh auto-send on each
+   *  open; identical consecutive values won't re-send. */
+  initialQuery?: string | null;
 }
 
 interface ChatMessage {
@@ -32,23 +38,24 @@ interface CatalogueLookupTest {
 }
 
 // Threshold above which the assistant should append a
-// "specialist test — call us first" nudge. Trigger on the test, not
+// "specialist test â€” call us first" nudge. Trigger on the test, not
 // the cart total: a $1,600 cart of cheap panels is healthy margin; a
 // single $980 Neurofilament is $117.50 of margin and worth having a
-// conversation about first. Never gates checkout — someone ready to
+// conversation about first. Never gates checkout â€” someone ready to
 // pay by card right now is the best customer on the site.
 const SPECIALIST_TEST_MIN_PRICE_CAD = 900;
 
 const INTRO_MESSAGE: ChatMessage = {
   role: "assistant",
   content:
-    "Hi — I'm Ask AvoVita, your AI assistant. Describe your symptoms and I'll suggest relevant tests from our catalogue, or ask me anything about how AvoVita works — shipping, requisitions, booking, insurance, results.",
+    "Hi â€” I'm Ask AvoVita, your AI assistant. Describe your symptoms and I'll suggest relevant tests from our catalogue, or ask me anything about how AvoVita works â€” shipping, requisitions, booking, insurance, results.",
 };
 
 export function InsightsChatModal({
   open,
   onClose,
   onScrollToTest,
+  initialQuery,
 }: InsightsChatModalProps) {
   const supabase = useMemo(() => createClient(), []);
   const { cart, addItem } = useCart();
@@ -65,8 +72,8 @@ export function InsightsChatModal({
   const [error, setError] = useState<string | null>(null);
   const [testIndex, setTestIndex] = useState<Map<string, CatalogueLookupTest>>(new Map());
 
-  // Load test catalogue (sku → test) once when modal opens.
-  // Public read — no auth required (matches the catalogue page itself).
+  // Load test catalogue (sku â†’ test) once when modal opens.
+  // Public read â€” no auth required (matches the catalogue page itself).
   useEffect(() => {
     if (!open || testIndex.size > 0) return;
     let cancelled = false;
@@ -93,7 +100,7 @@ export function InsightsChatModal({
           name: r.name,
           sku: r.sku,
           price_cad: r.price_cad,
-          lab_name: lab?.name ?? "—",
+          lab_name: lab?.name ?? "â€”",
           requisition_url: r.requisition_url,
         });
       }
@@ -129,8 +136,27 @@ export function InsightsChatModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const send = async () => {
-    const trimmed = input.trim();
+  // Auto-send the hero-prefill query exactly once per open+query pair.
+  // The ref tracks the last query we've already fired so a re-render
+  // of the parent doesn't double-send. Clearing initialQuery to null
+  // (or sending a different value) resets the gate for the next open.
+  const lastAutoSentRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) {
+      lastAutoSentRef.current = null;
+      return;
+    }
+    const q = initialQuery?.trim();
+    if (!q) return;
+    if (lastAutoSentRef.current === q) return;
+    lastAutoSentRef.current = q;
+    void send(q);
+    // send() is stable in this component â€” intentionally omitted from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialQuery]);
+
+  const send = async (textOverride?: string) => {
+    const trimmed = (textOverride ?? input).trim();
     if (!trimmed || sending) return;
     setError(null);
 
@@ -139,7 +165,7 @@ export function InsightsChatModal({
     setInput("");
     setSending(true);
 
-    // Per-message analytics — combined with ai_finder_opened this
+    // Per-message analytics â€” combined with ai_finder_opened this
     // gives us unique sessions per day and average messages per
     // session in the dashboard. Marketing-widget messages are
     // logged server-side from /api/insights/chat so both surfaces
@@ -195,7 +221,7 @@ export function InsightsChatModal({
     // assistant produces orders. Same slug used by the marketing-
     // site widget's ?src=ask handoff; a single value covers "AI
     // added this test" regardless of which surface the AI ran on.
-    // Overwrites any prior src (URL handoff, org tag) — chat is the
+    // Overwrites any prior src (URL handoff, org tag) â€” chat is the
     // more proximate cause of the order once the customer uses it.
     try {
       window.localStorage.setItem("avovita-order-src", "ask");
@@ -215,22 +241,22 @@ export function InsightsChatModal({
       <div
         className="w-full sm:max-w-2xl border-0 sm:border rounded-none sm:rounded-2xl flex flex-col h-full sm:h-auto sm:max-h-[85vh]"
         style={{
-          backgroundColor: "#1a3d22",
-          borderColor: "#2d6b35",
+          backgroundColor: "#FFFFFF",
+          borderColor: "#E5E2D4",
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div
           className="flex items-center justify-between px-5 py-4 border-b"
-          style={{ borderColor: "#2d6b35" }}
+          style={{ borderColor: "#E5E2D4" }}
         >
           <div className="flex items-center gap-2.5">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: "#0f2614", border: "1px solid #c4973a" }}
+              style={{ backgroundColor: "#F7F6F0", border: "1px solid #C6A04B" }}
             >
-              <Sparkles className="w-4 h-4" style={{ color: "#c4973a" }} />
+              <Sparkles className="w-4 h-4" style={{ color: "#C6A04B" }} />
             </div>
             <h2
               className="font-heading text-xl font-semibold"
@@ -247,13 +273,13 @@ export function InsightsChatModal({
             onClick={onClose}
             aria-label="Close"
             className="p-1 rounded-md transition-colors"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Body — open to all visitors */}
+        {/* Body â€” open to all visitors */}
         {(
           <>
             <div
@@ -278,9 +304,9 @@ export function InsightsChatModal({
                 )
               )}
               {sending && (
-                <div className="flex items-center gap-2" style={{ color: "#e8d5a3" }}>
+                <div className="flex items-center gap-2" style={{ color: "#154D31" }}>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Thinking…</span>
+                  <span className="text-sm">Thinkingâ€¦</span>
                 </div>
               )}
             </div>
@@ -290,7 +316,7 @@ export function InsightsChatModal({
                 className="px-5 py-2 text-sm border-t"
                 style={{
                   color: "#e05252",
-                  borderColor: "#2d6b35",
+                  borderColor: "#E5E2D4",
                   backgroundColor: "rgba(224,82,82,0.08)",
                 }}
               >
@@ -301,7 +327,7 @@ export function InsightsChatModal({
             {/* Input */}
             <div
               className="border-t px-4 py-3 flex items-end gap-2"
-              style={{ borderColor: "#2d6b35" }}
+              style={{ borderColor: "#E5E2D4" }}
             >
               <textarea
                 value={input}
@@ -312,19 +338,19 @@ export function InsightsChatModal({
                     send();
                   }
                 }}
-                placeholder="Describe your symptoms or what you'd like to learn…"
+                placeholder="Describe your symptoms or what you'd like to learnâ€¦"
                 rows={2}
                 className="mf-input flex-1 resize-none"
                 disabled={sending}
               />
               <button
                 type="button"
-                onClick={send}
+                onClick={() => send()}
                 disabled={sending || !input.trim()}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                 style={{
-                  backgroundColor: "#c4973a",
-                  color: "#0a1a0d",
+                  backgroundColor: "#C6A04B",
+                  color: "#ffffff",
                   opacity: sending || !input.trim() ? 0.5 : 1,
                 }}
               >
@@ -335,10 +361,10 @@ export function InsightsChatModal({
             {cartItemCount > 0 && (
               <div
                 className="border-t px-4 py-3 flex items-center justify-between gap-3"
-                style={{ borderColor: "#2d6b35", backgroundColor: "#0f2614" }}
+                style={{ borderColor: "#E5E2D4", backgroundColor: "#F7F6F0" }}
               >
-                <p className="text-xs" style={{ color: "#e8d5a3" }}>
-                  <span className="font-semibold" style={{ color: "#c4973a" }}>
+                <p className="text-xs" style={{ color: "#154D31" }}>
+                  <span className="font-semibold" style={{ color: "#C6A04B" }}>
                     {cartItemCount}
                   </span>{" "}
                   test{cartItemCount !== 1 ? "s" : ""} in cart
@@ -347,15 +373,15 @@ export function InsightsChatModal({
                   href={checkoutHref}
                   onClick={onClose}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-                  style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                  style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
                 >
                   Continue to Checkout
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
             )}
-            <p className="px-5 pb-3 text-xs" style={{ color: "#6ab04c" }}>
-              Educational only — not a diagnosis. Discuss results with a healthcare provider of your choice.
+            <p className="px-5 pb-3 text-xs" style={{ color: "#4a7a56" }}>
+              Educational only â€” not a diagnosis. Discuss results with a healthcare provider of your choice.
             </p>
           </>
         )}
@@ -364,10 +390,10 @@ export function InsightsChatModal({
   );
 }
 
-// ─── User message bubble ──────────────────────────────────────────────
+// â”€â”€â”€ User message bubble â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function UserMessage({ content }: { content: string }) {
-  // Short single-line message → pill; longer → softly-rounded bubble
+  // Short single-line message â†’ pill; longer â†’ softly-rounded bubble
   const isShort = content.length < 40 && !content.includes("\n");
   return (
     <div className="flex justify-end">
@@ -376,8 +402,8 @@ function UserMessage({ content }: { content: string }) {
           isShort ? "rounded-full" : "rounded-2xl"
         }`}
         style={{
-          backgroundColor: "#c4973a",
-          color: "#0a1a0d",
+          backgroundColor: "#C6A04B",
+          color: "#ffffff",
           fontFamily: '"DM Sans", system-ui, sans-serif',
         }}
       >
@@ -387,7 +413,7 @@ function UserMessage({ content }: { content: string }) {
   );
 }
 
-// ─── Assistant message: structured render ─────────────────────────────
+// â”€â”€â”€ Assistant message: structured render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TEST_CODE_REGEX = /Code:\s*([A-Za-z0-9_\-]+)/g;
 
@@ -426,7 +452,7 @@ const AssistantMessage = ({
 
   // Specialist test = high-ticket (>= $900) OR requires a physician
   // requisition. Either flavour triggers a "call us first" nudge under
-  // the recommended-tests block. NEVER gates the Add button — someone
+  // the recommended-tests block. NEVER gates the Add button â€” someone
   // ready to pay right now is the best customer on the site; making
   // them wait for a callback loses more than a discount ever would.
   const specialistTests = referencedTests.filter(
@@ -441,23 +467,23 @@ const AssistantMessage = ({
       <div
         className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5"
         style={{
-          backgroundColor: "#0f2614",
-          border: "1px solid #c4973a",
+          backgroundColor: "#F7F6F0",
+          border: "1px solid #C6A04B",
         }}
       >
-        <span style={{ color: "#c4973a", fontSize: "10px", fontWeight: 700 }}>AV</span>
+        <span style={{ color: "#C6A04B", fontSize: "10px", fontWeight: 700 }}>AV</span>
       </div>
 
       <div
         className="flex-1 pl-4 min-w-0"
-        style={{ borderLeft: "4px solid #2d6b35" }}
+        style={{ borderLeft: "4px solid #E5E2D4" }}
       >
         <RenderMarkdown content={content} />
 
         {referencedTests.length > 0 && (
           <div
             className="mt-4 pt-3 flex flex-col gap-2"
-            style={{ borderTop: "1px solid #2d6b35" }}
+            style={{ borderTop: "1px solid #E5E2D4" }}
           >
             {referencedTests.map((t) => {
               const inCart = cart.some((c) => c.line_type === "test" && c.test_id === t.id);
@@ -469,8 +495,8 @@ const AssistantMessage = ({
                 >
                   <div className="min-w-0 flex items-baseline gap-2 flex-wrap">
                     <span style={{ color: "#ffffff" }}>{t.name}</span>
-                    <span style={{ color: "#c4973a", fontWeight: 600 }}>
-                      —{" "}
+                    <span style={{ color: "#C6A04B", fontWeight: 600 }}>
+                      â€”{" "}
                       {t.price_cad != null
                         ? `${formatCurrency(t.price_cad)} CAD`
                         : "Contact us"}
@@ -480,10 +506,10 @@ const AssistantMessage = ({
                         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
                         style={{
                           backgroundColor: "rgba(196,151,58,0.15)",
-                          color: "#c4973a",
-                          border: "1px solid #c4973a",
+                          color: "#C6A04B",
+                          border: "1px solid #C6A04B",
                         }}
-                        title="Physician requisition required — must be present at collection"
+                        title="Physician requisition required â€” must be present at collection"
                       >
                         <FileText className="w-2.5 h-2.5" />
                         Requisition required
@@ -501,11 +527,11 @@ const AssistantMessage = ({
                           inCart
                             ? {
                                 backgroundColor: "rgba(141,198,63,0.15)",
-                                color: "#8dc63f",
-                                border: "1px solid #8dc63f",
+                                color: "#88D45D",
+                                border: "1px solid #88D45D",
                                 cursor: "default",
                               }
-                            : { backgroundColor: "#c4973a", color: "#0a1a0d" }
+                            : { backgroundColor: "#C6A04B", color: "#ffffff" }
                         }
                       >
                         {inCart ? (
@@ -524,7 +550,7 @@ const AssistantMessage = ({
                       <a
                         href="mailto:support@avovita.ca"
                         className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold"
-                        style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                        style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
                       >
                         Contact
                       </a>
@@ -535,8 +561,8 @@ const AssistantMessage = ({
                       className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border"
                       style={{
                         backgroundColor: "transparent",
-                        borderColor: "#c4973a",
-                        color: "#c4973a",
+                        borderColor: "#C6A04B",
+                        color: "#C6A04B",
                       }}
                     >
                       <ExternalLink className="w-3 h-3" />
@@ -549,7 +575,7 @@ const AssistantMessage = ({
           </div>
         )}
 
-        {/* Specialist-test nudge — appears under the recommended-tests
+        {/* Specialist-test nudge â€” appears under the recommended-tests
             block whenever any recommended test is >= $900 OR requires
             a physician requisition. Not a gate: Add and Checkout stay
             fully live. */}
@@ -558,29 +584,29 @@ const AssistantMessage = ({
             className="mt-3 flex items-start gap-2 rounded-lg border px-3 py-2.5"
             style={{
               backgroundColor: "rgba(196,151,58,0.08)",
-              borderColor: "#c4973a",
+              borderColor: "#C6A04B",
             }}
             role="note"
           >
             <AlertCircle
               className="w-4 h-4 shrink-0 mt-0.5"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             />
             <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <p
                 className="text-xs leading-relaxed"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 {specialistTests.length === 1
                   ? `${specialistTests[0].name} is a specialist test`
                   : "These are specialist tests"}{" "}
-                — worth a quick call so we can confirm it&apos;s the right one
+                â€” worth a quick call so we can confirm it&apos;s the right one
                 for you.
               </p>
               <a
                 href="tel:1-855-286-8482"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap shrink-0"
-                style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
               >
                 <Phone className="w-3 h-3" />
                 1-855-286-8482
@@ -593,7 +619,7 @@ const AssistantMessage = ({
   );
 };
 
-// ─── Markdown subset renderer ─────────────────────────────────────────
+// â”€â”€â”€ Markdown subset renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function RenderMarkdown({ content }: { content: string }) {
   const lines = content.split("\n");
@@ -607,7 +633,7 @@ function RenderMarkdown({ content }: { content: string }) {
       <ul key={key++} className="my-2 space-y-1.5 list-none pl-0">
         {bulletBuffer.map((b, i) => (
           <li key={i} className="flex gap-2 text-sm" style={{ color: "#ffffff" }}>
-            <span style={{ color: "#c4973a", lineHeight: 1.5 }}>•</span>
+            <span style={{ color: "#C6A04B", lineHeight: 1.5 }}>â€¢</span>
             <span className="flex-1">{renderInline(b)}</span>
           </li>
         ))}
@@ -631,7 +657,7 @@ function RenderMarkdown({ content }: { content: string }) {
         <hr
           key={key++}
           className="my-3"
-          style={{ border: "none", borderTop: "1px solid #2d6b35" }}
+          style={{ border: "none", borderTop: "1px solid #E5E2D4" }}
         />
       );
       continue;
@@ -644,7 +670,7 @@ function RenderMarkdown({ content }: { content: string }) {
           key={key++}
           className="mt-4 mb-2 font-semibold uppercase"
           style={{
-            color: "#c4973a",
+            color: "#C6A04B",
             fontSize: "11px",
             letterSpacing: "0.15em",
           }}
@@ -669,7 +695,7 @@ function RenderMarkdown({ content }: { content: string }) {
         <p
           key={key++}
           className="mt-3 italic"
-          style={{ color: "#6ab04c", fontSize: "12px" }}
+          style={{ color: "#4a7a56", fontSize: "12px" }}
         >
           {fullItalic[1]}
         </p>
@@ -717,7 +743,7 @@ function renderInline(text: string): React.ReactNode {
         <em
           key={key++}
           className="italic"
-          style={{ color: "#e8d5a3", fontSize: "0.95em" }}
+          style={{ color: "#154D31", fontSize: "0.95em" }}
         >
           {token.slice(1, -1)}
         </em>

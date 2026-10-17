@@ -43,15 +43,15 @@ export default async function CompleteWaiverPage() {
   return (
     <div
       className="min-h-screen flex flex-col items-center px-4 py-8 sm:py-12"
-      style={{ backgroundColor: "#0a1a0d" }}
+      style={{ backgroundColor: "#ffffff" }}
     >
       <div className="w-full max-w-2xl">
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
-            <Leaf className="w-5 h-5" style={{ color: "#8dc63f" }} />
+            <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
           <span
             className="font-heading text-2xl font-semibold"
@@ -66,7 +66,7 @@ export default async function CompleteWaiverPage() {
 
         <div
           className="rounded-2xl border px-5 sm:px-8 py-6 sm:py-8"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <CompleteWaiverClient
             isRepresentative={isRepresentative}
@@ -80,9 +80,9 @@ export default async function CompleteWaiverPage() {
 
         <p
           className="text-center text-xs mt-6"
-          style={{ color: "#6ab04c" }}
+          style={{ color: "#4a7a56" }}
         >
-          Protected by Alberta PIPA · AvoVita Wellness
+          Protected by Alberta PIPA Â· AvoVita Wellness
         </p>
       </div>
     </div>

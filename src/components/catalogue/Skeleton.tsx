@@ -9,11 +9,11 @@ export function CatalogueSkeleton() {
       <div className="mb-6">
         <div
           className="h-8 w-48 rounded animate-pulse mb-2"
-          style={{ backgroundColor: "#1a3d22" }}
+          style={{ backgroundColor: "#FFFFFF" }}
         />
         <div
           className="h-1 w-16 rounded"
-          style={{ backgroundColor: "#c4973a" }}
+          style={{ backgroundColor: "#C6A04B" }}
         />
       </div>
 
@@ -23,33 +23,33 @@ export function CatalogueSkeleton() {
           <div
             key={i}
             className="rounded-xl border p-5 space-y-3 animate-pulse"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <div className="flex gap-2">
               <div
                 className="h-5 w-16 rounded-full"
-                style={{ backgroundColor: "#0f2614" }}
+                style={{ backgroundColor: "#F7F6F0" }}
               />
               <div
                 className="h-5 w-20 rounded-full"
-                style={{ backgroundColor: "#0f2614" }}
+                style={{ backgroundColor: "#F7F6F0" }}
               />
             </div>
             <div
               className="h-6 w-3/4 rounded"
-              style={{ backgroundColor: "#0f2614" }}
+              style={{ backgroundColor: "#F7F6F0" }}
             />
             <div
               className="h-8 w-1/3 rounded"
-              style={{ backgroundColor: "#0f2614" }}
+              style={{ backgroundColor: "#F7F6F0" }}
             />
             <div
               className="h-3 w-2/3 rounded"
-              style={{ backgroundColor: "#0f2614" }}
+              style={{ backgroundColor: "#F7F6F0" }}
             />
             <div
               className="h-10 w-full rounded-lg"
-              style={{ backgroundColor: "#0f2614" }}
+              style={{ backgroundColor: "#F7F6F0" }}
             />
           </div>
         ))}
@@ -59,11 +59,11 @@ export function CatalogueSkeleton() {
       <div className="mb-6">
         <div
           className="h-8 w-64 rounded animate-pulse mb-2"
-          style={{ backgroundColor: "#1a3d22" }}
+          style={{ backgroundColor: "#FFFFFF" }}
         />
         <div
           className="h-1 w-16 rounded"
-          style={{ backgroundColor: "#c4973a" }}
+          style={{ backgroundColor: "#C6A04B" }}
         />
       </div>
 
@@ -73,7 +73,7 @@ export function CatalogueSkeleton() {
           <div
             key={i}
             className="h-10 flex-1 rounded-lg animate-pulse"
-            style={{ backgroundColor: "#1a3d22" }}
+            style={{ backgroundColor: "#FFFFFF" }}
           />
         ))}
       </div>
@@ -81,19 +81,19 @@ export function CatalogueSkeleton() {
       {/* Table skeleton */}
       <div
         className="rounded-xl border overflow-hidden"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
       >
         <div
           className="h-12 border-b"
-          style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
         />
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <div
             key={i}
             className="h-14 border-b animate-pulse"
             style={{
-              backgroundColor: i % 2 === 0 ? "#0a1a0d" : "#1a3d22",
-              borderColor: "#1a3d22",
+              backgroundColor: i % 2 === 0 ? "#F7F6F0" : "#FFFFFF",
+              borderColor: "#FFFFFF",
             }}
           />
         ))}

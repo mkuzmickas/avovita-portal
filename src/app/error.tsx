@@ -17,15 +17,15 @@ export default function GlobalError({ error, reset }: ErrorProps) {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 py-12"
-      style={{ backgroundColor: "#0a1a0d" }}
+      style={{ backgroundColor: "#ffffff" }}
     >
       <div className="w-full max-w-md text-center">
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
-            <Leaf className="w-5 h-5" style={{ color: "#8dc63f" }} />
+            <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
           <span
             className="font-heading text-2xl font-semibold"
@@ -41,7 +41,7 @@ export default function GlobalError({ error, reset }: ErrorProps) {
         <p
           className="text-8xl font-heading font-semibold mb-2"
           style={{
-            color: "#c4973a",
+            color: "#C6A04B",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -58,21 +58,21 @@ export default function GlobalError({ error, reset }: ErrorProps) {
         </h1>
         <p
           className="text-sm sm:text-base mb-2 max-w-sm mx-auto leading-relaxed"
-          style={{ color: "#e8d5a3" }}
+          style={{ color: "#154D31" }}
         >
           We&apos;ve logged the issue and our team has been notified. Please
           try again, or contact{" "}
           <a
             href="mailto:support@avovita.ca"
             className="underline"
-            style={{ color: "#c4973a" }}
+            style={{ color: "#C6A04B" }}
           >
             support@avovita.ca
           </a>{" "}
           if the problem persists.
         </p>
         {error.digest && (
-          <p className="text-xs mb-6" style={{ color: "#6ab04c" }}>
+          <p className="text-xs mb-6" style={{ color: "#4a7a56" }}>
             Reference: <span className="font-mono">{error.digest}</span>
           </p>
         )}

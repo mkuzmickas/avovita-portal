@@ -1,30 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect, notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { ProfileFormWithConsent } from "@/components/portal/ProfileFormWithConsent";
-import type { PatientProfile } from "@/types/database";
 
-export default async function EditProfilePage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+export default async function NewProfilePage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect(`/login?returnUrl=/portal/profiles/${id}/edit`);
+  if (!user) redirect("/login?returnUrl=/portal/profiles/new");
 
-  const { data: profileRaw } = await supabase
+  // Determine whether this will be the account's first profile (â†’ primary)
+  const { count: profileCount } = await supabase
     .from("patient_profiles")
-    .select("*")
-    .eq("id", id)
-    .eq("account_id", user.id)
-    .single();
-  const profile = profileRaw as PatientProfile | null;
+    .select("id", { count: "exact", head: true })
+    .eq("account_id", user.id);
 
-  if (!profile) notFound();
+  const isPrimary = (profileCount ?? 0) === 0;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-xl mx-auto">
@@ -36,21 +28,21 @@ export default async function EditProfilePage({
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
-          Edit <span style={{ color: "#c4973a" }}>Profile</span>
+          Add Patient <span style={{ color: "#C6A04B" }}>Profile</span>
         </h1>
-        <p className="mt-1" style={{ color: "#e8d5a3" }}>
-          {profile.first_name} {profile.last_name}
+        <p className="mt-1" style={{ color: "#154D31" }}>
+          Each profile can be a separate patient (e.g. a family member).
         </p>
       </div>
       <div
         className="rounded-2xl border p-6 sm:p-8"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
       >
         <ProfileFormWithConsent
           accountId={user.id}
-          isPrimary={profile.is_primary}
+          isPrimary={isPrimary}
+          requireGeneralConsent={isPrimary}
           redirectAfter="/portal/profiles"
-          existingProfile={profile}
         />
       </div>
     </div>

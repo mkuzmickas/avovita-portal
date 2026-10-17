@@ -35,8 +35,8 @@ export function MobileBottomNav({
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-stretch border-t"
       style={{
-        backgroundColor: "#0f2614",
-        borderColor: "#1a3d22",
+        backgroundColor: "#092819",
+        borderColor: "#092819",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
       aria-label="Portal navigation"
@@ -54,9 +54,9 @@ export function MobileBottomNav({
             href={href}
             className="flex-1 flex flex-col items-center justify-center py-2 relative"
             style={{
-              color: active ? "#c4973a" : "#6ab04c",
+              color: active ? "#C6A04B" : "#4a7a56",
               borderTop: active
-                ? "2px solid #c4973a"
+                ? "2px solid #C6A04B"
                 : "2px solid transparent",
             }}
           >
@@ -65,7 +65,7 @@ export function MobileBottomNav({
             {showDot && (
               <span
                 className="absolute top-1.5 right-[calc(50%-18px)] w-2 h-2 rounded-full"
-                style={{ backgroundColor: "#c4973a" }}
+                style={{ backgroundColor: "#C6A04B" }}
                 aria-label={`${unviewedResultsCount} unviewed results`}
               />
             )}

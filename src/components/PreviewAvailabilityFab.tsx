@@ -21,9 +21,9 @@ import { useAnalytics } from "@/lib/analytics/useAnalytics";
  * per-day summary, caches it, and we render the resulting grid here.
  * No iframe, no interactive booking possible from this widget.
  * (Previous versions embedded Acuity's booking iframe with
- * pointer-events:none — too clunky and hard to read.)
+ * pointer-events:none â€” too clunky and hard to read.)
  *
- * Hidden on the checkout wizard (any /checkout* path — the customer sees
+ * Hidden on the checkout wizard (any /checkout* path â€” the customer sees
  * the real booking widget at the Collection step) and on /admin.
  */
 
@@ -70,7 +70,7 @@ export function PreviewAvailabilityFab() {
   // route). This keeps "each FAB click shows a fresh preview" true and
   // avoids a stale open modal reappearing when returning to a visible
   // page. Adjust-state-during-render is the React-sanctioned pattern
-  // for "reset on change" — no effect needed.
+  // for "reset on change" â€” no effect needed.
   const [lastPath, setLastPath] = useState(pathname);
   if (pathname !== lastPath) {
     setLastPath(pathname);
@@ -86,7 +86,7 @@ export function PreviewAvailabilityFab() {
         const body = await res.json().catch(() => ({}));
         setError(
           body.error ??
-            "Availability preview is temporarily unavailable — you can still see full availability on the FloLabs page.",
+            "Availability preview is temporarily unavailable â€” you can still see full availability on the FloLabs page.",
         );
         return;
       }
@@ -104,7 +104,7 @@ export function PreviewAvailabilityFab() {
   const openModal = useCallback(() => {
     setOpen(true);
     // Don't refetch if we already have fresh data from an earlier open
-    // in the same page session — server-side is already cached 10min,
+    // in the same page session â€” server-side is already cached 10min,
     // but sparing the round-trip is nice UX.
     if (!data) fetchAvailability();
     trackEvent("availability_preview_opened", {
@@ -168,7 +168,7 @@ export function PreviewAvailabilityFab() {
 
   return (
     <>
-      {/* ── Floating action button ─────────────────────────────────── */}
+      {/* â”€â”€ Floating action button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <button
         ref={fabRef}
         type="button"
@@ -180,13 +180,13 @@ export function PreviewAvailabilityFab() {
           // Sit above mobile system gesture areas via safe-area inset.
           // Bottom offset uses a CSS variable set by CartBar (falls back
           // to 1rem when the bar isn't mounted), so the FAB always
-          // floats CLEAR of the sticky cart bar on mobile — before this
+          // floats CLEAR of the sticky cart bar on mobile â€” before this
           // they overlapped on every phone-width viewport.
           right: "max(1rem, env(safe-area-inset-right))",
           bottom:
             "calc(var(--cart-bar-height, 0px) + max(1rem, env(safe-area-inset-bottom)) + 0.5rem)",
-          backgroundColor: "#c4973a",
-          color: "#0a1a0d",
+          backgroundColor: "#C6A04B",
+          color: "#ffffff",
           padding: "0.75rem 1.125rem",
           boxShadow:
             "0 4px 14px rgba(0,0,0,0.45), 0 0 0 1px rgba(106,176,76,0.25)",
@@ -196,13 +196,13 @@ export function PreviewAvailabilityFab() {
         <span>Check available dates</span>
       </button>
 
-      {/* ── Preview modal ──────────────────────────────────────────── */}
+      {/* â”€â”€ Preview modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {open && (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6"
           style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
           onMouseDown={(e) => {
-            // Backdrop click closes — but only when the press starts on
+            // Backdrop click closes â€” but only when the press starts on
             // the backdrop itself, not on a drag out of the panel.
             if (e.target === e.currentTarget) closeModal();
           }}
@@ -214,25 +214,25 @@ export function PreviewAvailabilityFab() {
             aria-labelledby="availability-preview-title"
             className="w-full max-w-2xl rounded-2xl border flex flex-col"
             style={{
-              backgroundColor: "#1a3d22",
-              borderColor: "#c4973a",
+              backgroundColor: "#FFFFFF",
+              borderColor: "#C6A04B",
               maxHeight: "calc(100vh - 3rem)",
             }}
           >
             {/* Header */}
             <div
               className="flex items-center justify-between gap-3 p-5 border-b shrink-0"
-              style={{ borderColor: "#2d6b35" }}
+              style={{ borderColor: "#E5E2D4" }}
             >
               <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 rounded-lg flex items-center justify-center border shrink-0"
                   style={{
                     backgroundColor: "rgba(196,151,58,0.15)",
-                    borderColor: "#c4973a",
+                    borderColor: "#C6A04B",
                   }}
                 >
-                  <Calendar className="w-5 h-5" style={{ color: "#c4973a" }} />
+                  <Calendar className="w-5 h-5" style={{ color: "#C6A04B" }} />
                 </div>
                 <div>
                   <h2
@@ -247,9 +247,9 @@ export function PreviewAvailabilityFab() {
                   </h2>
                   <p
                     className="text-xs uppercase tracking-wider font-semibold mt-0.5"
-                    style={{ color: "#c4973a" }}
+                    style={{ color: "#C6A04B" }}
                   >
-                    Not a booking · Book after checkout
+                    Not a booking Â· Book after checkout
                   </p>
                 </div>
               </div>
@@ -259,7 +259,7 @@ export function PreviewAvailabilityFab() {
                 onClick={closeModal}
                 aria-label="Close availability preview"
                 className="p-1.5 rounded-lg transition-colors shrink-0"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -271,15 +271,15 @@ export function PreviewAvailabilityFab() {
               className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
               style={{ maxHeight: "calc(100vh - 12rem)" }}
             >
-              {/* Loud "no booking here" banner — payment must happen
+              {/* Loud "no booking here" banner â€” payment must happen
                   BEFORE the appointment can be booked. Prominent solid
                   amber so a hesitating shopper reads it before scrolling
                   the calendar. */}
               <div
                 className="rounded-xl border-2 p-4 sm:p-5"
                 style={{
-                  backgroundColor: "#c4973a",
-                  borderColor: "#0a1a0d",
+                  backgroundColor: "#C6A04B",
+                  borderColor: "#ffffff",
                 }}
               >
                 <div className="flex items-start gap-3">
@@ -287,24 +287,24 @@ export function PreviewAvailabilityFab() {
                     aria-hidden="true"
                     className="shrink-0"
                     style={{
-                      color: "#0a1a0d",
+                      color: "#ffffff",
                       fontSize: "28px",
                       lineHeight: 1,
                       fontWeight: 700,
                     }}
                   >
-                    ⚠
+                    âš 
                   </span>
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <p
                       className="uppercase tracking-widest font-bold text-xs"
-                      style={{ color: "#0a1a0d" }}
+                      style={{ color: "#ffffff" }}
                     >
-                      This View Is Preview Only — You Cannot Book Here
+                      This View Is Preview Only â€” You Cannot Book Here
                     </p>
                     <p
                       className="text-sm leading-snug font-semibold"
-                      style={{ color: "#0a1a0d" }}
+                      style={{ color: "#ffffff" }}
                     >
                       Your collection appointment is booked{" "}
                       <span style={{ textDecoration: "underline" }}>
@@ -314,9 +314,9 @@ export function PreviewAvailabilityFab() {
                       to your paid tests. We work this way because a
                       booked appointment with no paid tests attached
                       leaves us with an orphaned slot that no phlebotomist
-                      can fulfill — everyone loses the time.
+                      can fulfill â€” everyone loses the time.
                     </p>
-                    <p className="text-xs" style={{ color: "#0a1a0d" }}>
+                    <p className="text-xs" style={{ color: "#ffffff" }}>
                       Use this view to gauge how busy the next two weeks
                       look. Real booking happens on the confirmation page
                       right after payment.
@@ -325,21 +325,21 @@ export function PreviewAvailabilityFab() {
                 </div>
               </div>
 
-              {/* Secondary note — stability-window / fasting nuance. */}
+              {/* Secondary note â€” stability-window / fasting nuance. */}
               <div
                 className="flex gap-3 rounded-lg border p-3"
                 style={{
                   backgroundColor: "rgba(217,169,57,0.10)",
-                  borderColor: "#d4a84a",
+                  borderColor: "#D6AF5B",
                 }}
               >
                 <Info
                   className="w-4 h-4 shrink-0 mt-0.5"
-                  style={{ color: "#d4a84a" }}
+                  style={{ color: "#D6AF5B" }}
                 />
                 <p
                   className="text-xs leading-relaxed"
-                  style={{ color: "#e8d5a3" }}
+                  style={{ color: "#154D31" }}
                 >
                   Tests with short stability windows (CBC, Basic Metabolic
                   Panel, potassium panels, etc.) are Tuesday-only; other
@@ -353,10 +353,10 @@ export function PreviewAvailabilityFab() {
                 <div className="flex flex-col items-center gap-2 py-12">
                   <Loader2
                     className="w-6 h-6 animate-spin"
-                    style={{ color: "#c4973a" }}
+                    style={{ color: "#C6A04B" }}
                   />
-                  <p className="text-xs" style={{ color: "#e8d5a3" }}>
-                    Loading availability…
+                  <p className="text-xs" style={{ color: "#154D31" }}>
+                    Loading availabilityâ€¦
                   </p>
                 </div>
               )}
@@ -368,10 +368,10 @@ export function PreviewAvailabilityFab() {
                     borderColor: "#e05252",
                   }}
                 >
-                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                  <p className="text-sm" style={{ color: "#154D31" }}>
                     {error}
                   </p>
-                  <p className="text-sm" style={{ color: "#e8d5a3" }}>
+                  <p className="text-sm" style={{ color: "#154D31" }}>
                     Order your tests first and you&apos;ll get a direct
                     booking link with your confirmation email.
                   </p>
@@ -379,13 +379,13 @@ export function PreviewAvailabilityFab() {
               )}
               {data && data.days.length > 0 && (
                 <>
-                  {/* Legend — green = available, amber = limited slots
+                  {/* Legend â€” green = available, amber = limited slots
                       running out, muted gray = nothing left. Fully-booked
                       cells are deliberately dulled so a wall of empty
                       days doesn't visually read as "everything's fine". */}
                   <div className="flex flex-wrap items-center gap-3 text-xs">
-                    <LegendSwatch color="#8dc63f" label="Available" />
-                    <LegendSwatch color="#d4a84a" label="Almost full" />
+                    <LegendSwatch color="#88D45D" label="Available" />
+                    <LegendSwatch color="#D6AF5B" label="Almost full" />
                     <LegendSwatch color="#3a4550" label="Fully booked" />
                   </div>
 
@@ -396,7 +396,7 @@ export function PreviewAvailabilityFab() {
                     ))}
                   </div>
 
-                  {/* Desktop: 7-col grid aligned Sun→Sat like a real
+                  {/* Desktop: 7-col grid aligned Sunâ†’Sat like a real
                       calendar. Leading + trailing empty cells pad the
                       first and last rows so the columns stay honest to
                       day-of-week. Weekday header row above the grid
@@ -408,7 +408,7 @@ export function PreviewAvailabilityFab() {
                           <div
                             key={label}
                             className="text-[10px] uppercase tracking-wider font-bold text-center"
-                            style={{ color: "#c4973a" }}
+                            style={{ color: "#C6A04B" }}
                           >
                             {label}
                           </div>
@@ -445,10 +445,10 @@ export function PreviewAvailabilityFab() {
                   {/* Timestamp + refresh */}
                   <div
                     className="flex items-center justify-between text-xs pt-2 border-t"
-                    style={{ borderColor: "#2d6b35", color: "#6ab04c" }}
+                    style={{ borderColor: "#E5E2D4", color: "#4a7a56" }}
                   >
                     <span>
-                      Snapshot from FloLabs · updated{" "}
+                      Snapshot from FloLabs Â· updated{" "}
                       {new Date(data.fetchedAt).toLocaleTimeString("en-CA", {
                         hour: "numeric",
                         minute: "2-digit",
@@ -459,9 +459,9 @@ export function PreviewAvailabilityFab() {
                       onClick={fetchAvailability}
                       disabled={loading}
                       className="underline disabled:opacity-50"
-                      style={{ color: "#c4973a" }}
+                      style={{ color: "#C6A04B" }}
                     >
-                      {loading ? "Refreshing…" : "Refresh"}
+                      {loading ? "Refreshingâ€¦" : "Refresh"}
                     </button>
                   </div>
                 </>
@@ -471,10 +471,10 @@ export function PreviewAvailabilityFab() {
             {/* Footer */}
             <div
               className="p-5 border-t shrink-0 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between"
-              style={{ borderColor: "#2d6b35" }}
+              style={{ borderColor: "#E5E2D4" }}
             >
-              <p className="text-xs" style={{ color: "#e8d5a3" }}>
-                To book a specific slot, order your tests first — your
+              <p className="text-xs" style={{ color: "#154D31" }}>
+                To book a specific slot, order your tests first â€” your
                 confirmation email includes the direct FloLabs booking
                 link.
               </p>
@@ -482,7 +482,7 @@ export function PreviewAvailabilityFab() {
                 type="button"
                 onClick={closeModal}
                 className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
               >
                 Close
               </button>
@@ -494,13 +494,13 @@ export function PreviewAvailabilityFab() {
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function LegendSwatch({ color, label }: { color: string; label: string }) {
   return (
     <span
       className="inline-flex items-center gap-1.5"
-      style={{ color: "#e8d5a3" }}
+      style={{ color: "#154D31" }}
     >
       <span
         aria-hidden="true"
@@ -514,14 +514,14 @@ function LegendSwatch({ color, label }: { color: string; label: string }) {
 
 function DayCell({ day }: { day: DaySummary }) {
   // Bucket by slot count. Numbers tuned to FloLabs' typical daily
-  // capacity — if their scheduling changes materially the thresholds
+  // capacity â€” if their scheduling changes materially the thresholds
   // may need re-tuning. Green = plenty, amber = running out, muted
   // gray = nothing.
   //
   // Fully-booked cells are deliberately DULL: neutral border, muted
   // text, low-contrast background. Previously they used the brand
-  // green border (#2d6b35) which made "no slots" look positive next
-  // to the amber "limited" cells that ARE available — a wall of empty
+  // green border (#E5E2D4) which made "no slots" look positive next
+  // to the amber "limited" cells that ARE available â€” a wall of empty
   // days visually read as "everything's fine".
   const bucket: "good" | "limited" | "none" =
     day.slotCount >= 6 ? "good" : day.slotCount > 0 ? "limited" : "none";
@@ -529,19 +529,19 @@ function DayCell({ day }: { day: DaySummary }) {
   const palette = {
     good: {
       bg: "rgba(141,198,63,0.14)",
-      border: "#8dc63f",
-      accent: "#8dc63f",
+      border: "#88D45D",
+      accent: "#88D45D",
       dateColor: "#ffffff",
-      countColor: "#8dc63f",
-      rangeColor: "#e8d5a3",
+      countColor: "#88D45D",
+      rangeColor: "#154D31",
     },
     limited: {
       bg: "rgba(217,169,57,0.14)",
-      border: "#d4a84a",
-      accent: "#d4a84a",
+      border: "#D6AF5B",
+      accent: "#D6AF5B",
       dateColor: "#ffffff",
-      countColor: "#d4a84a",
-      rangeColor: "#e8d5a3",
+      countColor: "#D6AF5B",
+      rangeColor: "#154D31",
     },
     none: {
       bg: "rgba(255,255,255,0.02)",
@@ -565,7 +565,7 @@ function DayCell({ day }: { day: DaySummary }) {
     day.firstTime && day.lastTime
       ? day.firstTime === day.lastTime
         ? day.firstTime
-        : `${day.firstTime} – ${day.lastTime}`
+        : `${day.firstTime} â€“ ${day.lastTime}`
       : null;
 
   const countLabel =

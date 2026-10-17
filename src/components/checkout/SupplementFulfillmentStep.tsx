@@ -19,7 +19,7 @@ interface SupplementFulfillmentStepProps {
 }
 
 /**
- * Supplement fulfillment step — shown only when the cart contains
+ * Supplement fulfillment step â€” shown only when the cart contains
  * supplements. Two radio options: flat-rate shipping ($40) or
  * pre-coordinated delivery/pickup ($0).
  */
@@ -34,8 +34,8 @@ export function SupplementFulfillmentStep({
 }: SupplementFulfillmentStepProps) {
   const [sameAsMain, setSameAsMain] = useState(true);
 
-  // Full street address is no longer collected at checkout — only
-  // postal code — so the "same as collection address" auto-prefill
+  // Full street address is no longer collected at checkout â€” only
+  // postal code â€” so the "same as collection address" auto-prefill
   // has nothing meaningful to copy across for street/city/province.
   // Postal code alone still gets prefilled since that's the one
   // field we do have. If the customer wants a truly identical
@@ -82,9 +82,9 @@ export function SupplementFulfillmentStep({
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
-        Supplement <span style={{ color: "#c4973a" }}>Delivery</span>
+        Supplement <span style={{ color: "#C6A04B" }}>Delivery</span>
       </h2>
-      <p className="text-sm mb-6" style={{ color: "#e8d5a3" }}>
+      <p className="text-sm mb-6" style={{ color: "#154D31" }}>
         Choose how you&apos;d like to receive your supplements.
       </p>
 
@@ -93,8 +93,8 @@ export function SupplementFulfillmentStep({
         <label
           className="flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-colors"
           style={{
-            backgroundColor: isShipping ? "#1a3d22" : "#0a1a0d",
-            borderColor: isShipping ? "#c4973a" : "#2d6b35",
+            backgroundColor: isShipping ? "#FFFFFF" : "#F7F6F0",
+            borderColor: isShipping ? "#C6A04B" : "#E5E2D4",
           }}
         >
           <input
@@ -103,29 +103,29 @@ export function SupplementFulfillmentStep({
             checked={isShipping}
             onChange={handleSelectShipping}
             className="mt-1 shrink-0"
-            style={{ accentColor: "#c4973a" }}
+            style={{ accentColor: "#C6A04B" }}
           />
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <Truck className="w-4 h-4" style={{ color: "#c4973a" }} />
+              <Truck className="w-4 h-4" style={{ color: "#C6A04B" }} />
               <span className="text-sm font-semibold" style={{ color: "#ffffff" }}>
-                Flat-rate shipping anywhere in Canada —{" "}
-                <span style={{ color: "#c4973a" }}>
+                Flat-rate shipping anywhere in Canada â€”{" "}
+                <span style={{ color: "#C6A04B" }}>
                   {formatCurrency(SUPPLEMENT_SHIPPING_FEE_CAD)}
                 </span>
               </span>
             </div>
-            <p className="text-xs" style={{ color: "#6ab04c" }}>
+            <p className="text-xs" style={{ color: "#4a7a56" }}>
               Shipped directly to your door.
             </p>
           </div>
         </label>
 
-        {/* Shipping address — shown when shipping is selected */}
+        {/* Shipping address â€” shown when shipping is selected */}
         {isShipping && (
           <div
             className="ml-8 p-4 rounded-lg border space-y-3"
-            style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
           >
             {hasMainAddress && (
               <label className="flex items-center gap-2 cursor-pointer">
@@ -158,9 +158,9 @@ export function SupplementFulfillmentStep({
                       });
                     }
                   }}
-                  style={{ accentColor: "#c4973a" }}
+                  style={{ accentColor: "#C6A04B" }}
                 />
-                <span className="text-sm" style={{ color: "#e8d5a3" }}>
+                <span className="text-sm" style={{ color: "#154D31" }}>
                   Same as my collection address
                 </span>
               </label>
@@ -171,7 +171,7 @@ export function SupplementFulfillmentStep({
                 <div>
                   <label
                     className="block text-xs font-medium mb-1"
-                    style={{ color: "#e8d5a3" }}
+                    style={{ color: "#154D31" }}
                   >
                     Recipient Name
                   </label>
@@ -198,7 +198,7 @@ export function SupplementFulfillmentStep({
                 <div>
                   <label
                     className="block text-xs font-medium mb-1"
-                    style={{ color: "#e8d5a3" }}
+                    style={{ color: "#154D31" }}
                   >
                     Street Address
                   </label>
@@ -225,7 +225,7 @@ export function SupplementFulfillmentStep({
                   <div>
                     <label
                       className="block text-xs font-medium mb-1"
-                      style={{ color: "#e8d5a3" }}
+                      style={{ color: "#154D31" }}
                     >
                       City
                     </label>
@@ -251,7 +251,7 @@ export function SupplementFulfillmentStep({
                   <div>
                     <label
                       className="block text-xs font-medium mb-1"
-                      style={{ color: "#e8d5a3" }}
+                      style={{ color: "#154D31" }}
                     >
                       Province
                     </label>
@@ -278,7 +278,7 @@ export function SupplementFulfillmentStep({
                   <div>
                     <label
                       className="block text-xs font-medium mb-1"
-                      style={{ color: "#e8d5a3" }}
+                      style={{ color: "#154D31" }}
                     >
                       Postal Code
                     </label>
@@ -312,8 +312,8 @@ export function SupplementFulfillmentStep({
         <label
           className="flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-colors"
           style={{
-            backgroundColor: isCoordinated ? "#1a3d22" : "#0a1a0d",
-            borderColor: isCoordinated ? "#c4973a" : "#2d6b35",
+            backgroundColor: isCoordinated ? "#FFFFFF" : "#F7F6F0",
+            borderColor: isCoordinated ? "#C6A04B" : "#E5E2D4",
           }}
         >
           <input
@@ -322,17 +322,17 @@ export function SupplementFulfillmentStep({
             checked={isCoordinated}
             onChange={handleSelectCoordinated}
             className="mt-1 shrink-0"
-            style={{ accentColor: "#c4973a" }}
+            style={{ accentColor: "#C6A04B" }}
           />
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <Handshake className="w-4 h-4" style={{ color: "#c4973a" }} />
+              <Handshake className="w-4 h-4" style={{ color: "#C6A04B" }} />
               <span className="text-sm font-semibold" style={{ color: "#ffffff" }}>
-                I have already coordinated delivery or pickup with AvoVita —{" "}
-                <span style={{ color: "#8dc63f" }}>$0</span>
+                I have already coordinated delivery or pickup with AvoVita â€”{" "}
+                <span style={{ color: "#88D45D" }}>$0</span>
               </span>
             </div>
-            <p className="text-xs italic" style={{ color: "#6ab04c" }}>
+            <p className="text-xs italic" style={{ color: "#4a7a56" }}>
               Select this only if you&apos;ve already arranged directly with us.
             </p>
           </div>
@@ -346,8 +346,8 @@ export function SupplementFulfillmentStep({
           onClick={onBack}
           className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold border transition-colors"
           style={{
-            color: "#e8d5a3",
-            borderColor: "#2d6b35",
+            color: "#154D31",
+            borderColor: "#E5E2D4",
             backgroundColor: "transparent",
           }}
         >
@@ -360,8 +360,8 @@ export function SupplementFulfillmentStep({
           disabled={!canContinue}
           className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors"
           style={{
-            backgroundColor: canContinue ? "#c4973a" : "#2d6b35",
-            color: canContinue ? "#0a1a0d" : "#6ab04c",
+            backgroundColor: canContinue ? "#C6A04B" : "#E5E2D4",
+            color: canContinue ? "#F7F6F0" : "#4a7a56",
             cursor: canContinue ? "pointer" : "not-allowed",
           }}
         >

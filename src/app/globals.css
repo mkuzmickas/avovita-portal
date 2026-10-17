@@ -1,37 +1,43 @@
 @import "tailwindcss";
 
 /* =============================================================================
-   AvoVita Midnight Forest Theme
+   AvoVita Lighter Premium Healthcare Theme (Oct 2026 re-palette)
+   Ivory-dominant, forest + muted gold + avocado lime accents.
+   Prior "Midnight Forest" names kept so inline references continue to
+   resolve — only the hex values moved.
    ============================================================================= */
 
 :root {
   /* Backgrounds */
-  --bg-primary: #0a1a0d;
-  --bg-secondary: #0f2614;
-  --bg-tertiary: #1a3d22;
-  --bg-hover: #1f4a28;
+  --bg-primary: #f7f6f0;    /* warm ivory — page bg */
+  --bg-secondary: #f7f6f0;  /* ivory — inputs on white cards */
+  --bg-tertiary: #ffffff;   /* white — cards, test listings */
+  --bg-hover: #efece0;      /* warmer ivory — hover states */
 
   /* Borders */
-  --border-default: #2d6b35;
-  --border-subtle: #1a3d22;
+  --border-default: #e5e2d4;
+  --border-subtle: #efece0;
 
   /* Text */
-  --text-primary: #ffffff;
-  --text-secondary: #e8d5a3;
-  --text-muted: #6ab04c;
+  --text-primary: #092819;   /* forest — primary text */
+  --text-secondary: #154d31; /* deep green — body text */
+  --text-muted: rgba(9, 40, 25, 0.55);
 
-  /* Gold (primary CTA) */
-  --gold: #c4973a;
-  --gold-hover: #d4a84a;
+  /* Gold (primary accent, no longer the primary CTA — muted) */
+  --gold: #c6a04b;
+  --gold-hover: #d6af5b;
 
   /* Greens */
-  --green-accent: #8dc63f;
-  --green-dark: #2d6b35;
+  --green-accent: #88d45d;   /* avocado lime — highlights, selected icons */
+  --green-dark: #154d31;     /* deep green — primary buttons */
+
+  /* Dark forest for nav / footer / "premium brand" bands */
+  --forest-dark: #092819;
 
   /* Status */
-  --status-success: #6ab04c;
+  --status-success: #88d45d;
   --status-danger: #e05252;
-  --status-warning: #c4973a;
+  --status-warning: #c6a04b;
 
   /* Fonts */
   --font-heading: "Cormorant Garamond", Georgia, serif;
@@ -68,7 +74,7 @@
 
 /* ─── Base ──────────────────────────────────────────────────────────────── */
 html {
-  color-scheme: dark;
+  color-scheme: light;
   background-color: var(--bg-primary);
   /* Defensive: stop any stray fixed-width element from creating a
      horizontal scrollbar on mobile. Per-component layouts still need to
@@ -79,7 +85,7 @@ html {
 
 body {
   background-color: var(--bg-primary);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 17px;
   line-height: 1.65;
@@ -121,13 +127,16 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-muted);
 }
 .mf-input:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 2px rgba(196, 151, 58, 0.35);
+  border-color: var(--green-dark);
+  box-shadow: 0 0 0 2px rgba(21, 77, 49, 0.25);
 }
 
 .mf-btn-primary {
-  background-color: var(--gold);
-  color: var(--bg-primary);
+  /* Primary CTA: deep green bg + white text under new palette. The
+     previous gold-on-dark pairing lost contrast once the page bg
+     flipped to ivory, so primary action moved to deep green. */
+  background-color: var(--green-dark);
+  color: #ffffff;
   border: none;
   border-radius: 0.5rem;
   padding: 0.625rem 1.25rem;
@@ -141,7 +150,7 @@ h1, h2, h3, h4, h5, h6 {
   gap: 0.5rem;
 }
 .mf-btn-primary:hover:not(:disabled) {
-  background-color: var(--gold-hover);
+  background-color: var(--forest-dark);
 }
 .mf-btn-primary:disabled {
   opacity: 0.6;
@@ -188,11 +197,11 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--bg-primary);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-tertiary);
+  background: var(--border-default);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--border-default);
+  background: var(--text-muted);
 }
 
 /* ─── Print styles for AI Interpretation report ─────────────────────────── */
@@ -244,37 +253,36 @@ input:-webkit-autofill:focus {
 
 /* Deep-link highlight — gold card frame on ?test=SKU catalogue rows.
    Top/bottom borders applied inline on <tr>. Left/right borders on
-   first/last <td> cells. Glow via box-shadow on the header <tr>. */
+   first/last <td> cells. Glow via box-shadow on the header <tr>.
+   Updated Oct 2026 to new muted gold #C6A04B. */
 @keyframes avovitaDeeplinkPulse {
-  0%   { box-shadow: 0 0 0 1px #c4973a, 0 4px 20px rgba(196,151,58,0.45); }
-  50%  { box-shadow: 0 0 0 2px #c4973a, 0 6px 40px rgba(196,151,58,0.75); }
-  100% { box-shadow: 0 0 0 1px #c4973a, 0 4px 20px rgba(196,151,58,0.45); }
+  0%   { box-shadow: 0 0 0 1px #c6a04b, 0 4px 20px rgba(198,160,75,0.45); }
+  50%  { box-shadow: 0 0 0 2px #c6a04b, 0 6px 40px rgba(198,160,75,0.75); }
+  100% { box-shadow: 0 0 0 1px #c6a04b, 0 4px 20px rgba(198,160,75,0.45); }
 }
 .avovita-deeplink-row > td:first-child {
-  border-left: 3px solid #c4973a;
+  border-left: 3px solid #c6a04b;
 }
 .avovita-deeplink-row > td:last-child {
-  border-right: 3px solid #c4973a;
+  border-right: 3px solid #c6a04b;
 }
-/* Glow + pulse on the header row */
 tr#avovita-deeplink-header {
-  box-shadow: 0 0 0 1px #c4973a, 0 4px 20px rgba(196,151,58,0.45);
+  box-shadow: 0 0 0 1px #c6a04b, 0 4px 20px rgba(198,160,75,0.45);
   animation: avovitaDeeplinkPulse 1.2s ease-out;
 }
 @media (max-width: 768px) {
   tr#avovita-deeplink-header {
-    box-shadow: 0 0 0 1px #c4973a, 0 2px 12px rgba(196,151,58,0.4);
+    box-shadow: 0 0 0 1px #c6a04b, 0 2px 12px rgba(198,160,75,0.4);
   }
 }
 
-/* Featured carousel test-title subtle hover link */
 .test-card-title-link {
   transition: color 150ms ease, text-decoration-color 150ms ease;
   text-underline-offset: 3px;
 }
 .test-card-title-link:hover {
-  color: #c4973a !important;
+  color: #154d31 !important;
   text-decoration: underline;
-  text-decoration-color: #c4973a;
+  text-decoration-color: #154d31;
   text-decoration-thickness: 1px;
 }

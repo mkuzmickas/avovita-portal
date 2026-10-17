@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/client";
  * - Logged in:  a muted-gold user chip with first-name or email local-part,
  *   opening a dropdown with "My Portal" and "Sign Out".
  *
- * Pure client component — reads the session on mount and subscribes to
+ * Pure client component â€” reads the session on mount and subscribes to
  * auth state changes so it stays in sync after login/logout in another
  * tab.
  */
@@ -96,7 +96,7 @@ export function AccountIndicator() {
       <Link
         href="/login"
         className="text-sm font-medium whitespace-nowrap"
-        style={{ color: "#c4973a" }}
+        style={{ color: "#C6A04B" }}
       >
         Sign In
       </Link>
@@ -109,7 +109,7 @@ export function AccountIndicator() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 text-xs sm:text-sm font-medium max-w-[180px]"
-        style={{ color: "#c4973a" }}
+        style={{ color: "#C6A04B" }}
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -125,18 +125,18 @@ export function AccountIndicator() {
         <div
           role="menu"
           className="absolute right-0 top-full mt-2 min-w-[180px] rounded-lg border shadow-lg z-50 overflow-hidden"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <Link
             href="/portal"
             onClick={() => setOpen(false)}
             className="flex items-center gap-2 px-3 py-2 text-sm"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
             role="menuitem"
           >
             <LayoutDashboard
               className="w-4 h-4 shrink-0"
-              style={{ color: "#8dc63f" }}
+              style={{ color: "#88D45D" }}
             />
             My Portal
           </Link>
@@ -144,12 +144,12 @@ export function AccountIndicator() {
             type="button"
             onClick={handleSignOut}
             className="flex items-center gap-2 px-3 py-2 text-sm w-full text-left border-t"
-            style={{ color: "#e8d5a3", borderColor: "#2d6b35" }}
+            style={{ color: "#154D31", borderColor: "#E5E2D4" }}
             role="menuitem"
           >
             <LogOut
               className="w-4 h-4 shrink-0"
-              style={{ color: "#c4973a" }}
+              style={{ color: "#C6A04B" }}
             />
             Sign Out
           </button>

@@ -14,10 +14,10 @@ import { calculateTotals } from "@/lib/checkout/totals";
 
 interface CheckoutCartSummaryProps {
   cart: CartItem[];
-  /** Null on Step 1 (person count not chosen yet → no visit fee shown). */
+  /** Null on Step 1 (person count not chosen yet â†’ no visit fee shown). */
   visitFees: VisitFees | null;
   /**
-   * Real order line count — `assignments.length` after Step 2, or a
+   * Real order line count â€” `assignments.length` after Step 2, or a
    * safe lower bound of `cart.length` on Step 1.
    */
   lineCount?: number;
@@ -38,7 +38,7 @@ interface CheckoutCartSummaryProps {
 /**
  * Sticky right-rail order summary. Shows each cart item with its full
  * price, a per-line discount annotation when the multi-test discount
- * applies, and a totals block with subtotal → discount → visit fee →
+ * applies, and a totals block with subtotal â†’ discount â†’ visit fee â†’
  * grand total.
  */
 export function CheckoutCartSummary({
@@ -60,7 +60,7 @@ export function CheckoutCartSummary({
   const discountEligible = repeatClient.eligible || !!acceptedQuoteNumber;
   // For the per-line discount annotation we still need the discount
   // shape (per_line / applies). The authoritative totals come from
-  // calculateTotals — same function the Step 4 pane uses.
+  // calculateTotals â€” same function the Step 4 pane uses.
   const discount = computeDiscount(effectiveLineCount, discountEligible);
 
   // Build a synthetic test-line price array so calculateTotals receives
@@ -81,7 +81,7 @@ export function CheckoutCartSummary({
         )
       : cartLinePrices;
 
-  // Supplement + resource subtotals — folded into calculateTotals so
+  // Supplement + resource subtotals â€” folded into calculateTotals so
   // GST recalcs on the combined pre-tax subtotal.
   const supplementSubtotal = cart
     .filter((i) => i.line_type === "supplement")
@@ -112,10 +112,10 @@ export function CheckoutCartSummary({
   return (
     <aside
       className="rounded-xl border p-5 sticky top-6"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-4">
-        <ShoppingBag className="w-4 h-4" style={{ color: "#c4973a" }} />
+        <ShoppingBag className="w-4 h-4" style={{ color: "#C6A04B" }} />
         <h2
           className="font-heading text-lg font-semibold"
           style={{
@@ -128,7 +128,7 @@ export function CheckoutCartSummary({
       </div>
 
       {cart.length === 0 ? (
-        <p className="text-sm" style={{ color: "#6ab04c" }}>
+        <p className="text-sm" style={{ color: "#4a7a56" }}>
           Your cart is empty.
         </p>
       ) : (
@@ -166,7 +166,7 @@ export function CheckoutCartSummary({
                     </p>
                     <p
                       className="text-xs mt-0.5"
-                      style={{ color: "#6ab04c" }}
+                      style={{ color: "#4a7a56" }}
                     >
                       {subtitle}
                     </p>
@@ -174,7 +174,7 @@ export function CheckoutCartSummary({
                   <div className="flex items-center gap-1.5 shrink-0">
                     <p
                       className="text-sm font-semibold whitespace-nowrap"
-                      style={{ color: "#c4973a" }}
+                      style={{ color: "#C6A04B" }}
                     >
                       {formatCurrency(item.price_cad)}
                     </p>
@@ -182,7 +182,7 @@ export function CheckoutCartSummary({
                       type="button"
                       onClick={() => removeItem(id)}
                       className="p-0.5 rounded transition-colors"
-                      style={{ color: "#c4973a" }}
+                      style={{ color: "#C6A04B" }}
                       aria-label={`Remove ${name}`}
                       title="Remove from cart"
                     >
@@ -193,9 +193,9 @@ export function CheckoutCartSummary({
                 {discount.applies && item.line_type === "test" && (
                   <p
                     className="text-[11px] font-medium ml-0 sm:ml-0 text-right"
-                    style={{ color: "#8dc63f" }}
+                    style={{ color: "#88D45D" }}
                   >
-                    −{formatCurrency(discount.per_line)} multi-test discount
+                    âˆ’{formatCurrency(discount.per_line)} multi-test discount
                   </p>
                 )}
               </li>
@@ -206,11 +206,11 @@ export function CheckoutCartSummary({
           {/* Totals block */}
           <div
             className="space-y-1.5 pt-3 border-t"
-            style={{ borderColor: "#2d6b35" }}
+            style={{ borderColor: "#E5E2D4" }}
           >
             <div
               className="flex justify-between text-sm"
-              style={{ color: "#e8d5a3" }}
+              style={{ color: "#154D31" }}
             >
               <span>Tests subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
@@ -220,17 +220,17 @@ export function CheckoutCartSummary({
               <>
                 <div
                   className="flex justify-between text-sm font-medium"
-                  style={{ color: "#8dc63f" }}
+                  style={{ color: "#88D45D" }}
                 >
                   <span>
-                    Repeat-client discount ({discount.line_count} ×{" "}
+                    Repeat-client discount ({discount.line_count} Ã—{" "}
                     {formatCurrency(discount.per_line)})
                   </span>
-                  <span>−{formatCurrency(discount.total)}</span>
+                  <span>âˆ’{formatCurrency(discount.total)}</span>
                 </div>
                 <div
                   className="flex justify-between text-sm"
-                  style={{ color: "#e8d5a3" }}
+                  style={{ color: "#154D31" }}
                 >
                   <span>Subtotal after discount</span>
                   <span>{formatCurrency(subtotalAfterDiscount)}</span>
@@ -242,7 +242,7 @@ export function CheckoutCartSummary({
               <>
                 <div
                   className="flex justify-between text-sm"
-                  style={{ color: "#e8d5a3" }}
+                  style={{ color: "#154D31" }}
                 >
                   <span>Home visit (1st person)</span>
                   <span>{formatCurrency(visitFees.base_fee)}</span>
@@ -250,10 +250,10 @@ export function CheckoutCartSummary({
                 {visitFees.additional_person_count > 0 && (
                   <div
                     className="flex justify-between text-sm"
-                    style={{ color: "#e8d5a3" }}
+                    style={{ color: "#154D31" }}
                   >
                     <span>
-                      Additional × {visitFees.additional_person_count}
+                      Additional Ã— {visitFees.additional_person_count}
                     </span>
                     <span>
                       {formatCurrency(
@@ -263,23 +263,23 @@ export function CheckoutCartSummary({
                     </span>
                   </div>
                 )}
-                {/* "Already covered" reframe — same fact as the
+                {/* "Already covered" reframe â€” same fact as the
                     catalogue's "+ from $85 collection fee" qualifier,
                     but opposite emotional weight: in the cart the
                     fee has been decided on and adding another test
                     doesn't repeat it. Only when the customer has
-                    exactly one test line — with 2+ the argument
+                    exactly one test line â€” with 2+ the argument
                     would be preaching to the choir. Never on
                     kit-only carts (no visit fee to be covered). */}
                 {testCount === 1 && (
                   <p
                     className="text-xs italic mt-1 pt-1"
                     style={{
-                      color: "#8dc63f",
-                      borderTop: "1px dashed #2d6b35",
+                      color: "#88D45D",
+                      borderTop: "1px dashed #E5E2D4",
                     }}
                   >
-                    Your collection fee is already covered — add another
+                    Your collection fee is already covered â€” add another
                     test and you pay only the test price.
                   </p>
                 )}
@@ -287,7 +287,7 @@ export function CheckoutCartSummary({
             ) : !kitFee.hasKitTests || kitFee.hasPhlebotomistTests ? (
               <p
                 className="text-xs italic pt-1"
-                style={{ color: "#6ab04c" }}
+                style={{ color: "#4a7a56" }}
               >
                 Visit fee calculated after you choose how many people are
                 included.
@@ -297,7 +297,7 @@ export function CheckoutCartSummary({
             {supplementSubtotal > 0 && (
               <div
                 className="flex justify-between text-sm"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 <span>Supplements</span>
                 <span>{formatCurrency(supplementSubtotal)}</span>
@@ -307,7 +307,7 @@ export function CheckoutCartSummary({
             {resourceSubtotal > 0 && (
               <div
                 className="flex justify-between text-sm"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 <span>Resources</span>
                 <span>{formatCurrency(resourceSubtotal)}</span>
@@ -317,7 +317,7 @@ export function CheckoutCartSummary({
             {kitFee.amount > 0 && (
               <div
                 className="flex justify-between text-sm"
-                style={{ color: "#e8d5a3" }}
+                style={{ color: "#154D31" }}
               >
                 <span>Kit service</span>
                 <span>{formatCurrency(kitFee.amount)}</span>
@@ -328,13 +328,13 @@ export function CheckoutCartSummary({
                 key={c.custom_id}
                 className="flex justify-between text-sm"
                 style={{
-                  color: c.price_cad < 0 ? "#8dc63f" : "#e8d5a3",
+                  color: c.price_cad < 0 ? "#88D45D" : "#154D31",
                 }}
               >
                 <span className="truncate pr-2">{c.description}</span>
                 <span className="whitespace-nowrap">
                   {c.price_cad < 0
-                    ? `−${formatCurrency(Math.abs(c.price_cad))}`
+                    ? `âˆ’${formatCurrency(Math.abs(c.price_cad))}`
                     : formatCurrency(c.price_cad)}
                 </span>
               </div>
@@ -343,7 +343,7 @@ export function CheckoutCartSummary({
             {totals.quoteDiscount > 0 && (
               <div
                 className="flex justify-between text-sm font-medium pt-2 mt-1 border-t"
-                style={{ color: "#8dc63f", borderColor: "#2d6b35" }}
+                style={{ color: "#88D45D", borderColor: "#E5E2D4" }}
               >
                 <span>
                   Additional discount
@@ -351,14 +351,14 @@ export function CheckoutCartSummary({
                     ? ` (quote ${acceptedQuoteNumber})`
                     : ""}
                 </span>
-                <span>−{formatCurrency(totals.quoteDiscount)}</span>
+                <span>âˆ’{formatCurrency(totals.quoteDiscount)}</span>
               </div>
             )}
 
             {totals.estimatedGST > 0 && (
               <div
                 className="flex justify-between text-sm pt-2 mt-1 border-t"
-                style={{ color: "#e8d5a3", borderColor: "#2d6b35" }}
+                style={{ color: "#154D31", borderColor: "#E5E2D4" }}
               >
                 <span>Est. GST (5%)</span>
                 <span>{formatCurrency(totals.estimatedGST)}</span>
@@ -367,18 +367,18 @@ export function CheckoutCartSummary({
 
             <div
               className="flex justify-between text-base font-semibold pt-2 mt-1 border-t"
-              style={{ borderColor: "#2d6b35" }}
+              style={{ borderColor: "#E5E2D4" }}
             >
               <span style={{ color: "#ffffff" }}>Est. Total</span>
-              <span style={{ color: "#c4973a" }}>
+              <span style={{ color: "#C6A04B" }}>
                 {formatCurrency(total)} CAD
               </span>
             </div>
             <p
               className="text-[10px] text-right mt-1 italic"
-              style={{ color: "#6ab04c" }}
+              style={{ color: "#4a7a56" }}
             >
-              Tax estimated — final amount confirmed at checkout.
+              Tax estimated â€” final amount confirmed at checkout.
             </p>
           </div>
         </>

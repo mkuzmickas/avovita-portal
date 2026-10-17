@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { ConsentType } from "@/types/database";
 
 export interface ConsentModalProps {
-  /** Account id — attached to every consent row. */
+  /** Account id â€” attached to every consent row. */
   accountId: string;
   /** Optional profile id to attach to every consent row. */
   profileId?: string;
@@ -36,14 +36,14 @@ const GENERAL_PIPA: ConsentSection = {
 
 const US_CROSS_BORDER: ConsentSection = {
   type: "cross_border_us",
-  title: "Cross-Border Transfer Consent — United States",
+  title: "Cross-Border Transfer Consent â€” United States",
   version: "1.0",
   body: `I understand and consent that my personal health information including name, date of birth, and biological sex will be transmitted to laboratory facilities located in the United States for the purpose of test processing. I acknowledge that US privacy laws including the CLOUD Act may apply to my data once it crosses the Canadian border. I have been informed of this cross-border transfer and consent to it.`,
 };
 
 const DE_CROSS_BORDER: ConsentSection = {
   type: "cross_border_de",
-  title: "Cross-Border Transfer Consent — Germany",
+  title: "Cross-Border Transfer Consent â€” Germany",
   version: "1.0",
   body: `I understand and consent that my personal health information will be transmitted to Armin Labs located in Germany for the purpose of test processing under GDPR data protection standards.`,
 };
@@ -115,7 +115,7 @@ export function ConsentModal({
       const ipData = await ipRes.json();
       ipAddress = ipData.ip ?? null;
     } catch {
-      // Non-fatal — consent is still valid without IP
+      // Non-fatal â€” consent is still valid without IP
     }
     const userAgent =
       typeof navigator !== "undefined" ? navigator.userAgent : null;
@@ -151,14 +151,14 @@ export function ConsentModal({
     >
       <div
         className="rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col border shadow-2xl"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
       >
-        {/* Header (no close button — non-dismissible) */}
+        {/* Header (no close button â€” non-dismissible) */}
         <div
           className="px-5 sm:px-6 py-4 flex items-center gap-3 border-b rounded-t-2xl"
-          style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
         >
-          <Shield className="w-5 h-5 shrink-0" style={{ color: "#c4973a" }} />
+          <Shield className="w-5 h-5 shrink-0" style={{ color: "#C6A04B" }} />
           <div className="flex-1 min-w-0">
             <h2
               id="consent-modal-title"
@@ -170,7 +170,7 @@ export function ConsentModal({
             >
               Privacy & Consent Required
             </h2>
-            <p className="text-xs mt-0.5" style={{ color: "#e8d5a3" }}>
+            <p className="text-xs mt-0.5" style={{ color: "#154D31" }}>
               Alberta PIPA requires your explicit consent before we process
               your health information.
             </p>
@@ -193,9 +193,9 @@ export function ConsentModal({
                 <div
                   className="rounded-xl p-4 border text-xs leading-relaxed"
                   style={{
-                    backgroundColor: "#0f2614",
-                    borderColor: "#2d6b35",
-                    color: "#e8d5a3",
+                    backgroundColor: "#F7F6F0",
+                    borderColor: "#E5E2D4",
+                    color: "#154D31",
                   }}
                 >
                   {section.body}
@@ -211,16 +211,16 @@ export function ConsentModal({
                     {checked ? (
                       <CheckSquare
                         className="w-5 h-5"
-                        style={{ color: "#c4973a" }}
+                        style={{ color: "#C6A04B" }}
                       />
                     ) : (
                       <Square
                         className="w-5 h-5"
-                        style={{ color: "#6ab04c" }}
+                        style={{ color: "#4a7a56" }}
                       />
                     )}
                   </span>
-                  <span className="text-sm" style={{ color: "#e8d5a3" }}>
+                  <span className="text-sm" style={{ color: "#154D31" }}>
                     I have read and understand the above. I provide my
                     explicit, informed consent as described.
                   </span>
@@ -233,7 +233,7 @@ export function ConsentModal({
         {/* Footer */}
         <div
           className="px-5 sm:px-6 py-4 border-t space-y-3"
-          style={{ borderColor: "#2d6b35" }}
+          style={{ borderColor: "#E5E2D4" }}
         >
           {error && (
             <div
@@ -261,7 +261,7 @@ export function ConsentModal({
               : `${checkedSections.size} / ${requiredSections.length} acknowledged`}
           </button>
 
-          <p className="text-center text-xs" style={{ color: "#6ab04c" }}>
+          <p className="text-center text-xs" style={{ color: "#4a7a56" }}>
             Consent records are retained permanently per Alberta PIPA
             requirements.
           </p>

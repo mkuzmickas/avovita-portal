@@ -141,7 +141,7 @@ export function WaiverForm({
         err instanceof DOMException && err.name === "AbortError";
       setError(
         isTimeout
-          ? "Saving is taking longer than expected. Your waiver may have been saved — please refresh the page and try again if the next step doesn't load."
+          ? "Saving is taking longer than expected. Your waiver may have been saved â€” please refresh the page and try again if the next step doesn't load."
           : err instanceof Error
             ? err.message
             : "Failed to save waiver"
@@ -157,7 +157,7 @@ export function WaiverForm({
     <div className="space-y-5">
       {/* Waiver heading */}
       <div className="flex items-center gap-2 mb-1">
-        <Shield className="w-5 h-5 shrink-0" style={{ color: "#c4973a" }} />
+        <Shield className="w-5 h-5 shrink-0" style={{ color: "#C6A04B" }} />
         <h2
           className="font-heading text-2xl sm:text-3xl font-semibold"
           style={{
@@ -168,17 +168,17 @@ export function WaiverForm({
           {isRep ? (
             <>
               Waiver for{" "}
-              <span style={{ color: "#c4973a" }}>{clientNames}</span>
+              <span style={{ color: "#C6A04B" }}>{clientNames}</span>
             </>
           ) : (
             <>
               Review and sign your{" "}
-              <span style={{ color: "#c4973a" }}>waiver</span>
+              <span style={{ color: "#C6A04B" }}>waiver</span>
             </>
           )}
         </h2>
       </div>
-      <p className="text-sm" style={{ color: "#e8d5a3" }}>
+      <p className="text-sm" style={{ color: "#154D31" }}>
         {isRep
           ? `As ${relationshipLabel}, please read the following carefully and sign on behalf of your client${dependents.length !== 1 ? "s" : ""}. This waiver must be completed before the collection appointment.`
           : "Please read the following carefully. This waiver must be completed before your collection appointment."}
@@ -189,8 +189,8 @@ export function WaiverForm({
           className="rounded-lg border p-4 text-sm"
           style={{
             backgroundColor: "rgba(196, 151, 58, 0.08)",
-            borderColor: "#c4973a",
-            color: "#e8d5a3",
+            borderColor: "#C6A04B",
+            color: "#154D31",
           }}
         >
           By signing below I,{" "}
@@ -198,7 +198,7 @@ export function WaiverForm({
             {signedName.trim() || "[your full name]"}
           </span>
           , am signing this waiver as{" "}
-          <span style={{ color: "#c4973a", fontWeight: 600 }}>
+          <span style={{ color: "#C6A04B", fontWeight: 600 }}>
             {relationshipLabel}
           </span>{" "}
           with legal authority to consent on behalf of{" "}
@@ -214,9 +214,9 @@ export function WaiverForm({
         ref={scrollRef}
         className="rounded-xl border p-5 max-h-[340px] overflow-y-auto text-xs leading-relaxed whitespace-pre-line"
         style={{
-          backgroundColor: "#0a1a0d",
-          borderColor: "#2d6b35",
-          color: "#e8d5a3",
+          backgroundColor: "#ffffff",
+          borderColor: "#E5E2D4",
+          color: "#154D31",
         }}
       >
         {WAIVER_TEXT}
@@ -225,9 +225,9 @@ export function WaiverForm({
       {!scrolledToBottom && (
         <p
           className="text-xs italic text-center"
-          style={{ color: "#c4973a" }}
+          style={{ color: "#C6A04B" }}
         >
-          ↓ Scroll down to read the full waiver before signing
+          â†“ Scroll down to read the full waiver before signing
         </p>
       )}
 
@@ -254,7 +254,7 @@ export function WaiverForm({
       <div>
         <label
           className="block text-sm font-medium mb-1.5"
-          style={{ color: "#e8d5a3" }}
+          style={{ color: "#154D31" }}
         >
           {isRep
             ? "Type your (the representative's) full legal name to sign"
@@ -293,13 +293,13 @@ export function WaiverForm({
       >
         {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
         {submitting
-          ? "Saving…"
+          ? "Savingâ€¦"
           : canSign
           ? "I Agree and Continue"
           : `${[check1, check2, check3].filter(Boolean).length}/3 acknowledged`}
       </button>
 
-      <p className="text-xs text-center" style={{ color: "#6ab04c" }}>
+      <p className="text-xs text-center" style={{ color: "#4a7a56" }}>
         This is a one-time waiver. Once signed it applies to all future
         orders.
       </p>
@@ -325,12 +325,12 @@ function CheckboxRow({
     >
       <span className="mt-0.5 shrink-0">
         {checked ? (
-          <CheckSquare className="w-5 h-5" style={{ color: "#c4973a" }} />
+          <CheckSquare className="w-5 h-5" style={{ color: "#C6A04B" }} />
         ) : (
-          <Square className="w-5 h-5" style={{ color: "#6ab04c" }} />
+          <Square className="w-5 h-5" style={{ color: "#4a7a56" }} />
         )}
       </span>
-      <span className="text-sm leading-relaxed" style={{ color: "#e8d5a3" }}>
+      <span className="text-sm leading-relaxed" style={{ color: "#154D31" }}>
         {label}
       </span>
     </button>

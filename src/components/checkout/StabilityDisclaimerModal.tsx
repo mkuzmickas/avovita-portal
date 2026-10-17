@@ -5,7 +5,7 @@ import { AlertTriangle, Phone } from "lucide-react";
 interface StabilityDisclaimerModalProps {
   /** Names of stability-constrained tests in this order. */
   constrainedTestNames: string[];
-  /** Called when customer acknowledges — unlocks the booking iframe. */
+  /** Called when customer acknowledges â€” unlocks the booking iframe. */
   onAcknowledge: () => void;
 }
 
@@ -14,7 +14,7 @@ interface StabilityDisclaimerModalProps {
  * stability windows. Forces acknowledgment before the FloLabs
  * scheduling iframe loads.
  *
- * Not dismissible via X or backdrop click — customer must click
+ * Not dismissible via X or backdrop click â€” customer must click
  * "I understand" to proceed.
  */
 export function StabilityDisclaimerModal({
@@ -30,7 +30,7 @@ export function StabilityDisclaimerModal({
     >
       <div
         className="w-full max-w-lg rounded-2xl border p-6"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
       >
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
@@ -38,12 +38,12 @@ export function StabilityDisclaimerModal({
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
             style={{
               backgroundColor: "rgba(217, 169, 57, 0.15)",
-              borderColor: "#d4a84a",
+              borderColor: "#D6AF5B",
             }}
           >
             <AlertTriangle
               className="w-5 h-5"
-              style={{ color: "#d4a84a" }}
+              style={{ color: "#D6AF5B" }}
             />
           </div>
           <h2
@@ -58,7 +58,7 @@ export function StabilityDisclaimerModal({
         </div>
 
         {/* Body */}
-        <div className="space-y-3 text-sm" style={{ color: "#e8d5a3" }}>
+        <div className="space-y-3 text-sm" style={{ color: "#154D31" }}>
           <p>
             Your order includes{" "}
             <strong style={{ color: "#ffffff" }}>{testList}</strong>. These
@@ -67,7 +67,7 @@ export function StabilityDisclaimerModal({
           <p>
             To make sure your samples arrive at the lab within their viability
             range, please select a collection appointment{" "}
-            <strong style={{ color: "#c4973a" }}>
+            <strong style={{ color: "#C6A04B" }}>
               between Saturday and Tuesday
             </strong>{" "}
             in the scheduling calendar that follows. We ship samples every
@@ -76,7 +76,7 @@ export function StabilityDisclaimerModal({
             window.
           </p>
           <p>
-            If no Saturday–Tuesday slots work for your schedule, please call us
+            If no Saturdayâ€“Tuesday slots work for your schedule, please call us
             and we&apos;ll work with you directly.
           </p>
         </div>
@@ -87,17 +87,17 @@ export function StabilityDisclaimerModal({
             type="button"
             onClick={onAcknowledge}
             className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-colors"
-            style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+            style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
           >
-            I understand — continue to booking
+            I understand â€” continue to booking
           </button>
           <a
             href="tel:+18552868482"
             className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold border transition-colors"
             style={{
               backgroundColor: "transparent",
-              borderColor: "#2d6b35",
-              color: "#e8d5a3",
+              borderColor: "#E5E2D4",
+              color: "#154D31",
             }}
           >
             <Phone className="w-4 h-4" />

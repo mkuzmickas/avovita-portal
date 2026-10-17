@@ -8,7 +8,7 @@ import { RepeatClientProvider } from "@/components/account/RepeatClientContext";
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
 const SITE_NAME = "AvoVita Wellness";
-const TITLE = "AvoVita Wellness — Private Lab Testing Calgary";
+const TITLE = "AvoVita Wellness â€” Private Lab Testing Calgary";
 const DESCRIPTION =
   "Private blood testing in Calgary. In-home specimen collection by FloLabs. Results delivered securely online.";
 
@@ -82,11 +82,11 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <meta name="theme-color" content="#0a1a0d" />
+        <meta name="theme-color" content="#F7F6F0" />
       </head>
       <body
         className="min-h-full flex flex-col antialiased"
-        style={{ backgroundColor: "#0a1a0d", color: "#e8d5a3" }}
+        style={{ backgroundColor: "#ffffff", color: "#154D31" }}
       >
         <RepeatClientProvider>
           {/* AnalyticsProvider outside CartProvider so CartContext

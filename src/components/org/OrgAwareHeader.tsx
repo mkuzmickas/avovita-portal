@@ -29,9 +29,14 @@ export function OrgAwareHeader({
   const baseClass = transparent
     ? "absolute top-0 left-0 right-0 z-20"
     : "border-b";
+  // Nav bar stays dark forest under the new ivory palette â€” per the
+  // Oct 2026 "lighter premium healthcare" direction the header /
+  // footer bands remain forest (#092819) while the main page bg
+  // becomes ivory. Pinning the hex here before the global sweep so
+  // the find-replace doesn't drag it into white.
   const baseStyle = transparent
     ? { backgroundColor: "transparent" }
-    : { backgroundColor: "#0f2614", borderColor: "#1a3d22" };
+    : { backgroundColor: "#092819", borderColor: "#092819" };
 
   return (
     <header className={baseClass} style={baseStyle}>
@@ -43,7 +48,7 @@ export function OrgAwareHeader({
             <DefaultBrandMark />
           )}
         </Link>
-        {/* Public site nav — only on AvoVita-direct pages (not org routes) */}
+        {/* Public site nav â€” only on AvoVita-direct pages (not org routes) */}
         {!org && !transparent && <PublicNav />}
 
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
@@ -60,9 +65,9 @@ function DefaultBrandMark() {
     <>
       <div
         className="w-9 h-9 rounded-lg flex items-center justify-center border shrink-0"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        style={{ backgroundColor: "#154d31", borderColor: "#154d31" }}
       >
-        <Leaf className="w-5 h-5" style={{ color: "#8dc63f" }} />
+        <Leaf className="w-5 h-5" style={{ color: "#88d45d" }} />
       </div>
       <span
         className="font-heading text-xl font-semibold truncate"
@@ -77,10 +82,12 @@ function DefaultBrandMark() {
   );
 }
 
+// Supplements + Resources removed from the public nav Oct 2026 (Mike):
+// the catalog is lab tests only, supplements still work in the
+// invoicing module (admin-added line items on client invoices) but
+// are no longer part of the user-driven checkout experience.
 const NAV_ITEMS = [
   { href: "/tests", label: "Lab Tests" },
-  { href: "/supplements", label: "Supplements" },
-  { href: "/resources", label: "Resources" },
 ];
 
 function PublicNav() {
@@ -95,8 +102,9 @@ function PublicNav() {
             href={href}
             className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
             style={{
-              color: isActive ? "#c4973a" : "#e8d5a3",
-              backgroundColor: isActive ? "rgba(196,151,58,0.1)" : "transparent",
+              // Dark nav bar bg → white text with gold active state.
+              color: isActive ? "#C6A04B" : "#F7F6F0",
+              backgroundColor: isActive ? "rgba(198,160,75,0.12)" : "transparent",
             }}
           >
             {label}
@@ -156,12 +164,12 @@ function OrgBrandMark({
         <p
           className="text-[10px] sm:text-xs"
           style={{
-            color: "#e8d5a3",
+            color: "#154D31",
             letterSpacing: "0.05em",
           }}
         >
           Powered by{" "}
-          <span style={{ color: "#c4973a", fontWeight: 600 }}>
+          <span style={{ color: "#C6A04B", fontWeight: 600 }}>
             AvoVita Wellness
           </span>
         </p>

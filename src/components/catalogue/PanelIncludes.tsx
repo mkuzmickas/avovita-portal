@@ -31,7 +31,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
     return (
       <div
         className="mb-3 rounded-lg border overflow-hidden"
-        style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
       >
         <button
           type="button"
@@ -40,7 +40,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
             setOpen((v) => !v);
           }}
           className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold"
-          style={{ color: "#c4973a" }}
+          style={{ color: "#C6A04B" }}
           aria-expanded={open}
         >
           <span>Includes {panelTests.length} tests</span>
@@ -74,7 +74,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
   return (
     <div
       className="rounded-xl border p-4"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <h4
         className="font-heading text-lg font-semibold mb-3"
@@ -83,7 +83,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
-        What&apos;s <span style={{ color: "#c4973a" }}>Included</span>
+        What&apos;s <span style={{ color: "#C6A04B" }}>Included</span>
       </h4>
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
         {panelTests.map((t, i) => (
@@ -106,7 +106,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
   );
 }
 
-// ─── Tuesday collection notice ──────────────────────────────────────
+// â”€â”€â”€ Tuesday collection notice â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function TuesdayNotice() {
   return (
@@ -114,16 +114,16 @@ function TuesdayNotice() {
       className="flex items-start gap-2 mt-3 rounded-lg border px-3 py-2 text-xs"
       style={{
         backgroundColor: "rgba(196, 151, 58, 0.08)",
-        borderColor: "#c4973a",
-        color: "#e8d5a3",
+        borderColor: "#C6A04B",
+        color: "#154D31",
       }}
     >
       <AlertTriangle
         className="w-3.5 h-3.5 shrink-0 mt-0.5"
-        style={{ color: "#c4973a" }}
+        style={{ color: "#C6A04B" }}
       />
       <p>
-        <strong style={{ color: "#c4973a" }}>
+        <strong style={{ color: "#C6A04B" }}>
           Tuesday morning collection required.
         </strong>{" "}
         This panel contains Potassium, which must ship same-day to the

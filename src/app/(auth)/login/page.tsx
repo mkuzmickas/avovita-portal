@@ -16,7 +16,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") ?? "/portal";
   const msg = searchParams.get("msg");
-  // Contextual info banner — set by callers like the shipping console's
+  // Contextual info banner â€” set by callers like the shipping console's
   // "Back to Portal" button when a non-admin visitor tries to reach an
   // admin-only route. Distinct from `error` (auth failure) so it can
   // coexist without visual conflict.
@@ -62,8 +62,8 @@ function LoginForm() {
           className="flex items-start gap-2 p-3 rounded-lg text-sm border"
           style={{
             backgroundColor: "rgba(196, 151, 58, 0.12)",
-            borderColor: "#c4973a",
-            color: "#c4973a",
+            borderColor: "#C6A04B",
+            color: "#C6A04B",
           }}
         >
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -73,7 +73,7 @@ function LoginForm() {
       <div>
         <label
           className="block text-sm font-medium mb-1.5"
-          style={{ color: "#e8d5a3" }}
+          style={{ color: "#154D31" }}
         >
           Email
         </label>
@@ -90,13 +90,13 @@ function LoginForm() {
 
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="block text-sm font-medium" style={{ color: "#e8d5a3" }}>
+          <label className="block text-sm font-medium" style={{ color: "#154D31" }}>
             Password
           </label>
           <Link
             href="/forgot-password"
             className="text-xs"
-            style={{ color: "#6ab04c" }}
+            style={{ color: "#4a7a56" }}
           >
             Forgot password?
           </Link>
@@ -107,7 +107,7 @@ function LoginForm() {
           required
           autoComplete="current-password"
           className="mf-input"
-          placeholder="••••••••"
+          placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
         />
       </div>
 
@@ -134,9 +134,9 @@ function LoginForm() {
         Sign In
       </button>
 
-      <p className="text-center text-sm" style={{ color: "#e8d5a3" }}>
+      <p className="text-center text-sm" style={{ color: "#154D31" }}>
         Don&apos;t have an account?{" "}
-        <Link href="/tests" className="font-medium" style={{ color: "#c4973a" }}>
+        <Link href="/tests" className="font-medium" style={{ color: "#C6A04B" }}>
           Browse tests to get started
         </Link>
       </p>
@@ -148,16 +148,16 @@ export default function LoginPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#0a1a0d" }}
+      style={{ backgroundColor: "#ffffff" }}
     >
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
-            <Leaf className="w-7 h-7" style={{ color: "#8dc63f" }} />
+            <Leaf className="w-7 h-7" style={{ color: "#88D45D" }} />
           </div>
           <h1
             className="font-heading text-3xl font-semibold"
@@ -168,7 +168,7 @@ export default function LoginPage() {
           >
             AvoVita Wellness
           </h1>
-          <p className="mt-1 text-sm" style={{ color: "#e8d5a3" }}>
+          <p className="mt-1 text-sm" style={{ color: "#154D31" }}>
             Sign in to your patient portal
           </p>
         </div>
@@ -176,13 +176,13 @@ export default function LoginPage() {
         {/* Card */}
         <div
           className="rounded-2xl border p-6 sm:p-8"
-          style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <Suspense
             fallback={
               <div
                 className="h-48 animate-pulse rounded-lg"
-                style={{ backgroundColor: "#0f2614" }}
+                style={{ backgroundColor: "#F7F6F0" }}
               />
             }
           >
@@ -190,8 +190,8 @@ export default function LoginPage() {
           </Suspense>
         </div>
 
-        <p className="text-center text-xs mt-6" style={{ color: "#6ab04c" }}>
-          Protected by Alberta PIPA · AvoVita Wellness
+        <p className="text-center text-xs mt-6" style={{ color: "#4a7a56" }}>
+          Protected by Alberta PIPA Â· AvoVita Wellness
         </p>
       </div>
     </div>

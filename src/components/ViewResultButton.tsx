@@ -46,13 +46,13 @@ export function ViewResultButton({ resultId, isNew }: ViewResultButtonProps) {
       style={
         isNew
           ? {
-              backgroundColor: "#c4973a",
-              color: "#0a1a0d",
+              backgroundColor: "#C6A04B",
+              color: "#ffffff",
             }
           : {
               backgroundColor: "transparent",
-              color: "#e8d5a3",
-              border: "1px solid #2d6b35",
+              color: "#154D31",
+              border: "1px solid #E5E2D4",
             }
       }
     >

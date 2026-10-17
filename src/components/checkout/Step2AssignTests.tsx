@@ -138,7 +138,7 @@ export function Step2AssignTests({
 
   // Continue rules:
   //   - every test in the cart has at least one person checked (no
-  //     orphan rows — a test with zero people doesn't make sense)
+  //     orphan rows â€” a test with zero people doesn't make sense)
   //   - every person has at least one test assigned to them
   const peopleWithoutTests = peopleIndices.filter(
     (idx) => (assignmentsByPerson.get(idx)?.length ?? 0) === 0,
@@ -149,7 +149,7 @@ export function Step2AssignTests({
   const canContinue =
     testsWithoutAnyone.length === 0 && peopleWithoutTests.length === 0;
 
-  // Cart subtotal — same value used by the order summary sidebar so the
+  // Cart subtotal â€” same value used by the order summary sidebar so the
   // step body and sidebar always agree.
   const cartSubtotal = cart.reduce(
     (s, c) => s + c.price_cad * c.quantity,
@@ -157,14 +157,14 @@ export function Step2AssignTests({
   );
   // Discount preview based on cart line count so it reflects the true
   // billable lines (a Vitamin D for two people counts as two lines).
-  // Repeat-client gated — guests + first-timers see full subtotal.
+  // Repeat-client gated â€” guests + first-timers see full subtotal.
   const repeatClient = useRepeatClient();
   const discount = computeDiscount(cart.length, repeatClient.eligible);
   const cartAfterDiscount = cartSubtotal - discount.total;
 
   /**
    * Toggle a (test_id, person_index) pair. The cart row count for a
-   * test always equals the number of checked people on that test —
+   * test always equals the number of checked people on that test â€”
    * checking adds a row + assignment, unchecking removes both. Uses
    * functional updates so rapid clicks across different tests can't
    * stomp each other.
@@ -177,7 +177,7 @@ export function Step2AssignTests({
     const existing = assignmentByTestPerson.get(key);
 
     if (existing) {
-      // UNCHECK — drop the cart row first, then the assignment. Order
+      // UNCHECK â€” drop the cart row first, then the assignment. Order
       // doesn't matter for correctness; React batches both setStates
       // into one render.
       removeCartItem(cartIdForTest(existing.instance_id));
@@ -187,7 +187,7 @@ export function Step2AssignTests({
       return;
     }
 
-    // CHECK — clone a new cart row and create the assignment.
+    // CHECK â€” clone a new cart row and create the assignment.
     const newInstanceId = newCloneInstanceId(group.test_id);
     addCartItem({
       ...group.template,
@@ -206,7 +206,7 @@ export function Step2AssignTests({
     ]);
   };
 
-  /** Right-column X — same effect as unchecking that person's box on
+  /** Right-column X â€” same effect as unchecking that person's box on
    *  the left card for this assignment. */
   const handleUnassign = (entry: PersonAssignmentEntry) => {
     removeCartItem(cartIdForTest(entry.instance_id));
@@ -215,11 +215,11 @@ export function Step2AssignTests({
     );
   };
 
-  // ─── "Same tests as me" ───────────────────────────────────────────
+  // â”€â”€â”€ "Same tests as me" â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // The dominant real pattern for a 2-person booking is a couple
   // ordering identical panels. Copying person 1's assignment set onto
   // person 2 in one click removes ~N checkbox clicks (N = number of
-  // tests) at what's otherwise the most repetitive part of checkout —
+  // tests) at what's otherwise the most repetitive part of checkout â€”
   // then only name / DOB / sex / consent remain on Step 3.
   //
   // Only surfaces when personCount === 2 AND person 2 is missing at
@@ -257,13 +257,13 @@ export function Step2AssignTests({
   return (
     <div
       className="rounded-2xl border p-5 sm:p-7"
-      style={{ backgroundColor: "#1a3d22", borderColor: "#2d6b35" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <Users className="w-5 h-5" style={{ color: "#c4973a" }} />
+        <Users className="w-5 h-5" style={{ color: "#C6A04B" }} />
         <p
           className="text-xs uppercase tracking-wider font-semibold"
-          style={{ color: "#c4973a" }}
+          style={{ color: "#C6A04B" }}
         >
           Step 2 of 4
         </p>
@@ -276,22 +276,22 @@ export function Step2AssignTests({
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
-        Assign tests <span style={{ color: "#c4973a" }}>to people</span>
+        Assign tests <span style={{ color: "#C6A04B" }}>to people</span>
       </h1>
 
       <div
         className="flex items-start gap-2 rounded-lg border px-4 py-3 mb-4"
-        style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+        style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
       >
-        <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#c4973a" }} />
-        <p className="text-xs leading-relaxed" style={{ color: "#e8d5a3" }}>
+        <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#C6A04B" }} />
+        <p className="text-xs leading-relaxed" style={{ color: "#154D31" }}>
           Check the box for each person who should get this test. You can
-          assign the same test to more than one person — each person on
+          assign the same test to more than one person â€” each person on
           the checkbox row will be billed and resulted separately.
         </p>
       </div>
 
-      {/* "Same tests as me" — one click mirrors person 1's tests onto
+      {/* "Same tests as me" â€” one click mirrors person 1's tests onto
           person 2. Only when there's actually work to do (person 2
           missing at least one test person 1 has). Dominant real pattern
           for 2-person bookings is a couple ordering identical panels. */}
@@ -300,12 +300,12 @@ export function Step2AssignTests({
           className="flex items-start gap-3 rounded-lg border px-4 py-3 mb-4"
           style={{
             backgroundColor: "rgba(196, 151, 58, 0.08)",
-            borderColor: "#c4973a",
+            borderColor: "#C6A04B",
           }}
         >
-          <Copy className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#c4973a" }} />
+          <Copy className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#C6A04B" }} />
           <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <p className="text-xs leading-relaxed" style={{ color: "#e8d5a3" }}>
+            <p className="text-xs leading-relaxed" style={{ color: "#154D31" }}>
               Ordering the same tests for both people? One click assigns
               your selection to person 2.
             </p>
@@ -330,7 +330,7 @@ export function Step2AssignTests({
 
       {/* Two columns desktop, stacked mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* LEFT — tests in cart with per-person checkboxes */}
+        {/* LEFT â€” tests in cart with per-person checkboxes */}
         <div>
           <h3
             className="font-heading text-lg font-semibold mb-3 flex items-center gap-2"
@@ -343,9 +343,9 @@ export function Step2AssignTests({
             <span
               className="text-xs font-medium px-2 py-0.5 rounded-full border"
               style={{
-                backgroundColor: "#0f2614",
-                borderColor: "#2d6b35",
-                color: "#e8d5a3",
+                backgroundColor: "#F7F6F0",
+                borderColor: "#E5E2D4",
+                color: "#154D31",
                 fontFamily: '"DM Sans", sans-serif',
               }}
             >
@@ -356,9 +356,9 @@ export function Step2AssignTests({
           {testGroups.length === 0 ? (
             <div
               className="rounded-lg border px-4 py-6 text-center"
-              style={{ backgroundColor: "#0f2614", borderColor: "#2d6b35" }}
+              style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
             >
-              <p className="text-xs" style={{ color: "#c4973a" }}>
+              <p className="text-xs" style={{ color: "#C6A04B" }}>
                 No tests in your cart yet.
               </p>
             </div>
@@ -374,8 +374,8 @@ export function Step2AssignTests({
                     key={group.test_id}
                     className="rounded-lg border p-3"
                     style={{
-                      backgroundColor: "#0f2614",
-                      borderColor: orphan ? "#c4973a" : "#2d6b35",
+                      backgroundColor: "#F7F6F0",
+                      borderColor: orphan ? "#C6A04B" : "#E5E2D4",
                     }}
                   >
                     <div className="flex items-start gap-3 mb-3">
@@ -388,10 +388,10 @@ export function Step2AssignTests({
                         </p>
                         <p
                           className="text-xs mt-0.5"
-                          style={{ color: "#6ab04c" }}
+                          style={{ color: "#4a7a56" }}
                         >
-                          {group.lab_name} ·{" "}
-                          <span style={{ color: "#c4973a", fontWeight: 600 }}>
+                          {group.lab_name} Â·{" "}
+                          <span style={{ color: "#C6A04B", fontWeight: 600 }}>
                             {formatCurrency(group.price_cad)} per person
                           </span>
                         </p>
@@ -401,7 +401,7 @@ export function Step2AssignTests({
                     <div>
                       <p
                         className="text-[11px] uppercase tracking-wider font-semibold mb-2"
-                        style={{ color: "#c4973a" }}
+                        style={{ color: "#C6A04B" }}
                       >
                         Assign to:
                       </p>
@@ -416,10 +416,10 @@ export function Step2AssignTests({
                               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border transition-colors"
                               style={{
                                 backgroundColor: checked
-                                  ? "#1f4a28"
+                                  ? "#EFECE0"
                                   : "transparent",
-                                borderColor: checked ? "#c4973a" : "#2d6b35",
-                                color: checked ? "#ffffff" : "#e8d5a3",
+                                borderColor: checked ? "#C6A04B" : "#E5E2D4",
+                                color: checked ? "#ffffff" : "#154D31",
                               }}
                             >
                               <input
@@ -435,9 +435,9 @@ export function Step2AssignTests({
                                 className="inline-block w-3.5 h-3.5 rounded-sm border flex items-center justify-center"
                                 style={{
                                   backgroundColor: checked
-                                    ? "#c4973a"
+                                    ? "#C6A04B"
                                     : "transparent",
-                                  borderColor: checked ? "#c4973a" : "#6ab04c",
+                                  borderColor: checked ? "#C6A04B" : "#4a7a56",
                                 }}
                               >
                                 {checked && (
@@ -449,7 +449,7 @@ export function Step2AssignTests({
                                   >
                                     <path
                                       d="M2 6.5L5 9.5L10 3.5"
-                                      stroke="#0a1a0d"
+                                      stroke="#F7F6F0"
                                       strokeWidth="2"
                                       strokeLinecap="round"
                                       strokeLinejoin="round"
@@ -465,7 +465,7 @@ export function Step2AssignTests({
                       {orphan && (
                         <p
                           className="text-[11px] mt-2"
-                          style={{ color: "#c4973a" }}
+                          style={{ color: "#C6A04B" }}
                         >
                           Pick at least one person, or remove this test from
                           your cart.
@@ -479,7 +479,7 @@ export function Step2AssignTests({
           )}
         </div>
 
-        {/* RIGHT — person columns */}
+        {/* RIGHT â€” person columns */}
         <div className="space-y-4">
           {peopleIndices.map((idx) => {
             const items = assignmentsByPerson.get(idx) ?? [];
@@ -489,8 +489,8 @@ export function Step2AssignTests({
                 key={idx}
                 className="rounded-lg border p-4"
                 style={{
-                  backgroundColor: "#0f2614",
-                  borderColor: items.length === 0 ? "#c4973a" : "#2d6b35",
+                  backgroundColor: "#F7F6F0",
+                  borderColor: items.length === 0 ? "#C6A04B" : "#E5E2D4",
                 }}
               >
                 <div className="flex items-center justify-between mb-3">
@@ -505,15 +505,15 @@ export function Step2AssignTests({
                   </h4>
                   <span
                     className="text-xs font-semibold"
-                    style={{ color: "#c4973a" }}
+                    style={{ color: "#C6A04B" }}
                   >
                     {formatCurrency(subtotal)}
                   </span>
                 </div>
 
                 {items.length === 0 ? (
-                  <p className="text-xs italic" style={{ color: "#c4973a" }}>
-                    No tests assigned yet — check this person on one of the
+                  <p className="text-xs italic" style={{ color: "#C6A04B" }}>
+                    No tests assigned yet â€” check this person on one of the
                     test cards to add a copy.
                   </p>
                 ) : (
@@ -523,8 +523,8 @@ export function Step2AssignTests({
                         key={entry.instance_id}
                         className="flex items-center gap-2 px-3 py-2 rounded-md border"
                         style={{
-                          backgroundColor: "#1a3d22",
-                          borderColor: "#2d6b35",
+                          backgroundColor: "#FFFFFF",
+                          borderColor: "#E5E2D4",
                         }}
                       >
                         <div className="flex-1 min-w-0">
@@ -536,7 +536,7 @@ export function Step2AssignTests({
                           </p>
                           <p
                             className="text-[10px]"
-                            style={{ color: "#6ab04c" }}
+                            style={{ color: "#4a7a56" }}
                           >
                             {formatCurrency(entry.price_cad)}
                           </p>
@@ -545,7 +545,7 @@ export function Step2AssignTests({
                           type="button"
                           onClick={() => handleUnassign(entry)}
                           className="p-1 rounded-md transition-colors"
-                          style={{ color: "#6ab04c" }}
+                          style={{ color: "#4a7a56" }}
                           aria-label={`Remove ${entry.test_name} from ${personLabel(idx)}`}
                           title="Remove this test from this person"
                         >
@@ -564,16 +564,16 @@ export function Step2AssignTests({
       {/* Tests subtotal + nav */}
       <div
         className="mt-6 pt-5 border-t space-y-1"
-        style={{ borderColor: "#2d6b35" }}
+        style={{ borderColor: "#E5E2D4" }}
       >
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium" style={{ color: "#e8d5a3" }}>
+          <span className="text-sm font-medium" style={{ color: "#154D31" }}>
             Tests subtotal ({cart.length}{" "}
             {cart.length === 1 ? "line" : "lines"})
           </span>
           <span
             className="text-sm font-semibold"
-            style={{ color: "#e8d5a3" }}
+            style={{ color: "#154D31" }}
           >
             {formatCurrency(cartSubtotal)}
           </span>
@@ -582,17 +582,17 @@ export function Step2AssignTests({
           <>
             <div
               className="flex items-center justify-between text-sm font-medium"
-              style={{ color: "#8dc63f" }}
+              style={{ color: "#88D45D" }}
             >
               <span>
-                Repeat-client discount ({discount.line_count} × $
+                Repeat-client discount ({discount.line_count} Ã— $
                 {discount.per_line.toFixed(2)})
               </span>
-              <span>−{formatCurrency(discount.total)}</span>
+              <span>âˆ’{formatCurrency(discount.total)}</span>
             </div>
             <div
               className="flex items-center justify-between pt-2 mt-1 border-t"
-              style={{ borderColor: "#2d6b35" }}
+              style={{ borderColor: "#E5E2D4" }}
             >
               <span
                 className="text-sm font-semibold"
@@ -602,7 +602,7 @@ export function Step2AssignTests({
               </span>
               <span
                 className="text-lg font-semibold"
-                style={{ color: "#c4973a" }}
+                style={{ color: "#C6A04B" }}
               >
                 {formatCurrency(cartAfterDiscount)}
               </span>
@@ -616,8 +616,8 @@ export function Step2AssignTests({
             className="flex items-start gap-2 rounded-lg border px-4 py-3 mb-4 text-sm"
             style={{
               backgroundColor: "rgba(196, 151, 58, 0.1)",
-              borderColor: "#c4973a",
-              color: "#c4973a",
+              borderColor: "#C6A04B",
+              color: "#C6A04B",
             }}
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -631,7 +631,7 @@ export function Step2AssignTests({
               )}
               {peopleWithoutTests.length > 0 && (
                 <>
-                  Each person needs at least one test —{" "}
+                  Each person needs at least one test â€”{" "}
                   {peopleWithoutTests.map((i) => personLabel(i)).join(", ")}{" "}
                   {peopleWithoutTests.length === 1 ? "is" : "are"} still empty.
                 </>

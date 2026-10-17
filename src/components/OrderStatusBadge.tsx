@@ -14,8 +14,8 @@ const statusConfig: Record<
   pending: {
     label: "Pending",
     bg: "rgba(196, 151, 58, 0.125)",
-    text: "#c4973a",
-    border: "#c4973a",
+    text: "#C6A04B",
+    border: "#C6A04B",
   },
   confirmed: {
     label: "Confirmed",
@@ -26,14 +26,14 @@ const statusConfig: Record<
   scheduled: {
     label: "Scheduled",
     bg: "rgba(196, 151, 58, 0.125)",
-    text: "#c4973a",
-    border: "#c4973a",
+    text: "#C6A04B",
+    border: "#C6A04B",
   },
   collected: {
     label: "Collected",
     bg: "rgba(141, 198, 63, 0.125)",
-    text: "#8dc63f",
-    border: "#8dc63f",
+    text: "#88D45D",
+    border: "#88D45D",
   },
   shipped: {
     label: "Shipped",
@@ -44,14 +44,14 @@ const statusConfig: Record<
   resulted: {
     label: "Resulted",
     bg: "rgba(141, 198, 63, 0.125)",
-    text: "#8dc63f",
-    border: "#8dc63f",
+    text: "#88D45D",
+    border: "#88D45D",
   },
   complete: {
     label: "Complete",
     bg: "rgba(45, 107, 53, 0.2)",
-    text: "#8dc63f",
-    border: "#2d6b35",
+    text: "#88D45D",
+    border: "#E5E2D4",
   },
   cancelled: {
     label: "Cancelled",

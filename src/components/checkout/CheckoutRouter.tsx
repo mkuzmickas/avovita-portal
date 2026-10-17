@@ -16,11 +16,11 @@ interface CheckoutRouterProps {
  * Composition-aware checkout router. Reads cart composition once and
  * renders the appropriate checkout variant:
  *
- *   has_tests     → TestCheckout (existing CheckoutClient) with
+ *   has_tests     â†’ TestCheckout (existing CheckoutClient) with
  *                    conditional supplement/resource step injection
- *   supplements   → SupplementCheckout (simplified flow)
- *   resources     → ResourceCheckout (minimal flow — email only)
- *   empty cart    → redirect to /tests (fail-safe)
+ *   supplements   â†’ SupplementCheckout (simplified flow)
+ *   resources     â†’ ResourceCheckout (minimal flow â€” email only)
+ *   empty cart    â†’ redirect to /tests (fail-safe)
  *
  * Unknown line_types are ignored (fail closed to test-only behavior).
  */
@@ -32,12 +32,12 @@ export function CheckoutRouter({
   const router = useRouter();
   const searchParams = useSearchParams();
   // When ?quote=AVO-... is present the cart is expected to be empty on
-  // first load — CheckoutClient's deep-link effect will populate it
+  // first load â€” CheckoutClient's deep-link effect will populate it
   // from the quote. Suppress the empty-cart redirect in that case so
   // that effect gets a chance to run.
   const hasQuoteParam = searchParams.get("quote") !== null;
 
-  // Cart composition — fail-safe: unknown line_types are ignored
+  // Cart composition â€” fail-safe: unknown line_types are ignored
   const hasTests = cart.some((i) => i.line_type === "test");
   const hasSupplements = cart.some((i) => i.line_type === "supplement");
   const hasResources = cart.some((i) => i.line_type === "resource");
@@ -54,10 +54,10 @@ export function CheckoutRouter({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#0a1a0d" }}
+        style={{ backgroundColor: "#ffffff" }}
       >
-        <p className="text-sm" style={{ color: "#6ab04c" }}>
-          Loading checkout…
+        <p className="text-sm" style={{ color: "#4a7a56" }}>
+          Loading checkoutâ€¦
         </p>
       </div>
     );
@@ -67,16 +67,16 @@ export function CheckoutRouter({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#0a1a0d" }}
+        style={{ backgroundColor: "#ffffff" }}
       >
-        <p className="text-sm" style={{ color: "#6ab04c" }}>
-          Redirecting to catalogue…
+        <p className="text-sm" style={{ color: "#4a7a56" }}>
+          Redirecting to catalogueâ€¦
         </p>
       </div>
     );
   }
 
-  // ?quote= deep-link → always route to CheckoutClient so its effect
+  // ?quote= deep-link â†’ always route to CheckoutClient so its effect
   // can resolve the quote and populate the cart.
   if (hasQuoteParam) {
     return (
@@ -91,7 +91,7 @@ export function CheckoutRouter({
 
   // Route by composition
   if (hasTests) {
-    // Tests present (with or without supplements/resources) → full test flow
+    // Tests present (with or without supplements/resources) â†’ full test flow
     return (
       <CheckoutClient
         accountUserId={accountUserId}
@@ -114,7 +114,7 @@ export function CheckoutRouter({
   }
 
   if (hasResources) {
-    // Resources only — minimal flow
+    // Resources only â€” minimal flow
     return (
       <ResourceCheckout
         accountUserId={accountUserId}
@@ -123,7 +123,7 @@ export function CheckoutRouter({
     );
   }
 
-  // Fallback: cart has items with unknown line_type → treat as tests
+  // Fallback: cart has items with unknown line_type â†’ treat as tests
   return (
     <CheckoutClient
       accountUserId={accountUserId}

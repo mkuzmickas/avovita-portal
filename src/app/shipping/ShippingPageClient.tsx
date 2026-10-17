@@ -68,7 +68,7 @@ function TrackingStatusChip({
       const data = await res.json();
       if (!res.ok || data.ok === false) {
         setRefreshError(
-          [data.error ?? "Refresh failed.", data.hint].filter(Boolean).join(" — "),
+          [data.error ?? "Refresh failed.", data.hint].filter(Boolean).join(" â€” "),
         );
         return;
       }
@@ -113,12 +113,12 @@ function TrackingStatusChip({
           target="_blank"
           rel="noopener"
           style={{
-            color: "#c4973a",
+            color: "#C6A04B",
             fontWeight: 600,
             textDecoration: "underline",
           }}
         >
-          Track ↗
+          Track â†—
         </a>
         <button
           type="button"
@@ -128,14 +128,14 @@ function TrackingStatusChip({
             background: "none",
             border: 0,
             padding: 0,
-            color: "#6ab04c",
+            color: "#4a7a56",
             cursor: busy ? "wait" : "pointer",
             fontSize: "11px",
             fontFamily: "inherit",
             textDecoration: "underline",
           }}
         >
-          {busy ? "Refreshing…" : "Refresh"}
+          {busy ? "Refreshingâ€¦" : "Refresh"}
         </button>
       </div>
       {refreshError && (
@@ -155,10 +155,10 @@ function TrackingStatusChip({
 }
 
 /**
- * Admin-only ✕ Remove button on each row of Recent Shipments.
+ * Admin-only âœ• Remove button on each row of Recent Shipments.
  * Deletes the local manual_shipments row via DELETE
  * /api/shipping/manual-shipments/[id]. Does NOT void the label at
- * FedEx — if the label was never used FedEx charges nothing; if it
+ * FedEx â€” if the label was never used FedEx charges nothing; if it
  * WAS used, cancel inside FedEx first. The confirm dialog surfaces
  * both facts so a careless click doesn't nuke a real shipment.
  */
@@ -176,9 +176,9 @@ function RemoveShipmentButton({
     if (busy) return;
     const ok = window.confirm(
       `Remove shipment ${shipment.tracking_number} from the Recent Shipments list?\n\n` +
-        "This only clears the local audit row. It does NOT void the FedEx label — " +
+        "This only clears the local audit row. It does NOT void the FedEx label â€” " +
         "if the label was never used FedEx charges nothing for it. If the shipment " +
-        "actually went out, do NOT delete this row — the record is your reconciliation " +
+        "actually went out, do NOT delete this row â€” the record is your reconciliation " +
         "trail.",
     );
     if (!ok) return;
@@ -211,8 +211,8 @@ function RemoveShipmentButton({
         title={`Remove ${shipment.tracking_number} from Recent Shipments`}
         style={{
           backgroundColor: "transparent",
-          color: busy ? "#6ab04c" : "#e05252",
-          border: `1px solid ${busy ? "#6ab04c" : "#e05252"}`,
+          color: busy ? "#4a7a56" : "#e05252",
+          border: `1px solid ${busy ? "#4a7a56" : "#e05252"}`,
           padding: "4px 10px",
           borderRadius: "6px",
           fontSize: "11px",
@@ -222,7 +222,7 @@ function RemoveShipmentButton({
           opacity: busy ? 0.6 : 1,
         }}
       >
-        {busy ? "Removing…" : "✕ Remove"}
+        {busy ? "Removingâ€¦" : "âœ• Remove"}
       </button>
       {error && (
         <span
@@ -242,21 +242,21 @@ function RemoveShipmentButton({
 
 function statusChipStyle(s: Shipment): React.CSSProperties {
   if (s.delivered_at) {
-    return { backgroundColor: "#8dc63f", color: "#0a1a0d" }; // green
+    return { backgroundColor: "#88D45D", color: "#ffffff" }; // green
   }
   const code = s.tracking_status_code;
-  if (!code) return { backgroundColor: "#3a4a3f", color: "#c4c4c4" }; // grey — no status yet
+  if (!code) return { backgroundColor: "#3a4a3f", color: "#c4c4c4" }; // grey â€” no status yet
   if (code === "DE" || code === "RS" || code === "SE") {
-    return { backgroundColor: "#e05252", color: "#0a1a0d" }; // red — exception
+    return { backgroundColor: "#e05252", color: "#ffffff" }; // red â€” exception
   }
   if (code === "OD") {
-    return { backgroundColor: "#c4973a", color: "#0a1a0d" }; // amber — out for delivery
+    return { backgroundColor: "#C6A04B", color: "#ffffff" }; // amber â€” out for delivery
   }
   if (code === "IT" || code === "PU" || code === "AR" || code === "DP") {
-    return { backgroundColor: "#4a90c2", color: "#0a1a0d" }; // blue — in transit
+    return { backgroundColor: "#4a90c2", color: "#ffffff" }; // blue â€” in transit
   }
   if (code === "OC" || code === "PENDING") {
-    return { backgroundColor: "#3a4a3f", color: "#c4c4c4" }; // grey — label made / awaiting pickup
+    return { backgroundColor: "#3a4a3f", color: "#c4c4c4" }; // grey â€” label made / awaiting pickup
   }
   return { backgroundColor: "#3a4a3f", color: "#c4c4c4" };
 }
@@ -302,7 +302,7 @@ function statusChipSubtext(s: Shipment): string | null {
  *   - Recent shipments table so a shipper can see what they and
  *     others sent today, download labels, get tracking numbers
  *
- * Kept intentionally spare — this is a shipping tool, not a
+ * Kept intentionally spare â€” this is a shipping tool, not a
  * marketing page. No AvoVita header/footer, no auth chrome, no
  * navigation. Fits a warehouse laptop and a phone.
  */
@@ -329,7 +329,7 @@ export function ShippingPageClient({
   } | null>(null);
   const [shipments, setShipments] = useState(recentShipments);
 
-  // ─── Pickup booking state ───────────────────────────────────
+  // â”€â”€â”€ Pickup booking state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const todayCalgaryISO = () => {
     // YYYY-MM-DD in Calgary local time, robust across DST.
     const parts = new Intl.DateTimeFormat("en-CA", {
@@ -364,7 +364,7 @@ export function ShippingPageClient({
     PICKUP_DEFAULTS.closeTime,
   );
 
-  // Manual address entry — used when pickupAddressKey === "__manual__".
+  // Manual address entry â€” used when pickupAddressKey === "__manual__".
   const [manualAddress, setManualAddress] = useState({
     contactName: "",
     companyName: "",
@@ -480,8 +480,8 @@ export function ShippingPageClient({
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: "#0a1a0d",
-        color: "#e8d5a3",
+        backgroundColor: "#ffffff",
+        color: "#154D31",
         padding: "32px 20px",
         fontFamily: "system-ui, sans-serif",
       }}
@@ -505,7 +505,7 @@ export function ShippingPageClient({
                 margin: 0,
               }}
             >
-              AvoVita <span style={{ color: "#c4973a" }}>Shipping</span>
+              AvoVita <span style={{ color: "#C6A04B" }}>Shipping</span>
             </h1>
             <a
               href={
@@ -518,10 +518,10 @@ export function ShippingPageClient({
                 alignItems: "center",
                 gap: "6px",
                 padding: "8px 14px",
-                border: "1px solid #2d6b35",
+                border: "1px solid #E5E2D4",
                 borderRadius: "8px",
-                backgroundColor: "#1a3d22",
-                color: "#e8d5a3",
+                backgroundColor: "#FFFFFF",
+                color: "#154D31",
                 fontSize: "13px",
                 fontWeight: 500,
                 textDecoration: "none",
@@ -529,10 +529,10 @@ export function ShippingPageClient({
                 fontFamily: "inherit",
               }}
             >
-              ← Back to Portal
+              â† Back to Portal
             </a>
           </div>
-          <p style={{ color: "#6ab04c", fontSize: "14px", margin: 0 }}>
+          <p style={{ color: "#4a7a56", fontSize: "14px", margin: 0 }}>
             FedEx label creation for scheduled specimen pickups.
             <span
               style={{
@@ -543,14 +543,14 @@ export function ShippingPageClient({
                 fontWeight: 700,
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
-                backgroundColor: isSandbox ? "#c4973a" : "#8dc63f",
-                color: "#0a1a0d",
+                backgroundColor: isSandbox ? "#C6A04B" : "#88D45D",
+                color: "#ffffff",
               }}
             >
               {isSandbox ? "sandbox" : "production"}
             </span>
             {isSandbox && (
-              <span style={{ color: "#c4973a", marginLeft: "8px" }}>
+              <span style={{ color: "#C6A04B", marginLeft: "8px" }}>
                 No real shipments are being created.
               </span>
             )}
@@ -574,8 +574,8 @@ export function ShippingPageClient({
               onClick={() => handleShip(profile.kind)}
               disabled={busyKind !== null}
               style={{
-                backgroundColor: busyKind === profile.kind ? "#8b6a1e" : "#c4973a",
-                color: "#0a1a0d",
+                backgroundColor: busyKind === profile.kind ? "#8b6a1e" : "#C6A04B",
+                color: "#ffffff",
                 border: 0,
                 borderRadius: "12px",
                 padding: "24px 20px",
@@ -588,7 +588,7 @@ export function ShippingPageClient({
               }}
             >
               <div style={{ fontSize: "20px", marginBottom: "6px" }}>
-                {busyKind === profile.kind ? "Creating label…" : profile.displayLabel}
+                {busyKind === profile.kind ? "Creating labelâ€¦" : profile.displayLabel}
               </div>
               <div
                 style={{
@@ -609,9 +609,9 @@ export function ShippingPageClient({
                   opacity: 0.7,
                 }}
               >
-                → {profile.recipient.company} · {profile.package.weightLb} lb
+                â†’ {profile.recipient.company} Â· {profile.package.weightLb} lb
                 {profile.package.dryIceWeightKg > 0
-                  ? ` · ${profile.package.dryIceWeightKg} kg dry ice`
+                  ? ` Â· ${profile.package.dryIceWeightKg} kg dry ice`
                   : ""}
               </div>
             </button>
@@ -642,24 +642,24 @@ export function ShippingPageClient({
               marginBottom: "24px",
               padding: "16px 18px",
               backgroundColor: "rgba(141,198,63,0.1)",
-              border: "1px solid #8dc63f",
+              border: "1px solid #88D45D",
               borderRadius: "10px",
-              color: "#8dc63f",
+              color: "#88D45D",
               fontSize: "14px",
               lineHeight: 1.6,
             }}
           >
             <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
-              Label created — tracking {lastResult.trackingNumber}
+              Label created â€” tracking {lastResult.trackingNumber}
               {lastResult.environment === "sandbox" && (
                 <span
                   style={{
                     marginLeft: "8px",
-                    color: "#c4973a",
+                    color: "#C6A04B",
                     fontSize: "12px",
                   }}
                 >
-                  (sandbox — not a real label)
+                  (sandbox â€” not a real label)
                 </span>
               )}
             </div>
@@ -667,14 +667,14 @@ export function ShippingPageClient({
               <div
                 style={{
                   fontSize: "13px",
-                  color: "#c4973a",
+                  color: "#C6A04B",
                   fontWeight: 600,
                   marginBottom: "6px",
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
                 }}
               >
-                Pouch checklist — print + assemble:
+                Pouch checklist â€” print + assemble:
               </div>
               <ul style={{ margin: 0, paddingLeft: "20px", lineHeight: 1.7 }}>
                 {lastResult.labelUrl && (
@@ -687,7 +687,7 @@ export function ShippingPageClient({
                     >
                       FedEx label
                     </a>{" "}
-                    — <strong>print {lastResult.labelCopies} copies</strong>{" "}
+                    â€” <strong>print {lastResult.labelCopies} copies</strong>{" "}
                     <span style={{ opacity: 0.7 }}>
                       (1 affixed to box, {lastResult.labelCopies - 1} in pouch)
                     </span>
@@ -703,7 +703,7 @@ export function ShippingPageClient({
                     >
                       {formatDocLabel(d.contentType)}
                     </a>{" "}
-                    — <strong>print {d.copiesToPrint} copies</strong>{" "}
+                    â€” <strong>print {d.copiesToPrint} copies</strong>{" "}
                     <span style={{ opacity: 0.7 }}>(in pouch)</span>
                   </li>
                 ))}
@@ -717,7 +717,7 @@ export function ShippingPageClient({
                     >
                       {d.fileName}
                     </a>{" "}
-                    — <strong>print 1 copy</strong>{" "}
+                    â€” <strong>print 1 copy</strong>{" "}
                     <span style={{ opacity: 0.7 }}>(in pouch)</span>
                   </li>
                 ))}
@@ -731,8 +731,8 @@ export function ShippingPageClient({
           style={{
             marginBottom: "32px",
             padding: "20px",
-            backgroundColor: "#1a3d22",
-            border: "1px solid #2d6b35",
+            backgroundColor: "#FFFFFF",
+            border: "1px solid #E5E2D4",
             borderRadius: "12px",
           }}
         >
@@ -749,7 +749,7 @@ export function ShippingPageClient({
           <p
             style={{
               fontSize: "12px",
-              color: "#6ab04c",
+              color: "#4a7a56",
               margin: "0 0 16px 0",
             }}
           >
@@ -806,7 +806,7 @@ export function ShippingPageClient({
                   {a.displayLabel}
                 </option>
               ))}
-              <option value="__manual__">Other — enter address below</option>
+              <option value="__manual__">Other â€” enter address below</option>
             </select>
           </div>
 
@@ -815,7 +815,7 @@ export function ShippingPageClient({
               style={{
                 marginBottom: "16px",
                 padding: "14px",
-                border: "1px dashed #2d6b35",
+                border: "1px dashed #E5E2D4",
                 borderRadius: "10px",
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
@@ -952,7 +952,7 @@ export function ShippingPageClient({
                 />
                 <label
                   htmlFor="pickup-residential"
-                  style={{ color: "#e8d5a3", fontSize: "13px", cursor: "pointer" }}
+                  style={{ color: "#154D31", fontSize: "13px", cursor: "pointer" }}
                 >
                   Residential address
                 </label>
@@ -965,8 +965,8 @@ export function ShippingPageClient({
             onClick={handleBookPickup}
             disabled={pickupBusy}
             style={{
-              backgroundColor: pickupBusy ? "#8b6a1e" : "#c4973a",
-              color: "#0a1a0d",
+              backgroundColor: pickupBusy ? "#8b6a1e" : "#C6A04B",
+              color: "#ffffff",
               border: 0,
               borderRadius: "10px",
               padding: "14px 20px",
@@ -977,7 +977,7 @@ export function ShippingPageClient({
               width: "100%",
             }}
           >
-            {pickupBusy ? "Booking pickup…" : "Book Pickup"}
+            {pickupBusy ? "Booking pickupâ€¦" : "Book Pickup"}
           </button>
 
           {pickupError && (
@@ -1003,30 +1003,30 @@ export function ShippingPageClient({
                 marginTop: "12px",
                 padding: "12px 16px",
                 backgroundColor: "rgba(141,198,63,0.1)",
-                border: "1px solid #8dc63f",
+                border: "1px solid #88D45D",
                 borderRadius: "8px",
-                color: "#8dc63f",
+                color: "#88D45D",
                 fontSize: "13px",
                 lineHeight: 1.6,
               }}
             >
               <div style={{ fontSize: "15px", fontWeight: 600, marginBottom: "6px" }}>
-                Pickup confirmed — {pickupResult.confirmationCode}
+                Pickup confirmed â€” {pickupResult.confirmationCode}
                 {pickupResult.environment === "sandbox" && (
                   <span
                     style={{
                       marginLeft: "8px",
-                      color: "#c4973a",
+                      color: "#C6A04B",
                       fontSize: "12px",
                     }}
                   >
-                    (sandbox — no courier will actually come)
+                    (sandbox â€” no courier will actually come)
                   </span>
                 )}
               </div>
               <div style={{ opacity: 0.85 }}>
-                {pickupResult.scheduledDate} · {pickupResult.readyTime} –{" "}
-                {pickupResult.closeTime} · {pickupResult.addressLabel}
+                {pickupResult.scheduledDate} Â· {pickupResult.readyTime} â€“{" "}
+                {pickupResult.closeTime} Â· {pickupResult.addressLabel}
               </div>
             </div>
           )}
@@ -1047,7 +1047,7 @@ export function ShippingPageClient({
             </h2>
             <div
               style={{
-                border: "1px solid #2d6b35",
+                border: "1px solid #E5E2D4",
                 borderRadius: "10px",
                 overflow: "hidden",
                 fontSize: "13px",
@@ -1055,7 +1055,7 @@ export function ShippingPageClient({
             >
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ backgroundColor: "#0f2614" }}>
+                  <tr style={{ backgroundColor: "#F7F6F0" }}>
                     <th style={thStyle}>When</th>
                     <th style={thStyle}>Kind</th>
                     <th style={thStyle}>Tracking</th>
@@ -1068,7 +1068,7 @@ export function ShippingPageClient({
                   {shipments.map((s) => (
                     <tr
                       key={s.id}
-                      style={{ borderTop: "1px solid #2d6b35" }}
+                      style={{ borderTop: "1px solid #E5E2D4" }}
                     >
                       <td style={tdStyle}>
                         {new Date(s.created_at).toLocaleString("en-CA", {
@@ -1085,7 +1085,7 @@ export function ShippingPageClient({
                             style={{
                               marginLeft: "6px",
                               fontSize: "10px",
-                              color: "#c4973a",
+                              color: "#C6A04B",
                               textTransform: "uppercase",
                               letterSpacing: "0.1em",
                             }}
@@ -1122,12 +1122,12 @@ export function ShippingPageClient({
                             href={s.label_url}
                             target="_blank"
                             rel="noopener"
-                            style={{ color: "#c4973a", fontWeight: 600 }}
+                            style={{ color: "#C6A04B", fontWeight: 600 }}
                           >
                             Open
                           </a>
                         ) : (
-                          "—"
+                          "â€”"
                         )}
                       </td>
                       {isAdmin && (
@@ -1155,7 +1155,7 @@ export function ShippingPageClient({
 }
 
 const pouchLinkStyle: React.CSSProperties = {
-  color: "#c4973a",
+  color: "#C6A04B",
   fontWeight: 700,
   textDecoration: "underline",
 };
@@ -1164,7 +1164,7 @@ const pickupLabelStyle: React.CSSProperties = {
   display: "block",
   fontSize: "11px",
   marginBottom: "6px",
-  color: "#c4973a",
+  color: "#C6A04B",
   textTransform: "uppercase",
   letterSpacing: "0.1em",
   fontWeight: 600,
@@ -1173,9 +1173,9 @@ const pickupLabelStyle: React.CSSProperties = {
 const pickupInputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
-  border: "1px solid #2d6b35",
+  border: "1px solid #E5E2D4",
   borderRadius: "8px",
-  backgroundColor: "#0f2614",
+  backgroundColor: "#F7F6F0",
   color: "#ffffff",
   fontSize: "14px",
   fontFamily: "inherit",
@@ -1193,7 +1193,7 @@ function formatDocLabel(contentType: string): string {
 const thStyle: React.CSSProperties = {
   textAlign: "left",
   padding: "10px 12px",
-  color: "#c4973a",
+  color: "#C6A04B",
   fontSize: "11px",
   textTransform: "uppercase",
   letterSpacing: "0.1em",
@@ -1202,6 +1202,6 @@ const thStyle: React.CSSProperties = {
 
 const tdStyle: React.CSSProperties = {
   padding: "10px 12px",
-  color: "#e8d5a3",
+  color: "#154D31",
   verticalAlign: "top",
 };
