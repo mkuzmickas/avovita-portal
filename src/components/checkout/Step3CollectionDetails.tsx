@@ -350,7 +350,7 @@ export function Step3CollectionDetails({
           <CollectionModeButton
             active={!isOutOfTown}
             title="I have a Calgary and area address for collection"
-            subtitle="FloLabs phlebotomist comes to you (home, hotel, office)."
+            subtitle="A phlebotomist comes to you (home, hotel, office)."
             onClick={() => {
               if (isOutOfTown) onIsOutOfTownChange(false);
             }}
@@ -426,7 +426,7 @@ export function Step3CollectionDetails({
           Collection Postal Code
         </h2>
         <p className="text-sm mb-4" style={{ color: "#154D31" }}>
-          FloLabs will collect the full street address when you book
+          You&apos;ll enter the full street address when you book
           your collection slot after payment. All we need now is your
           postal code — it&apos;s how we confirm we can serve your area
           and calculate the visit fee.
@@ -688,9 +688,9 @@ export function Step3CollectionDetails({
                     placeholder="+1 (403) 555-0000"
                     autoComplete="tel"
                   />
-                  <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
-                    Used for SMS notifications and shared with FloLabs
-                    as the contact for this order.
+                  <p className="text-xs mt-1" style={{ color: "#154D31" }}>
+                    Used for SMS notifications and shared with the
+                    phlebotomist as the contact for this order.
                   </p>
                 </div>
               )}
@@ -838,14 +838,14 @@ function CollectionModeButton({
     >
       <p
         className="text-sm font-semibold"
-        style={{ color: active ? "#F7F6F0" : "#ffffff" }}
+        style={{ color: active ? "#092819" : "#092819" }}
       >
         {title}
       </p>
       <p
         className="text-xs mt-1 leading-relaxed"
         style={{
-          color: active ? "rgba(10,26,13,0.85)" : "#4a7a56",
+          color: active ? "rgba(9,40,25,0.80)" : "#154D31",
         }}
       >
         {subtitle}
