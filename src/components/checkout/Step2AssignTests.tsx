@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { X, Users, ArrowRight, ArrowLeft, Info, AlertCircle, Copy } from "lucide-react";
+import { X, Users, ArrowRight, ArrowLeft, Info, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { useRepeatClient } from "@/components/account/RepeatClientContext";
@@ -291,35 +291,12 @@ export function Step2AssignTests({
         </p>
       </div>
 
-      {/* "Same tests as me" — one click mirrors person 1's tests onto
-          person 2. Only when there's actually work to do (person 2
-          missing at least one test person 1 has). Dominant real pattern
-          for 2-person bookings is a couple ordering identical panels. */}
-      {personCount === 2 && testsToMirror.length > 0 && (
-        <div
-          className="flex items-start gap-3 rounded-lg border px-4 py-3 mb-4"
-          style={{
-            backgroundColor: "rgba(196, 151, 58, 0.08)",
-            borderColor: "#C6A04B",
-          }}
-        >
-          <Copy className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#C6A04B" }} />
-          <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <p className="text-xs leading-relaxed" style={{ color: "#154D31" }}>
-              Ordering the same tests for both people? One click assigns
-              your selection to person 2.
-            </p>
-            <button
-              type="button"
-              onClick={handleMirrorToPerson2}
-              className="mf-btn-secondary px-3 py-1.5 text-xs whitespace-nowrap shrink-0"
-            >
-              Same tests as me
-              <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* "Same tests as me" shortcut removed Oct 2026 (Mike): the
+          banner took real estate on mobile and the checkbox grid is
+          already short enough that the shortcut isn't worth the
+          chrome. handleMirrorToPerson2 / testsToMirror stay in place
+          so we can re-wire later as e.g. a smaller inline button on
+          each test row if needed. */}
 
       {/* Multi-test discount banner */}
       {discount.applies && (
@@ -416,10 +393,10 @@ export function Step2AssignTests({
                               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border transition-colors"
                               style={{
                                 backgroundColor: checked
-                                  ? "#EFECE0"
+                                  ? "rgba(198,160,75,0.14)"
                                   : "transparent",
                                 borderColor: checked ? "#C6A04B" : "#E5E2D4",
-                                color: checked ? "#ffffff" : "#154D31",
+                                color: checked ? "#154D31" : "#154D31",
                               }}
                             >
                               <input
