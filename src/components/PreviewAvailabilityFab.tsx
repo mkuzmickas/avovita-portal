@@ -351,9 +351,8 @@ export function PreviewAvailabilityFab() {
                       cells are deliberately dulled so a wall of empty
                       days doesn't visually read as "everything's fine". */}
                   <div className="flex flex-wrap items-center gap-3 text-xs">
-                    <LegendSwatch color="#88D45D" label="Available" />
-                    <LegendSwatch color="#D6AF5B" label="Almost full" />
-                    <LegendSwatch color="#3a4550" label="Fully booked" />
+                    <LegendSwatch color="#88D45D" label="Open" />
+                    <LegendSwatch color="#D1D5DB" label="Fully booked" />
                   </div>
 
                   {/* Mobile: 2-col sequential list starting today. */}
@@ -482,41 +481,28 @@ function LegendSwatch({ color, label }: { color: string; label: string }) {
 function DayCell({ day }: { day: DaySummary }) {
   // Bucket by slot count. Numbers tuned to FloLabs' typical daily
   // capacity — if their scheduling changes materially the thresholds
-  // may need re-tuning. Green = plenty, amber = running out, muted
-  // gray = nothing.
-  //
-  // Fully-booked cells are deliberately DULL: neutral border, muted
-  // text, low-contrast background. Previously they used the brand
-  // green border (#E5E2D4) which made "no slots" look positive next
-  // to the amber "limited" cells that ARE available — a wall of empty
-  // days visually read as "everything's fine".
-  const bucket: "good" | "limited" | "none" =
-    day.slotCount >= 6 ? "good" : day.slotCount > 0 ? "limited" : "none";
+  // Two states only (Mike, Oct 2026): either the day has at least
+  // one slot or it doesn't. The old three-way (good / limited / none)
+  // added "almost full" amber which users read as a warning when
+  // really it's still bookable. Simpler + more accurate.
+  const bucket: "open" | "none" = day.slotCount > 0 ? "open" : "none";
 
   const palette = {
-    good: {
-      bg: "rgba(141,198,63,0.14)",
+    open: {
+      bg: "rgba(136,212,93,0.14)",
       border: "#88D45D",
-      accent: "#88D45D",
-      datecolor: "#092819",
-      countColor: "#88D45D",
-      rangeColor: "#154D31",
-    },
-    limited: {
-      bg: "rgba(217,169,57,0.14)",
-      border: "#D6AF5B",
-      accent: "#D6AF5B",
-      datecolor: "#092819",
-      countColor: "#D6AF5B",
+      accent: "#154D31",
+      dateColor: "#092819",
+      countColor: "#154D31",
       rangeColor: "#154D31",
     },
     none: {
-      bg: "rgba(255,255,255,0.02)",
-      border: "#3a4550",
-      accent: "#6b7280",
-      dateColor: "#6b7280",
-      countColor: "#6b7280",
-      rangeColor: "#6b7280",
+      bg: "#F3F4F6",
+      border: "#D1D5DB",
+      accent: "#6B7280",
+      dateColor: "#6B7280",
+      countColor: "#6B7280",
+      rangeColor: "#6B7280",
     },
   }[bucket];
 
