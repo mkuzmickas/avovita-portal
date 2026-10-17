@@ -290,7 +290,7 @@ function TestTableRow({
                 fontFamily:
                   'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
                 fontSize: "11px",
-                color: "rgba(9,40,25,0.6)",
+                color: "#092819",
                 marginTop: "2px",
                 letterSpacing: "0.5px",
               }}
@@ -612,7 +612,7 @@ function TestMobileCard({
               fontFamily:
                 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
               fontSize: "11px",
-              color: "rgba(141, 198, 63, 0.6)",
+              color: "#092819",
               letterSpacing: "0.5px",
             }}
             aria-label={`Test code: ${test.sku}`}
