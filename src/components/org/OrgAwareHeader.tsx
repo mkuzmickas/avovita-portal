@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Leaf } from "lucide-react";
+import { Leaf, Check, MessageCircle } from "lucide-react";
 import { useOrg } from "./OrgContext";
 import { AccountIndicator } from "@/components/auth/AccountIndicator";
 
@@ -38,6 +38,12 @@ export function OrgAwareHeader({
     ? { backgroundColor: "transparent" }
     : { backgroundColor: "#092819", borderColor: "#092819" };
 
+  const pathname = usePathname();
+  const onCataloguePage =
+    pathname === "/tests" ||
+    pathname?.startsWith("/tests/") ||
+    /^\/org\/[^/]+\/tests($|\/)/.test(pathname ?? "");
+
   return (
     <header className={baseClass} style={baseStyle}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-3">
@@ -48,10 +54,22 @@ export function OrgAwareHeader({
             <DefaultBrandMark />
           )}
         </Link>
-        {/* Public site nav — only on AvoVita-direct pages (not org routes) */}
-        {!org && !transparent && <PublicNav />}
+        {/* Center slot:
+         *   - On /tests, the "Lab Tests" nav link is useless (user is
+         *     already there), so swap it for a condensed trust strip
+         *     answering the three objections that stop first-time
+         *     private-lab visitors: do I need a referral, do I have
+         *     to come in, where do results go. "For most tests" is
+         *     the honest hedge — specialty cancer / genetics / FRAT
+         *     still require a req, and we badge those per-test.
+         *   - On other public pages, keep the Lab Tests link so
+         *     visitors can get to the catalogue.
+         */}
+        {!org && !transparent &&
+          (onCataloguePage ? <TrustStrip /> : <PublicNav />)}
 
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+          <WhatsAppQuickConnect />
           {rightSlot}
           <AccountIndicator />
         </div>
@@ -112,6 +130,73 @@ function PublicNav() {
         );
       })}
     </nav>
+  );
+}
+
+// Three trust facts replacing the Lab Tests nav link on the catalogue
+// page. Hidden on mobile (nav is already tight with logo + account
+// dropdown + WhatsApp button) — reasserts on sm+ breakpoints where
+// there's room. "For most tests" is the deliberate hedge for FRAT,
+// prenatal genetic screening, and specialty cancer markers that
+// legitimately need a requisition — those are per-test badged in the
+// catalogue table.
+function TrustStrip() {
+  const items = [
+    "No referral for most tests",
+    "Mobile collection",
+    "Private results",
+  ];
+  return (
+    <nav
+      aria-label="What makes AvoVita different"
+      className="hidden md:flex items-center gap-5"
+    >
+      {items.map((label) => (
+        <span
+          key={label}
+          className="inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap"
+          style={{ color: "#F7F6F0" }}
+        >
+          <Check
+            className="w-3.5 h-3.5 shrink-0"
+            style={{ color: "#88D45D" }}
+          />
+          {label}
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+// WhatsApp quick-connect — opens wa.me/<number> in a new tab with a
+// prefilled message. Hidden when the env var is unset so unconfigured
+// deploys don't show a dead button. Set NEXT_PUBLIC_SUPPORT_WHATSAPP
+// to the full international-format number WITHOUT the +, e.g.
+// "14035551234" for Canada +1 403 555 1234.
+function WhatsAppQuickConnect() {
+  const raw = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP;
+  if (!raw) return null;
+  const digits = raw.replace(/[^0-9]/g, "");
+  if (digits.length < 10) return null;
+  const prefill = encodeURIComponent("Hi AvoVita — I have a question.");
+  const href = `https://wa.me/${digits}?text=${prefill}`;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Message us on WhatsApp"
+      title="Message us on WhatsApp"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+      style={{
+        backgroundColor: "rgba(136,212,93,0.15)",
+        color: "#88D45D",
+        border: "1px solid rgba(136,212,93,0.35)",
+      }}
+    >
+      <MessageCircle className="w-4 h-4 shrink-0" />
+      <span className="hidden sm:inline">Message</span>
+    </a>
   );
 }
 
