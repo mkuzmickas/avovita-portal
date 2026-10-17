@@ -67,7 +67,7 @@ export default async function PortalLayout({
   const displayName = primaryProfile?.first_name ?? email;
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: "#092819" }}>
+    <div className="min-h-screen flex" style={{ backgroundColor: "#FFFFFF" }}>
       <PortalSidebar
         displayName={displayName}
         email={email}

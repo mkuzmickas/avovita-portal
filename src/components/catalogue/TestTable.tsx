@@ -47,14 +47,14 @@ export function TestTable({
     <div
       id="catalogue-list"
       className="rounded-xl border overflow-hidden"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       {/* Mobile card layout — replaces the sideways-scrolling table on
           phones. Price and Add-to-Cart are always visible; tap the card
           to expand its details. */}
       <div className="sm:hidden">
         {isEmpty ? (
-          <div className="px-4 py-12 text-center" style={{ backgroundColor: "#092819" }}>
+          <div className="px-4 py-12 text-center" style={{ backgroundColor: "#FFFFFF" }}>
             {dbIsEmpty ? (
               <p style={{ color: "#4a7a56" }}>Test catalogue coming soon</p>
             ) : (
@@ -136,7 +136,7 @@ export function TestTable({
                 <td
                   colSpan={6}
                   className="px-6 py-16 text-center"
-                  style={{ backgroundColor: "#092819" }}
+                  style={{ backgroundColor: "#FFFFFF" }}
                 >
                   {dbIsEmpty ? (
                     <p style={{ color: "#4a7a56" }}>
@@ -370,7 +370,7 @@ function TestTableRow({
                       <span
                         className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
                         style={{
-                          backgroundColor: "#092819",
+                          backgroundColor: "#FFFFFF",
                           borderColor: "#C6A04B",
                           color: "#C6A04B",
                         }}
@@ -723,7 +723,7 @@ function TestMobileCard({
             <span
               className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border"
               style={{
-                backgroundColor: "#092819",
+                backgroundColor: "#FFFFFF",
                 borderColor: "#C6A04B",
                 color: "#C6A04B",
               }}

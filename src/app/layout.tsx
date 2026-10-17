@@ -86,7 +86,7 @@ export default function RootLayout({
       </head>
       <body
         className="min-h-full flex flex-col antialiased"
-        style={{ backgroundColor: "#092819", color: "#154D31" }}
+        style={{ backgroundColor: "#FFFFFF", color: "#154D31" }}
       >
         <RepeatClientProvider>
           {/* AnalyticsProvider outside CartProvider so CartContext

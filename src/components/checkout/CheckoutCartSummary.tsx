@@ -112,7 +112,7 @@ export function CheckoutCartSummary({
   return (
     <aside
       className="rounded-xl border p-5 sticky top-6"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-4">
         <ShoppingBag className="w-4 h-4" style={{ color: "#C6A04B" }} />

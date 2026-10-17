@@ -145,7 +145,7 @@ export default async function PortalDashboard() {
       ) : (
         <div
           className="mb-6 rounded-xl border p-6 sm:p-8"
-          style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
         >
           <h1
             className="font-heading text-3xl sm:text-4xl font-semibold mb-2"
@@ -175,7 +175,7 @@ export default async function PortalDashboard() {
         <div
           className="rounded-xl border p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4"
           style={{
-            backgroundColor: "#092819",
+            backgroundColor: "#FFFFFF",
             borderColor: "#C6A04B",
             boxShadow: "0 0 0 1px #C6A04B",
           }}
@@ -257,7 +257,7 @@ export default async function PortalDashboard() {
                 key={d.id}
                 className="rounded-xl border p-4"
                 style={{
-                  backgroundColor: "#092819",
+                  backgroundColor: "#FFFFFF",
                   borderColor: "#E5E2D4",
                 }}
               >
@@ -317,7 +317,7 @@ export default async function PortalDashboard() {
       {recentOrders.length === 0 ? (
         <div
           className="rounded-xl border px-6 py-12 text-center"
-          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <FlaskConical
             className="w-10 h-10 mx-auto mb-3"
@@ -338,7 +338,7 @@ export default async function PortalDashboard() {
             <div
               key={order.id}
               className="rounded-xl border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4"
-              style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -418,7 +418,7 @@ function MetricCard({
     <div
       className="rounded-xl border p-4 sm:p-5"
       style={{
-        backgroundColor: "#092819",
+        backgroundColor: "#FFFFFF",
         borderColor: highlight ? "#C6A04B" : "#E5E2D4",
       }}
     >

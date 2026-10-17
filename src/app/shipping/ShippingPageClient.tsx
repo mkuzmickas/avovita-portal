@@ -480,7 +480,7 @@ export function ShippingPageClient({
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: "#092819",
+        backgroundColor: "#FFFFFF",
         color: "#154D31",
         padding: "32px 20px",
         fontFamily: "system-ui, sans-serif",
@@ -520,7 +520,7 @@ export function ShippingPageClient({
                 padding: "8px 14px",
                 border: "1px solid #E5E2D4",
                 borderRadius: "8px",
-                backgroundColor: "#092819",
+                backgroundColor: "#FFFFFF",
                 color: "#154D31",
                 fontSize: "13px",
                 fontWeight: 500,
@@ -731,7 +731,7 @@ export function ShippingPageClient({
           style={{
             marginBottom: "32px",
             padding: "20px",
-            backgroundColor: "#092819",
+            backgroundColor: "#FFFFFF",
             border: "1px solid #E5E2D4",
             borderRadius: "12px",
           }}

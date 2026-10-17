@@ -88,7 +88,7 @@ export function SettingsClient({
       {/* Account section */}
       <section
         className="rounded-xl border p-6"
-        style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
       >
         <h2
           className="font-heading text-xl font-semibold mb-4"
@@ -164,7 +164,7 @@ export function SettingsClient({
       {/* Communication preferences */}
       <section
         className="rounded-xl border p-6"
-        style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
       >
         <h2
           className="font-heading text-xl font-semibold mb-2"

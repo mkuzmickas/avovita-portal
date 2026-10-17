@@ -482,7 +482,7 @@ function ScheduleAckModal({
     >
       <div
         className="w-full max-w-lg rounded-2xl border p-6"
-        style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center mb-4">

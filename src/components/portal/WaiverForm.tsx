@@ -214,7 +214,7 @@ export function WaiverForm({
         ref={scrollRef}
         className="rounded-xl border p-5 max-h-[340px] overflow-y-auto text-xs leading-relaxed whitespace-pre-line"
         style={{
-          backgroundColor: "#092819",
+          backgroundColor: "#FFFFFF",
           borderColor: "#E5E2D4",
           color: "#154D31",
         }}

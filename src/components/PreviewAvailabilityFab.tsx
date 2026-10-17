@@ -214,7 +214,7 @@ export function PreviewAvailabilityFab() {
             aria-labelledby="availability-preview-title"
             className="w-full max-w-2xl rounded-2xl border flex flex-col"
             style={{
-              backgroundColor: "#092819",
+              backgroundColor: "#FFFFFF",
               borderColor: "#C6A04B",
               maxHeight: "calc(100vh - 3rem)",
             }}

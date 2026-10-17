@@ -140,7 +140,7 @@ export function MyRecordsUpload() {
   return (
     <section
       className="rounded-xl border p-5 mb-6"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <h2
         className="font-heading text-xl font-semibold mb-1"
@@ -263,7 +263,7 @@ function QueueRow({
         {s.state === "uploading" && (
           <div
             className="mt-1 h-1 rounded-full overflow-hidden"
-            style={{ backgroundColor: "#092819" }}
+            style={{ backgroundColor: "#FFFFFF" }}
           >
             <div
               className="h-full rounded-full transition-all"

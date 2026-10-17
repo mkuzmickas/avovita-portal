@@ -581,7 +581,7 @@ export function CatalogueClient({
   };
 
   return (
-    <div className="min-h-screen pb-32" style={{ backgroundColor: "#092819" }}>
+    <div className="min-h-screen pb-32" style={{ backgroundColor: "#F7F6F0" }}>
       {/* Top nav — auto-swaps to org branding when wrapped in OrgProvider */}
       {/* AccountIndicator inside OrgAwareHeader handles Sign In / account
           dropdown for both logged-in and logged-out visitors. */}
@@ -599,7 +599,7 @@ export function CatalogueClient({
           <div
             className="flex items-start gap-2.5 rounded-lg border px-4 py-3"
             style={{
-              backgroundColor: "#092819",
+              backgroundColor: "#FFFFFF",
               borderColor: "#C6A04B",
               color: "#154D31",
             }}

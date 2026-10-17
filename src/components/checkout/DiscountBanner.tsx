@@ -38,7 +38,7 @@ export function DiscountBanner({
     <div
       className={`flex items-start gap-2.5 rounded-lg border px-4 py-3 ${className ?? ""}`}
       style={{
-        backgroundColor: "#092819",
+        backgroundColor: "#FFFFFF",
         borderColor: "#88D45D",
         color: "#88D45D",
       }}

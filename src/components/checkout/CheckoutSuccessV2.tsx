@@ -268,14 +268,14 @@ export function CheckoutSuccessV2({
   return (
     <div
       className="min-h-screen px-4 py-8 sm:py-12"
-      style={{ backgroundColor: "#092819" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
       <div className="max-w-3xl mx-auto">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-6">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
@@ -293,7 +293,7 @@ export function CheckoutSuccessV2({
         {/* Confirmation hero */}
         <div
           className="rounded-2xl border px-5 sm:px-7 py-5 sm:py-6 mb-5 flex items-start gap-4"
-          style={{ backgroundColor: "#092819", borderColor: "#88D45D" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#88D45D" }}
         >
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border"
@@ -606,7 +606,7 @@ export function CheckoutSuccessV2({
         {hasSupplements && (
           <div
             className="rounded-2xl border overflow-hidden mt-6"
-            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <div className="px-6 py-5">
               <h3
@@ -654,7 +654,7 @@ export function CheckoutSuccessV2({
         {hasResources && (
           <div
             className="rounded-2xl border overflow-hidden mt-6"
-            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <div className="px-6 py-5">
               <h3
@@ -747,7 +747,7 @@ function StepCard({
     <div
       className="rounded-2xl border px-5 sm:px-7 py-5 sm:py-6 mb-5"
       style={{
-        backgroundColor: "#092819",
+        backgroundColor: "#FFFFFF",
         borderColor: done ? "#88D45D" : "#E5E2D4",
       }}
     >
@@ -889,7 +889,7 @@ function WaiverModal({
     >
       <div
         className="rounded-2xl border w-full max-w-2xl max-h-[92vh] overflow-y-auto"
-        style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         onClick={(e) => e.stopPropagation()}
       >
         {signed ? (
@@ -987,7 +987,7 @@ function WaiverModal({
               ref={scrollRef}
               className="rounded-xl border p-4 max-h-[260px] overflow-y-auto text-xs leading-relaxed whitespace-pre-line"
               style={{
-                backgroundColor: "#092819",
+                backgroundColor: "#FFFFFF",
                 borderColor: "#E5E2D4",
                 color: "#154D31",
               }}
@@ -1232,7 +1232,7 @@ function SetPasswordCard({
   return (
     <div
       className="rounded-2xl border px-5 sm:px-7 py-5 sm:py-6 mb-5"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-3 mb-4">
         <div

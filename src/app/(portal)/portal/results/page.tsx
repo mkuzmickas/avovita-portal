@@ -58,7 +58,7 @@ export default async function ResultsPage() {
       <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto">
         <div
           className="rounded-2xl border p-6 sm:p-8 text-center"
-          style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
         >
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
@@ -174,7 +174,7 @@ export default async function ResultsPage() {
       {results.length === 0 ? (
         <div
           className="rounded-xl border px-6 py-16 text-center"
-          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <FileText
             className="w-12 h-12 mx-auto mb-4"
@@ -271,7 +271,7 @@ function OrderResultCard({
     <div
       className="rounded-xl border overflow-hidden"
       style={{
-        backgroundColor: "#092819",
+        backgroundColor: "#FFFFFF",
         borderColor: isNew ? "#C6A04B" : "#E5E2D4",
       }}
     >
@@ -398,7 +398,7 @@ function UploadedResultCard({ result }: { result: ResultRow }) {
   return (
     <div
       className="rounded-xl border overflow-hidden"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="px-5 sm:px-6 py-4 flex items-start gap-4">
         <div

@@ -106,7 +106,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
   return (
     <div
       className="min-h-screen interpretation-root"
-      style={{ backgroundColor: "#092819" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Print / back controls — hidden when printing */}
@@ -136,7 +136,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
         {/* Header card */}
         <section
           className="rounded-2xl border p-6 sm:p-8 mb-6 print-safe"
-          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-5">
             <div
@@ -471,7 +471,7 @@ function Section({
   return (
     <section
       className="rounded-2xl border p-5 sm:p-6 mb-5 print-safe"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-start gap-3">
@@ -547,12 +547,12 @@ function LoadingState() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#092819" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
       <div className="text-center">
         <div
           className="rounded-2xl px-6 py-5 mx-auto mb-6 inline-block"
-          style={{ backgroundColor: "#092819", border: "1px solid #E5E2D4" }}
+          style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E2D4" }}
         >
           <Image
             src="/logo-white.png"
@@ -595,12 +595,12 @@ function ErrorState({
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#092819" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
       <div className="w-full max-w-md text-center">
         <div
           className="rounded-2xl border p-8"
-          style={{ backgroundColor: "#092819", borderColor: "#e05252" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#e05252" }}
         >
           <div className="flex justify-center mb-4">
             <AlertCircle

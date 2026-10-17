@@ -251,7 +251,7 @@ export function Step3CollectionDetails({
   return (
     <div
       className="rounded-2xl border p-5 sm:p-7"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-2">
         <MapPin className="w-5 h-5" style={{ color: "#C6A04B" }} />
@@ -1332,7 +1332,7 @@ function RepresentativeSection({
   return (
     <section
       className="mb-6 pb-6 rounded-xl border p-5"
-      style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
     >
       <h2
         className="font-heading text-xl sm:text-2xl font-semibold mb-1"

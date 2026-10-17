@@ -54,7 +54,7 @@ export function CheckoutRouter({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#092819" }}
+        style={{ backgroundColor: "#FFFFFF" }}
       >
         <p className="text-sm" style={{ color: "#4a7a56" }}>
           Loading checkout…
@@ -67,7 +67,7 @@ export function CheckoutRouter({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#092819" }}
+        style={{ backgroundColor: "#FFFFFF" }}
       >
         <p className="text-sm" style={{ color: "#4a7a56" }}>
           Redirecting to catalogue…

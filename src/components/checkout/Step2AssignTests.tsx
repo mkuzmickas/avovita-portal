@@ -257,7 +257,7 @@ export function Step2AssignTests({
   return (
     <div
       className="rounded-2xl border p-5 sm:p-7"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-2">
         <Users className="w-5 h-5" style={{ color: "#C6A04B" }} />
@@ -523,7 +523,7 @@ export function Step2AssignTests({
                         key={entry.instance_id}
                         className="flex items-center gap-2 px-3 py-2 rounded-md border"
                         style={{
-                          backgroundColor: "#092819",
+                          backgroundColor: "#FFFFFF",
                           borderColor: "#E5E2D4",
                         }}
                       >

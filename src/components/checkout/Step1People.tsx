@@ -95,7 +95,7 @@ export function Step1People({
   return (
     <div
       className="rounded-2xl border p-6 sm:p-8"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-2">
         <Users className="w-5 h-5" style={{ color: "#C6A04B" }} />

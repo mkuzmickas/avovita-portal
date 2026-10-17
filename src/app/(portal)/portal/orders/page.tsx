@@ -57,7 +57,7 @@ export default async function OrdersPage() {
       {orders.length === 0 ? (
         <div
           className="rounded-xl border px-6 py-16 text-center"
-          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <Package
             className="w-12 h-12 mx-auto mb-4"

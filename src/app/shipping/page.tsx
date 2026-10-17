@@ -66,7 +66,7 @@ export default async function ShippingPage({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#092819",
+          backgroundColor: "#FFFFFF",
           color: "#e05252",
           padding: "24px",
           fontFamily: "system-ui, sans-serif",

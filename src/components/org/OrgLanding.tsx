@@ -24,13 +24,13 @@ export function OrgLanding() {
   const org = useOrg();
 
   return (
-    <div style={{ backgroundColor: "#092819" }}>
+    <div style={{ backgroundColor: "#FFFFFF" }}>
       <OrgAwareHeader transparent />
 
       {/* Hero */}
       <section
         className="relative flex items-center justify-center px-4 sm:px-6 pt-40 pb-16 md:pt-48 md:pb-20"
-        style={{ backgroundColor: "#092819" }}
+        style={{ backgroundColor: "#FFFFFF" }}
       >
         <div
           className="absolute inset-0 pointer-events-none"
@@ -132,7 +132,7 @@ export function OrgLanding() {
       <footer
         className="px-4 sm:px-6 py-8 text-center text-xs border-t"
         style={{
-          backgroundColor: "#092819",
+          backgroundColor: "#FFFFFF",
           borderColor: "#FFFFFF",
           color: "#4a7a56",
         }}

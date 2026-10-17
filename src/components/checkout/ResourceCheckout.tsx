@@ -59,7 +59,7 @@ export function ResourceCheckout({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#092819" }}
+        style={{ backgroundColor: "#FFFFFF" }}
       >
         <p className="text-sm" style={{ color: "#4a7a56" }}>
           Loading…
@@ -125,7 +125,7 @@ export function ResourceCheckout({
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#092819" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#FFFFFF" }}>
       <OrgAwareHeader
         rightSlot={
           <Link
@@ -292,7 +292,7 @@ export function ResourceCheckout({
                 <div
                   className="rounded-xl border p-4 mb-4 space-y-2"
                   style={{
-                    backgroundColor: "#092819",
+                    backgroundColor: "#FFFFFF",
                     borderColor: "#E5E2D4",
                   }}
                 >

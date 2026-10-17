@@ -108,14 +108,14 @@ export function PostPurchaseOnboarding({
   return (
     <div
       className="min-h-screen flex flex-col items-center px-4 py-6 sm:py-10"
-      style={{ backgroundColor: "#092819" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
       <div className="w-full max-w-2xl">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-6">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
@@ -187,7 +187,7 @@ export function PostPurchaseOnboarding({
         {/* Card */}
         <div
           className="rounded-2xl border overflow-hidden"
-          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           {step === 1 && (
             <Step1CreateAccount
@@ -796,7 +796,7 @@ function Step4BookCollection({
               <span
                 className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border"
                 style={{
-                  backgroundColor: "#092819",
+                  backgroundColor: "#FFFFFF",
                   borderColor: "#E5E2D4",
                   color: "#C6A04B",
                 }}
@@ -828,13 +828,13 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 py-10"
-      style={{ backgroundColor: "#092819" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
       <div className="w-full max-w-xl text-center">
         <div className="flex items-center justify-center gap-2.5 mb-6">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
@@ -851,7 +851,7 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
 
         <div
           className="rounded-2xl border p-6 sm:p-8"
-          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"

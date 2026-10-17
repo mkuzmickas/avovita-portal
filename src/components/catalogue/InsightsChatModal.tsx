@@ -241,7 +241,7 @@ export function InsightsChatModal({
       <div
         className="w-full sm:max-w-2xl border-0 sm:border rounded-none sm:rounded-2xl flex flex-col h-full sm:h-auto sm:max-h-[85vh]"
         style={{
-          backgroundColor: "#092819",
+          backgroundColor: "#FFFFFF",
           borderColor: "#E5E2D4",
         }}
         onClick={(e) => e.stopPropagation()}

@@ -50,7 +50,7 @@ export function TestCard({
     <article
       id={`test-${test.id}`}
       className="flex flex-col rounded-xl border overflow-hidden transition-colors h-full"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <div className="px-5 pt-5 pb-4 flex-1 flex flex-col">
         {/* Badges */}

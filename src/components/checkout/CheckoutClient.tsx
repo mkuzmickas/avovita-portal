@@ -569,7 +569,7 @@ export function CheckoutClient({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#092819" }}
+        style={{ backgroundColor: "#FFFFFF" }}
       >
         <p className="text-sm" style={{ color: "#4a7a56" }}>
           Loading checkout…
@@ -583,7 +583,7 @@ export function CheckoutClient({
       return (
         <div
           className="min-h-screen flex items-center justify-center"
-          style={{ backgroundColor: "#092819" }}
+          style={{ backgroundColor: "#FFFFFF" }}
         >
           <p className="text-sm" style={{ color: "#4a7a56" }}>
             Loading your quote…
@@ -595,11 +595,11 @@ export function CheckoutClient({
       return (
         <div
           className="min-h-screen flex items-center justify-center px-4"
-          style={{ backgroundColor: "#092819" }}
+          style={{ backgroundColor: "#FFFFFF" }}
         >
           <div
             className="max-w-md w-full rounded-2xl border p-6 text-center"
-            style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
           >
             <h1
               className="font-heading text-2xl font-semibold mb-3"
@@ -627,7 +627,7 @@ export function CheckoutClient({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#092819" }}
+        style={{ backgroundColor: "#FFFFFF" }}
       >
         <p className="text-sm" style={{ color: "#4a7a56" }}>
           Redirecting to test catalogue…
@@ -637,7 +637,7 @@ export function CheckoutClient({
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#092819" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#FFFFFF" }}>
       <OrgAwareHeader
         rightSlot={
           <Link

@@ -84,13 +84,13 @@ export default function UpdatePasswordPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#092819" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
-            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <Leaf className="w-7 h-7" style={{ color: "#88D45D" }} />
           </div>
@@ -110,7 +110,7 @@ export default function UpdatePasswordPage() {
 
         <div
           className="rounded-2xl border p-6 sm:p-8"
-          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           {authState === "checking" && (
             <div className="flex items-center justify-center py-10">

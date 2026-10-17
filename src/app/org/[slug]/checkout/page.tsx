@@ -71,7 +71,7 @@ export default async function PublicCalendarPage({
 
   return (
     <div
-      style={{ minHeight: "100vh", backgroundColor: "#092819" }}
+      style={{ minHeight: "100vh", backgroundColor: "#FFFFFF" }}
       className="p-6"
     >
       <div className="max-w-[1800px] mx-auto">

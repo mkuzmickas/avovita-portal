@@ -43,13 +43,13 @@ export default async function CompleteWaiverPage() {
   return (
     <div
       className="min-h-screen flex flex-col items-center px-4 py-8 sm:py-12"
-      style={{ backgroundColor: "#092819" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
       <div className="w-full max-w-2xl">
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
@@ -66,7 +66,7 @@ export default async function CompleteWaiverPage() {
 
         <div
           className="rounded-2xl border px-5 sm:px-8 py-6 sm:py-8"
-          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
         >
           <CompleteWaiverClient
             isRepresentative={isRepresentative}

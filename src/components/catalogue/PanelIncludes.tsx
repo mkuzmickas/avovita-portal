@@ -31,7 +31,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
     return (
       <div
         className="mb-3 rounded-lg border overflow-hidden"
-        style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
       >
         <button
           type="button"
@@ -74,7 +74,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
   return (
     <div
       className="rounded-xl border p-4"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       <h4
         className="font-heading text-lg font-semibold mb-3"

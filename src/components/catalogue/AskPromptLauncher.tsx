@@ -51,7 +51,7 @@ export function AskPromptLauncher({
     <div
       className="fixed z-40 bottom-[110px] right-3 sm:right-6 sm:bottom-[130px] max-w-[calc(100vw-24px)] sm:max-w-sm rounded-2xl border shadow-lg"
       style={{
-        backgroundColor: "#092819",
+        backgroundColor: "#FFFFFF",
         borderColor: "#C6A04B",
         boxShadow: "0 10px 30px -8px rgba(0,0,0,0.55)",
       }}

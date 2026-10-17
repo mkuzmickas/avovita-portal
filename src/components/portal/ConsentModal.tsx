@@ -151,7 +151,7 @@ export function ConsentModal({
     >
       <div
         className="rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col border shadow-2xl"
-        style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
       >
         {/* Header (no close button — non-dismissible) */}
         <div

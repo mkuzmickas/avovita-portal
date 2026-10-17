@@ -74,7 +74,7 @@ export default async function ProfilesPage() {
             <div
               key={profile.id}
               className="rounded-xl border p-6"
-              style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
             >
               <div className="flex items-start gap-4">
                 <div
@@ -199,7 +199,7 @@ export default async function ProfilesPage() {
         {profiles.length === 0 && (
           <div
             className="rounded-xl border px-6 py-16 text-center"
-            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
           >
             <User
               className="w-12 h-12 mx-auto mb-4"

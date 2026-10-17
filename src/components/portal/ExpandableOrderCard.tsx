@@ -86,7 +86,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
   return (
     <div
       className="rounded-xl border overflow-hidden"
-      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
     >
       {/* Collapsed header (always visible, clickable) */}
       <button
@@ -357,7 +357,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   key={line.id}
                   className="rounded-lg border p-3"
                   style={{
-                    backgroundColor: "#092819",
+                    backgroundColor: "#FFFFFF",
                     borderColor: "#E5E2D4",
                   }}
                 >
@@ -452,7 +452,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
           {/* Totals */}
           <div
             className="px-4 sm:px-6 py-4 border-t space-y-1"
-            style={{ borderColor: "#E5E2D4", backgroundColor: "#092819" }}
+            style={{ borderColor: "#E5E2D4", backgroundColor: "#FFFFFF" }}
           >
             {order.subtotal_cad != null && (
               <div
