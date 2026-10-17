@@ -26,6 +26,11 @@ export type CatalogueTest = {
   /** Customer-facing search ranking boost. Higher = ranks higher when
    *  the query matches. Null / 0 means no pin. */
   search_priority: number | null;
+  /** All-time count of order_lines rows for this test. Computed
+   *  server-side by the /tests page and used as a secondary sort key
+   *  so best-sellers float above alphabetical when the user is
+   *  browsing or filtering a popular category. 0 if never sold. */
+  sales_count: number;
   featured: boolean;
   sku: string | null;
   requisition_url: string | null;

@@ -61,15 +61,33 @@ async function CatalogueData() {
     .eq("active", true)
     .order("name", { ascending: true });
 
-  type RawRow = Omit<CatalogueTest, "lab"> & {
+  type RawRow = Omit<CatalogueTest, "lab" | "sales_count"> & {
     lab: { id: string; name: string } | { id: string; name: string }[] | null;
   };
+
+  // Sales-based ranking input (Mike, Oct 2026). Group every test
+  // line_item by test_id and count — gives us a popularity signal to
+  // break ties in the catalogue sort so Men's Hormone Panel floats
+  // above alphabetically-first obscurities, Vitamin D leads Vitamins,
+  // etc. All-time rather than trailing-N-days — the portal is still
+  // young enough that recent-window counts would be too noisy.
+  const { data: salesRaw } = await supabase
+    .from("order_lines")
+    .select("test_id")
+    .eq("line_type", "test")
+    .not("test_id", "is", null);
+  const salesByTestId = new Map<string, number>();
+  for (const row of (salesRaw ?? []) as Array<{ test_id: string | null }>) {
+    if (!row.test_id) continue;
+    salesByTestId.set(row.test_id, (salesByTestId.get(row.test_id) ?? 0) + 1);
+  }
 
   const allTests: CatalogueTest[] = ((testsRaw ?? []) as unknown as RawRow[]).map(
     (row) => {
       const lab = Array.isArray(row.lab) ? row.lab[0] : row.lab;
       return {
         ...row,
+        sales_count: salesByTestId.get(row.id) ?? 0,
         lab: lab ?? { id: "", name: "—" },
       };
     }

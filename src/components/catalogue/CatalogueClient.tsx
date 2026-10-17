@@ -28,15 +28,21 @@ import { useCart } from "@/components/cart/CartContext";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
 
-// Shortcut tiles under the hero search. Clicking one fills the search
-// query with the label text, which filters the catalogue table below
-// via the shared searchQuery state. Chosen to match the four most
-// common first-timer intents.
-const POPULAR_TILES: Array<{ label: string; query: string }> = [
+// Shortcut tiles under the hero search. Each tile either sets a
+// category filter (preferred — strict scope) or a free-text query
+// (for intents like "Vitamin D" that aren't their own catalogue
+// category). Catalogue sort by sales_count makes the top of each
+// filtered list the actual best-selling tests, so Men's / Women's
+// Hormone Panel surface at the top of the Hormones tile instead of
+// Thyroid Function Panel bleeding in via text match.
+type PopularTile =
+  | { label: string; category: string }
+  | { label: string; query: string };
+const POPULAR_TILES: PopularTile[] = [
   { label: "Vitamin D", query: "vitamin d" },
-  { label: "Hormones", query: "hormone" },
-  { label: "Thyroid", query: "thyroid" },
-  { label: "Allergy & Immune", query: "allergy" },
+  { label: "Hormones", category: "Hormones" },
+  { label: "Thyroid", category: "Thyroid" },
+  { label: "Allergy & Immune", category: "Allergy & Sensitivity" },
 ];
 
 // New Oct 2026 palette (ivory-first "lighter premium healthcare"):
@@ -545,27 +551,24 @@ export function CatalogueClient({
       }
     }
 
-    // Order when a query is active:
-    //   1. search_priority DESC — admin-boosted rows always jump the
-    //      queue. A bundle at priority 100 whose description contains
-    //      the searched term must beat individual tests at priority 0
-    //      whose names contain the term, otherwise the bundle upsell
-    //      never gets a chance (Fatigue Bundle vs individual Vitamin D
-    //      rows was the case that surfaced this).
-    //   2. tier ASC as tiebreaker — for the ~445 rows that never got a
-    //      priority set (default 0), the old "name/sku hit beats
-    //      description-only hit" ordering still applies.
-    //   3. Stable sort preserves alphabetical for same-priority same-tier.
-    // Browse / no-query lists stay in the alphabetical order Supabase
-    // returned — priority is a search-ranking signal, not a browse one.
-    const hasQuery = query !== "";
+    // Ordering (Mike, Oct 2026):
+    //   1. search_priority DESC — admin can still hand-pin a row.
+    //   2. tier ASC — name/sku/category hits beat description-only.
+    //   3. sales_count DESC — best-sellers float above cold rows.
+    //      All-time order_lines count, computed server-side by the
+    //      /tests page. This is what makes "Hormones" tile surface
+    //      Men's/Women's Hormone Panel at the top instead of some
+    //      alphabetically-first obscure test.
+    //   4. Stable sort preserves alphabetical for 0-sales ties.
+    // Applied to BOTH search and browse — Mike's intent: popular tests
+    // should surface first everywhere, not just in search.
     scored.sort((a, b) => {
-      if (hasQuery) {
-        const pDiff =
-          (b.test.search_priority ?? 0) - (a.test.search_priority ?? 0);
-        if (pDiff !== 0) return pDiff;
-      }
+      const pDiff =
+        (b.test.search_priority ?? 0) - (a.test.search_priority ?? 0);
+      if (pDiff !== 0) return pDiff;
       if (a.tier !== b.tier) return a.tier - b.tier;
+      const sDiff = (b.test.sales_count ?? 0) - (a.test.sales_count ?? 0);
+      if (sDiff !== 0) return sDiff;
       return 0;
     });
     return scored.map((s) => s.test);
@@ -773,8 +776,21 @@ export function CatalogueClient({
                 key={t.label}
                 type="button"
                 onClick={() => {
-                  setHeroQuery(t.query);
-                  setSearchQuery(t.query);
+                  // Category-filter tiles (Hormones, Thyroid, Allergy)
+                  // scope strictly to that category — cleaner than
+                  // text search, which pulled in sibling panels via
+                  // description matches. Query tiles (Vitamin D) stay
+                  // on the free-text path. Either way, clear the
+                  // OTHER filter to avoid cumulative state.
+                  if ("category" in t) {
+                    setSelectedCategory(t.category);
+                    setHeroQuery("");
+                    setSearchQuery("");
+                  } else {
+                    setSelectedCategory(null);
+                    setHeroQuery(t.query);
+                    setSearchQuery(t.query);
+                  }
                   if (catalogueRef.current) {
                     catalogueRef.current.scrollIntoView({
                       behavior: "smooth",
