@@ -1,8 +1,10 @@
 "use client";
 
-import { ArrowRight, User, Users } from "lucide-react";
+import { ArrowRight, User, Users, AlertCircle } from "lucide-react";
+import Link from "next/link";
 import type { OrderMode } from "./CheckoutClient";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
+import { useCart } from "@/components/cart/CartContext";
 
 interface Step1PeopleProps {
   personCount: number;
@@ -54,9 +56,21 @@ export function Step1People({
   onPermissionChange,
 }: Step1PeopleProps) {
   const { trackEvent } = useAnalytics();
+  const { cart } = useCart();
+  // Count only test line items — a cart of only supplements wouldn't
+  // make sense for a multi-person split either.
+  const testCount = cart
+    .filter((c) => c.line_type === "test")
+    .reduce((s, c) => s + c.quantity, 0);
   const pick = pickForState(orderMode, personCount);
   const needsPermission = pick === "multi";
-  const canContinue = !needsPermission || permissionAcknowledged;
+  // Multi-person split needs at least 2 test items in the cart so there's
+  // something to actually split across people. Mike's call: don't let
+  // the user proceed to Step 2 with 1 test / 2 people — surface the
+  // mismatch here and nudge them back to the catalogue.
+  const multiButNotEnoughTests = pick === "multi" && testCount < 2;
+  const canContinue =
+    !multiButNotEnoughTests && (!needsPermission || permissionAcknowledged);
 
   const handlePermissionChange = (checked: boolean) => {
     onPermissionChange(checked);
@@ -119,6 +133,37 @@ export function Step1People({
           subtitle="Cart will be split in the next step."
         />
       </div>
+
+      {/* Guardrail: can't split a 1-item cart across 2 people. Surfaces
+          inline instead of letting the user hit a confusing dead end on
+          Step 2's assignment grid. */}
+      {multiButNotEnoughTests && (
+        <div
+          className="flex items-start gap-2.5 p-3 mb-4 rounded-lg border"
+          style={{
+            backgroundColor: "rgba(198,160,75,0.10)",
+            borderColor: "#C6A04B",
+          }}
+        >
+          <AlertCircle
+            className="w-4 h-4 shrink-0 mt-0.5"
+            style={{ color: "#C6A04B" }}
+          />
+          <p className="text-sm leading-relaxed" style={{ color: "#154D31" }}>
+            You only have {testCount === 0 ? "no tests" : "1 test"} in your
+            cart. To split across two or more people you&apos;ll need at
+            least one test per person —{" "}
+            <Link
+              href="/tests"
+              className="font-semibold underline"
+              style={{ color: "#C6A04B" }}
+            >
+              go back and add additional tests
+            </Link>
+            , or pick the single-booking option above.
+          </p>
+        </div>
+      )}
 
       {/* Permission ack — only required for the multi-person booking.
           The single-person flow treats "myself" and "on behalf of
