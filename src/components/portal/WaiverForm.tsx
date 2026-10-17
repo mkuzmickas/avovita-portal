@@ -141,7 +141,7 @@ export function WaiverForm({
         err instanceof DOMException && err.name === "AbortError";
       setError(
         isTimeout
-          ? "Saving is taking longer than expected. Your waiver may have been saved â€” please refresh the page and try again if the next step doesn't load."
+          ? "Saving is taking longer than expected. Your waiver may have been saved — please refresh the page and try again if the next step doesn't load."
           : err instanceof Error
             ? err.message
             : "Failed to save waiver"
@@ -161,7 +161,7 @@ export function WaiverForm({
         <h2
           className="font-heading text-2xl sm:text-3xl font-semibold"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -194,7 +194,7 @@ export function WaiverForm({
           }}
         >
           By signing below I,{" "}
-          <span style={{ color: "#ffffff", fontWeight: 600 }}>
+          <span style={{ color: "#092819", fontWeight: 600 }}>
             {signedName.trim() || "[your full name]"}
           </span>
           , am signing this waiver as{" "}
@@ -202,7 +202,7 @@ export function WaiverForm({
             {relationshipLabel}
           </span>{" "}
           with legal authority to consent on behalf of{" "}
-          <span style={{ color: "#ffffff", fontWeight: 600 }}>
+          <span style={{ color: "#092819", fontWeight: 600 }}>
             {clientNames}
           </span>
           .
@@ -214,7 +214,7 @@ export function WaiverForm({
         ref={scrollRef}
         className="rounded-xl border p-5 max-h-[340px] overflow-y-auto text-xs leading-relaxed whitespace-pre-line"
         style={{
-          backgroundColor: "#ffffff",
+          backgroundColor: "#092819",
           borderColor: "#E5E2D4",
           color: "#154D31",
         }}
@@ -293,7 +293,7 @@ export function WaiverForm({
       >
         {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
         {submitting
-          ? "Savingâ€¦"
+          ? "Saving…"
           : canSign
           ? "I Agree and Continue"
           : `${[check1, check2, check3].filter(Boolean).length}/3 acknowledged`}

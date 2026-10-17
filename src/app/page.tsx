@@ -3,7 +3,7 @@ import { Leaf, FlaskConical, Shield, Clock, ArrowRight } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div style={{ backgroundColor: "#ffffff", color: "#154D31" }}>
+    <div style={{ backgroundColor: "#092819", color: "#154D31" }}>
       {/* â”€â”€â”€ Navbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <header
         className="absolute top-0 left-0 right-0 z-20"
@@ -13,19 +13,19 @@ export default function HomePage() {
           <Link href="/" className="flex items-center gap-2.5">
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center border"
-              style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+              style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
             >
               <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
             </div>
             <span
               className="font-heading text-xl font-semibold"
-              style={{ color: "#ffffff", fontFamily: '"Cormorant Garamond", Georgia, serif' }}
+              style={{ color: "#092819", fontFamily: '"Cormorant Garamond", Georgia, serif' }}
             >
               AvoVita Wellness
             </span>
           </Link>
 
-          {/* Understated Existing Client Login â€” only login entry on homepage */}
+          {/* Understated Existing Client Login — only login entry on homepage */}
           <Link
             href="/login"
             className="text-sm font-medium px-4 py-2 rounded-lg border transition-colors"
@@ -44,7 +44,7 @@ export default function HomePage() {
       {/* â”€â”€â”€ Hero (full viewport) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section
         className="relative flex items-center justify-center px-4 sm:px-6 pt-40 pb-4 md:pt-48 md:pb-6"
-        style={{ backgroundColor: "#ffffff" }}
+        style={{ backgroundColor: "#092819" }}
       >
         {/* Soft radial glow */}
         <div
@@ -59,7 +59,7 @@ export default function HomePage() {
           <h1
             className="font-heading text-5xl md:text-7xl font-semibold mb-8 leading-[1.05] tracking-tight"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -106,20 +106,20 @@ export default function HomePage() {
       </section>
 
       {/* â”€â”€â”€ How It Works â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <section className="px-4 sm:px-6 pt-12 pb-24" style={{ backgroundColor: "#ffffff" }}>
+      <section className="px-4 sm:px-6 pt-12 pb-24" style={{ backgroundColor: "#092819" }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2
               className="font-heading text-4xl md:text-5xl font-semibold mb-4"
               style={{
-                color: "#ffffff",
+                color: "#092819",
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
               }}
             >
               How It Works
             </h2>
             <p className="text-base max-w-xl mx-auto" style={{ color: "#154D31" }}>
-              A seamless experience from order to results â€” designed for discretion and convenience.
+              A seamless experience from order to results — designed for discretion and convenience.
             </p>
           </div>
 
@@ -148,7 +148,7 @@ export default function HomePage() {
                 key={title}
                 className="p-8 rounded-2xl border text-center transition-colors"
                 style={{
-                  backgroundColor: "#FFFFFF",
+                  backgroundColor: "#092819",
                   borderColor: "#E5E2D4",
                 }}
               >
@@ -174,7 +174,7 @@ export default function HomePage() {
                 <h3
                   className="font-heading text-2xl font-semibold mb-3"
                   style={{
-                    color: "#ffffff",
+                    color: "#092819",
                     fontFamily: '"Cormorant Garamond", Georgia, serif',
                   }}
                 >
@@ -195,7 +195,7 @@ export default function HomePage() {
           <h2
             className="font-heading text-3xl md:text-4xl font-semibold mb-4"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -219,12 +219,12 @@ export default function HomePage() {
       <footer
         className="px-4 sm:px-6 py-10 text-center text-xs border-t"
         style={{
-          backgroundColor: "#ffffff",
+          backgroundColor: "#092819",
           borderColor: "#FFFFFF",
           color: "#4a7a56",
         }}
       >
-        <p>Â© {new Date().getFullYear()} AvoVita Wellness Â· Calgary, AB</p>
+        <p>© {new Date().getFullYear()} AvoVita Wellness · Calgary, AB</p>
         <p className="mt-2">
           All health information protected under Alberta PIPA.{" "}
           <Link

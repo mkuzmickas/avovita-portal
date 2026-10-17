@@ -10,7 +10,7 @@ interface DiscountBannerProps {
   className?: string;
   /**
    * Force-enable the discount even when the current session isn't a
-   * repeat client â€” used by the quote-acceptance flow so a first-time
+   * repeat client — used by the quote-acceptance flow so a first-time
    * customer clicking Accept on an admin-priced quote still sees the
    * multi-test discount that was baked into the quote. Falls back to
    * the RepeatClient context otherwise.
@@ -38,7 +38,7 @@ export function DiscountBanner({
     <div
       className={`flex items-start gap-2.5 rounded-lg border px-4 py-3 ${className ?? ""}`}
       style={{
-        backgroundColor: "#FFFFFF",
+        backgroundColor: "#092819",
         borderColor: "#88D45D",
         color: "#88D45D",
       }}
@@ -47,7 +47,7 @@ export function DiscountBanner({
       <Tag className="w-4 h-4 shrink-0 mt-0.5" />
       <div>
         <p className="text-sm font-semibold leading-snug">
-          Repeat-client discount applied â€” $20 off each test
+          Repeat-client discount applied — $20 off each test
         </p>
         <p className="text-xs mt-0.5 opacity-90">
           You&apos;re saving {formatCurrency(discount.total)} on this order.

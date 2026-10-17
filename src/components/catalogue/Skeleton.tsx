@@ -9,7 +9,7 @@ export function CatalogueSkeleton() {
       <div className="mb-6">
         <div
           className="h-8 w-48 rounded animate-pulse mb-2"
-          style={{ backgroundColor: "#FFFFFF" }}
+          style={{ backgroundColor: "#092819" }}
         />
         <div
           className="h-1 w-16 rounded"
@@ -23,7 +23,7 @@ export function CatalogueSkeleton() {
           <div
             key={i}
             className="rounded-xl border p-5 space-y-3 animate-pulse"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
           >
             <div className="flex gap-2">
               <div
@@ -59,7 +59,7 @@ export function CatalogueSkeleton() {
       <div className="mb-6">
         <div
           className="h-8 w-64 rounded animate-pulse mb-2"
-          style={{ backgroundColor: "#FFFFFF" }}
+          style={{ backgroundColor: "#092819" }}
         />
         <div
           className="h-1 w-16 rounded"
@@ -73,7 +73,7 @@ export function CatalogueSkeleton() {
           <div
             key={i}
             className="h-10 flex-1 rounded-lg animate-pulse"
-            style={{ backgroundColor: "#FFFFFF" }}
+            style={{ backgroundColor: "#092819" }}
           />
         ))}
       </div>
@@ -81,7 +81,7 @@ export function CatalogueSkeleton() {
       {/* Table skeleton */}
       <div
         className="rounded-xl border overflow-hidden"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+        style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
       >
         <div
           className="h-12 border-b"
@@ -93,7 +93,7 @@ export function CatalogueSkeleton() {
             className="h-14 border-b animate-pulse"
             style={{
               backgroundColor: i % 2 === 0 ? "#F7F6F0" : "#FFFFFF",
-              borderColor: "#FFFFFF",
+              borderColor: "#092819",
             }}
           />
         ))}

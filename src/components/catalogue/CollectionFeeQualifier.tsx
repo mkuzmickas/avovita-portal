@@ -1,12 +1,12 @@
 /**
- * Small qualifier line rendered beneath a test's price â€” turns the
+ * Small qualifier line rendered beneath a test's price — turns the
  * price from a sticker into a total-in-context. Existed nowhere before
  * Aug 2026, and the surprise it removed (customers seeing $85 for the
  * first time on Step 3 of checkout) is the single biggest revenue
  * leak in the funnel.
  *
  * Rendering rules:
- *   - Quote-only tests (price_cad === null): no fee line â€” nothing
+ *   - Quote-only tests (price_cad === null): no fee line — nothing
  *     to qualify.
  *   - Kit-collected tests (collection_method === 'self_collected_kit'):
  *     no phlebotomist visit, so no home-visit fee applies. These
@@ -14,13 +14,13 @@
  *     test's description.
  *   - Everything else: the qualifier line. Two variants:
  *       - Mobile (< sm, ~380px):
- *           "+ from $85 collection fee â€” once per appointment"
+ *           "+ from $85 collection fee — once per appointment"
  *       - Desktop (>= sm):
- *           "+ from $85 collection fee â€” charged once per appointment,
+ *           "+ from $85 collection fee — charged once per appointment,
  *            not per test"
  *
  * Mike's other Claude flagged the full desktop copy wrapping to
- * THREE lines under every price on a phone â€” 61% of our traffic
+ * THREE lines under every price on a phone — 61% of our traffic
  * is mobile, so that was clarifying-turned-shouting. The mobile
  * variant keeps both punches (the $85 number + "once per
  * appointment" reframe) in a single sentence that fits on 1-2
@@ -29,7 +29,7 @@
  * "From $85" not "$85" so extended-range postal codes
  * (Cochrane / Airdrie / Okotoks / Chestermere at $135) don't see a
  * jump-scare on Step 3. "Once per appointment" is the language
- * that makes the fee feel fair rather than hidden â€” do not shorten
+ * that makes the fee feel fair rather than hidden — do not shorten
  * to "one-time" (reads as introductory).
  */
 interface CollectionFeeQualifierProps {
@@ -52,10 +52,10 @@ export function CollectionFeeQualifier({
       style={{ color: "#4a7a56" }}
     >
       <span className="sm:hidden">
-        + from $85 collection fee â€” once per appointment
+        + from $85 collection fee — once per appointment
       </span>
       <span className="hidden sm:inline">
-        + from $85 collection fee â€” charged once per appointment, not per test
+        + from $85 collection fee — charged once per appointment, not per test
       </span>
     </p>
   );

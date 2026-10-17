@@ -50,7 +50,7 @@ export default async function ResultsPage() {
 
   if (!user) redirect("/login?returnUrl=/portal/results");
 
-  // Email confirmation gate â€” results are PHI; we don't show them until
+  // Email confirmation gate — results are PHI; we don't show them until
   // the email is confirmed (the magic link from the order email or any
   // subsequent reminder will set this).
   if (!user.email_confirmed_at) {
@@ -58,7 +58,7 @@ export default async function ResultsPage() {
       <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto">
         <div
           className="rounded-2xl border p-6 sm:p-8 text-center"
-          style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
+          style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
         >
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
@@ -69,7 +69,7 @@ export default async function ResultsPage() {
           <h1
             className="font-heading text-2xl sm:text-3xl font-semibold mb-2"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -98,7 +98,7 @@ export default async function ResultsPage() {
     `
     )
     // Sort the column we expect to be populated for the most recent
-    // (manual) uploads â€” order rows fall back to uploaded_at below.
+    // (manual) uploads — order rows fall back to uploaded_at below.
     .order("uploaded_at", { ascending: false });
 
   // Filter out sentinel direct-delivery rows, then re-sort the customer
@@ -113,7 +113,7 @@ export default async function ResultsPage() {
       return kb.localeCompare(ka);
     });
 
-  // Tests per order â€” only needed for order-attached rows (any row with
+  // Tests per order — only needed for order-attached rows (any row with
   // a non-null order_id). Don't trust the source string: production has
   // 'order_attached' on every order row, so source==='order' would miss
   // them all.
@@ -158,14 +158,14 @@ export default async function ResultsPage() {
         <h1
           className="font-heading text-3xl font-semibold"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
           My <span style={{ color: "#C6A04B" }}>Results</span>
         </h1>
         <p className="mt-1" style={{ color: "#154D31" }}>
-          All your lab results â€” from AvoVita orders and your own uploads.
+          All your lab results — from AvoVita orders and your own uploads.
         </p>
       </div>
 
@@ -174,7 +174,7 @@ export default async function ResultsPage() {
       {results.length === 0 ? (
         <div
           className="rounded-xl border px-6 py-16 text-center"
-          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
         >
           <FileText
             className="w-12 h-12 mx-auto mb-4"
@@ -271,7 +271,7 @@ function OrderResultCard({
     <div
       className="rounded-xl border overflow-hidden"
       style={{
-        backgroundColor: "#FFFFFF",
+        backgroundColor: "#092819",
         borderColor: isNew ? "#C6A04B" : "#E5E2D4",
       }}
     >
@@ -302,7 +302,7 @@ function OrderResultCard({
                 )
               }
               text={
-                isPartial ? "Partial â€” additional results may follow" : "Final"
+                isPartial ? "Partial — additional results may follow" : "Final"
               }
             />
             {items.length > 1 && (
@@ -316,14 +316,14 @@ function OrderResultCard({
           {tests.length > 0 && (
             <ul className="space-y-0.5 mb-3">
               {tests.map((t, i) => (
-                <li key={i} className="text-sm" style={{ color: "#ffffff" }}>
+                <li key={i} className="text-sm" style={{ color: "#092819" }}>
                   {t.name}
                   {t.lab && (
                     <span
                       className="text-xs ml-1.5"
                       style={{ color: "#4a7a56" }}
                     >
-                      Â· {t.lab}
+                      · {t.lab}
                     </span>
                   )}
                 </li>
@@ -331,7 +331,7 @@ function OrderResultCard({
             </ul>
           )}
 
-          {/* One row per attached PDF â€” keeps each individually viewable
+          {/* One row per attached PDF — keeps each individually viewable
               and runnable through AI interpretation. */}
           <ul className="space-y-1.5 mb-2">
             {items.map((r) => {
@@ -398,7 +398,7 @@ function UploadedResultCard({ result }: { result: ResultRow }) {
   return (
     <div
       className="rounded-xl border overflow-hidden"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
       <div className="px-5 sm:px-6 py-4 flex items-start gap-4">
         <div
@@ -430,14 +430,14 @@ function UploadedResultCard({ result }: { result: ResultRow }) {
               <Badge
                 color="#C6A04B"
                 icon={<Clock className="w-3 h-3" />}
-                text="Partial â€” more may follow"
+                text="Partial — more may follow"
               />
             )}
           </div>
 
           <p
             className="text-sm break-words"
-            style={{ color: "#ffffff", overflowWrap: "anywhere" }}
+            style={{ color: "#092819", overflowWrap: "anywhere" }}
           >
             {result.file_name}
           </p>

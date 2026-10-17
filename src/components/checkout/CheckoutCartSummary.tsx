@@ -17,7 +17,7 @@ interface CheckoutCartSummaryProps {
   /** Null on Step 1 (person count not chosen yet â†’ no visit fee shown). */
   visitFees: VisitFees | null;
   /**
-   * Real order line count â€” `assignments.length` after Step 2, or a
+   * Real order line count — `assignments.length` after Step 2, or a
    * safe lower bound of `cart.length` on Step 1.
    */
   lineCount?: number;
@@ -60,7 +60,7 @@ export function CheckoutCartSummary({
   const discountEligible = repeatClient.eligible || !!acceptedQuoteNumber;
   // For the per-line discount annotation we still need the discount
   // shape (per_line / applies). The authoritative totals come from
-  // calculateTotals â€” same function the Step 4 pane uses.
+  // calculateTotals — same function the Step 4 pane uses.
   const discount = computeDiscount(effectiveLineCount, discountEligible);
 
   // Build a synthetic test-line price array so calculateTotals receives
@@ -81,7 +81,7 @@ export function CheckoutCartSummary({
         )
       : cartLinePrices;
 
-  // Supplement + resource subtotals â€” folded into calculateTotals so
+  // Supplement + resource subtotals — folded into calculateTotals so
   // GST recalcs on the combined pre-tax subtotal.
   const supplementSubtotal = cart
     .filter((i) => i.line_type === "supplement")
@@ -112,14 +112,14 @@ export function CheckoutCartSummary({
   return (
     <aside
       className="rounded-xl border p-5 sticky top-6"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-4">
         <ShoppingBag className="w-4 h-4" style={{ color: "#C6A04B" }} />
         <h2
           className="font-heading text-lg font-semibold"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -160,7 +160,7 @@ export function CheckoutCartSummary({
                   <div className="flex-1 min-w-0">
                     <p
                       className="text-sm font-medium leading-snug"
-                      style={{ color: "#ffffff" }}
+                      style={{ color: "#092819" }}
                     >
                       {name}
                     </p>
@@ -263,12 +263,12 @@ export function CheckoutCartSummary({
                     </span>
                   </div>
                 )}
-                {/* "Already covered" reframe â€” same fact as the
+                {/* "Already covered" reframe — same fact as the
                     catalogue's "+ from $85 collection fee" qualifier,
                     but opposite emotional weight: in the cart the
                     fee has been decided on and adding another test
                     doesn't repeat it. Only when the customer has
-                    exactly one test line â€” with 2+ the argument
+                    exactly one test line — with 2+ the argument
                     would be preaching to the choir. Never on
                     kit-only carts (no visit fee to be covered). */}
                 {testCount === 1 && (
@@ -279,7 +279,7 @@ export function CheckoutCartSummary({
                       borderTop: "1px dashed #E5E2D4",
                     }}
                   >
-                    Your collection fee is already covered â€” add another
+                    Your collection fee is already covered — add another
                     test and you pay only the test price.
                   </p>
                 )}
@@ -369,7 +369,7 @@ export function CheckoutCartSummary({
               className="flex justify-between text-base font-semibold pt-2 mt-1 border-t"
               style={{ borderColor: "#E5E2D4" }}
             >
-              <span style={{ color: "#ffffff" }}>Est. Total</span>
+              <span style={{ color: "#092819" }}>Est. Total</span>
               <span style={{ color: "#C6A04B" }}>
                 {formatCurrency(total)} CAD
               </span>
@@ -378,7 +378,7 @@ export function CheckoutCartSummary({
               className="text-[10px] text-right mt-1 italic"
               style={{ color: "#4a7a56" }}
             >
-              Tax estimated â€” final amount confirmed at checkout.
+              Tax estimated — final amount confirmed at checkout.
             </p>
           </div>
         </>

@@ -123,13 +123,13 @@ export default async function PortalDashboard() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-      {/* Welcome header â€” variant for new users with no profiles */}
+      {/* Welcome header — variant for new users with no profiles */}
       {hasProfile ? (
         <div className="mb-6">
           <h1
             className="font-heading text-3xl sm:text-4xl font-semibold"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -145,12 +145,12 @@ export default async function PortalDashboard() {
       ) : (
         <div
           className="mb-6 rounded-xl border p-6 sm:p-8"
-          style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
+          style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
         >
           <h1
             className="font-heading text-3xl sm:text-4xl font-semibold mb-2"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -175,7 +175,7 @@ export default async function PortalDashboard() {
         <div
           className="rounded-xl border p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4"
           style={{
-            backgroundColor: "#FFFFFF",
+            backgroundColor: "#092819",
             borderColor: "#C6A04B",
             boxShadow: "0 0 0 1px #C6A04B",
           }}
@@ -190,7 +190,7 @@ export default async function PortalDashboard() {
             <p
               className="font-heading text-lg sm:text-xl font-semibold"
               style={{
-                color: "#ffffff",
+                color: "#092819",
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
               }}
             >
@@ -214,7 +214,7 @@ export default async function PortalDashboard() {
         </div>
       )}
 
-      {/* Metric cards â€” 2 cols mobile, 4 cols desktop */}
+      {/* Metric cards — 2 cols mobile, 4 cols desktop */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
         <MetricCard
           label="Active Orders"
@@ -245,7 +245,7 @@ export default async function PortalDashboard() {
           <h2
             className="font-heading text-2xl font-semibold mb-4"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -257,7 +257,7 @@ export default async function PortalDashboard() {
                 key={d.id}
                 className="rounded-xl border p-4"
                 style={{
-                  backgroundColor: "#FFFFFF",
+                  backgroundColor: "#092819",
                   borderColor: "#E5E2D4",
                 }}
               >
@@ -274,7 +274,7 @@ export default async function PortalDashboard() {
                   <div className="flex-1 min-w-0">
                     <p
                       className="font-semibold"
-                      style={{ color: "#ffffff" }}
+                      style={{ color: "#092819" }}
                     >
                       {d.first_name} {d.last_name}
                     </p>
@@ -297,7 +297,7 @@ export default async function PortalDashboard() {
         <h2
           className="font-heading text-2xl font-semibold"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -317,7 +317,7 @@ export default async function PortalDashboard() {
       {recentOrders.length === 0 ? (
         <div
           className="rounded-xl border px-6 py-12 text-center"
-          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
         >
           <FlaskConical
             className="w-10 h-10 mx-auto mb-3"
@@ -338,7 +338,7 @@ export default async function PortalDashboard() {
             <div
               key={order.id}
               className="rounded-xl border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4"
-              style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+              style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -352,12 +352,12 @@ export default async function PortalDashboard() {
                 </div>
                 <p
                   className="text-sm truncate"
-                  style={{ color: "#ffffff" }}
+                  style={{ color: "#092819" }}
                 >
                   {order.order_lines
                     .map((l) => l.test?.name)
                     .filter(Boolean)
-                    .join(", ") || "â€”"}
+                    .join(", ") || "—"}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "#4a7a56" }}>
                   {formatDate(order.created_at)}
@@ -370,7 +370,7 @@ export default async function PortalDashboard() {
                 >
                   {order.total_cad != null
                     ? formatCurrency(order.total_cad)
-                    : "â€”"}
+                    : "—"}
                 </p>
                 <Link
                   href="/portal/orders"
@@ -418,7 +418,7 @@ function MetricCard({
     <div
       className="rounded-xl border p-4 sm:p-5"
       style={{
-        backgroundColor: "#FFFFFF",
+        backgroundColor: "#092819",
         borderColor: highlight ? "#C6A04B" : "#E5E2D4",
       }}
     >

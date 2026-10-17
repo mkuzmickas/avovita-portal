@@ -19,7 +19,7 @@ interface SupplementFulfillmentStepProps {
 }
 
 /**
- * Supplement fulfillment step â€” shown only when the cart contains
+ * Supplement fulfillment step — shown only when the cart contains
  * supplements. Two radio options: flat-rate shipping ($40) or
  * pre-coordinated delivery/pickup ($0).
  */
@@ -34,8 +34,8 @@ export function SupplementFulfillmentStep({
 }: SupplementFulfillmentStepProps) {
   const [sameAsMain, setSameAsMain] = useState(true);
 
-  // Full street address is no longer collected at checkout â€” only
-  // postal code â€” so the "same as collection address" auto-prefill
+  // Full street address is no longer collected at checkout — only
+  // postal code — so the "same as collection address" auto-prefill
   // has nothing meaningful to copy across for street/city/province.
   // Postal code alone still gets prefilled since that's the one
   // field we do have. If the customer wants a truly identical
@@ -78,7 +78,7 @@ export function SupplementFulfillmentStep({
       <h2
         className="font-heading text-2xl font-semibold mb-2"
         style={{
-          color: "#ffffff",
+          color: "#092819",
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
@@ -108,8 +108,8 @@ export function SupplementFulfillmentStep({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <Truck className="w-4 h-4" style={{ color: "#C6A04B" }} />
-              <span className="text-sm font-semibold" style={{ color: "#ffffff" }}>
-                Flat-rate shipping anywhere in Canada â€”{" "}
+              <span className="text-sm font-semibold" style={{ color: "#092819" }}>
+                Flat-rate shipping anywhere in Canada —{" "}
                 <span style={{ color: "#C6A04B" }}>
                   {formatCurrency(SUPPLEMENT_SHIPPING_FEE_CAD)}
                 </span>
@@ -121,7 +121,7 @@ export function SupplementFulfillmentStep({
           </div>
         </label>
 
-        {/* Shipping address â€” shown when shipping is selected */}
+        {/* Shipping address — shown when shipping is selected */}
         {isShipping && (
           <div
             className="ml-8 p-4 rounded-lg border space-y-3"
@@ -327,8 +327,8 @@ export function SupplementFulfillmentStep({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <Handshake className="w-4 h-4" style={{ color: "#C6A04B" }} />
-              <span className="text-sm font-semibold" style={{ color: "#ffffff" }}>
-                I have already coordinated delivery or pickup with AvoVita â€”{" "}
+              <span className="text-sm font-semibold" style={{ color: "#092819" }}>
+                I have already coordinated delivery or pickup with AvoVita —{" "}
                 <span style={{ color: "#88D45D" }}>$0</span>
               </span>
             </div>

@@ -74,10 +74,10 @@ export function SupplementCheckout({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#ffffff" }}
+        style={{ backgroundColor: "#092819" }}
       >
         <p className="text-sm" style={{ color: "#4a7a56" }}>
-          Loadingâ€¦
+          Loading…
         </p>
       </div>
     );
@@ -155,7 +155,7 @@ export function SupplementCheckout({
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#ffffff" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#092819" }}>
       <OrgAwareHeader
         rightSlot={
           <Link
@@ -221,7 +221,7 @@ export function SupplementCheckout({
                 <h2
                   className="font-heading text-2xl font-semibold mb-2"
                   style={{
-                    color: "#ffffff",
+                    color: "#092819",
                     fontFamily:
                       '"Cormorant Garamond", Georgia, serif',
                   }}
@@ -345,7 +345,7 @@ export function SupplementCheckout({
                 <h2
                   className="font-heading text-2xl font-semibold mb-6"
                   style={{
-                    color: "#ffffff",
+                    color: "#092819",
                     fontFamily:
                       '"Cormorant Garamond", Georgia, serif',
                   }}
@@ -358,7 +358,7 @@ export function SupplementCheckout({
                 <div
                   className="rounded-xl border p-4 mb-4 space-y-2"
                   style={{
-                    backgroundColor: "#FFFFFF",
+                    backgroundColor: "#092819",
                     borderColor: "#E5E2D4",
                   }}
                 >
@@ -367,7 +367,7 @@ export function SupplementCheckout({
                       key={i}
                       className="flex justify-between text-sm"
                     >
-                      <span style={{ color: "#ffffff" }}>
+                      <span style={{ color: "#092819" }}>
                         {cartItemName(item)}
                       </span>
                       <span style={{ color: "#C6A04B" }}>
@@ -398,11 +398,11 @@ export function SupplementCheckout({
                   <p className="text-xs uppercase tracking-wider font-semibold mb-2" style={{ color: "#4a7a56" }}>
                     Contact
                   </p>
-                  <p className="text-sm" style={{ color: "#ffffff" }}>
+                  <p className="text-sm" style={{ color: "#092819" }}>
                     {firstName} {lastName}
                   </p>
                   <p className="text-sm" style={{ color: "#154D31" }}>
-                    {email} Â· {phone}
+                    {email} · {phone}
                   </p>
                 </div>
 
@@ -419,7 +419,7 @@ export function SupplementCheckout({
                   </p>
                   {fulfillment === "shipping" && shippingAddress ? (
                     <div className="text-sm" style={{ color: "#154D31" }}>
-                      <p style={{ color: "#ffffff" }}>Shipping to:</p>
+                      <p style={{ color: "#092819" }}>Shipping to:</p>
                       <p>{shippingAddress.street}</p>
                       <p>
                         {shippingAddress.city}, {shippingAddress.province}{" "}

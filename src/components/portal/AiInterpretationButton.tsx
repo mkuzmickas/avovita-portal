@@ -4,7 +4,7 @@ import { Sparkles } from "lucide-react";
 
 /**
  * Opens the AI Lab Interpretation page for a given result in a new tab.
- * Gated behind NEXT_PUBLIC_ENABLE_AI_INTERPRETATION â€” renders null when
+ * Gated behind NEXT_PUBLIC_ENABLE_AI_INTERPRETATION — renders null when
  * the flag is off so the feature is invisible in production until we
  * enable it.
  */

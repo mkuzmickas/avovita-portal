@@ -50,7 +50,7 @@ export interface OnboardingCollectionAddress {
 
 export interface OnboardingSummary {
   sessionId: string;
-  /** Full UUID for the underlying order â€” needed so
+  /** Full UUID for the underlying order — needed so
    *  /api/checkout/complete-profile can re-fire the FloLabs
    *  requisition once every profile row has been filled. Optional
    *  for backwards-compat: legacy pre-Aug-2026 orders may not have
@@ -96,7 +96,7 @@ export function PostPurchaseOnboarding({
 
   const [step, setStep] = useState<Step>(initialStep);
 
-  // Guests no longer set a password here â€” the webhook auto-creates the
+  // Guests no longer set a password here — the webhook auto-creates the
   // account and emails a magic confirmation link. Show a simple success
   // card and let them activate from their inbox.
   if (!alreadyLoggedIn) {
@@ -108,21 +108,21 @@ export function PostPurchaseOnboarding({
   return (
     <div
       className="min-h-screen flex flex-col items-center px-4 py-6 sm:py-10"
-      style={{ backgroundColor: "#ffffff" }}
+      style={{ backgroundColor: "#092819" }}
     >
       <div className="w-full max-w-2xl">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-6">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
           >
             <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
           <span
             className="font-heading text-2xl font-semibold"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -187,7 +187,7 @@ export function PostPurchaseOnboarding({
         {/* Card */}
         <div
           className="rounded-2xl border overflow-hidden"
-          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
         >
           {step === 1 && (
             <Step1CreateAccount
@@ -226,7 +226,7 @@ export function PostPurchaseOnboarding({
           className="text-center text-xs mt-6"
           style={{ color: "#4a7a56" }}
         >
-          Protected by Alberta PIPA Â· AvoVita Wellness
+          Protected by Alberta PIPA · AvoVita Wellness
         </p>
       </div>
     </div>
@@ -304,7 +304,7 @@ function Step1CreateAccount({
         <h2
           className="font-heading text-2xl sm:text-3xl font-semibold mb-2"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -385,7 +385,7 @@ function Step1CreateAccount({
         className="mf-btn-primary w-full py-3"
       >
         {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-        {submitting ? "Creating accountâ€¦" : "Create Account"}
+        {submitting ? "Creating account…" : "Create Account"}
       </button>
     </form>
   );
@@ -457,7 +457,7 @@ function Step2YourInfo({
         )
         .eq("account_id", user.id)
         // Primary (account-holder) profile first, then dependents in
-        // creation order â€” matches the person-index ordering the
+        // creation order — matches the person-index ordering the
         // checkout used before Phase 2.
         .order("is_primary", { ascending: false })
         .order("created_at", { ascending: true });
@@ -470,7 +470,7 @@ function Step2YourInfo({
   const finaliseAndAdvance = async () => {
     setFinalising(true);
     setFinaliseError(null);
-    // Fire the deferred FloLabs requisition â€” best-effort, we don't
+    // Fire the deferred FloLabs requisition — best-effort, we don't
     // block the customer from proceeding if it fails. Non-blocking is
     // safe because the endpoint is idempotent and admin can re-run it
     // manually if this attempt gets missed.
@@ -484,7 +484,7 @@ function Step2YourInfo({
       } catch (err) {
         console.warn("[onboarding] complete-profile call failed:", err);
         setFinaliseError(
-          "We saved your information but had trouble notifying the lab. Your booking still works â€” email support@avovita.ca if you don't hear from FloLabs within an hour.",
+          "We saved your information but had trouble notifying the lab. Your booking still works — email support@avovita.ca if you don't hear from FloLabs within an hour.",
         );
       }
     }
@@ -509,7 +509,7 @@ function Step2YourInfo({
           style={{ color: "#C6A04B" }}
         />
         <p className="text-sm" style={{ color: "#4a7a56" }}>
-          Loadingâ€¦
+          Loading…
         </p>
       </div>
     );
@@ -525,7 +525,7 @@ function Step2YourInfo({
           style={{ color: "#C6A04B" }}
         />
         <p className="text-sm" style={{ color: "#4a7a56" }}>
-          Preparing your profile â€” one momentâ€¦
+          Preparing your profile — one moment…
         </p>
       </div>
     );
@@ -559,7 +559,7 @@ function Step2YourInfo({
         <h2
           className="font-heading text-2xl sm:text-3xl font-semibold mb-2"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -601,7 +601,7 @@ function Step2YourInfo({
         existingProfile={current as unknown as import("@/types/database").PatientProfile}
         submitLabel={
           finalising
-            ? "Finalisingâ€¦"
+            ? "Finalising…"
             : isLast
               ? "Save and Continue"
               : "Save and Next Person"
@@ -652,7 +652,7 @@ function Step4BookCollection({
         <h2
           className="font-heading text-3xl sm:text-4xl font-semibold mb-2"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -679,7 +679,7 @@ function Step4BookCollection({
             >
               <p
                 className="text-sm font-semibold mb-2"
-                style={{ color: "#ffffff" }}
+                style={{ color: "#092819" }}
               >
                 {person.first_name} {person.last_name}
                 {!person.is_account_holder && person.relationship && (
@@ -687,7 +687,7 @@ function Step4BookCollection({
                     className="font-normal text-xs ml-2"
                     style={{ color: "#4a7a56" }}
                   >
-                    Â· {person.relationship.replace("_", " ")}
+                    · {person.relationship.replace("_", " ")}
                   </span>
                 )}
               </p>
@@ -705,7 +705,7 @@ function Step4BookCollection({
                     <span>{t.test_name}</span>
                     {t.specimen_type && (
                       <span style={{ color: "#4a7a56" }}>
-                        Â· {t.specimen_type}
+                        · {t.specimen_type}
                       </span>
                     )}
                     {t.requires_fasting && (
@@ -713,7 +713,7 @@ function Step4BookCollection({
                         className="font-semibold"
                         style={{ color: "#C6A04B" }}
                       >
-                        Â· Fasting
+                        · Fasting
                       </span>
                     )}
                   </li>
@@ -745,7 +745,7 @@ function Step4BookCollection({
               Fasting required
             </p>
             <p className="text-xs" style={{ color: "#154D31" }}>
-              One or more of your tests require 8â€“12 hours of fasting
+              One or more of your tests require 8–12 hours of fasting
               before collection. Only water is permitted during the fasting
               window. Please schedule your appointment accordingly.
             </p>
@@ -780,7 +780,7 @@ function Step4BookCollection({
         <h3
           className="font-heading text-lg font-semibold mb-3"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -790,13 +790,13 @@ function Step4BookCollection({
           {[
             "FloLabs visits your collection address and draws your specimens.",
             "AvoVita ships your specimens to the laboratory.",
-            "Your results are uploaded to your portal â€” you'll receive an email and text when ready.",
+            "Your results are uploaded to your portal — you'll receive an email and text when ready.",
           ].map((text, i) => (
             <li key={i} className="flex items-start gap-3">
               <span
                 className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border"
                 style={{
-                  backgroundColor: "#FFFFFF",
+                  backgroundColor: "#092819",
                   borderColor: "#E5E2D4",
                   color: "#C6A04B",
                 }}
@@ -828,20 +828,20 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 py-10"
-      style={{ backgroundColor: "#ffffff" }}
+      style={{ backgroundColor: "#092819" }}
     >
       <div className="w-full max-w-xl text-center">
         <div className="flex items-center justify-center gap-2.5 mb-6">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
           >
             <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
           <span
             className="font-heading text-xl font-semibold"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -851,7 +851,7 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
 
         <div
           className="rounded-2xl border p-6 sm:p-8"
-          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
         >
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
@@ -862,14 +862,14 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
           <h1
             className="font-heading text-2xl sm:text-3xl font-semibold mb-2"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
             Your order is <span style={{ color: "#C6A04B" }}>confirmed</span>
           </h1>
           <p className="text-sm mb-1" style={{ color: "#154D31" }}>
-            Order #{summary.orderIdShort} Â·{" "}
+            Order #{summary.orderIdShort} ·{" "}
             <span style={{ color: "#C6A04B", fontWeight: 600 }}>
               {formatCurrency(summary.total)} CAD
             </span>
@@ -879,7 +879,7 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
             style={{ color: "#154D31" }}
           >
             We&apos;ve sent a confirmation email to{" "}
-            <strong style={{ color: "#ffffff" }}>
+            <strong style={{ color: "#092819" }}>
               {summary.prefilledEmail || "your inbox"}
             </strong>
             . Start by confirming your email, then complete your profile and
@@ -898,7 +898,7 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
             >
               The email may have landed in your junk or spam folder. If so,
               please move it to your inbox before clicking the activation
-              link â€” it may not work from the spam folder.
+              link — it may not work from the spam folder.
             </p>
           </div>
 

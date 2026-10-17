@@ -47,14 +47,14 @@ export function TestTable({
     <div
       id="catalogue-list"
       className="rounded-xl border overflow-hidden"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
-      {/* Mobile card layout â€” replaces the sideways-scrolling table on
+      {/* Mobile card layout — replaces the sideways-scrolling table on
           phones. Price and Add-to-Cart are always visible; tap the card
           to expand its details. */}
       <div className="sm:hidden">
         {isEmpty ? (
-          <div className="px-4 py-12 text-center" style={{ backgroundColor: "#ffffff" }}>
+          <div className="px-4 py-12 text-center" style={{ backgroundColor: "#092819" }}>
             {dbIsEmpty ? (
               <p style={{ color: "#4a7a56" }}>Test catalogue coming soon</p>
             ) : (
@@ -92,7 +92,7 @@ export function TestTable({
         )}
       </div>
 
-      {/* Desktop table â€” hidden on phones */}
+      {/* Desktop table — hidden on phones */}
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -136,7 +136,7 @@ export function TestTable({
                 <td
                   colSpan={6}
                   className="px-6 py-16 text-center"
-                  style={{ backgroundColor: "#ffffff" }}
+                  style={{ backgroundColor: "#092819" }}
                 >
                   {dbIsEmpty ? (
                     <p style={{ color: "#4a7a56" }}>
@@ -238,7 +238,7 @@ function TestTableRow({
       collection_method: test.collection_method,
     });
     // test_added_to_cart event is fired from CartContext.commitAdd
-    // (single source of truth) so every add path counts â€” dropped
+    // (single source of truth) so every add path counts — dropped
     // the local trackEvent here in the funnel-bug fix.
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1500);
@@ -248,7 +248,7 @@ function TestTableRow({
 
   return (
     <>
-      {/* Highlight spacer â€” creates vertical breathing room above the gold frame */}
+      {/* Highlight spacer — creates vertical breathing room above the gold frame */}
       {highlighted && (
         <tr aria-hidden="true">
           <td colSpan={6} style={{ padding: 0, height: "12px", backgroundColor: "transparent" }} />
@@ -260,21 +260,21 @@ function TestTableRow({
         onClick={handleToggle}
         className={`cursor-pointer transition-colors${highlighted ? " avovita-deeplink-row" : ""}`}
         style={{
-          backgroundColor: highlighted ? "#24492b" : rowBg,
-          borderTop: highlighted ? "3px solid #C6A04B" : "1px solid #FFFFFF",
+          backgroundColor: highlighted ? "rgba(198,160,75,0.18)" : rowBg,
+          borderTop: highlighted ? "3px solid #C6A04B" : "1px solid #E5E2D4",
           ...(highlighted && !expanded ? { borderBottom: "3px solid #C6A04B" } : {}),
         }}
       >
-        <td className="px-5 py-4 font-medium" style={{ color: "#ffffff" }}>
+        <td className="px-5 py-4 font-medium" style={{ color: "#092819" }}>
           <div className="flex items-center gap-2 flex-wrap">
             <span>{test.name}</span>
             {test.requisition_url && (
               <span
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
                 style={{
-                  backgroundColor: "rgba(196,151,58,0.1)",
+                  backgroundColor: "rgba(198,160,75,0.12)",
                   borderColor: "#C6A04B",
-                  color: "#C6A04B",
+                  color: "#8a6d2a",
                 }}
               >
                 <FileText className="w-3 h-3" />
@@ -290,7 +290,7 @@ function TestTableRow({
                 fontFamily:
                   'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
                 fontSize: "11px",
-                color: "rgba(141, 198, 63, 0.6)",
+                color: "rgba(9,40,25,0.6)",
                 marginTop: "2px",
                 letterSpacing: "0.5px",
               }}
@@ -309,7 +309,7 @@ function TestTableRow({
           className="hidden sm:table-cell px-5 py-4"
           style={{ color: "#154D31" }}
         >
-          {test.category ?? "â€”"}
+          {test.category ?? "—"}
         </td>
         <td
           className="px-5 py-4 font-semibold"
@@ -327,7 +327,7 @@ function TestTableRow({
           className="hidden sm:table-cell px-5 py-4"
           style={{ color: "#154D31" }}
         >
-          {test.turnaround_display ?? "â€”"}
+          {test.turnaround_display ?? "—"}
         </td>
         <td className="px-5 py-4 text-right">
           <ChevronDown
@@ -343,7 +343,7 @@ function TestTableRow({
       {/* Expanded detail panel */}
       <tr
         style={{
-          backgroundColor: highlighted ? "#24492b" : rowBg,
+          backgroundColor: highlighted ? "rgba(198,160,75,0.18)" : rowBg,
           ...(highlighted ? { borderBottom: "3px solid #C6A04B" } : {}),
         }}
         className={highlighted ? "avovita-deeplink-row" : undefined}
@@ -370,7 +370,7 @@ function TestTableRow({
                       <span
                         className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
                         style={{
-                          backgroundColor: "#FFFFFF",
+                          backgroundColor: "#092819",
                           borderColor: "#C6A04B",
                           color: "#C6A04B",
                         }}
@@ -389,7 +389,7 @@ function TestTableRow({
                   )}
 
                   {/* Handling + Stability intentionally removed from
-                      the client-side view â€” short-stability tests
+                      the client-side view — short-stability tests
                       (CBC, metabolic panels, potassium, etc.) are
                       already flagged upstream via the schedule-ack
                       modal on add and dedicated banners at Step 3 +
@@ -458,7 +458,7 @@ function TestTableRow({
                         : "Contact us for pricing"}
                     </p>
                     <p className="text-xs" style={{ color: "#154D31" }}>
-                      {hasPrice ? "CAD Â· " : ""}
+                      {hasPrice ? "CAD · " : ""}
                       {test.lab.name}
                     </p>
                     <CollectionFeeQualifier
@@ -514,7 +514,7 @@ function TestTableRow({
           </div>
         </td>
       </tr>
-      {/* Highlight spacer â€” creates vertical breathing room below the gold frame */}
+      {/* Highlight spacer — creates vertical breathing room below the gold frame */}
       {highlighted && (
         <tr aria-hidden="true">
           <td colSpan={6} style={{ padding: 0, height: "12px", backgroundColor: "transparent" }} />
@@ -527,7 +527,7 @@ function TestTableRow({
 // â”€â”€â”€ Mobile card layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
 // Full-width card. Header row shows test name + SKU. Middle row shows
-// price on the left and Add-to-Cart on the right â€” both always visible
+// price on the left and Add-to-Cart on the right — both always visible
 // so users don't have to swipe or expand to buy. Tap the "Show details"
 // footer to expand the description inline.
 
@@ -588,7 +588,7 @@ function TestMobileCard({
     >
       <div className="mb-2">
         <div className="flex items-start gap-2 flex-wrap">
-          <span className="font-medium" style={{ color: "#ffffff" }}>
+          <span className="font-medium" style={{ color: "#092819" }}>
             {test.name}
           </span>
           {test.requisition_url && (
@@ -622,7 +622,7 @@ function TestMobileCard({
         )}
       </div>
 
-      {/* Price + Add-to-Cart row â€” always visible, no horizontal scroll */}
+      {/* Price + Add-to-Cart row — always visible, no horizontal scroll */}
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="min-w-0">
           <div
@@ -685,7 +685,7 @@ function TestMobileCard({
         )}
       </div>
 
-      {/* Expand toggle â€” full-width tap target */}
+      {/* Expand toggle — full-width tap target */}
       <button
         type="button"
         onClick={handleToggle}
@@ -707,7 +707,7 @@ function TestMobileCard({
         />
       </button>
 
-      {/* Expanded details â€” inline, no horizontal overflow */}
+      {/* Expanded details — inline, no horizontal overflow */}
       <div
         className="overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
         style={{
@@ -723,7 +723,7 @@ function TestMobileCard({
             <span
               className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border"
               style={{
-                backgroundColor: "#FFFFFF",
+                backgroundColor: "#092819",
                 borderColor: "#C6A04B",
                 color: "#C6A04B",
               }}
@@ -796,7 +796,7 @@ function DetailField({
       <p
         className="text-sm"
         style={{
-          color: "#ffffff",
+          color: "#092819",
           ...(mono
             ? {
                 fontFamily:
@@ -807,7 +807,7 @@ function DetailField({
         }}
       >
         {value == null ? (
-          "â€”"
+          "—"
         ) : ariaLabel ? (
           <span aria-label={ariaLabel}>{value}</span>
         ) : (

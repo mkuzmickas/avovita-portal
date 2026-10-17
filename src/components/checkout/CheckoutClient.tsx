@@ -114,7 +114,7 @@ export function CheckoutClient({
     useState<CollectionAddress>(defaultAddress);
   // Out-of-town toggle on Step 3. When true, the address form is
   // hidden and Step 3 renders a contact-us gate that blocks the
-  // customer from advancing to payment â€” OOT collections are
+  // customer from advancing to payment — OOT collections are
   // coordinated case-by-case over email.
   const [isOutOfTown, setIsOutOfTown] = useState(false);
   // Stash whatever the customer typed before switching to out-of-town
@@ -128,18 +128,18 @@ export function CheckoutClient({
   const [representative, setRepresentative] = useState<RepresentativeBlock>(
     BLANK_REPRESENTATIVE
   );
-  // Permission-to-order acknowledgement â€” captured on Step 1 whenever
+  // Permission-to-order acknowledgement — captured on Step 1 whenever
   // the order is on behalf of someone other than the account holder
   // (mode picks "Myself and someone else" or "Someone else"). Persisted
   // downstream so it's an auditable record, not just a UI gate.
   const [permissionAcknowledged, setPermissionAcknowledged] = useState(false);
-  // Supplement fulfillment state â€” only used when showSupplementFulfillmentStep
+  // Supplement fulfillment state — only used when showSupplementFulfillmentStep
   const [suppFulfillment, setSuppFulfillment] =
     useState<SupplementFulfillment | null>(null);
   const [suppShippingAddress, setSuppShippingAddress] =
     useState<SupplementShippingAddress | null>(null);
 
-  // Org tagging â€” when the user arrived via /org/[slug]/checkout the
+  // Org tagging — when the user arrived via /org/[slug]/checkout the
   // server redirect drops org_slug into the query string. We persist it
   // to localStorage so any in-flight cart from the same browser session
   // keeps its org affinity even if the user wanders out and back.
@@ -221,7 +221,7 @@ export function CheckoutClient({
         // Quote custom lines â†’ cart custom items. Stable ids keyed on
         // quote number + index so re-accepting the same quote doesn't
         // duplicate. Notes are NOT in the public /api/quotes/[number]
-        // response (admin-only), so they don't appear here either â€”
+        // response (admin-only), so they don't appear here either —
         // the webhook hydrates them from the original quote row.
         for (let i = 0; i < customLines.length; i++) {
           const c = customLines[i];
@@ -289,7 +289,7 @@ export function CheckoutClient({
       if (raw) {
         const parsed = JSON.parse(raw) as PersistedCheckoutState;
         if (parsed && typeof parsed === "object") {
-          // Clamp to [1, 2] â€” Step 1 now offers two options only
+          // Clamp to [1, 2] — Step 1 now offers two options only
           // (bigger groups route through support); a stale localStorage
           // value from before that change would leave the select blank
           // on hydration.
@@ -321,7 +321,7 @@ export function CheckoutClient({
           });
           setPersons(aligned);
           if (Array.isArray(parsed.assignments)) {
-            // Dedupe by test_id â€” older versions of the wizard allowed
+            // Dedupe by test_id — older versions of the wizard allowed
             // multiple assignments per test, but the new rule is one
             // assignment per test, so we collapse duplicates by keeping
             // the most recently-pushed entry.
@@ -357,13 +357,13 @@ export function CheckoutClient({
         }
       }
     } catch {
-      // Ignore parse errors â€” start fresh
+      // Ignore parse errors — start fresh
     }
 
     // Historically we pre-selected the caregiver flow for a specific
     // white-label org partner whose customers almost always ordered
     // on behalf of a resident. That org was decommissioned in Aug
-    // 2026; the block is retained as a hook â€” if a future org
+    // 2026; the block is retained as a hook — if a future org
     // partner wants a caregiver-first default, add their slug here.
     // Otherwise the customer picks their own mode on Step 1.
 
@@ -428,7 +428,7 @@ export function CheckoutClient({
 
   // â”€â”€â”€ Cart composition for fee gating â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const kitFeeInfo = computeKitServiceFee(cart);
-  // Kit-only orders have no phlebotomist visit â€” skip people step + visit fee
+  // Kit-only orders have no phlebotomist visit — skip people step + visit fee
   const isKitOnly = kitFeeInfo.hasKitTests && !kitFeeInfo.hasPhlebotomistTests;
 
   // â”€â”€â”€ Analytics: checkout started â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -463,7 +463,7 @@ export function CheckoutClient({
 
   // â”€â”€â”€ Cart redirect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Don't bounce to /tests while a ?quote= deep-link is loading items or
-  // while a quote error banner is being shown â€” the user should see the
+  // while a quote error banner is being shown — the user should see the
   // message on /checkout, not get kicked back to the catalogue.
   useEffect(() => {
     if (quoteLoading || quoteError) return;
@@ -482,7 +482,7 @@ export function CheckoutClient({
   ]);
 
   // â”€â”€â”€ Adjust persons when count changes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // `assignments` is handled by the reconcile effect above â€” no direct
+  // `assignments` is handled by the reconcile effect above — no direct
   // filter/rebuild needed here. We just keep `persons` in step.
   const handlePersonCountChange = (count: number) => {
     setPersonCount(count);
@@ -508,7 +508,7 @@ export function CheckoutClient({
   const handleStep1Continue = () => {
     trackEvent("checkout_step_completed", { step: 1 });
     // `assignments` is auto-kept-in-sync by the reconcile effect, so
-    // there's nothing to populate here â€” just advance.
+    // there's nothing to populate here — just advance.
     setStep(personCount === 1 ? 3 : 2);
   };
 
@@ -539,7 +539,7 @@ export function CheckoutClient({
       if (isKitOnly) return null;
       // Person count is known from Step 1 (the three-button picker
       // sets it before Continue), so compute the fee from Step 1
-      // onward â€” hiding it until later was a leftover from the old
+      // onward — hiding it until later was a leftover from the old
       // pre-Step-1-picker flow. Postal code isn't known until Step 3;
       // computeVisitFees falls back to Zone 1 pricing ($85 base +
       // $55 per additional person) when postal is empty, which
@@ -552,8 +552,8 @@ export function CheckoutClient({
   );
 
   // Sidebar always reflects the cart, never the partial assignment state.
-  // Each cart item is exactly one order line â€” assigning it to a person
-  // moves it but never duplicates it â€” so the cart is the single source
+  // Each cart item is exactly one order line — assigning it to a person
+  // moves it but never duplicates it — so the cart is the single source
   // of truth for line count, subtotal, and discount preview on every
   // checkout step. The Step 2 step body uses the same numbers, so the
   // sidebar and step body always agree.
@@ -564,15 +564,15 @@ export function CheckoutClient({
     0
   );
 
-  // Don't render anything until hydration is done â€” avoids React mismatch
+  // Don't render anything until hydration is done — avoids React mismatch
   if (!hydrated || !restored) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#ffffff" }}
+        style={{ backgroundColor: "#092819" }}
       >
         <p className="text-sm" style={{ color: "#4a7a56" }}>
-          Loading checkoutâ€¦
+          Loading checkout…
         </p>
       </div>
     );
@@ -583,10 +583,10 @@ export function CheckoutClient({
       return (
         <div
           className="min-h-screen flex items-center justify-center"
-          style={{ backgroundColor: "#ffffff" }}
+          style={{ backgroundColor: "#092819" }}
         >
           <p className="text-sm" style={{ color: "#4a7a56" }}>
-            Loading your quoteâ€¦
+            Loading your quote…
           </p>
         </div>
       );
@@ -595,16 +595,16 @@ export function CheckoutClient({
       return (
         <div
           className="min-h-screen flex items-center justify-center px-4"
-          style={{ backgroundColor: "#ffffff" }}
+          style={{ backgroundColor: "#092819" }}
         >
           <div
             className="max-w-md w-full rounded-2xl border p-6 text-center"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
+            style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
           >
             <h1
               className="font-heading text-2xl font-semibold mb-3"
               style={{
-                color: "#ffffff",
+                color: "#092819",
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
               }}
             >
@@ -627,17 +627,17 @@ export function CheckoutClient({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#ffffff" }}
+        style={{ backgroundColor: "#092819" }}
       >
         <p className="text-sm" style={{ color: "#4a7a56" }}>
-          Redirecting to test catalogueâ€¦
+          Redirecting to test catalogue…
         </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#ffffff" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#092819" }}>
       <OrgAwareHeader
         rightSlot={
           <Link
@@ -748,7 +748,7 @@ export function CheckoutClient({
             )}
           </div>
 
-          {/* Sidebar â€” stacks below step content on mobile, beside on desktop */}
+          {/* Sidebar — stacks below step content on mobile, beside on desktop */}
           <div className="order-2 lg:order-none">
             <CheckoutCartSummary
               cart={cart}

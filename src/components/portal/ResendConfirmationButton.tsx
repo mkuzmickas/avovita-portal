@@ -24,7 +24,7 @@ export function ResendConfirmationButton() {
       }
       setState("sent");
     } catch {
-      setErrorMsg("Network error â€” please try again");
+      setErrorMsg("Network error — please try again");
       setState("error");
     }
   };
@@ -40,7 +40,7 @@ export function ResendConfirmationButton() {
         }}
       >
         <CheckCircle className="w-4 h-4" />
-        Confirmation email sent â€” check your inbox
+        Confirmation email sent — check your inbox
       </div>
     );
   }
@@ -63,7 +63,7 @@ export function ResendConfirmationButton() {
         ) : (
           <Send className="w-4 h-4" />
         )}
-        {state === "sending" ? "Sendingâ€¦" : "Resend Confirmation Email"}
+        {state === "sending" ? "Sending…" : "Resend Confirmation Email"}
       </button>
       {state === "error" && errorMsg && (
         <div

@@ -12,7 +12,7 @@ import type { CartItem } from "./types";
 
 interface CartBarProps {
   /**
-   * Optional override â€” if not provided the bar reads from CartContext.
+   * Optional override — if not provided the bar reads from CartContext.
    * Kept as a prop so server-rendered pages can pass an explicit list.
    */
   cart?: CartItem[];
@@ -36,9 +36,9 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
     ? `/checkout?org_slug=${encodeURIComponent(org.slug)}`
     : "/checkout";
 
-  // Active availability advisory (holiday closures, coverage gaps, â€¦).
+  // Active availability advisory (holiday closures, coverage gaps, …).
   // Driven from the availability_advisories Supabase table via
-  // /api/site/advisory. Fetched on mount only â€” the cart bar re-renders
+  // /api/site/advisory. Fetched on mount only — the cart bar re-renders
   // often as items go in and out, but the advisory itself changes on
   // the order of hours/days, so one fetch per session is plenty.
   const [advisory, setAdvisory] = useState<ActiveAdvisory | null>(null);
@@ -50,7 +50,7 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
         if (!cancelled && data?.advisory) setAdvisory(data.advisory);
       })
       .catch(() => {
-        /* silent â€” advisory display is best-effort */
+        /* silent — advisory display is best-effort */
       });
     return () => {
       cancelled = true;
@@ -90,7 +90,7 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
     : { applies: false, total: 0 };
   const totalAfterDiscount = totals.cart_total;
 
-  // "Add one more test to save $20 per test" nudge â€” surfaces at the
+  // "Add one more test to save $20 per test" nudge — surfaces at the
   // exact moment a REPEAT client is one add away from unlocking the
   // discount. Only when they've got exactly one test in the cart, the
   // discount isn't already applied, AND they qualify for the discount
@@ -103,7 +103,7 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
     !discount.applies &&
     totals.testItems.length === 1;
 
-  // Guest sign-in nudge â€” surfaces the repeat-client discount as a
+  // Guest sign-in nudge — surfaces the repeat-client discount as a
   // reason to sign in without spending words on non-eligible logged-in
   // first-timers (who see nothing, per Mike's call: no need to rub
   // "you don't qualify" in their face on their first order).
@@ -124,11 +124,11 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {/* Amber availability advisory strip â€” surfaces above the cart
+      {/* Amber availability advisory strip — surfaces above the cart
           summary when an admin has an active advisory window queued
           in the availability_advisories Supabase table. Rendered here
           (not on /tests) because the constraint only becomes
-          actionable once the customer has decided to order â€” before
+          actionable once the customer has decided to order — before
           then it's an apology-shaped notice on the landing surface
           and hurts conversion. */}
       {advisory && (
@@ -154,7 +154,7 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
         </div>
       )}
 
-      {/* Guest sign-in nudge â€” muted-gold strip pitching the repeat-
+      {/* Guest sign-in nudge — muted-gold strip pitching the repeat-
           client discount as a sign-in incentive. Only shown to guests;
           logged-in first-timers see nothing to avoid signalling "you
           don't qualify" on their first order. */}
@@ -176,13 +176,13 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
               >
                 Sign in
               </Link>{" "}
-              â€” repeat clients receive additional discounts at checkout.
+              — repeat clients receive additional discounts at checkout.
             </p>
           </div>
         </div>
       )}
 
-      {/* Green discount banner strip â€” appears above the main bar */}
+      {/* Green discount banner strip — appears above the main bar */}
       {discount.applies && (
         <div
           className="border-b"
@@ -194,14 +194,14 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
               className="text-xs sm:text-sm font-semibold"
               style={{ color: "#88D45D" }}
             >
-              Repeat-client discount applied â€” $20 off each test Â· You&apos;re
+              Repeat-client discount applied — $20 off each test · You&apos;re
               saving {formatCurrency(discount.total)}
             </p>
           </div>
         </div>
       )}
 
-      {/* Single-test upsell â€” one add away from the multi-test discount.
+      {/* Single-test upsell — one add away from the multi-test discount.
           Rendered where it's actionable (the cart) rather than as a
           static promo pill on /tests where nobody was reading it. */}
       {showSingleTestNudge && (
@@ -215,7 +215,7 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
               className="text-xs sm:text-sm font-semibold"
               style={{ color: "#C6A04B" }}
             >
-              Add one more test to save $20 on each â€” same home visit,
+              Add one more test to save $20 on each — same home visit,
               same appointment.
             </p>
           </div>

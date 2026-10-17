@@ -31,7 +31,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
     return (
       <div
         className="mb-3 rounded-lg border overflow-hidden"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+        style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
       >
         <button
           type="button"
@@ -55,7 +55,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
           <div className="px-3 pb-3 pt-1">
             <ul
               className="space-y-1 text-xs mb-0"
-              style={{ color: "#ffffff" }}
+              style={{ color: "#092819" }}
             >
               {panelTests.map((t, i) => (
                 <li key={`${t.code}-${i}`} className="leading-relaxed">
@@ -74,12 +74,12 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
   return (
     <div
       className="rounded-xl border p-4"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
       <h4
         className="font-heading text-lg font-semibold mb-3"
         style={{
-          color: "#ffffff",
+          color: "#092819",
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
@@ -91,7 +91,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
             key={`${t.code}-${i}`}
             className="flex items-baseline justify-between gap-3 text-sm"
           >
-            <span style={{ color: "#ffffff" }}>{t.name}</span>
+            <span style={{ color: "#092819" }}>{t.name}</span>
             <span
               className="text-xs font-mono shrink-0"
               style={{ color: "rgba(196, 151, 58, 0.75)" }}

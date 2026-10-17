@@ -14,7 +14,7 @@ export default async function SettingsPage() {
 
   const email = user.email ?? "";
 
-  // Preferences live on the Supabase Auth user_metadata â€” no schema change
+  // Preferences live on the Supabase Auth user_metadata — no schema change
   // required. Default to opted-in for both channels.
   const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
   const emailOptIn =
@@ -32,7 +32,7 @@ export default async function SettingsPage() {
         <h1
           className="font-heading text-3xl sm:text-4xl font-semibold"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >

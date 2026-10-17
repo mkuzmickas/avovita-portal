@@ -24,13 +24,13 @@ export function OrgLanding() {
   const org = useOrg();
 
   return (
-    <div style={{ backgroundColor: "#ffffff" }}>
+    <div style={{ backgroundColor: "#092819" }}>
       <OrgAwareHeader transparent />
 
       {/* Hero */}
       <section
         className="relative flex items-center justify-center px-4 sm:px-6 pt-40 pb-16 md:pt-48 md:pb-20"
-        style={{ backgroundColor: "#ffffff" }}
+        style={{ backgroundColor: "#092819" }}
       >
         <div
           className="absolute inset-0 pointer-events-none"
@@ -54,7 +54,7 @@ export function OrgLanding() {
           <h1
             className="font-heading text-4xl sm:text-5xl md:text-7xl font-semibold mb-6 leading-[1.05] tracking-tight"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -66,7 +66,7 @@ export function OrgLanding() {
             style={{ color: "#154D31" }}
           >
             Browse our full catalogue of private lab tests or speak with our
-            AI test advisor â€” all delivered to your door by AvoVita Wellness
+            AI test advisor — all delivered to your door by AvoVita Wellness
             in Calgary.
           </p>
 
@@ -89,7 +89,7 @@ export function OrgLanding() {
               style={{
                 backgroundColor: "transparent",
                 borderColor: HEADING_GOLD,
-                color: "#ffffff",
+                color: "#092819",
               }}
             >
               <Sparkles className="w-5 h-5" style={{ color: HEADING_GOLD }} />
@@ -114,11 +114,11 @@ export function OrgLanding() {
           <h2
             className="font-heading text-2xl sm:text-3xl font-semibold mb-3"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Private, professional lab testing â€” at your home
+            Private, professional lab testing — at your home
           </h2>
           <p className="text-sm" style={{ color: "#154D31" }}>
             FloLabs phlebotomists collect at your address, samples ship to
@@ -132,13 +132,13 @@ export function OrgLanding() {
       <footer
         className="px-4 sm:px-6 py-8 text-center text-xs border-t"
         style={{
-          backgroundColor: "#ffffff",
+          backgroundColor: "#092819",
           borderColor: "#FFFFFF",
           color: "#4a7a56",
         }}
       >
         <p>
-          Â© {new Date().getFullYear()} AvoVita Wellness Â· Calgary, AB
+          © {new Date().getFullYear()} AvoVita Wellness · Calgary, AB
         </p>
         <p className="mt-2">
           Partnered with{" "}

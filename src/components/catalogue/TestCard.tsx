@@ -13,7 +13,7 @@ interface TestCardProps {
   test: CatalogueTest;
   inCart: boolean;
   onAdd: (item: CatalogueCartItem) => void;
-  /** Controlled by parent â€” when true, inline details are shown. */
+  /** Controlled by parent — when true, inline details are shown. */
   expanded?: boolean;
 }
 
@@ -50,7 +50,7 @@ export function TestCard({
     <article
       id={`test-${test.id}`}
       className="flex flex-col rounded-xl border overflow-hidden transition-colors h-full"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
       <div className="px-5 pt-5 pb-4 flex-1 flex flex-col">
         {/* Badges */}
@@ -79,12 +79,12 @@ export function TestCard({
           )}
         </div>
 
-        {/* Test name â€” links to /tests?test=SKU (or ?id= fallback) so the
+        {/* Test name — links to /tests?test=SKU (or ?id= fallback) so the
             catalogue detail view scrolls/expands to this test. */}
         <h3
           className="font-heading font-semibold leading-tight mb-3 break-words"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
             fontSize: "20px",
             overflowWrap: "anywhere",
@@ -143,7 +143,7 @@ export function TestCard({
               style={{ color: "#C6A04B" }}
             />
             <span className="text-xs" style={{ color: "#C6A04B" }}>
-              Physician requisition required â€” must be present at time of collection
+              Physician requisition required — must be present at time of collection
             </span>
           </div>
         )}
@@ -188,7 +188,7 @@ export function TestCard({
             )}
 
             {/* Handling + Stability intentionally removed from the
-                client-side view â€” Tuesday-only / short-stability
+                client-side view — Tuesday-only / short-stability
                 tests are already flagged upstream (schedule-ack modal
                 on add, dedicated banners on Step 3 + Step 4). Showing
                 the raw fields here just added clutter to every card
@@ -221,7 +221,7 @@ export function TestCard({
 
         <div className="flex-1" />
 
-        {/* Add to cart â€” or Contact Us when no price */}
+        {/* Add to cart — or Contact Us when no price */}
         {hasPrice ? (
           <button
             type="button"
@@ -300,9 +300,9 @@ function DetailField({
       </p>
       <p
         className="text-sm break-words"
-        style={{ color: "#ffffff", overflowWrap: "anywhere" }}
+        style={{ color: "#092819", overflowWrap: "anywhere" }}
       >
-        {value ?? "â€”"}
+        {value ?? "—"}
       </p>
     </div>
   );

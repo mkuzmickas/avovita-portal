@@ -19,7 +19,7 @@ interface CheckoutRouterProps {
  *   has_tests     â†’ TestCheckout (existing CheckoutClient) with
  *                    conditional supplement/resource step injection
  *   supplements   â†’ SupplementCheckout (simplified flow)
- *   resources     â†’ ResourceCheckout (minimal flow â€” email only)
+ *   resources     â†’ ResourceCheckout (minimal flow — email only)
  *   empty cart    â†’ redirect to /tests (fail-safe)
  *
  * Unknown line_types are ignored (fail closed to test-only behavior).
@@ -32,12 +32,12 @@ export function CheckoutRouter({
   const router = useRouter();
   const searchParams = useSearchParams();
   // When ?quote=AVO-... is present the cart is expected to be empty on
-  // first load â€” CheckoutClient's deep-link effect will populate it
+  // first load — CheckoutClient's deep-link effect will populate it
   // from the quote. Suppress the empty-cart redirect in that case so
   // that effect gets a chance to run.
   const hasQuoteParam = searchParams.get("quote") !== null;
 
-  // Cart composition â€” fail-safe: unknown line_types are ignored
+  // Cart composition — fail-safe: unknown line_types are ignored
   const hasTests = cart.some((i) => i.line_type === "test");
   const hasSupplements = cart.some((i) => i.line_type === "supplement");
   const hasResources = cart.some((i) => i.line_type === "resource");
@@ -54,10 +54,10 @@ export function CheckoutRouter({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#ffffff" }}
+        style={{ backgroundColor: "#092819" }}
       >
         <p className="text-sm" style={{ color: "#4a7a56" }}>
-          Loading checkoutâ€¦
+          Loading checkout…
         </p>
       </div>
     );
@@ -67,10 +67,10 @@ export function CheckoutRouter({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#ffffff" }}
+        style={{ backgroundColor: "#092819" }}
       >
         <p className="text-sm" style={{ color: "#4a7a56" }}>
-          Redirecting to catalogueâ€¦
+          Redirecting to catalogue…
         </p>
       </div>
     );
@@ -114,7 +114,7 @@ export function CheckoutRouter({
   }
 
   if (hasResources) {
-    // Resources only â€” minimal flow
+    // Resources only — minimal flow
     return (
       <ResourceCheckout
         accountUserId={accountUserId}

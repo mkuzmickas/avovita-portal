@@ -3,12 +3,12 @@
 import { X, Sparkles, ArrowRight } from "lucide-react";
 
 interface AskPromptLauncherProps {
-  /** Name of the test the customer just added â€” surfaced in an
+  /** Name of the test the customer just added — surfaced in an
    *  attentive acknowledgment ("You've added X") rather than used to
    *  infer what they need next. Falls back to generic phrasing when
    *  the name isn't known. */
   testName: string | null;
-  /** Catalogue size â€” surfaced in the offer copy ("I can search all
+  /** Catalogue size — surfaced in the offer copy ("I can search all
    *  445 tests") because "anything else?" alone reads shop-assistant
    *  and gets a reflex no-thanks. Naming the depth of the catalogue
    *  tells the customer something they don't know, which is a better
@@ -20,21 +20,21 @@ interface AskPromptLauncherProps {
 
 /**
  * Post-add nudge: fixed bottom-right, above the CartBar, dismissible.
- * Not a modal â€” no overlay, no focus trap, no scroll lock. Customer
+ * Not a modal — no overlay, no focus trap, no scroll lock. Customer
  * must be able to ignore it and continue to Checkout without any
  * blockage. On mobile it collapses to a compact one-liner because the
  * full card is too much of the viewport at that width.
  *
  * Copy design:
  *   1. Acknowledge the test they added by name (attentive, not
- *      automated) â€” do NOT infer what they need next.
- *   2. Fee sentence â€” the visit fee is the most likely cause of the
+ *      automated) — do NOT infer what they need next.
+ *   2. Fee sentence — the visit fee is the most likely cause of the
  *      81% checkout drop-off and is now sunk cost. Any further test
  *      added to this appointment costs only the test price. This is
  *      the highest-value sentence in the funnel and it's said
  *      nowhere else.
  *   3. Open-ended offer that names the catalogue depth ("all N
- *      tests") â€” better reason to engage than a "what pairs with?"
+ *      tests") — better reason to engage than a "what pairs with?"
  *      suggestion, which implies clinical recommendation and crosses
  *      the no-diagnosis line, or a bare "anything else?" which reads
  *      shop-assistant and gets a reflex no-thanks.
@@ -51,7 +51,7 @@ export function AskPromptLauncher({
     <div
       className="fixed z-40 bottom-[110px] right-3 sm:right-6 sm:bottom-[130px] max-w-[calc(100vw-24px)] sm:max-w-sm rounded-2xl border shadow-lg"
       style={{
-        backgroundColor: "#FFFFFF",
+        backgroundColor: "#092819",
         borderColor: "#C6A04B",
         boxShadow: "0 10px 30px -8px rgba(0,0,0,0.55)",
       }}
@@ -88,23 +88,23 @@ export function AskPromptLauncher({
           </button>
         </div>
 
-        {/* Full copy â€” desktop / larger phones */}
+        {/* Full copy — desktop / larger phones */}
         {testName && (
           <p
             className="hidden sm:block text-sm mb-2"
             style={{ color: "#154D31" }}
           >
             You&apos;ve added{" "}
-            <span style={{ color: "#ffffff", fontWeight: 600 }}>{namedTest}</span>.
+            <span style={{ color: "#092819", fontWeight: 600 }}>{namedTest}</span>.
           </p>
         )}
         <p
           className="hidden sm:block text-sm leading-relaxed mb-3"
-          style={{ color: "#ffffff" }}
+          style={{ color: "#092819" }}
         >
           Your <strong style={{ color: "#C6A04B" }}>$85 visit fee</strong> is
           now covered. Any test added to this same appointment costs only the
-          test price â€” the visit is not charged twice.
+          test price — the visit is not charged twice.
         </p>
         <p
           className="hidden sm:block text-sm mb-3"
@@ -113,10 +113,10 @@ export function AskPromptLauncher({
           Looking for anything else? I can search all {totalTestCount} tests.
         </p>
 
-        {/* Compact copy â€” mobile */}
+        {/* Compact copy — mobile */}
         <p
           className="sm:hidden text-xs leading-relaxed mb-3"
-          style={{ color: "#ffffff" }}
+          style={{ color: "#092819" }}
         >
           <strong style={{ color: "#C6A04B" }}>Visit fee covered.</strong>{" "}
           Any test added to this appointment is just the test price. I can

@@ -101,7 +101,7 @@ export function AddressAutocompleteInput({
             "[AddressAutocomplete] loader resolved but places namespace is missing"
           );
           setLoadError(
-            "Autocomplete unavailable â€” you can type your address manually."
+            "Autocomplete unavailable — you can type your address manually."
           );
           return;
         }
@@ -124,7 +124,7 @@ export function AddressAutocompleteInput({
             err
           );
           setLoadError(
-            "Autocomplete unavailable â€” you can type your address manually."
+            "Autocomplete unavailable — you can type your address manually."
           );
         }
       })
@@ -132,14 +132,14 @@ export function AddressAutocompleteInput({
         if (cancelled) return;
         console.error("[AddressAutocomplete] failed to load:", err.message);
         setLoadError(
-          "Autocomplete unavailable â€” you can type your address manually."
+          "Autocomplete unavailable — you can type your address manually."
         );
       });
 
     return () => {
       cancelled = true;
     };
-    // intentionally empty â€” we only initialise once on mount
+    // intentionally empty — we only initialise once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

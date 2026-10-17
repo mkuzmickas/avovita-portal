@@ -61,7 +61,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
   // "Needs booking" ONLY when the order is confirmed (paid) AND no
   // FloLabs appointment has been booked yet. Previously this was a
   // status-only check, so the CTA re-appeared for every subsequent
-  // visit even after the customer had booked their appointment â€”
+  // visit even after the customer had booked their appointment —
   // letting them open Acuity again and book duplicate slots against
   // the same single paid order. Christopher Eggerston's Sep 2026
   // incident (booked a post-results appointment without paying for
@@ -70,7 +70,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
   const needsBooking =
     order.status === "confirmed" && !order.appointment_at;
   // Invoice PDF: paid statuses + non-zero total. Mirrors the API gate
-  // so we don't surface a button that 409s â€” and excludes AVOVITA-TEST
+  // so we don't surface a button that 409s — and excludes AVOVITA-TEST
   // internal zero-dollar orders the same way the route does.
   const PAID_STATUSES = new Set([
     "confirmed",
@@ -86,7 +86,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
   return (
     <div
       className="rounded-xl border overflow-hidden"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
       {/* Collapsed header (always visible, clickable) */}
       <button
@@ -121,7 +121,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
             className="text-xs"
             style={{ color: "#4a7a56" }}
           >
-            {formatDate(order.created_at)} Â· {testCount}{" "}
+            {formatDate(order.created_at)} · {testCount}{" "}
             {testCount === 1 ? "test" : "tests"}
           </p>
         </div>
@@ -130,7 +130,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
             className="text-lg sm:text-xl font-semibold"
             style={{ color: "#C6A04B" }}
           >
-            {order.total_cad != null ? formatCurrency(order.total_cad) : "â€”"}
+            {order.total_cad != null ? formatCurrency(order.total_cad) : "—"}
           </p>
         </div>
         <ChevronDown
@@ -153,7 +153,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
             <OrderTimeline status={order.status} />
           </div>
 
-          {/* Invoice / Receipt PDF â€” top placement because customers
+          {/* Invoice / Receipt PDF — top placement because customers
               have specifically been looking for this for insurance
               submissions and we want them to find it on first scan. */}
           {invoiceAvailable && (
@@ -173,14 +173,14 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   <h4
                     className="font-heading text-lg font-semibold mb-1"
                     style={{
-                      color: "#ffffff",
+                      color: "#092819",
                       fontFamily: '"Cormorant Garamond", Georgia, serif',
                     }}
                   >
                     Download your invoice
                   </h4>
                   <p className="text-sm" style={{ color: "#154D31" }}>
-                    A PDF receipt for this order â€” useful for insurance
+                    A PDF receipt for this order — useful for insurance
                     claims, FSA / HSA reimbursement, and your records.
                   </p>
                 </div>
@@ -197,7 +197,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
             </div>
           )}
 
-          {/* Collection scheduled â€” reassurance panel visible whenever
+          {/* Collection scheduled — reassurance panel visible whenever
               an appointment_at is stamped on the order, from either an
               Acuity auto-match, an admin Add-appointment override
               (Greg Fulton's mismatched-email case), or the queue
@@ -221,7 +221,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   <h4
                     className="font-heading text-lg font-semibold mb-1"
                     style={{
-                      color: "#ffffff",
+                      color: "#092819",
                       fontFamily: '"Cormorant Garamond", Georgia, serif',
                     }}
                   >
@@ -229,7 +229,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   </h4>
                   <p
                     className="text-sm font-semibold"
-                    style={{ color: "#ffffff" }}
+                    style={{ color: "#092819" }}
                   >
                     {formatAppointment(order.appointment_at)}
                   </p>
@@ -264,7 +264,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   <h4
                     className="font-heading text-lg font-semibold mb-1"
                     style={{
-                      color: "#ffffff",
+                      color: "#092819",
                       fontFamily: '"Cormorant Garamond", Georgia, serif',
                     }}
                   >
@@ -289,7 +289,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
             </div>
           )}
 
-          {/* FedEx tracking â€” shown when shipped or later */}
+          {/* FedEx tracking — shown when shipped or later */}
           {order.fedex_tracking_number && (
             <div
               className="mx-4 sm:mx-6 my-5 rounded-xl border p-4 sm:p-5"
@@ -307,7 +307,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   <h4
                     className="font-heading text-lg font-semibold mb-1"
                     style={{
-                      color: "#ffffff",
+                      color: "#092819",
                       fontFamily: '"Cormorant Garamond", Georgia, serif',
                     }}
                   >
@@ -318,7 +318,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                     {order.shipped_at && (
                       <span style={{ color: "#4a7a56" }}>
                         {" "}
-                        Â· Shipped {formatDate(order.shipped_at)}
+                        · Shipped {formatDate(order.shipped_at)}
                       </span>
                     )}
                   </p>
@@ -357,7 +357,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                   key={line.id}
                   className="rounded-lg border p-3"
                   style={{
-                    backgroundColor: "#FFFFFF",
+                    backgroundColor: "#092819",
                     borderColor: "#E5E2D4",
                   }}
                 >
@@ -377,7 +377,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                     <div className="flex-1 min-w-0">
                       <p
                         className="text-sm font-medium"
-                        style={{ color: "#ffffff" }}
+                        style={{ color: "#092819" }}
                       >
                         {line.test?.name ?? "Unknown test"}
                       </p>
@@ -388,7 +388,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                         {line.test?.lab?.name && (
                           <>
                             {line.test.lab.name}
-                            {" Â· "}
+                            {" · "}
                           </>
                         )}
                         For:{" "}
@@ -405,7 +405,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                         )}
                         {line.test?.turnaround_display && (
                           <>
-                            {line.test?.specimen_type && <span>Â·</span>}
+                            {line.test?.specimen_type && <span>·</span>}
                             <span>{line.test.turnaround_display}</span>
                           </>
                         )}
@@ -452,7 +452,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
           {/* Totals */}
           <div
             className="px-4 sm:px-6 py-4 border-t space-y-1"
-            style={{ borderColor: "#E5E2D4", backgroundColor: "#FFFFFF" }}
+            style={{ borderColor: "#E5E2D4", backgroundColor: "#092819" }}
           >
             {order.subtotal_cad != null && (
               <div
@@ -476,11 +476,11 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
               className="flex justify-between text-base font-semibold pt-2 border-t mt-1"
               style={{ borderColor: "#E5E2D4" }}
             >
-              <span style={{ color: "#ffffff" }}>Total</span>
+              <span style={{ color: "#092819" }}>Total</span>
               <span style={{ color: "#C6A04B" }}>
                 {order.total_cad != null
                   ? `${formatCurrency(order.total_cad)} CAD`
-                  : "â€”"}
+                  : "—"}
               </span>
             </div>
           </div>
@@ -491,9 +491,9 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
 }
 
 /**
- * Render a stored appointment_at ISO as "Monday, Sep 28, 2026 Â· 7:00 AM"
+ * Render a stored appointment_at ISO as "Monday, Sep 28, 2026 · 7:00 AM"
  * in Calgary local time so the customer sees the same clock they
- * booked against on FloLabs â€” regardless of the browser's own zone.
+ * booked against on FloLabs — regardless of the browser's own zone.
  */
 function formatAppointment(iso: string): string {
   const d = new Date(iso);
@@ -510,5 +510,5 @@ function formatAppointment(iso: string): string {
     minute: "2-digit",
     hour12: true,
   }).format(d);
-  return `${datePart} Â· ${timePart}`;
+  return `${datePart} · ${timePart}`;
 }

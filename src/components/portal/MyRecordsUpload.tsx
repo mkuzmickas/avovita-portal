@@ -140,12 +140,12 @@ export function MyRecordsUpload() {
   return (
     <section
       className="rounded-xl border p-5 mb-6"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
       <h2
         className="font-heading text-xl font-semibold mb-1"
         style={{
-          color: "#ffffff",
+          color: "#092819",
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
@@ -153,7 +153,7 @@ export function MyRecordsUpload() {
       </h2>
       <p className="text-xs mb-4" style={{ color: "#4a7a56" }}>
         Add PDFs from other labs or doctor reports. Stored securely in your
-        portal â€” max 20 MB per file. You can delete your own uploads at any
+        portal — max 20 MB per file. You can delete your own uploads at any
         time.
       </p>
 
@@ -179,11 +179,11 @@ export function MyRecordsUpload() {
           className="w-8 h-8 mx-auto mb-2"
           style={{ color: dragOver ? "#C6A04B" : "#4a7a56" }}
         />
-        <p className="text-sm font-medium" style={{ color: "#ffffff" }}>
+        <p className="text-sm font-medium" style={{ color: "#092819" }}>
           Drag and drop PDFs here
         </p>
         <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
-          or click to browse â€” multiple files supported, up to 20 MB each
+          or click to browse — multiple files supported, up to 20 MB each
         </p>
         <input
           ref={inputRef}
@@ -255,7 +255,7 @@ function QueueRow({
       <div className="min-w-0 flex-1">
         <p
           className="text-sm truncate"
-          style={{ color: "#ffffff" }}
+          style={{ color: "#092819" }}
           title={item.file.name}
         >
           {item.file.name}
@@ -263,7 +263,7 @@ function QueueRow({
         {s.state === "uploading" && (
           <div
             className="mt-1 h-1 rounded-full overflow-hidden"
-            style={{ backgroundColor: "#FFFFFF" }}
+            style={{ backgroundColor: "#092819" }}
           >
             <div
               className="h-full rounded-full transition-all"

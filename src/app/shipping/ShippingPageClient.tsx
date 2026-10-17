@@ -68,7 +68,7 @@ function TrackingStatusChip({
       const data = await res.json();
       if (!res.ok || data.ok === false) {
         setRefreshError(
-          [data.error ?? "Refresh failed.", data.hint].filter(Boolean).join(" â€” "),
+          [data.error ?? "Refresh failed.", data.hint].filter(Boolean).join(" — "),
         );
         return;
       }
@@ -135,7 +135,7 @@ function TrackingStatusChip({
             textDecoration: "underline",
           }}
         >
-          {busy ? "Refreshingâ€¦" : "Refresh"}
+          {busy ? "Refreshing…" : "Refresh"}
         </button>
       </div>
       {refreshError && (
@@ -158,7 +158,7 @@ function TrackingStatusChip({
  * Admin-only âœ• Remove button on each row of Recent Shipments.
  * Deletes the local manual_shipments row via DELETE
  * /api/shipping/manual-shipments/[id]. Does NOT void the label at
- * FedEx â€” if the label was never used FedEx charges nothing; if it
+ * FedEx — if the label was never used FedEx charges nothing; if it
  * WAS used, cancel inside FedEx first. The confirm dialog surfaces
  * both facts so a careless click doesn't nuke a real shipment.
  */
@@ -176,9 +176,9 @@ function RemoveShipmentButton({
     if (busy) return;
     const ok = window.confirm(
       `Remove shipment ${shipment.tracking_number} from the Recent Shipments list?\n\n` +
-        "This only clears the local audit row. It does NOT void the FedEx label â€” " +
+        "This only clears the local audit row. It does NOT void the FedEx label — " +
         "if the label was never used FedEx charges nothing for it. If the shipment " +
-        "actually went out, do NOT delete this row â€” the record is your reconciliation " +
+        "actually went out, do NOT delete this row — the record is your reconciliation " +
         "trail.",
     );
     if (!ok) return;
@@ -222,7 +222,7 @@ function RemoveShipmentButton({
           opacity: busy ? 0.6 : 1,
         }}
       >
-        {busy ? "Removingâ€¦" : "âœ• Remove"}
+        {busy ? "Removing…" : "âœ• Remove"}
       </button>
       {error && (
         <span
@@ -242,21 +242,21 @@ function RemoveShipmentButton({
 
 function statusChipStyle(s: Shipment): React.CSSProperties {
   if (s.delivered_at) {
-    return { backgroundColor: "#88D45D", color: "#ffffff" }; // green
+    return { backgroundColor: "#88D45D", color: "#092819" }; // green
   }
   const code = s.tracking_status_code;
-  if (!code) return { backgroundColor: "#3a4a3f", color: "#c4c4c4" }; // grey â€” no status yet
+  if (!code) return { backgroundColor: "#3a4a3f", color: "#c4c4c4" }; // grey — no status yet
   if (code === "DE" || code === "RS" || code === "SE") {
-    return { backgroundColor: "#e05252", color: "#ffffff" }; // red â€” exception
+    return { backgroundColor: "#e05252", color: "#092819" }; // red — exception
   }
   if (code === "OD") {
-    return { backgroundColor: "#C6A04B", color: "#ffffff" }; // amber â€” out for delivery
+    return { backgroundColor: "#C6A04B", color: "#ffffff" }; // amber — out for delivery
   }
   if (code === "IT" || code === "PU" || code === "AR" || code === "DP") {
-    return { backgroundColor: "#4a90c2", color: "#ffffff" }; // blue â€” in transit
+    return { backgroundColor: "#4a90c2", color: "#092819" }; // blue — in transit
   }
   if (code === "OC" || code === "PENDING") {
-    return { backgroundColor: "#3a4a3f", color: "#c4c4c4" }; // grey â€” label made / awaiting pickup
+    return { backgroundColor: "#3a4a3f", color: "#c4c4c4" }; // grey — label made / awaiting pickup
   }
   return { backgroundColor: "#3a4a3f", color: "#c4c4c4" };
 }
@@ -302,7 +302,7 @@ function statusChipSubtext(s: Shipment): string | null {
  *   - Recent shipments table so a shipper can see what they and
  *     others sent today, download labels, get tracking numbers
  *
- * Kept intentionally spare â€” this is a shipping tool, not a
+ * Kept intentionally spare — this is a shipping tool, not a
  * marketing page. No AvoVita header/footer, no auth chrome, no
  * navigation. Fits a warehouse laptop and a phone.
  */
@@ -364,7 +364,7 @@ export function ShippingPageClient({
     PICKUP_DEFAULTS.closeTime,
   );
 
-  // Manual address entry â€” used when pickupAddressKey === "__manual__".
+  // Manual address entry — used when pickupAddressKey === "__manual__".
   const [manualAddress, setManualAddress] = useState({
     contactName: "",
     companyName: "",
@@ -480,7 +480,7 @@ export function ShippingPageClient({
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: "#ffffff",
+        backgroundColor: "#092819",
         color: "#154D31",
         padding: "32px 20px",
         fontFamily: "system-ui, sans-serif",
@@ -501,7 +501,7 @@ export function ShippingPageClient({
               style={{
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
                 fontSize: "36px",
-                color: "#ffffff",
+                color: "#092819",
                 margin: 0,
               }}
             >
@@ -520,7 +520,7 @@ export function ShippingPageClient({
                 padding: "8px 14px",
                 border: "1px solid #E5E2D4",
                 borderRadius: "8px",
-                backgroundColor: "#FFFFFF",
+                backgroundColor: "#092819",
                 color: "#154D31",
                 fontSize: "13px",
                 fontWeight: 500,
@@ -544,7 +544,7 @@ export function ShippingPageClient({
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 backgroundColor: isSandbox ? "#C6A04B" : "#88D45D",
-                color: "#ffffff",
+                color: "#092819",
               }}
             >
               {isSandbox ? "sandbox" : "production"}
@@ -575,7 +575,7 @@ export function ShippingPageClient({
               disabled={busyKind !== null}
               style={{
                 backgroundColor: busyKind === profile.kind ? "#8b6a1e" : "#C6A04B",
-                color: "#ffffff",
+                color: "#092819",
                 border: 0,
                 borderRadius: "12px",
                 padding: "24px 20px",
@@ -588,7 +588,7 @@ export function ShippingPageClient({
               }}
             >
               <div style={{ fontSize: "20px", marginBottom: "6px" }}>
-                {busyKind === profile.kind ? "Creating labelâ€¦" : profile.displayLabel}
+                {busyKind === profile.kind ? "Creating label…" : profile.displayLabel}
               </div>
               <div
                 style={{
@@ -609,9 +609,9 @@ export function ShippingPageClient({
                   opacity: 0.7,
                 }}
               >
-                â†’ {profile.recipient.company} Â· {profile.package.weightLb} lb
+                â†’ {profile.recipient.company} · {profile.package.weightLb} lb
                 {profile.package.dryIceWeightKg > 0
-                  ? ` Â· ${profile.package.dryIceWeightKg} kg dry ice`
+                  ? ` · ${profile.package.dryIceWeightKg} kg dry ice`
                   : ""}
               </div>
             </button>
@@ -650,7 +650,7 @@ export function ShippingPageClient({
             }}
           >
             <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
-              Label created â€” tracking {lastResult.trackingNumber}
+              Label created — tracking {lastResult.trackingNumber}
               {lastResult.environment === "sandbox" && (
                 <span
                   style={{
@@ -659,7 +659,7 @@ export function ShippingPageClient({
                     fontSize: "12px",
                   }}
                 >
-                  (sandbox â€” not a real label)
+                  (sandbox — not a real label)
                 </span>
               )}
             </div>
@@ -674,7 +674,7 @@ export function ShippingPageClient({
                   letterSpacing: "0.08em",
                 }}
               >
-                Pouch checklist â€” print + assemble:
+                Pouch checklist — print + assemble:
               </div>
               <ul style={{ margin: 0, paddingLeft: "20px", lineHeight: 1.7 }}>
                 {lastResult.labelUrl && (
@@ -687,7 +687,7 @@ export function ShippingPageClient({
                     >
                       FedEx label
                     </a>{" "}
-                    â€” <strong>print {lastResult.labelCopies} copies</strong>{" "}
+                    — <strong>print {lastResult.labelCopies} copies</strong>{" "}
                     <span style={{ opacity: 0.7 }}>
                       (1 affixed to box, {lastResult.labelCopies - 1} in pouch)
                     </span>
@@ -703,7 +703,7 @@ export function ShippingPageClient({
                     >
                       {formatDocLabel(d.contentType)}
                     </a>{" "}
-                    â€” <strong>print {d.copiesToPrint} copies</strong>{" "}
+                    — <strong>print {d.copiesToPrint} copies</strong>{" "}
                     <span style={{ opacity: 0.7 }}>(in pouch)</span>
                   </li>
                 ))}
@@ -717,7 +717,7 @@ export function ShippingPageClient({
                     >
                       {d.fileName}
                     </a>{" "}
-                    â€” <strong>print 1 copy</strong>{" "}
+                    — <strong>print 1 copy</strong>{" "}
                     <span style={{ opacity: 0.7 }}>(in pouch)</span>
                   </li>
                 ))}
@@ -731,7 +731,7 @@ export function ShippingPageClient({
           style={{
             marginBottom: "32px",
             padding: "20px",
-            backgroundColor: "#FFFFFF",
+            backgroundColor: "#092819",
             border: "1px solid #E5E2D4",
             borderRadius: "12px",
           }}
@@ -740,7 +740,7 @@ export function ShippingPageClient({
             style={{
               fontFamily: '"Cormorant Garamond", Georgia, serif',
               fontSize: "22px",
-              color: "#ffffff",
+              color: "#092819",
               margin: "0 0 4px 0",
             }}
           >
@@ -806,7 +806,7 @@ export function ShippingPageClient({
                   {a.displayLabel}
                 </option>
               ))}
-              <option value="__manual__">Other â€” enter address below</option>
+              <option value="__manual__">Other — enter address below</option>
             </select>
           </div>
 
@@ -966,7 +966,7 @@ export function ShippingPageClient({
             disabled={pickupBusy}
             style={{
               backgroundColor: pickupBusy ? "#8b6a1e" : "#C6A04B",
-              color: "#ffffff",
+              color: "#092819",
               border: 0,
               borderRadius: "10px",
               padding: "14px 20px",
@@ -977,7 +977,7 @@ export function ShippingPageClient({
               width: "100%",
             }}
           >
-            {pickupBusy ? "Booking pickupâ€¦" : "Book Pickup"}
+            {pickupBusy ? "Booking pickup…" : "Book Pickup"}
           </button>
 
           {pickupError && (
@@ -1011,7 +1011,7 @@ export function ShippingPageClient({
               }}
             >
               <div style={{ fontSize: "15px", fontWeight: 600, marginBottom: "6px" }}>
-                Pickup confirmed â€” {pickupResult.confirmationCode}
+                Pickup confirmed — {pickupResult.confirmationCode}
                 {pickupResult.environment === "sandbox" && (
                   <span
                     style={{
@@ -1020,13 +1020,13 @@ export function ShippingPageClient({
                       fontSize: "12px",
                     }}
                   >
-                    (sandbox â€” no courier will actually come)
+                    (sandbox — no courier will actually come)
                   </span>
                 )}
               </div>
               <div style={{ opacity: 0.85 }}>
-                {pickupResult.scheduledDate} Â· {pickupResult.readyTime} â€“{" "}
-                {pickupResult.closeTime} Â· {pickupResult.addressLabel}
+                {pickupResult.scheduledDate} · {pickupResult.readyTime} –{" "}
+                {pickupResult.closeTime} · {pickupResult.addressLabel}
               </div>
             </div>
           )}
@@ -1039,7 +1039,7 @@ export function ShippingPageClient({
               style={{
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
                 fontSize: "20px",
-                color: "#ffffff",
+                color: "#092819",
                 marginBottom: "12px",
               }}
             >
@@ -1079,7 +1079,7 @@ export function ShippingPageClient({
                         })}
                       </td>
                       <td style={tdStyle}>
-                        <span style={{ color: "#ffffff" }}>{s.profile_kind}</span>
+                        <span style={{ color: "#092819" }}>{s.profile_kind}</span>
                         {s.environment === "sandbox" && (
                           <span
                             style={{
@@ -1127,7 +1127,7 @@ export function ShippingPageClient({
                             Open
                           </a>
                         ) : (
-                          "â€”"
+                          "—"
                         )}
                       </td>
                       {isAdmin && (
@@ -1176,7 +1176,7 @@ const pickupInputStyle: React.CSSProperties = {
   border: "1px solid #E5E2D4",
   borderRadius: "8px",
   backgroundColor: "#F7F6F0",
-  color: "#ffffff",
+  color: "#092819",
   fontSize: "14px",
   fontFamily: "inherit",
 };

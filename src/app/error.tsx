@@ -17,20 +17,20 @@ export default function GlobalError({ error, reset }: ErrorProps) {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 py-12"
-      style={{ backgroundColor: "#ffffff" }}
+      style={{ backgroundColor: "#092819" }}
     >
       <div className="w-full max-w-md text-center">
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center border"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
           >
             <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
           </div>
           <span
             className="font-heading text-2xl font-semibold"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -50,7 +50,7 @@ export default function GlobalError({ error, reset }: ErrorProps) {
         <h1
           className="font-heading text-3xl sm:text-4xl font-semibold mb-3"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >

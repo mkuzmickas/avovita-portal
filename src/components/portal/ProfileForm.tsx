@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { PatientProfile } from "@/types/database";
 
 /**
- * Canadian provinces + territories â€” alphabetical by abbreviation for
+ * Canadian provinces + territories — alphabetical by abbreviation for
  * quick admin entry.
  */
 const CA_PROVINCES: Array<{ code: string; name: string }> = [
@@ -27,7 +27,7 @@ const CA_PROVINCES: Array<{ code: string; name: string }> = [
 ];
 
 /**
- * Lightweight prefill shape â€” a subset of PatientProfile fields used to
+ * Lightweight prefill shape — a subset of PatientProfile fields used to
  * pre-populate the form from checkout metadata without requiring a full
  * Supabase row to exist yet.
  */
@@ -54,7 +54,7 @@ export interface ProfileFormProps {
   existingProfile?: PatientProfile;
   /**
    * Pre-fill form fields from checkout metadata. Lower priority than
-   * existingProfile â€” if both are provided existingProfile wins.
+   * existingProfile — if both are provided existingProfile wins.
    */
   prefillData?: ProfilePrefillData;
   /** Override the submit button text (e.g. "Confirm and Continue"). */
@@ -226,7 +226,7 @@ export function ProfileForm({
             onChange={(e) => handleChange("biological_sex", e.target.value)}
             className="mf-input cursor-pointer"
           >
-            <option value="">Selectâ€¦</option>
+            <option value="">Select…</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
@@ -304,7 +304,7 @@ export function ProfileForm({
           >
             {CA_PROVINCES.map((p) => (
               <option key={p.code} value={p.code}>
-                {p.code} â€” {p.name}
+                {p.code} — {p.name}
               </option>
             ))}
           </select>

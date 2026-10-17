@@ -38,17 +38,17 @@ interface CatalogueLookupTest {
 }
 
 // Threshold above which the assistant should append a
-// "specialist test â€” call us first" nudge. Trigger on the test, not
+// "specialist test — call us first" nudge. Trigger on the test, not
 // the cart total: a $1,600 cart of cheap panels is healthy margin; a
 // single $980 Neurofilament is $117.50 of margin and worth having a
-// conversation about first. Never gates checkout â€” someone ready to
+// conversation about first. Never gates checkout — someone ready to
 // pay by card right now is the best customer on the site.
 const SPECIALIST_TEST_MIN_PRICE_CAD = 900;
 
 const INTRO_MESSAGE: ChatMessage = {
   role: "assistant",
   content:
-    "Hi â€” I'm Ask AvoVita, your AI assistant. Describe your symptoms and I'll suggest relevant tests from our catalogue, or ask me anything about how AvoVita works â€” shipping, requisitions, booking, insurance, results.",
+    "Hi — I'm Ask AvoVita, your AI assistant. Describe your symptoms and I'll suggest relevant tests from our catalogue, or ask me anything about how AvoVita works — shipping, requisitions, booking, insurance, results.",
 };
 
 export function InsightsChatModal({
@@ -73,7 +73,7 @@ export function InsightsChatModal({
   const [testIndex, setTestIndex] = useState<Map<string, CatalogueLookupTest>>(new Map());
 
   // Load test catalogue (sku â†’ test) once when modal opens.
-  // Public read â€” no auth required (matches the catalogue page itself).
+  // Public read — no auth required (matches the catalogue page itself).
   useEffect(() => {
     if (!open || testIndex.size > 0) return;
     let cancelled = false;
@@ -100,7 +100,7 @@ export function InsightsChatModal({
           name: r.name,
           sku: r.sku,
           price_cad: r.price_cad,
-          lab_name: lab?.name ?? "â€”",
+          lab_name: lab?.name ?? "—",
           requisition_url: r.requisition_url,
         });
       }
@@ -151,7 +151,7 @@ export function InsightsChatModal({
     if (lastAutoSentRef.current === q) return;
     lastAutoSentRef.current = q;
     void send(q);
-    // send() is stable in this component â€” intentionally omitted from deps
+    // send() is stable in this component — intentionally omitted from deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialQuery]);
 
@@ -165,7 +165,7 @@ export function InsightsChatModal({
     setInput("");
     setSending(true);
 
-    // Per-message analytics â€” combined with ai_finder_opened this
+    // Per-message analytics — combined with ai_finder_opened this
     // gives us unique sessions per day and average messages per
     // session in the dashboard. Marketing-widget messages are
     // logged server-side from /api/insights/chat so both surfaces
@@ -221,7 +221,7 @@ export function InsightsChatModal({
     // assistant produces orders. Same slug used by the marketing-
     // site widget's ?src=ask handoff; a single value covers "AI
     // added this test" regardless of which surface the AI ran on.
-    // Overwrites any prior src (URL handoff, org tag) â€” chat is the
+    // Overwrites any prior src (URL handoff, org tag) — chat is the
     // more proximate cause of the order once the customer uses it.
     try {
       window.localStorage.setItem("avovita-order-src", "ask");
@@ -241,7 +241,7 @@ export function InsightsChatModal({
       <div
         className="w-full sm:max-w-2xl border-0 sm:border rounded-none sm:rounded-2xl flex flex-col h-full sm:h-auto sm:max-h-[85vh]"
         style={{
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "#092819",
           borderColor: "#E5E2D4",
         }}
         onClick={(e) => e.stopPropagation()}
@@ -261,7 +261,7 @@ export function InsightsChatModal({
             <h2
               className="font-heading text-xl font-semibold"
               style={{
-                color: "#ffffff",
+                color: "#092819",
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
               }}
             >
@@ -279,7 +279,7 @@ export function InsightsChatModal({
           </button>
         </div>
 
-        {/* Body â€” open to all visitors */}
+        {/* Body — open to all visitors */}
         {(
           <>
             <div
@@ -306,7 +306,7 @@ export function InsightsChatModal({
               {sending && (
                 <div className="flex items-center gap-2" style={{ color: "#154D31" }}>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Thinkingâ€¦</span>
+                  <span className="text-sm">Thinking…</span>
                 </div>
               )}
             </div>
@@ -338,7 +338,7 @@ export function InsightsChatModal({
                     send();
                   }
                 }}
-                placeholder="Describe your symptoms or what you'd like to learnâ€¦"
+                placeholder="Describe your symptoms or what you'd like to learn…"
                 rows={2}
                 className="mf-input flex-1 resize-none"
                 disabled={sending}
@@ -381,7 +381,7 @@ export function InsightsChatModal({
               </div>
             )}
             <p className="px-5 pb-3 text-xs" style={{ color: "#4a7a56" }}>
-              Educational only â€” not a diagnosis. Discuss results with a healthcare provider of your choice.
+              Educational only — not a diagnosis. Discuss results with a healthcare provider of your choice.
             </p>
           </>
         )}
@@ -452,7 +452,7 @@ const AssistantMessage = ({
 
   // Specialist test = high-ticket (>= $900) OR requires a physician
   // requisition. Either flavour triggers a "call us first" nudge under
-  // the recommended-tests block. NEVER gates the Add button â€” someone
+  // the recommended-tests block. NEVER gates the Add button — someone
   // ready to pay right now is the best customer on the site; making
   // them wait for a callback loses more than a discount ever would.
   const specialistTests = referencedTests.filter(
@@ -494,9 +494,9 @@ const AssistantMessage = ({
                   className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
                 >
                   <div className="min-w-0 flex items-baseline gap-2 flex-wrap">
-                    <span style={{ color: "#ffffff" }}>{t.name}</span>
+                    <span style={{ color: "#092819" }}>{t.name}</span>
                     <span style={{ color: "#C6A04B", fontWeight: 600 }}>
-                      â€”{" "}
+                      —{" "}
                       {t.price_cad != null
                         ? `${formatCurrency(t.price_cad)} CAD`
                         : "Contact us"}
@@ -509,7 +509,7 @@ const AssistantMessage = ({
                           color: "#C6A04B",
                           border: "1px solid #C6A04B",
                         }}
-                        title="Physician requisition required â€” must be present at collection"
+                        title="Physician requisition required — must be present at collection"
                       >
                         <FileText className="w-2.5 h-2.5" />
                         Requisition required
@@ -575,7 +575,7 @@ const AssistantMessage = ({
           </div>
         )}
 
-        {/* Specialist-test nudge â€” appears under the recommended-tests
+        {/* Specialist-test nudge — appears under the recommended-tests
             block whenever any recommended test is >= $900 OR requires
             a physician requisition. Not a gate: Add and Checkout stay
             fully live. */}
@@ -600,7 +600,7 @@ const AssistantMessage = ({
                 {specialistTests.length === 1
                   ? `${specialistTests[0].name} is a specialist test`
                   : "These are specialist tests"}{" "}
-                â€” worth a quick call so we can confirm it&apos;s the right one
+                — worth a quick call so we can confirm it&apos;s the right one
                 for you.
               </p>
               <a
@@ -632,8 +632,8 @@ function RenderMarkdown({ content }: { content: string }) {
     blocks.push(
       <ul key={key++} className="my-2 space-y-1.5 list-none pl-0">
         {bulletBuffer.map((b, i) => (
-          <li key={i} className="flex gap-2 text-sm" style={{ color: "#ffffff" }}>
-            <span style={{ color: "#C6A04B", lineHeight: 1.5 }}>â€¢</span>
+          <li key={i} className="flex gap-2 text-sm" style={{ color: "#092819" }}>
+            <span style={{ color: "#C6A04B", lineHeight: 1.5 }}>•</span>
             <span className="flex-1">{renderInline(b)}</span>
           </li>
         ))}
@@ -708,7 +708,7 @@ function RenderMarkdown({ content }: { content: string }) {
       <p
         key={key++}
         className="my-2"
-        style={{ color: "#ffffff", fontSize: "15px", lineHeight: 1.55 }}
+        style={{ color: "#092819", fontSize: "15px", lineHeight: 1.55 }}
       >
         {renderInline(line)}
       </p>
@@ -734,7 +734,7 @@ function renderInline(text: string): React.ReactNode {
     const token = m[0];
     if (token.startsWith("**")) {
       parts.push(
-        <strong key={key++} style={{ color: "#ffffff", fontWeight: 700 }}>
+        <strong key={key++} style={{ color: "#092819", fontWeight: 700 }}>
           {token.slice(2, -2)}
         </strong>
       );

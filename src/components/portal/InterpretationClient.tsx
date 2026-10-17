@@ -85,7 +85,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
         message:
           err instanceof Error
             ? err.message
-            : "Network error â€” please try again.",
+            : "Network error — please try again.",
       });
     }
   };
@@ -106,10 +106,10 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
   return (
     <div
       className="min-h-screen interpretation-root"
-      style={{ backgroundColor: "#ffffff" }}
+      style={{ backgroundColor: "#092819" }}
     >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        {/* Print / back controls â€” hidden when printing */}
+        {/* Print / back controls — hidden when printing */}
         <div className="ai-no-print mb-5 flex items-center justify-between gap-3">
           <Link
             href="/portal/results"
@@ -136,7 +136,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
         {/* Header card */}
         <section
           className="rounded-2xl border p-6 sm:p-8 mb-6 print-safe"
-          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-5">
             <div
@@ -161,14 +161,14 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
               <p
                 className="font-heading text-xl sm:text-2xl"
                 style={{
-                  color: "#ffffff",
+                  color: "#092819",
                   fontFamily: '"Cormorant Garamond", Georgia, serif',
                 }}
               >
                 {fileName}
               </p>
               <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
-                Report #{reportId} Â· Generated {formatDate(generatedAt)} Â· Source uploaded {formatDate(uploadedAt)}
+                Report #{reportId} · Generated {formatDate(generatedAt)} · Source uploaded {formatDate(uploadedAt)}
               </p>
             </div>
           </div>
@@ -178,7 +178,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
             style={{
               backgroundColor: "rgba(224, 82, 82, 0.08)",
               borderColor: "#e05252",
-              color: "#ffffff",
+              color: "#092819",
             }}
           >
             <p>
@@ -190,7 +190,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           </div>
         </section>
 
-        {/* 1 â€” Results at a glance */}
+        {/* 1 — Results at a glance */}
         <Section
           icon={<Activity className="w-5 h-5" />}
           title="Results at a Glance"
@@ -218,7 +218,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                       key={i}
                       style={{
                         backgroundColor: i % 2 === 0 ? "#F7F6F0" : "transparent",
-                        color: "#ffffff",
+                        color: "#092819",
                       }}
                     >
                       <td className="px-3 py-2.5 align-top">{row.marker}</td>
@@ -230,7 +230,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                         className="px-3 py-2.5 align-top text-xs"
                         style={{ color: "#154D31" }}
                       >
-                        {row.reference_range || "â€”"}
+                        {row.reference_range || "—"}
                       </td>
                       <td className="px-3 py-2.5 align-top text-right">
                         <StatusBadge status={row.status} />
@@ -243,21 +243,21 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           )}
         </Section>
 
-        {/* 2 â€” What this may indicate */}
+        {/* 2 — What this may indicate */}
         <Section
           icon={<Lightbulb className="w-5 h-5" />}
           title="What This May Indicate"
-          subtitle="Plain-language interpretation â€” not a diagnosis"
+          subtitle="Plain-language interpretation — not a diagnosis"
         >
           <p
             className="text-sm leading-relaxed whitespace-pre-line"
-            style={{ color: "#ffffff" }}
+            style={{ color: "#092819" }}
           >
             {state.report.what_this_may_indicate}
           </p>
         </Section>
 
-        {/* 3 â€” Follow-up testing */}
+        {/* 3 — Follow-up testing */}
         <Section
           icon={<FlaskConical className="w-5 h-5" />}
           title="Follow-Up Testing to Consider"
@@ -302,7 +302,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                   </span>
                   <p
                     className="mt-1 text-sm leading-relaxed"
-                    style={{ color: "#ffffff" }}
+                    style={{ color: "#092819" }}
                   >
                     {t.reason}
                   </p>
@@ -312,7 +312,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           )}
         </Section>
 
-        {/* 4 â€” Supplement considerations */}
+        {/* 4 — Supplement considerations */}
         <Section
           icon={<Pill className="w-5 h-5" />}
           title="Nutrition & Supplement Considerations"
@@ -362,7 +362,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                     </span>
                     <p
                       className="mt-1 text-sm leading-relaxed"
-                      style={{ color: "#ffffff" }}
+                      style={{ color: "#092819" }}
                     >
                       {s.reason}
                     </p>
@@ -373,7 +373,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           )}
         </Section>
 
-        {/* 5 â€” Lifestyle */}
+        {/* 5 — Lifestyle */}
         <Section
           icon={<Heart className="w-5 h-5" />}
           title="Lifestyle Factors to Explore"
@@ -397,7 +397,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                   </p>
                   <p
                     className="text-sm leading-relaxed"
-                    style={{ color: "#ffffff" }}
+                    style={{ color: "#092819" }}
                   >
                     {l.recommendation}
                   </p>
@@ -407,7 +407,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           )}
         </Section>
 
-        {/* 6 â€” Next steps */}
+        {/* 6 — Next steps */}
         <Section
           icon={<ListChecks className="w-5 h-5" />}
           title="Your Next Steps"
@@ -431,7 +431,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
                   </div>
                   <p
                     className="text-sm leading-relaxed"
-                    style={{ color: "#ffffff" }}
+                    style={{ color: "#092819" }}
                   >
                     {step}
                   </p>
@@ -445,7 +445,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
           className="ai-no-print text-xs text-center mt-8"
           style={{ color: "#4a7a56" }}
         >
-          Educational only â€” not a diagnosis. Always discuss results with a
+          Educational only — not a diagnosis. Always discuss results with a
           qualified healthcare provider.
         </p>
       </div>
@@ -471,7 +471,7 @@ function Section({
   return (
     <section
       className="rounded-2xl border p-5 sm:p-6 mb-5 print-safe"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-start gap-3">
@@ -489,7 +489,7 @@ function Section({
             <h2
               className="font-heading font-semibold text-xl sm:text-2xl leading-tight"
               style={{
-                color: "#ffffff",
+                color: "#092819",
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
               }}
             >
@@ -547,12 +547,12 @@ function LoadingState() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#ffffff" }}
+      style={{ backgroundColor: "#092819" }}
     >
       <div className="text-center">
         <div
           className="rounded-2xl px-6 py-5 mx-auto mb-6 inline-block"
-          style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E2D4" }}
+          style={{ backgroundColor: "#092819", border: "1px solid #E5E2D4" }}
         >
           <Image
             src="/logo-white.png"
@@ -574,7 +574,7 @@ function LoadingState() {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Analyzing your resultsâ€¦
+            Analyzing your results…
           </p>
         </div>
         <p className="text-sm" style={{ color: "#4a7a56" }}>
@@ -595,12 +595,12 @@ function ErrorState({
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#ffffff" }}
+      style={{ backgroundColor: "#092819" }}
     >
       <div className="w-full max-w-md text-center">
         <div
           className="rounded-2xl border p-8"
-          style={{ backgroundColor: "#FFFFFF", borderColor: "#e05252" }}
+          style={{ backgroundColor: "#092819", borderColor: "#e05252" }}
         >
           <div className="flex justify-center mb-4">
             <AlertCircle
@@ -611,7 +611,7 @@ function ErrorState({
           <h1
             className="font-heading text-2xl font-semibold mb-2"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >

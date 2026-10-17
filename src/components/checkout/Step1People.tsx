@@ -15,7 +15,7 @@ interface Step1PeopleProps {
 }
 
 /**
- * Step 1 â€” who's this order for?
+ * Step 1 — who's this order for?
  *
  * Three mutually-exclusive pickers driven by the combination of
  * (orderMode, personCount):
@@ -27,7 +27,7 @@ interface Step1PeopleProps {
  *   Someone else     caregiver    1
  *
  * The "someone else" flavour used to be gated behind a POA / caregiver
- * / healthcare-worker representative form on Step 3. That's gone â€”
+ * / healthcare-worker representative form on Step 3. That's gone —
  * Mike wants a lighter model: a single "I have permission" checkbox
  * that covers us legally, plus a note reminding the customer that the
  * post-payment account will be set up in the tested person's name
@@ -73,7 +73,7 @@ export function Step1People({
 
   const handlePermissionChange = (checked: boolean) => {
     onPermissionChange(checked);
-    // Auditable event â€” the events table records timestamp + session,
+    // Auditable event — the events table records timestamp + session,
     // giving a defensible legal record that the customer ticked the
     // acknowledgement box for this specific order mode. A proper
     // orders column lands in the DOB/sex post-payment phase.
@@ -95,7 +95,7 @@ export function Step1People({
   return (
     <div
       className="rounded-2xl border p-6 sm:p-8"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-2">
         <Users className="w-5 h-5" style={{ color: "#C6A04B" }} />
@@ -110,7 +110,7 @@ export function Step1People({
       <h1
         className="font-heading text-3xl sm:text-4xl font-semibold mb-3"
         style={{
-          color: "#ffffff",
+          color: "#092819",
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
@@ -119,7 +119,7 @@ export function Step1People({
 
       <p className="text-sm mb-4" style={{ color: "#154D31" }}>
         Adding someone else to this appointment costs $55, not another
-        $85 visit â€” one phlebotomist, one trip, both collections done
+        $85 visit — one phlebotomist, one trip, both collections done
         together.
       </p>
 
@@ -147,7 +147,7 @@ export function Step1People({
         />
       </div>
 
-      {/* Permission acknowledgement â€” required when someone other than
+      {/* Permission acknowledgement — required when someone other than
           the account holder is being tested. Reset on every pick change
           so it can't be inherited from a previous selection. */}
       {needsPermission && (
@@ -178,7 +178,7 @@ export function Step1People({
         </label>
       )}
 
-      {/* Note for "someone else" only â€” the post-payment account will
+      {/* Note for "someone else" only — the post-payment account will
           be set up in the tested person's name so lab results attribute
           correctly. Doesn't show for "myself + someone" because the
           account holder is still one of the people being tested. */}
@@ -196,10 +196,10 @@ export function Step1People({
           />
           <p className="text-xs leading-relaxed" style={{ color: "#154D31" }}>
             After payment we&apos;ll create the account in{" "}
-            <strong style={{ color: "#ffffff" }}>
+            <strong style={{ color: "#092819" }}>
               the name and date of birth of the person being tested
             </strong>{" "}
-            â€” that&apos;s how results are matched to the right person on
+            — that&apos;s how results are matched to the right person on
             the portal.
           </p>
         </div>
@@ -208,7 +208,7 @@ export function Step1People({
       <p className="text-xs mb-6" style={{ color: "#4a7a56" }}>
         Testing with more than two people?{" "}
         <a
-          href="mailto:support@avovita.ca?subject=Group%20booking%20â€”%20more%20than%202%20people"
+          href="mailto:support@avovita.ca?subject=Group%20booking%20—%20more%20than%202%20people"
           className="underline"
           style={{ color: "#C6A04B" }}
         >

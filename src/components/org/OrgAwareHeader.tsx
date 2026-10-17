@@ -29,7 +29,7 @@ export function OrgAwareHeader({
   const baseClass = transparent
     ? "absolute top-0 left-0 right-0 z-20"
     : "border-b";
-  // Nav bar stays dark forest under the new ivory palette â€” per the
+  // Nav bar stays dark forest under the new ivory palette — per the
   // Oct 2026 "lighter premium healthcare" direction the header /
   // footer bands remain forest (#092819) while the main page bg
   // becomes ivory. Pinning the hex here before the global sweep so
@@ -48,7 +48,7 @@ export function OrgAwareHeader({
             <DefaultBrandMark />
           )}
         </Link>
-        {/* Public site nav â€” only on AvoVita-direct pages (not org routes) */}
+        {/* Public site nav — only on AvoVita-direct pages (not org routes) */}
         {!org && !transparent && <PublicNav />}
 
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">

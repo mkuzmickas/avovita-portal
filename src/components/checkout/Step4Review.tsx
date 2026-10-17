@@ -121,7 +121,7 @@ export function Step4Review({
 
   const kitFee = computeKitServiceFee(cart);
 
-  // Kit-only orders have no phlebotomist visit â€” no visit fee
+  // Kit-only orders have no phlebotomist visit — no visit fee
   const visitFees = useMemo(
     () => {
       if (kitFee.hasKitTests && !kitFee.hasPhlebotomistTests) {
@@ -140,8 +140,8 @@ export function Step4Review({
     [persons.length, collectionAddress.postal_code, kitFee.hasKitTests, kitFee.hasPhlebotomistTests]
   );
 
-  // Single source of truth â€” same function powers the right-rail summary.
-  // Supplement + resource subtotals â€” computed alongside test lines so
+  // Single source of truth — same function powers the right-rail summary.
+  // Supplement + resource subtotals — computed alongside test lines so
   // GST recalculates on the combined pre-tax subtotal.
   const supplementSubtotal = cart
     .filter((i) => i.line_type === "supplement")
@@ -198,7 +198,7 @@ export function Step4Review({
   const showShippingRisk = useMemo(() => {
     const testIds = assignments.map((a) => a.test_id);
 
-    // Non-CBC risk tests â€” always trigger if present
+    // Non-CBC risk tests — always trigger if present
     const hasNonCbcRiskTest = testIds.some(
       (id) => SHIPPING_RISK_TEST_IDS.has(id) && id !== CBC_TEST_ID
     );
@@ -226,7 +226,7 @@ export function Step4Review({
     // place, assignments should always cover the cart's test items.
     // If somehow they don't (future regression, race, stale localStorage
     // tamper), refuse to hit Stripe rather than charge the customer
-    // for a session with zero tests attached â€” the exact failure mode
+    // for a session with zero tests attached — the exact failure mode
     // from the Step 4 "0 lines" bug. See reconcileAssignments.ts.
     const validation = validateAssignments(cart, assignments);
     if (!validation.ok) {
@@ -241,7 +241,7 @@ export function Step4Review({
       return;
     }
 
-    // Org affinity â€” set in localStorage by OrgProvider when the user
+    // Org affinity — set in localStorage by OrgProvider when the user
     // visited /org/[slug]/* or by CheckoutClient when the URL had
     // ?org_slug=. Server resolves slug â†’ org_id and tags the order.
     let orgSlug: string | null = null;
@@ -254,7 +254,7 @@ export function Step4Review({
       /* ignore */
     }
 
-    // Entry-point attribution â€” written to localStorage by the /tests
+    // Entry-point attribution — written to localStorage by the /tests
     // ?src=... handoff. Persisted onto orders.src so the analytics
     // dashboard can measure revenue by entry point (Ask AvoVita widget
     // sends src=ask). Slice defensively so a runaway URL param can't
@@ -280,7 +280,7 @@ export function Step4Review({
     // beyond plain phlebotomist tests. Custom lines (e.g. the Banff
     // travel surcharge) only flow through the unified path because the
     // V1 route knows nothing about them. Out-of-town orders also use
-    // unified â€” the V1 /api/stripe/checkout route enforces a complete
+    // unified — the V1 /api/stripe/checkout route enforces a complete
     // collection address, which OOT intentionally leaves blank, and
     // the V1 webhook doesn't carry the is_out_of_town flag onto the
     // orders row.
@@ -335,7 +335,7 @@ export function Step4Review({
             total: visitFees.total,
           },
           order_mode: orderMode,
-          // Representative block deprecated in Aug 2026 â€” Step 1's
+          // Representative block deprecated in Aug 2026 — Step 1's
           // permission acknowledgement replaced it. Always null now
           // for new orders; webhook still handles populated reps for
           // any pre-migration sessions still in flight.
@@ -390,7 +390,7 @@ export function Step4Review({
         if (!stripeRes.ok)
           throw new Error(stripeData.error ?? "Checkout failed");
 
-        // Attribution has been captured on the payload â€” clear the
+        // Attribution has been captured on the payload — clear the
         // localStorage tag so a customer's next visit doesn't
         // mis-attribute a later order.
         try {
@@ -417,7 +417,7 @@ export function Step4Review({
           total,
           account_user_id: accountUserId,
           src: orderSrc,
-          // Representative block deprecated in Aug 2026 â€” Step 1's
+          // Representative block deprecated in Aug 2026 — Step 1's
           // permission acknowledgement replaced it. Always null now
           // for new orders; webhook still handles populated reps for
           // any pre-migration sessions still in flight.
@@ -449,7 +449,7 @@ export function Step4Review({
   return (
     <div
       className="rounded-2xl border p-5 sm:p-7"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-2">
         <Lock className="w-5 h-5" style={{ color: "#C6A04B" }} />
@@ -464,7 +464,7 @@ export function Step4Review({
       <h1
         className="font-heading text-2xl sm:text-3xl font-semibold mb-4"
         style={{
-          color: "#ffffff",
+          color: "#092819",
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
@@ -485,7 +485,7 @@ export function Step4Review({
           <h3
             className="font-heading text-lg font-semibold"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -496,7 +496,7 @@ export function Step4Review({
           className="rounded-lg border px-4 py-3"
           style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
         >
-          <p className="text-sm font-semibold" style={{ color: "#ffffff" }}>
+          <p className="text-sm font-semibold" style={{ color: "#092819" }}>
             {collectionAddress.postal_code}
           </p>
           <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
@@ -511,7 +511,7 @@ export function Step4Review({
         <h3
           className="font-heading text-lg font-semibold mb-3"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -537,9 +537,9 @@ export function Step4Review({
                   <div>
                     <p
                       className="text-sm font-semibold"
-                      style={{ color: "#ffffff" }}
+                      style={{ color: "#092819" }}
                     >
-                      {/* Names moved to post-payment onboarding â€”
+                      {/* Names moved to post-payment onboarding —
                           show a generic label with account-holder /
                           relationship badge for context. */}
                       {person.is_account_holder
@@ -550,7 +550,7 @@ export function Step4Review({
                           className="text-xs font-normal ml-2"
                           style={{ color: "#4a7a56" }}
                         >
-                          Â· {RELATIONSHIP_LABEL[person.relationship]}
+                          · {RELATIONSHIP_LABEL[person.relationship]}
                         </span>
                       )}
                       {person.is_account_holder && (
@@ -558,7 +558,7 @@ export function Step4Review({
                           className="text-xs font-normal ml-2"
                           style={{ color: "#4a7a56" }}
                         >
-                          Â· Account holder
+                          · Account holder
                         </span>
                       )}
                     </p>
@@ -583,7 +583,7 @@ export function Step4Review({
                         <span style={{ color: "#154D31" }}>
                           {a.test_name}{" "}
                           <span style={{ color: "#4a7a56" }}>
-                            Â· {a.lab_name}
+                            · {a.lab_name}
                           </span>
                         </span>
                         <span style={{ color: "#C6A04B" }}>
@@ -744,7 +744,7 @@ export function Step4Review({
             className="flex justify-between text-xl font-semibold pt-3 border-t mt-2"
             style={{ borderColor: "#E5E2D4" }}
           >
-            <span style={{ color: "#ffffff" }}>Estimated Total</span>
+            <span style={{ color: "#092819" }}>Estimated Total</span>
             <span style={{ color: "#C6A04B" }}>
               {formatCurrency(total)} CAD
             </span>
@@ -753,7 +753,7 @@ export function Step4Review({
             className="text-xs text-right mt-1 italic"
             style={{ color: "#4a7a56" }}
           >
-            Tax estimated at Alberta rate â€” final amount confirmed at checkout.
+            Tax estimated at Alberta rate — final amount confirmed at checkout.
           </p>
         </div>
       </section>
@@ -827,7 +827,7 @@ export function Step4Review({
 
       <p className="text-xs mb-5" style={{ color: "#4a7a56" }}>
         {total <= 0
-          ? "Total is $0.00 â€” Stripe will record the order and all notifications will fire normally."
+          ? "Total is $0.00 — Stripe will record the order and all notifications will fire normally."
           : `Payment is processed securely by Stripe. ${
               accountUserId
                 ? "Your order will be linked to your existing account."
@@ -866,7 +866,7 @@ export function Step4Review({
           className="mf-btn-primary px-5 py-3 sm:flex-1 sm:max-w-xs text-base"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-          {submitting ? "Redirectingâ€¦" : "Proceed to Payment"}
+          {submitting ? "Redirecting…" : "Proceed to Payment"}
           {!submitting && <ArrowRight className="w-4 h-4" />}
         </button>
       </div>

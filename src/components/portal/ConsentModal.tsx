@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { ConsentType } from "@/types/database";
 
 export interface ConsentModalProps {
-  /** Account id â€” attached to every consent row. */
+  /** Account id — attached to every consent row. */
   accountId: string;
   /** Optional profile id to attach to every consent row. */
   profileId?: string;
@@ -36,14 +36,14 @@ const GENERAL_PIPA: ConsentSection = {
 
 const US_CROSS_BORDER: ConsentSection = {
   type: "cross_border_us",
-  title: "Cross-Border Transfer Consent â€” United States",
+  title: "Cross-Border Transfer Consent — United States",
   version: "1.0",
   body: `I understand and consent that my personal health information including name, date of birth, and biological sex will be transmitted to laboratory facilities located in the United States for the purpose of test processing. I acknowledge that US privacy laws including the CLOUD Act may apply to my data once it crosses the Canadian border. I have been informed of this cross-border transfer and consent to it.`,
 };
 
 const DE_CROSS_BORDER: ConsentSection = {
   type: "cross_border_de",
-  title: "Cross-Border Transfer Consent â€” Germany",
+  title: "Cross-Border Transfer Consent — Germany",
   version: "1.0",
   body: `I understand and consent that my personal health information will be transmitted to Armin Labs located in Germany for the purpose of test processing under GDPR data protection standards.`,
 };
@@ -115,7 +115,7 @@ export function ConsentModal({
       const ipData = await ipRes.json();
       ipAddress = ipData.ip ?? null;
     } catch {
-      // Non-fatal â€” consent is still valid without IP
+      // Non-fatal — consent is still valid without IP
     }
     const userAgent =
       typeof navigator !== "undefined" ? navigator.userAgent : null;
@@ -151,9 +151,9 @@ export function ConsentModal({
     >
       <div
         className="rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col border shadow-2xl"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
+        style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
       >
-        {/* Header (no close button â€” non-dismissible) */}
+        {/* Header (no close button — non-dismissible) */}
         <div
           className="px-5 sm:px-6 py-4 flex items-center gap-3 border-b rounded-t-2xl"
           style={{ backgroundColor: "#F7F6F0", borderColor: "#E5E2D4" }}
@@ -164,7 +164,7 @@ export function ConsentModal({
               id="consent-modal-title"
               className="font-heading text-lg sm:text-xl font-semibold"
               style={{
-                color: "#ffffff",
+                color: "#092819",
                 fontFamily: '"Cormorant Garamond", Georgia, serif',
               }}
             >
@@ -185,7 +185,7 @@ export function ConsentModal({
               <section key={section.type} className="space-y-3">
                 <h3
                   className="font-semibold text-sm"
-                  style={{ color: "#ffffff" }}
+                  style={{ color: "#092819" }}
                 >
                   {section.title}
                 </h3>

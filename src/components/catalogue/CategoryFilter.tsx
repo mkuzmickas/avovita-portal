@@ -12,7 +12,7 @@ interface CategoryFilterProps {
 
 /**
  * Generic dark-theme dropdown filter. Used for both Category and Lab filters
- * in the catalogue table â€” passing null for `value` selects the All option.
+ * in the catalogue table — passing null for `value` selects the All option.
  */
 export function CategoryFilter({
   label,
@@ -34,14 +34,14 @@ export function CategoryFilter({
         onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
         className="mf-input appearance-none pr-9 cursor-pointer"
       >
-        <option value="" style={{ backgroundColor: "#F7F6F0", color: "#ffffff" }}>
+        <option value="" style={{ backgroundColor: "#F7F6F0", color: "#092819" }}>
           {allLabel ?? `All ${label}`}
         </option>
         {options.map((opt) => (
           <option
             key={opt}
             value={opt}
-            style={{ backgroundColor: "#F7F6F0", color: "#ffffff" }}
+            style={{ backgroundColor: "#F7F6F0", color: "#092819" }}
           >
             {opt}
           </option>

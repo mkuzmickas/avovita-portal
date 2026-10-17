@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/client";
  * - Logged in:  a muted-gold user chip with first-name or email local-part,
  *   opening a dropdown with "My Portal" and "Sign Out".
  *
- * Pure client component â€” reads the session on mount and subscribes to
+ * Pure client component — reads the session on mount and subscribes to
  * auth state changes so it stays in sync after login/logout in another
  * tab.
  */

@@ -38,21 +38,21 @@ export default function ForgotPasswordPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#ffffff" }}
+      style={{ backgroundColor: "#092819" }}
     >
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
           >
             <Leaf className="w-7 h-7" style={{ color: "#88D45D" }} />
           </div>
           <h1
             className="font-heading text-3xl font-semibold"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
         {/* Card */}
         <div
           className="rounded-2xl border p-6 sm:p-8"
-          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
         >
           {sent ? (
             <div className="text-center py-4">
@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
               <h2
                 className="font-heading text-xl font-semibold mb-2"
                 style={{
-                  color: "#ffffff",
+                  color: "#092819",
                   fontFamily: '"Cormorant Garamond", Georgia, serif',
                 }}
               >
@@ -86,7 +86,7 @@ export default function ForgotPasswordPage() {
               </h2>
               <p className="text-sm mb-6" style={{ color: "#154D31" }}>
                 We sent a password reset link to{" "}
-                <strong style={{ color: "#ffffff" }}>{email}</strong>. Click
+                <strong style={{ color: "#092819" }}>{email}</strong>. Click
                 the link to set a new password.
               </p>
               <Link
@@ -155,7 +155,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: "#4a7a56" }}>
-          Protected by Alberta PIPA Â· AvoVita Wellness
+          Protected by Alberta PIPA · AvoVita Wellness
         </p>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { AlertTriangle, Phone } from "lucide-react";
 interface StabilityDisclaimerModalProps {
   /** Names of stability-constrained tests in this order. */
   constrainedTestNames: string[];
-  /** Called when customer acknowledges â€” unlocks the booking iframe. */
+  /** Called when customer acknowledges — unlocks the booking iframe. */
   onAcknowledge: () => void;
 }
 
@@ -14,7 +14,7 @@ interface StabilityDisclaimerModalProps {
  * stability windows. Forces acknowledgment before the FloLabs
  * scheduling iframe loads.
  *
- * Not dismissible via X or backdrop click â€” customer must click
+ * Not dismissible via X or backdrop click — customer must click
  * "I understand" to proceed.
  */
 export function StabilityDisclaimerModal({
@@ -30,7 +30,7 @@ export function StabilityDisclaimerModal({
     >
       <div
         className="w-full max-w-lg rounded-2xl border p-6"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
+        style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
       >
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
@@ -49,7 +49,7 @@ export function StabilityDisclaimerModal({
           <h2
             className="font-heading text-xl font-semibold"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -61,7 +61,7 @@ export function StabilityDisclaimerModal({
         <div className="space-y-3 text-sm" style={{ color: "#154D31" }}>
           <p>
             Your order includes{" "}
-            <strong style={{ color: "#ffffff" }}>{testList}</strong>. These
+            <strong style={{ color: "#092819" }}>{testList}</strong>. These
             tests have a short sample stability window.
           </p>
           <p>
@@ -76,7 +76,7 @@ export function StabilityDisclaimerModal({
             window.
           </p>
           <p>
-            If no Saturdayâ€“Tuesday slots work for your schedule, please call us
+            If no Saturday–Tuesday slots work for your schedule, please call us
             and we&apos;ll work with you directly.
           </p>
         </div>
@@ -89,7 +89,7 @@ export function StabilityDisclaimerModal({
             className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-colors"
             style={{ backgroundColor: "#C6A04B", color: "#ffffff" }}
           >
-            I understand â€” continue to booking
+            I understand — continue to booking
           </button>
           <a
             href="tel:+18552868482"

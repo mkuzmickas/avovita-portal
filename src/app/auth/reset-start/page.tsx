@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Leaf, KeyRound, AlertCircle } from "lucide-react";
 
 /**
- * /auth/reset-start â€” interstitial page for the password-reset email.
+ * /auth/reset-start — interstitial page for the password-reset email.
  *
  * The problem this exists to solve: Supabase recovery URLs
- * (/auth/v1/verify?token=â€¦) are ONE-TIME use. Many inboxes
+ * (/auth/v1/verify?token=…) are ONE-TIME use. Many inboxes
  * (Outlook Safe Links, Gmail/Google Workspace, iOS Mail Protect-My-
  * Activity, corporate antivirus proxies) prefetch every URL in a
  * received email to scan for malware. That prefetch GET consumes the
@@ -14,7 +14,7 @@ import { Leaf, KeyRound, AlertCircle } from "lucide-react";
  *
  * Fix: the email link points here instead, carrying the Supabase URL
  * base64url-encoded in the `rt` query param. Prefetchers GET this
- * page and get back a static form â€” no token consumed. The user
+ * page and get back a static form — no token consumed. The user
  * clicks the button, which POSTs the token to /api/auth/reset-start,
  * which decodes it and 302-redirects to the real Supabase URL. The
  * Supabase token stays alive until the human actually clicks.
@@ -33,20 +33,20 @@ export default async function ResetStartPage({
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#ffffff" }}
+      style={{ backgroundColor: "#092819" }}
     >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+            style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
           >
             <Leaf className="w-7 h-7" style={{ color: "#88D45D" }} />
           </div>
           <h1
             className="font-heading text-3xl font-semibold"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -59,7 +59,7 @@ export default async function ResetStartPage({
 
         <div
           className="rounded-2xl border p-6 sm:p-8"
-          style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+          style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
         >
           {missing ? (
             <div className="text-center py-4">
@@ -69,7 +69,7 @@ export default async function ResetStartPage({
               />
               <h2
                 className="font-heading text-xl font-semibold mb-2"
-                style={{ color: "#ffffff" }}
+                style={{ color: "#092819" }}
               >
                 Link incomplete
               </h2>
@@ -93,7 +93,7 @@ export default async function ResetStartPage({
               >
                 Click the button below to open the password-reset form. The
                 link is single-use, so we only hand it off when you confirm
-                â€” this prevents email scanners from accidentally consuming
+                — this prevents email scanners from accidentally consuming
                 it before you get there.
               </p>
               <form method="POST" action="/api/auth/reset-start">

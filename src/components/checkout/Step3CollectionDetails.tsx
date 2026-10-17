@@ -136,7 +136,7 @@ export function Step3CollectionDetails({
     return () => {
       cancelled = true;
     };
-    // Run once on mount â€” persons[0] is intentionally read but not a dep
+    // Run once on mount — persons[0] is intentionally read but not a dep
     // to avoid re-fetching on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -147,12 +147,12 @@ export function Step3CollectionDetails({
 
   // Full patient identity is required pre-payment (name + DOB +
   // biological sex) so post-payment is just password + waiver +
-  // booking â€” no separate profile-completion step that could hang.
+  // booking — no separate profile-completion step that could hang.
   // Phase 2 tried to split this and it broke enough downstream
   // things (notifications lost names, some customers hung at the
   // profile step and bailed) that it was net-negative. Postal code
   // stays as the ONE remaining pre-payment simplification (Phase 1)
-  // because address collection is genuinely redundant â€” FloLabs
+  // because address collection is genuinely redundant — FloLabs
   // takes the full street address at booking.
   const identityComplete = (p: (typeof persons)[number]) => {
     const base =
@@ -161,7 +161,7 @@ export function Step3CollectionDetails({
       (p.date_of_birth?.trim().length ?? 0) > 0 &&
       p.biological_sex !== "" &&
       p.biological_sex != null;
-    // Phone required only on the account holder â€” shared as the
+    // Phone required only on the account holder — shared as the
     // single contact for the whole order (see Mobile number field).
     if (p.is_account_holder) {
       return base && (p.phone?.trim().length ?? 0) > 0;
@@ -176,7 +176,7 @@ export function Step3CollectionDetails({
   const zoneUnserved = postalEntered && postalZone === "unserved";
 
   // Per-test booking acknowledgements (short-stability tests, weekly
-  // courier-cutoff tests, etc.). tests.booking_ack_text is nullable â€”
+  // courier-cutoff tests, etc.). tests.booking_ack_text is nullable —
   // when populated, the customer must tick "I understand" before Step 3
   // can Continue. Fetched once per Step 3 mount based on the assigned
   // test ids; small result set (usually 0-1 rows).
@@ -251,7 +251,7 @@ export function Step3CollectionDetails({
   return (
     <div
       className="rounded-2xl border p-5 sm:p-7"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-2">
         <MapPin className="w-5 h-5" style={{ color: "#C6A04B" }} />
@@ -266,7 +266,7 @@ export function Step3CollectionDetails({
       <h1
         className="font-heading text-2xl sm:text-3xl font-semibold mb-4"
         style={{
-          color: "#ffffff",
+          color: "#092819",
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
@@ -280,7 +280,7 @@ export function Step3CollectionDetails({
         </div>
       )}
 
-      {/* Per-test scheduling acknowledgement â€” required before Continue
+      {/* Per-test scheduling acknowledgement — required before Continue
           when the cart has a test with a stability / lab-cutoff
           constraint. Data source: tests.booking_ack_text (migration
           047), currently populated for FNIRM. Adding more constrained
@@ -302,7 +302,7 @@ export function Step3CollectionDetails({
               <p
                 className="font-heading text-lg font-semibold mb-2"
                 style={{
-                  color: "#ffffff",
+                  color: "#092819",
                   fontFamily: '"Cormorant Garamond", Georgia, serif',
                 }}
               >
@@ -323,7 +323,7 @@ export function Step3CollectionDetails({
                   className="mt-0.5 shrink-0"
                   style={{ accentColor: "#C6A04B" }}
                 />
-                <span style={{ color: "#ffffff" }}>
+                <span style={{ color: "#092819" }}>
                   I understand and will book my collection accordingly.
                 </span>
               </label>
@@ -384,7 +384,7 @@ export function Step3CollectionDetails({
               <h3
                 className="font-heading text-lg font-semibold mb-1"
                 style={{
-                  color: "#ffffff",
+                  color: "#092819",
                   fontFamily:
                     '"Cormorant Garamond", Georgia, serif',
                 }}
@@ -428,7 +428,7 @@ export function Step3CollectionDetails({
         <p className="text-sm mb-4" style={{ color: "#154D31" }}>
           FloLabs will collect the full street address when you book
           your collection slot after payment. All we need now is your
-          postal code â€” it&apos;s how we confirm we can serve your area
+          postal code — it&apos;s how we confirm we can serve your area
           and calculate the visit fee.
         </p>
 
@@ -499,7 +499,7 @@ export function Step3CollectionDetails({
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#C6A04B" }} />
             <p className="text-sm leading-relaxed" style={{ color: "#154D31" }}>
-              Outside Calgary â€” a{" "}
+              Outside Calgary — a{" "}
               <strong style={{ color: "#C6A04B" }}>
                 ${(visitFees.base_fee - 85).toFixed(0)} travel surcharge
               </strong>{" "}
@@ -532,7 +532,7 @@ export function Step3CollectionDetails({
 
       {/* â”€â”€â”€ Patient details per person (required pre-payment) â”€â”€
           Name / DOB / biological sex all live here so post-payment
-          is just password + waiver + booking â€” no extra "profile
+          is just password + waiver + booking — no extra "profile
           completion" step that could hang. Phase 2 tried to move
           this post-payment; the added step wasn't worth the friction
           reduction, so it's back. Every downstream surface (Mayo
@@ -542,7 +542,7 @@ export function Step3CollectionDetails({
         <h2
           className="font-heading text-xl font-semibold mb-2"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -655,7 +655,7 @@ export function Step3CollectionDetails({
                     }
                     className="mf-input cursor-pointer"
                   >
-                    <option value="">Selectâ€¦</option>
+                    <option value="">Select…</option>
                     <option value="female">Female</option>
                     <option value="male">Male</option>
                     <option value="intersex">Intersex</option>
@@ -663,7 +663,7 @@ export function Step3CollectionDetails({
                 </div>
               </div>
 
-              {/* One phone number per order â€” captured on the account
+              {/* One phone number per order — captured on the account
                   holder's card. FloLabs email falls back to this for
                   any additional persons on the order (single household
                   contact is fine for a 2-person booking). */}
@@ -710,7 +710,7 @@ export function Step3CollectionDetails({
         <h3
           className="font-heading text-lg font-semibold mb-3"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -746,7 +746,7 @@ export function Step3CollectionDetails({
             className="flex justify-between font-semibold pt-2 border-t mt-2"
             style={{ borderColor: "#E5E2D4" }}
           >
-            <span style={{ color: "#ffffff" }}>Total visit fee</span>
+            <span style={{ color: "#092819" }}>Total visit fee</span>
             <span style={{ color: "#C6A04B" }}>
               {formatCurrency(visitFees.total)}
             </span>
@@ -759,7 +759,7 @@ export function Step3CollectionDetails({
         className="mt-6 pt-5 border-t"
         style={{ borderColor: "#E5E2D4" }}
       >
-        {/* Per-person consent block dropped in Aug 2026 â€” the Step 1
+        {/* Per-person consent block dropped in Aug 2026 — the Step 1
             permission acknowledgement (captured before this step)
             replaces it, and per-person account routing decisions
             happen in the post-payment onboarding flow. */}
@@ -873,7 +873,7 @@ function PersonSection({
   person: CheckoutPerson;
   onChange: (patch: Partial<CheckoutPerson>) => void;
   isAccountHolder: boolean;
-  /** In caregiver mode, dependents don't carry their own contact info â€”
+  /** In caregiver mode, dependents don't carry their own contact info —
    *  all notifications go to the rep. Hide the phone field (and any
    *  own-account-email prompt) when this is true. */
   hideContactFields?: boolean;
@@ -893,7 +893,7 @@ function PersonSection({
       <h2
         className="font-heading text-xl font-semibold mb-1"
         style={{
-          color: "#ffffff",
+          color: "#092819",
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
@@ -972,7 +972,7 @@ function PersonSection({
             }
             className="mf-input cursor-pointer"
           >
-            <option value="">Selectâ€¦</option>
+            <option value="">Select…</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
@@ -1020,7 +1020,7 @@ function PersonSection({
             }
             className="mf-input cursor-pointer"
           >
-            <option value="">Selectâ€¦</option>
+            <option value="">Select…</option>
             {RELATIONSHIP_OPTIONS.map((r) => (
               <option key={r.value} value={r.value}>
                 {r.label}
@@ -1032,7 +1032,7 @@ function PersonSection({
 
       {showConsent && (
         <div className="mt-4 space-y-3">
-          {/* Option A â€” share account */}
+          {/* Option A — share account */}
           <button
             type="button"
             onClick={() =>
@@ -1080,7 +1080,7 @@ function PersonSection({
                 </p>
                 <p className="text-xs" style={{ color: "#154D31" }}>
                   I confirm that{" "}
-                  <strong style={{ color: "#ffffff" }}>
+                  <strong style={{ color: "#092819" }}>
                     {person.first_name.trim() || "this person"}
                   </strong>{" "}
                   consents to their specimen being collected and tested, and
@@ -1092,7 +1092,7 @@ function PersonSection({
             </div>
           </button>
 
-          {/* Option B â€” own account */}
+          {/* Option B — own account */}
           <button
             type="button"
             onClick={() =>
@@ -1142,7 +1142,7 @@ function PersonSection({
             </div>
           </button>
 
-          {/* Email input â€” shown when own account selected */}
+          {/* Email input — shown when own account selected */}
           {person.wants_own_account && (
             <div
               className="rounded-lg border p-4"
@@ -1182,7 +1182,7 @@ function PersonSection({
 // Replaces the native <input type="date"> with three dropdowns to keep the
 // UX consistent across browsers (mobile especially) and avoid the dd/mm
 // vs mm/dd ambiguity. Emits an ISO YYYY-MM-DD string only when all three
-// parts are filled â€” partial selections emit "" so the parent's existing
+// parts are filled — partial selections emit "" so the parent's existing
 // `date_of_birth.length > 0` validation still gates the Continue button.
 
 const MONTH_LABELS = [
@@ -1227,7 +1227,7 @@ function DobDropdowns({
   const [parts, setParts] = useState(() => parseIsoDob(value));
 
   // Re-sync from the parent value when it is either fully empty or a
-  // complete date â€” typically prefill on mount or restore after navigating
+  // complete date — typically prefill on mount or restore after navigating
   // back to this step. We deliberately ignore parent updates while the
   // user is mid-entry (parent has "" but local has partial parts).
   useEffect(() => {
@@ -1332,12 +1332,12 @@ function RepresentativeSection({
   return (
     <section
       className="mb-6 pb-6 rounded-xl border p-5"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#C6A04B" }}
+      style={{ backgroundColor: "#092819", borderColor: "#C6A04B" }}
     >
       <h2
         className="font-heading text-xl sm:text-2xl font-semibold mb-1"
         style={{
-          color: "#ffffff",
+          color: "#092819",
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
@@ -1346,7 +1346,7 @@ function RepresentativeSection({
       </h2>
       <p className="text-xs mb-4" style={{ color: "#154D31" }}>
         We&apos;ll send order confirmations, appointment updates and results to
-        you as the representative â€” not to the client&apos;s contact info.
+        you as the representative — not to the client&apos;s contact info.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1434,7 +1434,7 @@ function RepresentativeSection({
           className="mt-1 w-4 h-4 shrink-0"
           style={{ accentColor: "#C6A04B" }}
         />
-        <span className="text-sm leading-relaxed" style={{ color: "#ffffff" }}>
+        <span className="text-sm leading-relaxed" style={{ color: "#092819" }}>
           I confirm that I have legal authority or written consent to authorize
           private medical laboratory testing on behalf of the individual(s)
           named in this order, and that all information provided is accurate.

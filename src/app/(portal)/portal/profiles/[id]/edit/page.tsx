@@ -24,7 +24,7 @@ export default async function NewProfilePage() {
         <h1
           className="font-heading text-3xl font-semibold"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -36,7 +36,7 @@ export default async function NewProfilePage() {
       </div>
       <div
         className="rounded-2xl border p-6 sm:p-8"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+        style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
       >
         <ProfileFormWithConsent
           accountId={user.id}

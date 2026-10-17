@@ -88,12 +88,12 @@ export function SettingsClient({
       {/* Account section */}
       <section
         className="rounded-xl border p-6"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+        style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
       >
         <h2
           className="font-heading text-xl font-semibold mb-4"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -108,7 +108,7 @@ export function SettingsClient({
             >
               Email
             </p>
-            <p className="text-sm" style={{ color: "#ffffff" }}>
+            <p className="text-sm" style={{ color: "#092819" }}>
               {email}
             </p>
           </div>
@@ -127,7 +127,7 @@ export function SettingsClient({
               className="mf-btn-secondary px-4 py-2 text-sm"
             >
               {resetting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {resetting ? "Sendingâ€¦" : "Change Password"}
+              {resetting ? "Sending…" : "Change Password"}
             </button>
 
             {resetSent && (
@@ -164,12 +164,12 @@ export function SettingsClient({
       {/* Communication preferences */}
       <section
         className="rounded-xl border p-6"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+        style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
       >
         <h2
           className="font-heading text-xl font-semibold mb-2"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
@@ -205,7 +205,7 @@ export function SettingsClient({
             className="mf-btn-primary px-5 py-2.5"
           >
             {savingPrefs && <Loader2 className="w-4 h-4 animate-spin" />}
-            {savingPrefs ? "Savingâ€¦" : "Save Preferences"}
+            {savingPrefs ? "Saving…" : "Save Preferences"}
           </button>
 
           {prefsSaved && (
@@ -264,7 +264,7 @@ function PrefToggle({
     >
       <Icon className="w-4 h-4 shrink-0" style={{ color: "#88D45D" }} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium" style={{ color: "#ffffff" }}>
+        <p className="text-sm font-medium" style={{ color: "#092819" }}>
           {label}
         </p>
         <p className="text-xs" style={{ color: "#4a7a56" }}>

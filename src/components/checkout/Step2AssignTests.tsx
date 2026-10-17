@@ -138,7 +138,7 @@ export function Step2AssignTests({
 
   // Continue rules:
   //   - every test in the cart has at least one person checked (no
-  //     orphan rows â€” a test with zero people doesn't make sense)
+  //     orphan rows — a test with zero people doesn't make sense)
   //   - every person has at least one test assigned to them
   const peopleWithoutTests = peopleIndices.filter(
     (idx) => (assignmentsByPerson.get(idx)?.length ?? 0) === 0,
@@ -149,7 +149,7 @@ export function Step2AssignTests({
   const canContinue =
     testsWithoutAnyone.length === 0 && peopleWithoutTests.length === 0;
 
-  // Cart subtotal â€” same value used by the order summary sidebar so the
+  // Cart subtotal — same value used by the order summary sidebar so the
   // step body and sidebar always agree.
   const cartSubtotal = cart.reduce(
     (s, c) => s + c.price_cad * c.quantity,
@@ -157,14 +157,14 @@ export function Step2AssignTests({
   );
   // Discount preview based on cart line count so it reflects the true
   // billable lines (a Vitamin D for two people counts as two lines).
-  // Repeat-client gated â€” guests + first-timers see full subtotal.
+  // Repeat-client gated — guests + first-timers see full subtotal.
   const repeatClient = useRepeatClient();
   const discount = computeDiscount(cart.length, repeatClient.eligible);
   const cartAfterDiscount = cartSubtotal - discount.total;
 
   /**
    * Toggle a (test_id, person_index) pair. The cart row count for a
-   * test always equals the number of checked people on that test â€”
+   * test always equals the number of checked people on that test —
    * checking adds a row + assignment, unchecking removes both. Uses
    * functional updates so rapid clicks across different tests can't
    * stomp each other.
@@ -177,7 +177,7 @@ export function Step2AssignTests({
     const existing = assignmentByTestPerson.get(key);
 
     if (existing) {
-      // UNCHECK â€” drop the cart row first, then the assignment. Order
+      // UNCHECK — drop the cart row first, then the assignment. Order
       // doesn't matter for correctness; React batches both setStates
       // into one render.
       removeCartItem(cartIdForTest(existing.instance_id));
@@ -187,7 +187,7 @@ export function Step2AssignTests({
       return;
     }
 
-    // CHECK â€” clone a new cart row and create the assignment.
+    // CHECK — clone a new cart row and create the assignment.
     const newInstanceId = newCloneInstanceId(group.test_id);
     addCartItem({
       ...group.template,
@@ -206,7 +206,7 @@ export function Step2AssignTests({
     ]);
   };
 
-  /** Right-column X â€” same effect as unchecking that person's box on
+  /** Right-column X — same effect as unchecking that person's box on
    *  the left card for this assignment. */
   const handleUnassign = (entry: PersonAssignmentEntry) => {
     removeCartItem(cartIdForTest(entry.instance_id));
@@ -219,7 +219,7 @@ export function Step2AssignTests({
   // The dominant real pattern for a 2-person booking is a couple
   // ordering identical panels. Copying person 1's assignment set onto
   // person 2 in one click removes ~N checkbox clicks (N = number of
-  // tests) at what's otherwise the most repetitive part of checkout â€”
+  // tests) at what's otherwise the most repetitive part of checkout —
   // then only name / DOB / sex / consent remain on Step 3.
   //
   // Only surfaces when personCount === 2 AND person 2 is missing at
@@ -257,7 +257,7 @@ export function Step2AssignTests({
   return (
     <div
       className="rounded-2xl border p-5 sm:p-7"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
+      style={{ backgroundColor: "#092819", borderColor: "#E5E2D4" }}
     >
       <div className="flex items-center gap-2 mb-2">
         <Users className="w-5 h-5" style={{ color: "#C6A04B" }} />
@@ -272,7 +272,7 @@ export function Step2AssignTests({
       <h1
         className="font-heading text-2xl sm:text-3xl font-semibold mb-2"
         style={{
-          color: "#ffffff",
+          color: "#092819",
           fontFamily: '"Cormorant Garamond", Georgia, serif',
         }}
       >
@@ -286,12 +286,12 @@ export function Step2AssignTests({
         <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#C6A04B" }} />
         <p className="text-xs leading-relaxed" style={{ color: "#154D31" }}>
           Check the box for each person who should get this test. You can
-          assign the same test to more than one person â€” each person on
+          assign the same test to more than one person — each person on
           the checkbox row will be billed and resulted separately.
         </p>
       </div>
 
-      {/* "Same tests as me" â€” one click mirrors person 1's tests onto
+      {/* "Same tests as me" — one click mirrors person 1's tests onto
           person 2. Only when there's actually work to do (person 2
           missing at least one test person 1 has). Dominant real pattern
           for 2-person bookings is a couple ordering identical panels. */}
@@ -330,12 +330,12 @@ export function Step2AssignTests({
 
       {/* Two columns desktop, stacked mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* LEFT â€” tests in cart with per-person checkboxes */}
+        {/* LEFT — tests in cart with per-person checkboxes */}
         <div>
           <h3
             className="font-heading text-lg font-semibold mb-3 flex items-center gap-2"
             style={{
-              color: "#ffffff",
+              color: "#092819",
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
@@ -382,7 +382,7 @@ export function Step2AssignTests({
                       <div className="flex-1 min-w-0">
                         <p
                           className="text-sm font-medium leading-snug"
-                          style={{ color: "#ffffff" }}
+                          style={{ color: "#092819" }}
                         >
                           {group.test_name}
                         </p>
@@ -390,7 +390,7 @@ export function Step2AssignTests({
                           className="text-xs mt-0.5"
                           style={{ color: "#4a7a56" }}
                         >
-                          {group.lab_name} Â·{" "}
+                          {group.lab_name} ·{" "}
                           <span style={{ color: "#C6A04B", fontWeight: 600 }}>
                             {formatCurrency(group.price_cad)} per person
                           </span>
@@ -479,7 +479,7 @@ export function Step2AssignTests({
           )}
         </div>
 
-        {/* RIGHT â€” person columns */}
+        {/* RIGHT — person columns */}
         <div className="space-y-4">
           {peopleIndices.map((idx) => {
             const items = assignmentsByPerson.get(idx) ?? [];
@@ -497,7 +497,7 @@ export function Step2AssignTests({
                   <h4
                     className="font-heading font-semibold"
                     style={{
-                      color: "#ffffff",
+                      color: "#092819",
                       fontFamily: '"Cormorant Garamond", Georgia, serif',
                     }}
                   >
@@ -513,7 +513,7 @@ export function Step2AssignTests({
 
                 {items.length === 0 ? (
                   <p className="text-xs italic" style={{ color: "#C6A04B" }}>
-                    No tests assigned yet â€” check this person on one of the
+                    No tests assigned yet — check this person on one of the
                     test cards to add a copy.
                   </p>
                 ) : (
@@ -523,14 +523,14 @@ export function Step2AssignTests({
                         key={entry.instance_id}
                         className="flex items-center gap-2 px-3 py-2 rounded-md border"
                         style={{
-                          backgroundColor: "#FFFFFF",
+                          backgroundColor: "#092819",
                           borderColor: "#E5E2D4",
                         }}
                       >
                         <div className="flex-1 min-w-0">
                           <p
                             className="text-xs font-medium truncate"
-                            style={{ color: "#ffffff" }}
+                            style={{ color: "#092819" }}
                           >
                             {entry.test_name}
                           </p>
@@ -596,7 +596,7 @@ export function Step2AssignTests({
             >
               <span
                 className="text-sm font-semibold"
-                style={{ color: "#ffffff" }}
+                style={{ color: "#092819" }}
               >
                 After discount
               </span>
@@ -631,7 +631,7 @@ export function Step2AssignTests({
               )}
               {peopleWithoutTests.length > 0 && (
                 <>
-                  Each person needs at least one test â€”{" "}
+                  Each person needs at least one test —{" "}
                   {peopleWithoutTests.map((i) => personLabel(i)).join(", ")}{" "}
                   {peopleWithoutTests.length === 1 ? "is" : "are"} still empty.
                 </>

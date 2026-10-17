@@ -15,7 +15,7 @@ export default function NotFound() {
   return (
     <div
       className="min-h-screen"
-      style={{ backgroundColor: "#ffffff" }}
+      style={{ backgroundColor: "#092819" }}
       aria-hidden
     />
   );

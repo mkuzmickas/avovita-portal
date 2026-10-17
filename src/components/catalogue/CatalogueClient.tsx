@@ -93,7 +93,7 @@ export function CatalogueClient({
   // scroll filtered results into view as the user types.
   const catalogueRef = useRef<HTMLElement | null>(null);
 
-  // Hero input state â€” a single prominent input at the top of /tests
+  // Hero input state — a single prominent input at the top of /tests
   // that routes every query through the AI chat. Mobile-first:
   // elderly / non-technical users don't want to toggle between
   // "search" and "AI" modes, so there's one entry point. Pressing
@@ -102,7 +102,7 @@ export function CatalogueClient({
   const [heroQuery, setHeroQuery] = useState("");
   const [pendingAiQuery, setPendingAiQuery] = useState<string | null>(null);
 
-  // Voice dictation via the Web Speech API (Chrome/Edge/Safari â€”
+  // Voice dictation via the Web Speech API (Chrome/Edge/Safari —
   // webkit-prefixed on iOS Safari). Appends recognised speech into
   // the hero input so the user can edit before submitting.
   const [listening, setListening] = useState(false);
@@ -195,7 +195,7 @@ export function CatalogueClient({
 
   // Deep-link support: /tests?category=<exact label> pre-selects the
   // matching filter. Keyed on `categories` so the effect re-fires
-  // once the server-rendered list has populated â€” fixes the case
+  // once the server-rendered list has populated — fixes the case
   // where the initial render had an empty categories array.
   // Diagnostic: trace every selectedCategory state transition so we
   // can see in DevTools whether the URL-param effect is being overridden.
@@ -255,7 +255,7 @@ export function CatalogueClient({
   // â”€â”€â”€ Cart handoff from Ask AvoVita (and any other src) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Contract: /tests?add=SKU1,SKU2&src=ask
   //   - Match each SKU on tests.sku (case-insensitive, trimmed both
-  //     sides â€” one legacy row has a trailing space in its SKU).
+  //     sides — one legacy row has a trailing space in its SKU).
   //   - Skip quote-only tests (price_cad === null).
   //   - Add each match to the cart in the given order via the normal
   //     addItem() path, so Tuesday-only tests still trigger the
@@ -272,7 +272,7 @@ export function CatalogueClient({
   //     the checkout flow can plumb it through onto orders.src for
   //     attribution analytics.
   // URL handoff shares a ref with the post-add launcher so a batch of
-  // ?add= adds doesn't trigger the "want suggestions?" nudge â€” that
+  // ?add= adds doesn't trigger the "want suggestions?" nudge — that
   // arrival already means the customer's intent was formed elsewhere
   // (the Ask AvoVita widget on the marketing site, an SMS link, etc.).
   const handoffAdding = useRef(false);
@@ -309,7 +309,7 @@ export function CatalogueClient({
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
-    // Build a lookup once â€” normalise both sides (uppercase, trim).
+    // Build a lookup once — normalise both sides (uppercase, trim).
     // Some catalogue rows carry a stray trailing space (ALBR ), so a
     // simple .toUpperCase() on both sides isn't enough on its own.
     const skuIndex = new Map<string, CatalogueTest>();
@@ -326,12 +326,12 @@ export function CatalogueClient({
       if (hit && hit.price_cad != null) matches.push(hit);
     }
 
-    // Strip the query params either way â€” a refresh must not re-add.
+    // Strip the query params either way — a refresh must not re-add.
     router.replace("/tests", { scroll: false });
 
     if (matches.length === 0) {
       setNotFoundBanner(
-        "We couldn't find those tests â€” here's the full catalogue.",
+        "We couldn't find those tests — here's the full catalogue.",
       );
       return;
     }
@@ -376,7 +376,7 @@ export function CatalogueClient({
   // â”€â”€â”€ Post-add Ask AvoVita nudge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Fires when the customer adds a test on /tests. The visit fee is
   // the most likely cause of the 81% checkout drop-off, and once one
-  // test is in the cart it's a sunk cost â€” a second test on the same
+  // test is in the cart it's a sunk cost — a second test on the same
   // appointment costs only the test price. Telling the customer that
   // at the exact moment of the first add turns the biggest surprise
   // in the funnel into an argument for a second test, where nearly
@@ -384,7 +384,7 @@ export function CatalogueClient({
   //
   // Trigger rules (all must be true):
   //   - test count strictly increased
-  //   - test count BEFORE the add was < 2 (i.e. 0 â†’ 1 or 1 â†’ 2 â€”
+  //   - test count BEFORE the add was < 2 (i.e. 0 â†’ 1 or 1 â†’ 2 —
   //     someone already at 2+ tests has understood the model)
   //   - not a ?add= URL handoff (their intent was already formed
   //     elsewhere)
@@ -392,7 +392,7 @@ export function CatalogueClient({
   //   - hasn't been dismissed this session (sessionStorage sticks)
   //
   // Once dismissed we set BOTH refs so a mid-session refresh of the
-  // page doesn't re-arm the prompt â€” the sessionStorage flag survives
+  // page doesn't re-arm the prompt — the sessionStorage flag survives
   // the refresh and the effect skips on cart mount.
   const prevTestCountRef = useRef<number | null>(null);
   const askPromptFiredRef = useRef(false);
@@ -402,7 +402,7 @@ export function CatalogueClient({
     const testCount = totals.testItems.length;
     const prev = prevTestCountRef.current;
     prevTestCountRef.current = testCount;
-    // First run after hydration primes the ref without triggering â€”
+    // First run after hydration primes the ref without triggering —
     // whatever was in the cart from a previous session isn't a fresh
     // add.
     if (prev === null) return;
@@ -419,7 +419,7 @@ export function CatalogueClient({
         return;
       }
     } catch {
-      /* sessionStorage disabled â€” no persistence, that's fine */
+      /* sessionStorage disabled — no persistence, that's fine */
     }
     const newestTest = totals.testItems[totals.testItems.length - 1];
     setAskPromptTestName(newestTest?.test_name ?? null);
@@ -469,7 +469,7 @@ export function CatalogueClient({
   const filteredTests = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     console.log(
-      "[catalogue] filter run â€” selectedCategory:",
+      "[catalogue] filter run — selectedCategory:",
       JSON.stringify(selectedCategory),
       "selectedLab:",
       JSON.stringify(selectedLab),
@@ -525,7 +525,7 @@ export function CatalogueClient({
         continue;
       }
 
-      // Tier 1: name / sku / category hit â€” existing behaviour.
+      // Tier 1: name / sku / category hit — existing behaviour.
       const primary =
         test.name.toLowerCase().includes(query) ||
         (test.sku !== null && test.sku.toLowerCase().includes(query)) ||
@@ -534,7 +534,7 @@ export function CatalogueClient({
         scored.push({ test, tier: 1 });
         continue;
       }
-      // Tier 2: description-only hit â€” new this pass. Catches tests
+      // Tier 2: description-only hit — new this pass. Catches tests
       // like Cytokine Panel 13 when a customer searches "interleukin"
       // but the term only appears in the long description.
       if (
@@ -546,18 +546,18 @@ export function CatalogueClient({
     }
 
     // Order when a query is active:
-    //   1. search_priority DESC â€” admin-boosted rows always jump the
+    //   1. search_priority DESC — admin-boosted rows always jump the
     //      queue. A bundle at priority 100 whose description contains
     //      the searched term must beat individual tests at priority 0
     //      whose names contain the term, otherwise the bundle upsell
     //      never gets a chance (Fatigue Bundle vs individual Vitamin D
     //      rows was the case that surfaced this).
-    //   2. tier ASC as tiebreaker â€” for the ~445 rows that never got a
+    //   2. tier ASC as tiebreaker — for the ~445 rows that never got a
     //      priority set (default 0), the old "name/sku hit beats
     //      description-only hit" ordering still applies.
     //   3. Stable sort preserves alphabetical for same-priority same-tier.
     // Browse / no-query lists stay in the alphabetical order Supabase
-    // returned â€” priority is a search-ranking signal, not a browse one.
+    // returned — priority is a search-ranking signal, not a browse one.
     const hasQuery = query !== "";
     scored.sort((a, b) => {
       if (hasQuery) {
@@ -581,8 +581,8 @@ export function CatalogueClient({
   };
 
   return (
-    <div className="min-h-screen pb-32" style={{ backgroundColor: "#ffffff" }}>
-      {/* Top nav â€” auto-swaps to org branding when wrapped in OrgProvider */}
+    <div className="min-h-screen pb-32" style={{ backgroundColor: "#092819" }}>
+      {/* Top nav — auto-swaps to org branding when wrapped in OrgProvider */}
       {/* AccountIndicator inside OrgAwareHeader handles Sign In / account
           dropdown for both logged-in and logged-out visitors. */}
       <OrgAwareHeader />
@@ -599,7 +599,7 @@ export function CatalogueClient({
           <div
             className="flex items-start gap-2.5 rounded-lg border px-4 py-3"
             style={{
-              backgroundColor: "#FFFFFF",
+              backgroundColor: "#092819",
               borderColor: "#C6A04B",
               color: "#154D31",
             }}
@@ -622,7 +622,7 @@ export function CatalogueClient({
         </div>
       )}
 
-      {/* Hero region â€” new Oct 2026 ivory palette.
+      {/* Hero region — new Oct 2026 ivory palette.
        *   Full-width ivory band so the lighter aesthetic reads cleanly
        *   on mobile. The forest-green nav above and the dark catalogue
        *   section below act as the "25% green" from the palette ratio.
@@ -710,7 +710,7 @@ export function CatalogueClient({
                   });
                 }
               }}
-              placeholder={`Search ${allTests.length} lab testsâ€¦`}
+              placeholder={`Search ${allTests.length} lab tests…`}
               className="w-full rounded-xl border py-3.5 pl-12 pr-4 focus:outline-none"
               style={{
                 backgroundColor: C.ivory,
@@ -826,7 +826,7 @@ export function CatalogueClient({
             Choose from our {allTests.length} test catalogue.
           </p>
           <p style={{ color: "#154D31", fontSize: "13px" }}>
-            Tests without pricing â€”{" "}
+            Tests without pricing —{" "}
             <a
               href="mailto:support@avovita.ca"
               className="no-underline hover:underline"
@@ -840,7 +840,7 @@ export function CatalogueClient({
             className="mb-5"
             style={{ color: "#154D31", fontSize: "13px" }}
           >
-            Don&apos;t see the test you&apos;re looking for? We have access to thousands of Mayo Clinic tests not listed here â€”{" "}
+            Don&apos;t see the test you&apos;re looking for? We have access to thousands of Mayo Clinic tests not listed here —{" "}
             <a
               href="mailto:support@avovita.ca"
               className="no-underline hover:underline"
@@ -851,7 +851,7 @@ export function CatalogueClient({
             and we&apos;ll get it added.
           </p>
 
-          {/* Filter row â€” search only. The category + lab dropdowns
+          {/* Filter row — search only. The category + lab dropdowns
               were removed Oct 2026 (Mike): nobody filters by "Allergy
               & Sensitivity", they just type "food allergies" or
               "dog dander" into the search. Keeping fewer controls on
@@ -884,7 +884,7 @@ export function CatalogueClient({
       {/* Sticky cart bar */}
       <CartBar cart={cart} />
 
-      {/* Post-add Ask AvoVita nudge â€” appears once after the first
+      {/* Post-add Ask AvoVita nudge — appears once after the first
           add of the session, above the CartBar, dismissible. Never
           obscures Checkout: the launcher yields to the CartBar and
           uses a fixed offset above it. */}
@@ -906,7 +906,7 @@ export function CatalogueClient({
           // or null query triggers a fresh auto-send instead of being
           // suppressed by the "already sent" ref inside the modal.
           setPendingAiQuery(null);
-          // Also clear the hero input â€” the chat now has the state.
+          // Also clear the hero input — the chat now has the state.
           setHeroQuery("");
         }}
         onScrollToTest={scrollToTest}
@@ -1087,7 +1087,7 @@ function SectionHeading({
         <h2
           className="font-heading text-3xl font-semibold"
           style={{
-            color: "#ffffff",
+            color: "#092819",
             fontFamily: '"Cormorant Garamond", Georgia, serif',
           }}
         >
