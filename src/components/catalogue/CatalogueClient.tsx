@@ -874,13 +874,45 @@ export function CatalogueClient({
               the primary surface. categories + labs props still flow
               in so clearFilters stays correct if we add filters back
               later via admin surfaces. */}
-          <div className="mb-6">
+          <div className="mb-6 space-y-3">
             <SearchBar
               inputId="catalogue-search-input"
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search by test name or SKU..."
             />
+            {/* Active-filter chip — surfaces when a Popular tile has
+                set a category filter (since those tiles intentionally
+                don't fill the text search). Lets the user see what's
+                scoping the list and click to clear. */}
+            {selectedCategory && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium"
+                  style={{
+                    backgroundColor: "rgba(21,77,49,0.08)",
+                    color: "#154D31",
+                    border: "1px solid #154D31",
+                  }}
+                >
+                  Showing: {selectedCategory}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory(null)}
+                    aria-label={`Clear ${selectedCategory} filter`}
+                    className="inline-flex items-center justify-center rounded-full"
+                    style={{
+                      width: 18,
+                      height: 18,
+                      backgroundColor: "#154D31",
+                      color: "#FFFFFF",
+                    }}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              </div>
+            )}
           </div>
 
           <TestTable
