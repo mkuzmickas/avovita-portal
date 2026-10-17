@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, User, Users, UserCheck } from "lucide-react";
+import { ArrowRight, User, Users } from "lucide-react";
 import type { OrderMode } from "./CheckoutClient";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 
@@ -17,43 +17,31 @@ interface Step1PeopleProps {
 /**
  * Step 1 — who's this order for?
  *
- * Three mutually-exclusive pickers driven by the combination of
- * (orderMode, personCount):
+ * Two mutually-exclusive pickers (Mike, Oct 2026):
  *
- *   pick             orderMode    personCount
- *   -------------    ---------    -----------
- *   Just myself      self         1
- *   Me + someone     self         2
- *   Someone else     caregiver    1
+ *   pick     orderMode   personCount
+ *   -----    ---------   -----------
+ *   single   self        1
+ *   multi    self        2
  *
- * The "someone else" flavour used to be gated behind a POA / caregiver
- * / healthcare-worker representative form on Step 3. That's gone —
- * Mike wants a lighter model: a single "I have permission" checkbox
- * that covers us legally, plus a note reminding the customer that the
- * post-payment account will be set up in the tested person's name
- * (not the orderer's), so results attribute correctly.
- *
- * When "Me + someone" or "Someone else" is picked, the permission ack
- * is required; Continue is disabled until it's checked. When "Someone
- * else" is picked, an additional note surfaces about account naming.
+ * The old "Someone else" (caregiver) branch was folded into "single"
+ * — the orderer can book for themselves OR on behalf of someone else
+ * from the same single-person flow; the post-payment profile step is
+ * where the actual patient's name/DOB/sex is captured, so a dependent
+ * profile is handled downstream rather than needing its own Step-1
+ * branch. Permission acknowledgement still fires when multiple people
+ * are involved (Continue is disabled until checked).
  */
-type Pick = "self_only" | "self_plus" | "other_only";
+type Pick = "single" | "multi";
 
-function pickForState(orderMode: OrderMode, personCount: number): Pick {
-  if (orderMode === "caregiver") return "other_only";
-  if (personCount >= 2) return "self_plus";
-  return "self_only";
+function pickForState(_orderMode: OrderMode, personCount: number): Pick {
+  return personCount >= 2 ? "multi" : "single";
 }
 
 function stateForPick(pick: Pick): { mode: OrderMode; count: number } {
-  switch (pick) {
-    case "self_only":
-      return { mode: "self", count: 1 };
-    case "self_plus":
-      return { mode: "self", count: 2 };
-    case "other_only":
-      return { mode: "caregiver", count: 1 };
-  }
+  return pick === "multi"
+    ? { mode: "self", count: 2 }
+    : { mode: "self", count: 1 };
 }
 
 export function Step1People({
@@ -67,16 +55,11 @@ export function Step1People({
 }: Step1PeopleProps) {
   const { trackEvent } = useAnalytics();
   const pick = pickForState(orderMode, personCount);
-  const needsPermission = pick === "self_plus" || pick === "other_only";
-  const isOtherOnly = pick === "other_only";
+  const needsPermission = pick === "multi";
   const canContinue = !needsPermission || permissionAcknowledged;
 
   const handlePermissionChange = (checked: boolean) => {
     onPermissionChange(checked);
-    // Auditable event — the events table records timestamp + session,
-    // giving a defensible legal record that the customer ticked the
-    // acknowledgement box for this specific order mode. A proper
-    // orders column lands in the DOB/sex post-payment phase.
     if (checked) {
       trackEvent("order_permission_acknowledged", { pick });
     }
@@ -86,9 +69,6 @@ export function Step1People({
     const { mode, count } = stateForPick(next);
     onOrderModeChange(mode);
     onPersonCountChange(count);
-    // Reset the permission ack on any pick change so a customer who
-    // ticks it, switches to Just myself, then switches back doesn't
-    // silently re-consent without re-reading.
     if (next !== pick) onPermissionChange(false);
   };
 
@@ -123,33 +103,28 @@ export function Step1People({
         together.
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
         <PickOption
-          active={pick === "self_only"}
-          onClick={() => setPick("self_only")}
+          active={pick === "single"}
+          onClick={() => setPick("single")}
           icon={<User className="w-5 h-5" />}
-          title="Just myself"
-          subtitle="I'm the one being tested."
+          title="Myself or on behalf of someone else"
+          subtitle="Single booking, can include multiple tests."
         />
         <PickOption
-          active={pick === "self_plus"}
-          onClick={() => setPick("self_plus")}
+          active={pick === "multi"}
+          onClick={() => setPick("multi")}
           icon={<Users className="w-5 h-5" />}
-          title="Myself and someone else"
-          subtitle="Two people, one collection appointment at the same address."
-        />
-        <PickOption
-          active={pick === "other_only"}
-          onClick={() => setPick("other_only")}
-          icon={<UserCheck className="w-5 h-5" />}
-          title="Someone else"
-          subtitle="I'm ordering on their behalf."
+          title="Two or more people at the same time & address"
+          subtitle="Cart will be split in the next step."
         />
       </div>
 
-      {/* Permission acknowledgement — required when someone other than
-          the account holder is being tested. Reset on every pick change
-          so it can't be inherited from a previous selection. */}
+      {/* Permission ack — only required for the multi-person booking.
+          The single-person flow treats "myself" and "on behalf of
+          someone else" the same at this step; the actual patient's
+          name/DOB is captured on Step 3 and the post-payment profile
+          step, which handles the dependent-profile routing. */}
       {needsPermission && (
         <label
           className="flex items-start gap-2.5 p-3 mb-4 rounded-lg border cursor-pointer"
@@ -169,40 +144,13 @@ export function Step1People({
           <span
             className="text-sm leading-relaxed"
             style={{
-              color: permissionAcknowledged ? "#88D45D" : "#154D31",
+              color: permissionAcknowledged ? "#154D31" : "#154D31",
             }}
           >
             I confirm I have permission to order testing and receive
-            results for {pick === "self_plus" ? "the other person" : "this person"}.
+            results for the other person(s) on this booking.
           </span>
         </label>
-      )}
-
-      {/* Note for "someone else" only — the post-payment account will
-          be set up in the tested person's name so lab results attribute
-          correctly. Doesn't show for "myself + someone" because the
-          account holder is still one of the people being tested. */}
-      {isOtherOnly && (
-        <div
-          className="flex items-start gap-2 rounded-lg border px-3 py-2.5 mb-4"
-          style={{
-            backgroundColor: "rgba(196, 151, 58, 0.08)",
-            borderColor: "#C6A04B",
-          }}
-        >
-          <UserCheck
-            className="w-4 h-4 shrink-0 mt-0.5"
-            style={{ color: "#C6A04B" }}
-          />
-          <p className="text-xs leading-relaxed" style={{ color: "#154D31" }}>
-            After payment we&apos;ll create the account in{" "}
-            <strong style={{ color: "#092819" }}>
-              the name and date of birth of the person being tested
-            </strong>{" "}
-            — that&apos;s how results are matched to the right person on
-            the portal.
-          </p>
-        </div>
       )}
 
       <p className="text-xs mb-6" style={{ color: "#4a7a56" }}>
@@ -256,10 +204,10 @@ function PickOption({
       aria-pressed={active}
     >
       <div className="flex items-center gap-2 mb-1">
-        <span style={{ color: active ? "#C6A04B" : "#4a7a56" }}>{icon}</span>
+        <span style={{ color: active ? "#C6A04B" : "#154D31" }}>{icon}</span>
         <span
           className="font-semibold text-sm"
-          style={{ color: active ? "#C6A04B" : "#ffffff" }}
+          style={{ color: active ? "#C6A04B" : "#092819" }}
         >
           {title}
         </span>
