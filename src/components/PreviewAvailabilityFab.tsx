@@ -23,18 +23,20 @@ import { useAnalytics } from "@/lib/analytics/useAnalytics";
  * (Previous versions embedded Acuity's booking iframe with
  * pointer-events:none — too clunky and hard to read.)
  *
- * Hidden on the checkout wizard (any /checkout* path — the customer sees
- * the real booking widget at the Collection step) and on /admin.
+ * Visible on /tests ONLY (and org-scoped equivalents like
+ * /org/[slug]/tests). Per Mike (Oct 2026): the FAB was popping up on
+ * the home landing, checkout success, portal pages — too much "did you
+ * see our calendar?" chatter on every surface. The catalogue page is
+ * where a hesitating shopper actually needs to peek at availability.
  */
 
 function shouldHide(pathname: string | null): boolean {
-  if (!pathname) return false;
-  // Checkout wizard (incl. /checkout/success and /org/[slug]/checkout)
-  if (pathname === "/checkout" || pathname.startsWith("/checkout/")) return true;
-  if (pathname.includes("/checkout")) return true;
-  // Admin console is not customer-facing.
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
-  return false;
+  if (!pathname) return true;
+  // Show on the main catalogue page and the org-scoped equivalent.
+  if (pathname === "/tests" || pathname.startsWith("/tests/")) return false;
+  if (/^\/org\/[^/]+\/tests($|\/)/.test(pathname)) return false;
+  // Hide everywhere else.
+  return true;
 }
 
 interface DaySummary {

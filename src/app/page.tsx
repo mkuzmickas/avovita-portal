@@ -41,9 +41,9 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* â”€â”€â”€ Hero (full viewport) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── Hero ─────────────────────────────────────────────── */}
       <section
-        className="relative flex items-center justify-center px-4 sm:px-6 pt-40 pb-4 md:pt-48 md:pb-6"
+        className="relative flex items-center justify-center px-4 sm:px-6 pt-16 pb-4 md:pt-24 md:pb-6"
         style={{ backgroundColor: "#FFFFFF" }}
       >
         {/* Soft radial glow */}
@@ -72,7 +72,7 @@ export default function HomePage() {
             className="text-lg md:text-xl mb-12 max-w-2xl mx-auto leading-relaxed"
             style={{ color: "#154D31" }}
           >
-            Skip the clinic. A FloLabs phlebotomist visits your home in Calgary,
+            Skip the clinic. A phlebotomist visits your home in Calgary,
             we ship your specimen to world-class labs, and deliver your results securely online.
           </p>
 
@@ -135,7 +135,7 @@ export default function HomePage() {
                 icon: Clock,
                 title: "In-Home Collection",
                 description:
-                  "A FloLabs phlebotomist visits your home at a time that suits you. No clinic waiting rooms.",
+                  "A phlebotomist visits your home at a time that suits you. No clinic waiting rooms.",
               },
               {
                 icon: Shield,
