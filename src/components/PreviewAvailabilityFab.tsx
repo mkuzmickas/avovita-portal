@@ -339,8 +339,8 @@ export function PreviewAvailabilityFab() {
                     {error}
                   </p>
                   <p className="text-sm" style={{ color: "#154D31" }}>
-                    Order your tests first and you&apos;ll get a direct
-                    booking link with your confirmation email.
+                    Order your tests first — the live booking calendar
+                    opens as soon as checkout is complete.
                   </p>
                 </div>
               )}
@@ -441,9 +441,9 @@ export function PreviewAvailabilityFab() {
               style={{ borderColor: "#E5E2D4" }}
             >
               <p className="text-xs" style={{ color: "#154D31" }}>
-                To book a specific slot, order your tests first — your
-                confirmation email includes the direct FloLabs booking
-                link.
+                To book a specific slot, order your tests first — the
+                live booking calendar opens as soon as checkout is
+                complete.
               </p>
               <button
                 type="button"
