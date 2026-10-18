@@ -23,6 +23,7 @@ import { TestTable } from "./TestTable";
 import { SearchBar } from "./SearchBar";
 import { CartBar } from "./CartBar";
 import { InsightsChatModal } from "./InsightsChatModal";
+import { TextAvoVitaButton } from "./TextAvoVitaButton";
 import { useCart } from "@/components/cart/CartContext";
 import { useAnalytics } from "@/lib/analytics/useAnalytics";
 import type { CatalogueTest, CatalogueCartItem } from "./types";
@@ -751,6 +752,7 @@ export function CatalogueClient({
             Not sure? Ask AvoVita AI
             <ArrowRight className="w-4 h-4" />
           </button>
+          <TextAvoVitaButton />
         </div>
 
         {/* â”€â”€â”€ Popular tests grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
