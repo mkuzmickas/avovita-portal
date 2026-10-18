@@ -246,10 +246,10 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
               {itemCount} {itemCount === 1 ? "item" : "items"} in cart
             </p>
             {discount.applies ? (
-              <p className="text-xs" style={{ color: "#154D31" }}>
+              <p className="text-xs" style={{ color: "#F7F6F0" }}>
                 <span
                   className="line-through opacity-70"
-                  style={{ color: "#4a7a56" }}
+                  style={{ color: "#8dc63f" }}
                 >
                   {formatCurrency(subtotal + visitFeeEstimate)}
                 </span>{" "}
@@ -258,7 +258,7 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
                 </span>
                 {visitFeeEstimate > 0 && (
                   <span
-                    style={{ color: "#4a7a56", marginLeft: 6 }}
+                    style={{ color: "#8dc63f", marginLeft: 6 }}
                   >
                     (incl. ${BASE_VISIT_FEE_CAD} visit)
                   </span>
@@ -268,14 +268,14 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
                 </span>
               </p>
             ) : (
-              <p className="text-xs" style={{ color: "#154D31" }}>
+              <p className="text-xs" style={{ color: "#F7F6F0" }}>
                 Total{" "}
                 <span className="font-semibold" style={{ color: "#C6A04B" }}>
                   {formatCurrency(subtotal + visitFeeEstimate)} CAD
                 </span>
                 {visitFeeEstimate > 0 && (
                   <span
-                    style={{ color: "#4a7a56", marginLeft: 6 }}
+                    style={{ color: "#8dc63f", marginLeft: 6 }}
                   >
                     (incl. ${BASE_VISIT_FEE_CAD} visit)
                   </span>
