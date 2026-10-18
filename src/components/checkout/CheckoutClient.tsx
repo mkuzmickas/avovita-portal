@@ -644,12 +644,12 @@ export function CheckoutClient({
             href="/tests"
             className="text-xs font-medium px-3 py-1.5 rounded-lg border whitespace-nowrap"
             style={{
-              color: "#154D31",
-              borderColor: "#E5E2D4",
+              color: "#F7F6F0",
+              borderColor: "rgba(247,246,240,0.35)",
               backgroundColor: "transparent",
             }}
           >
-            â† Back to catalogue
+            ← Back to catalogue
           </Link>
         }
       />
