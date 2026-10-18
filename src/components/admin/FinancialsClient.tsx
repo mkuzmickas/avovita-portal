@@ -738,7 +738,9 @@ function PnLBreakdown({
                 </td>
               </tr>
               {[...orders]
-                .sort((a, b) => b.total_cad - a.total_cad)
+                .sort((a, b) =>
+                  a.revenue_date.localeCompare(b.revenue_date),
+                )
                 .map((o) => {
                   const labCost =
                     (o.mayo_cost_cad ?? 0) + (o.non_mayo_cost_cad ?? 0);
