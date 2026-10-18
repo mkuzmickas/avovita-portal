@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, CalendarPlus, Plus } from "lucide-react";
 import type { CalendarAppointment } from "@/lib/calendar/fetch-appointments";
 import { AddAppointmentModal } from "@/components/admin/AddAppointmentModal";
+import { RescheduleAppointmentModal } from "@/components/admin/RescheduleAppointmentModal";
 
 interface Props {
   anchorISO: string;
@@ -303,6 +304,9 @@ function AppointmentChip({
   appointment: CalendarAppointment;
   readOnly: boolean;
 }) {
+  // Chip is now a button that opens the reschedule modal (previous
+  // behaviour was a direct Link to the order detail — "View order"
+  // link now lives inside the modal footer so we didn't lose it).
   const time = formatTime(a.appointmentAt);
   const codes = a.tests.map((t) => t.sku ?? shortCode(t.name));
   const dobShort = a.patientDob ? formatDob(a.patientDob) : null;
@@ -368,6 +372,8 @@ function AppointmentChip({
     </>
   );
 
+  const [open, setOpen] = useState(false);
+
   if (readOnly) {
     return (
       <div style={chipStyle} title={chipTitle}>
@@ -376,13 +382,28 @@ function AppointmentChip({
     );
   }
   return (
-    <Link
-      href={`/admin/orders?highlight=${a.orderId}`}
-      style={chipStyle}
-      title={chipTitle}
-    >
-      {inner}
-    </Link>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        style={{
+          ...chipStyle,
+          cursor: "pointer",
+          textAlign: "left",
+          width: "100%",
+          font: "inherit",
+        }}
+        title={chipTitle}
+      >
+        {inner}
+      </button>
+      {open && (
+        <RescheduleAppointmentModal
+          appointment={a}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
