@@ -85,6 +85,17 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal =
     totals.subtotal_tests + totals.subtotal_supplements + totals.subtotal_resources;
+
+  // Base collection fee estimate shown on the cart bar so the dollar
+  // figure matches what the customer sees at checkout (Mike flagged
+  // this as a drop-off cause — people saw $115 on the cart and were
+  // then surprised by $200 at Stripe). Kit-only carts don't actually
+  // incur the fee; for now we add it when ANY test is present. The
+  // real visit fee (incl. additional-person and zone surcharges) is
+  // computed on Step 3 of checkout; this is just the floor.
+  const BASE_VISIT_FEE_CAD = 85;
+  const hasTest = cart.some((c) => c.line_type === "test");
+  const visitFeeEstimate = hasTest ? BASE_VISIT_FEE_CAD : 0;
   const discount = totals.test_discount > 0
     ? { applies: true, total: totals.test_discount }
     : { applies: false, total: 0 };
@@ -240,21 +251,35 @@ export function CartBar({ cart: cartProp }: CartBarProps) {
                   className="line-through opacity-70"
                   style={{ color: "#4a7a56" }}
                 >
-                  {formatCurrency(subtotal)}
+                  {formatCurrency(subtotal + visitFeeEstimate)}
                 </span>{" "}
                 <span className="font-semibold" style={{ color: "#C6A04B" }}>
-                  {formatCurrency(totalAfterDiscount)} CAD
-                </span>{" "}
+                  {formatCurrency(totalAfterDiscount + visitFeeEstimate)} CAD
+                </span>
+                {visitFeeEstimate > 0 && (
+                  <span
+                    style={{ color: "#4a7a56", marginLeft: 6 }}
+                  >
+                    (incl. ${BASE_VISIT_FEE_CAD} visit)
+                  </span>
+                )}{" "}
                 <span style={{ color: "#88D45D" }}>
-                  (âˆ’{formatCurrency(discount.total)})
+                  (−{formatCurrency(discount.total)})
                 </span>
               </p>
             ) : (
               <p className="text-xs" style={{ color: "#154D31" }}>
-                Subtotal{" "}
+                Total{" "}
                 <span className="font-semibold" style={{ color: "#C6A04B" }}>
-                  {formatCurrency(subtotal)} CAD
+                  {formatCurrency(subtotal + visitFeeEstimate)} CAD
                 </span>
+                {visitFeeEstimate > 0 && (
+                  <span
+                    style={{ color: "#4a7a56", marginLeft: 6 }}
+                  >
+                    (incl. ${BASE_VISIT_FEE_CAD} visit)
+                  </span>
+                )}
               </p>
             )}
           </div>
