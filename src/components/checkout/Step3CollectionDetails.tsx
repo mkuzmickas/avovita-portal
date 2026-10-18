@@ -521,9 +521,9 @@ export function Step3CollectionDetails({
             style={{ color: "#C6A04B" }}
           />
           <p className="text-xs" style={{ color: "#C6A04B" }}>
-            All people in this order must be at this collection address.
-            If any person requires collection at a different address,
-            please place a separate order for them.
+            The phlebotomist comes to one address per order. If anyone
+            being tested won&apos;t be at this address, please place a
+            separate order for them.
           </p>
         </div>
 
