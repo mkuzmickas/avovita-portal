@@ -20,15 +20,17 @@ export function formatCurrency(amount: number): string {
 // ─── Visit fee calculation ────────────────────────────────────────────────────
 /**
  * Groups cart items by profile address and calculates visit fees.
- * Base fee: $85 for first person per address.
- * Additional fee: $55 per additional person at the same address.
+ * Base fee: $85 flat per appointment — covers 1 or 2 people at the same
+ * address (one phlebotomist, one trip). No per-additional-person charge
+ * under the Oct 2026 simplification; the env var is kept so a future
+ * change (e.g. 3+ person groups) doesn't require a code deploy.
  */
 export function calculateVisitFees(
   cartItems: CartItem[],
   profiles: PatientProfile[]
 ): VisitFeeBreakdown[] {
   const BASE_FEE = Number(process.env.NEXT_PUBLIC_HOME_VISIT_FEE_BASE ?? 85);
-  const ADDITIONAL_FEE = Number(process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ADDITIONAL ?? 55);
+  const ADDITIONAL_FEE = Number(process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ADDITIONAL ?? 0);
 
   // Build profile map
   const profileMap = new Map<string, PatientProfile>(

@@ -537,15 +537,14 @@ export function CheckoutClient({
   const visitFees = useMemo(
     () => {
       if (isKitOnly) return null;
-      // Person count is known from Step 1 (the three-button picker
-      // sets it before Continue), so compute the fee from Step 1
-      // onward — hiding it until later was a leftover from the old
-      // pre-Step-1-picker flow. Postal code isn't known until Step 3;
-      // computeVisitFees falls back to Zone 1 pricing ($85 base +
-      // $55 per additional person) when postal is empty, which
-      // matches the majority-of-orders default. The number bumps to
-      // Zone 2 ($135 base) automatically once the customer enters a
-      // Cochrane/Airdrie/Okotoks/Chestermere postal code on Step 3.
+      // Person count is known from Step 1 (the picker sets it before
+      // Continue), so compute the fee from Step 1 onward. Postal code
+      // isn't known until Step 3; computeVisitFees falls back to Zone
+      // 1 pricing ($85 flat for 1 or 2 people) when postal is empty,
+      // which matches the majority-of-orders default. The number
+      // bumps to Zone 2 ($134 = $85 + $49 extended-range surcharge)
+      // automatically once the customer enters a Cochrane/Airdrie/
+      // Okotoks/Chestermere postal code on Step 3.
       return computeVisitFees(personCount, collectionAddress.postal_code);
     },
     [personCount, collectionAddress.postal_code, isKitOnly]

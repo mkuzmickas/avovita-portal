@@ -244,25 +244,26 @@ export function CheckoutCartSummary({
                   className="flex justify-between text-sm"
                   style={{ color: "#154D31" }}
                 >
-                  <span>Home visit (1st person)</span>
+                  <span>Home visit (covers 1 or 2 people)</span>
                   <span>{formatCurrency(visitFees.base_fee)}</span>
                 </div>
-                {visitFees.additional_person_count > 0 && (
-                  <div
-                    className="flex justify-between text-sm"
-                    style={{ color: "#154D31" }}
-                  >
-                    <span>
-                      Additional Ã— {visitFees.additional_person_count}
-                    </span>
-                    <span>
-                      {formatCurrency(
-                        visitFees.additional_fee_per_person *
-                          visitFees.additional_person_count
-                      )}
-                    </span>
-                  </div>
-                )}
+                {visitFees.additional_person_count > 0 &&
+                  visitFees.additional_fee_per_person > 0 && (
+                    <div
+                      className="flex justify-between text-sm"
+                      style={{ color: "#154D31" }}
+                    >
+                      <span>
+                        Additional × {visitFees.additional_person_count}
+                      </span>
+                      <span>
+                        {formatCurrency(
+                          visitFees.additional_fee_per_person *
+                            visitFees.additional_person_count
+                        )}
+                      </span>
+                    </div>
+                  )}
                 {/* "Already covered" reframe — same fact as the
                     catalogue's "+ from $85 collection fee" qualifier,
                     but opposite emotional weight: in the cart the

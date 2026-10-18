@@ -112,9 +112,9 @@ export function Step1People({
       </h1>
 
       <p className="text-sm mb-4" style={{ color: "#154D31" }}>
-        Adding someone else to this appointment costs $55, not another
-        $85 visit — one phlebotomist, one trip, both collections done
-        together.
+        One $85 home visit covers 1 or 2 people at the same address — one
+        phlebotomist, one trip, both collections done together. No extra
+        per-person charge.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">

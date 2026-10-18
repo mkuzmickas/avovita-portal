@@ -4,14 +4,15 @@ export type VisitZone = "zone1" | "zone2" | "unserved";
 
 // ─── Postal-code zone classification ──────────────────────────────────────
 //
-// Zone 1 — Calgary proper ($85 base)
-// Zone 2 — Surrounding areas ($135 base — $85 + $50 extended-range surcharge)
-// Unserved — everywhere else: block the user, show a support CTA.
+// Pricing model (Mike, Oct 2026 — simplified):
+//   Zone 1 — Calgary proper: $85 flat, 1 OR 2 people, same visit, same address
+//   Zone 2 — Surrounding areas (Airdrie, Cochrane, Okotoks, Chestermere):
+//            $85 + $49 extended-range surcharge = $134 flat, still 1 or 2 people
+//   Unserved — everywhere else: block the user, show a support CTA
 //
-// Additional-person fee ($55) is FLAT regardless of zone — the extended-
-// range surcharge is a once-per-appointment cost, not per-person, so a
-// two-person Airdrie collection is $85 + $50 + $55 = $190, not $135 + $55
-// treating the surcharge as embedded.
+// No per-additional-person charge any more. One phlebotomist, one trip,
+// one or two draws — the second person is free. 3+ people isn't a supported
+// standard flow (contact-us path from Step 1).
 //
 // The lists are based on Canada Post FSA prefixes (first three characters
 // of a postal code). Comparison is case-insensitive and ignores spaces.
@@ -74,10 +75,14 @@ export function computeVisitFees(
 
   const zone1Base = Number(process.env.NEXT_PUBLIC_HOME_VISIT_FEE_BASE ?? 85);
   const zone2Base = Number(
-    process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ZONE2 ?? 135
+    process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ZONE2 ?? 134
   );
+  // Per-person surcharge is 0 under the Oct 2026 simplification. Env
+  // var kept so a future change (e.g. 3+ person groups) doesn't need
+  // a code deploy, but default is 0 and nothing in the current flow
+  // charges for the second person.
   const additionalRate = Number(
-    process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ADDITIONAL ?? 55
+    process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ADDITIONAL ?? 0
   );
 
   // Unserved postal codes surface a zero/base fee shape — the UI still

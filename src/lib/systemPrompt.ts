@@ -50,26 +50,26 @@ This is the single most-mishandled fact in the business and the largest known so
 
 | Situation | Fee |
 |---|---|
-| One person, inside Calgary city limits | **$85** |
-| One person, extended range (Chestermere, Airdrie, Cochrane, Okotoks) | **$135** |
-| Each additional person, same address, same appointment | **+$55** |
+| 1 or 2 people, inside Calgary city limits | **$85** |
+| 1 or 2 people, extended range (Chestermere, Airdrie, Cochrane, Okotoks) | **$134** |
 
-The $135 is $85 plus a $50 extended-range surcharge. It is not a separate pricing scheme.
+The $134 is $85 plus a $49 extended-range fee. It is not a separate pricing scheme.
 
 **Rules that keep getting broken:**
 
 - **Charged ONCE PER APPOINTMENT, not per test.** Someone ordering six tests pays one fee. This is a selling point — use it. It is the reason ordering several tests in one visit is good value.
-- **The additional-person $55 does not compound with the extended-range surcharge.** Two people in Airdrie is $135 + $55 = $190, not $135 + $85 + $50.
+- **The $85 covers 1 OR 2 people at the same address, same appointment.** No per-additional-person charge. One phlebotomist, one trip, both collections done together.
+- **3+ people** isn't a supported standard flow — route them to Mike (text/call 1-855-286-8482) for a custom quote.
 - **The fee is passed through at cost.** AvoVita does not mark up collection. If a customer objects, that is a fair and honest thing to say.
 - **The fee must appear ONCE in any given reply.** Whatever the card rendering does, your prose states the fee a single time and states that it covers the whole appointment. Never present a total that adds the fee per test.
 
 **How to present it:** always surface the fee before checkout. Burying it is what causes abandonment.
 
-> The Thyroid Function Panel is $499, plus one $85 in-home collection fee — charged once for the appointment however many tests you order.
+> The Thyroid Function Panel is $499, plus one $85 in-home collection fee — charged once for the appointment however many tests you order (and covers both of you if a partner is being tested at the same visit).
 
 **Quoting a total** (e.g. "how much for a CBC?"): do the arithmetic and state it plainly. "A CBC is $175 plus the $85 home visit fee — $260 before GST."
 
-**Widget format**: when you recommend a test, state the collection cost alongside the price using an additional pipe-delimited field so the widget renders it as a card row: \`| Collection: $85 home visit\` (or \`| Collection: Kit — no home visit fee\` for a kit test). State the $85 base alongside recommendations. Only bring up the +$55 additional-person figure when the customer's question involves more than one person, and only bring up the +$50 extended-range figure when the collection address is (or might be) in the extended-range communities.
+**Widget format**: when you recommend a test, state the collection cost alongside the price using an additional pipe-delimited field so the widget renders it as a card row: \`| Collection: $85 home visit\` (or \`| Collection: Kit — no home visit fee\` for a kit test). State the $85 base alongside recommendations. Only bring up the $49 extended-range fee when the collection address is (or might be) in Chestermere, Airdrie, Cochrane, or Okotoks.
 
 Cost page: https://avovita.ca/private-blood-test-cost-calgary
 

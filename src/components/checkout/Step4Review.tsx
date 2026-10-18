@@ -643,25 +643,26 @@ export function Step4Review({
             className="flex justify-between pt-2 mt-1 border-t"
             style={{ color: "#154D31", borderColor: "#E5E2D4" }}
           >
-            <span>Visit fee base</span>
+            <span>Home visit (covers 1 or 2 people)</span>
             <span>{formatCurrency(visitFees.base_fee)}</span>
           </div>
-          {visitFees.additional_person_count > 0 && (
-            <div
-              className="flex justify-between"
-              style={{ color: "#154D31" }}
-            >
-              <span>
-                Additional people ({visitFees.additional_person_count})
-              </span>
-              <span>
-                {formatCurrency(
-                  visitFees.additional_fee_per_person *
-                    visitFees.additional_person_count
-                )}
-              </span>
-            </div>
-          )}
+          {visitFees.additional_person_count > 0 &&
+            visitFees.additional_fee_per_person > 0 && (
+              <div
+                className="flex justify-between"
+                style={{ color: "#154D31" }}
+              >
+                <span>
+                  Additional people ({visitFees.additional_person_count})
+                </span>
+                <span>
+                  {formatCurrency(
+                    visitFees.additional_fee_per_person *
+                      visitFees.additional_person_count
+                  )}
+                </span>
+              </div>
+            )}
           {customCartItems.map((c) => (
             <div
               key={c.custom_id}

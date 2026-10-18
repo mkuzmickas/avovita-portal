@@ -91,10 +91,12 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
             key={`${t.code}-${i}`}
             className="flex items-baseline justify-between gap-3 text-sm"
           >
-            <span style={{ color: "#092819" }}>{t.name}</span>
+            <span className="font-medium" style={{ color: "#092819" }}>
+              {t.name}
+            </span>
             <span
-              className="text-xs font-mono shrink-0"
-              style={{ color: "rgba(196, 151, 58, 0.75)" }}
+              className="text-xs font-mono font-semibold shrink-0"
+              style={{ color: "#C6A04B" }}
             >
               {t.code}
             </span>

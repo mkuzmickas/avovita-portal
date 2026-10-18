@@ -499,11 +499,12 @@ export function Step3CollectionDetails({
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#C6A04B" }} />
             <p className="text-sm leading-relaxed" style={{ color: "#154D31" }}>
-              Outside Calgary — a{" "}
+              Outside Calgary — an extra{" "}
               <strong style={{ color: "#C6A04B" }}>
-                ${(visitFees.base_fee - 85).toFixed(0)} travel surcharge
+                ${(visitFees.base_fee - 85).toFixed(0)} extended-range fee
               </strong>{" "}
-              is added to your home visit fee.
+              is added to cover travel to Airdrie, Cochrane, Okotoks, or
+              Chestermere.
             </p>
           </div>
         )}
@@ -722,26 +723,27 @@ export function Step3CollectionDetails({
             className="flex justify-between"
             style={{ color: "#154D31" }}
           >
-            <span>Base fee (1st person)</span>
+            <span>Home visit (covers 1 or 2 people)</span>
             <span>{formatCurrency(visitFees.base_fee)}</span>
           </div>
-          {visitFees.additional_person_count > 0 && (
-            <div
-              className="flex justify-between"
-              style={{ color: "#154D31" }}
-            >
-              <span>
-                Additional people ({visitFees.additional_person_count} Ã—{" "}
-                {formatCurrency(visitFees.additional_fee_per_person)})
-              </span>
-              <span>
-                {formatCurrency(
-                  visitFees.additional_fee_per_person *
-                    visitFees.additional_person_count
-                )}
-              </span>
-            </div>
-          )}
+          {visitFees.additional_person_count > 0 &&
+            visitFees.additional_fee_per_person > 0 && (
+              <div
+                className="flex justify-between"
+                style={{ color: "#154D31" }}
+              >
+                <span>
+                  Additional people ({visitFees.additional_person_count} ×{" "}
+                  {formatCurrency(visitFees.additional_fee_per_person)})
+                </span>
+                <span>
+                  {formatCurrency(
+                    visitFees.additional_fee_per_person *
+                      visitFees.additional_person_count
+                  )}
+                </span>
+              </div>
+            )}
           <div
             className="flex justify-between font-semibold pt-2 border-t mt-2"
             style={{ borderColor: "#E5E2D4" }}

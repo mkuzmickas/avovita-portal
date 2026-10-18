@@ -229,12 +229,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Visit fee — zone-based pricing from the collection postal code.
-    // Zone 1 (Calgary) = $85 base, Zone 2 (surrounding towns) = $135
-    // base (= $85 + $50 extended-range surcharge; the surcharge is a
-    // once-per-appointment cost, not per-person). Additional-person fee
-    // ($55) is flat regardless of zone. Unserved FSAs reject the
-    // request — the client-side gate should have blocked them, but we
-    // re-validate here as the source of truth.
+    // Zone 1 (Calgary) = $85 flat for 1 or 2 people. Zone 2 (surrounding
+    // towns) = $134 flat = $85 + $49 extended-range fee. No per-additional-
+    // person charge under the Oct 2026 simplification. Unserved FSAs
+    // reject the request — the client-side gate should have blocked
+    // them, but we re-validate here as the source of truth.
     const { classifyPostalZone } = await import("@/lib/checkout/visit-fees");
     const zone = classifyPostalZone(body.collection_address?.postal_code);
     if (zone === "unserved") {
@@ -248,10 +247,10 @@ export async function POST(request: NextRequest) {
     }
     const visitFeeBase =
       zone === "zone2"
-        ? Number(process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ZONE2 ?? 135)
+        ? Number(process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ZONE2 ?? 134)
         : Number(process.env.NEXT_PUBLIC_HOME_VISIT_FEE_BASE ?? 85);
     const visitFeeAdditional = Number(
-      process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ADDITIONAL ?? 55
+      process.env.NEXT_PUBLIC_HOME_VISIT_FEE_ADDITIONAL ?? 0
     );
     const additionalCount = Math.max(0, body.persons.length - 1);
     const visitFeeTotal =
