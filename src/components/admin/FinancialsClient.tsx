@@ -752,9 +752,14 @@ function PnLBreakdown({
                       : o.mayo_cost_cad > 0
                         ? "catalog est"
                         : null;
+                  // Per-order rows get bumped font-size for easier
+                  // scanning (Mike, Oct 2026) — numbers at 15px, name
+                  // cell at 16px. Lower sections (Other Costs / OpEx /
+                  // etc.) keep the default 12-13px so they stay
+                  // compact.
                   return (
                     <tr key={`revenue:${o.id}`}>
-                      <td style={{ ...pnlCell, paddingLeft: 38 }}>
+                      <td style={{ ...pnlCell, paddingLeft: 38, fontSize: 16 }}>
                         <span style={{ color: "#c4973a" }}>
                           #{o.id.slice(0, 8).toUpperCase()}
                         </span>
@@ -762,17 +767,17 @@ function PnLBreakdown({
                           {o.client_label}
                         </span>
                       </td>
-                      <td style={{ ...pnlCellR, color: "#8dc63f" }}>
+                      <td style={{ ...pnlCellR, color: "#8dc63f", fontSize: 15 }}>
                         {new Date(o.revenue_date).toLocaleDateString("en-CA", {
                           timeZone: "America/Edmonton",
                           month: "short",
                           day: "numeric",
                         })}
                       </td>
-                      <td style={{ ...pnlCellR, color: "#e8d5a3" }}>
+                      <td style={{ ...pnlCellR, color: "#e8d5a3", fontSize: 15 }}>
                         {formatCurrency(o.total_cad)}
                       </td>
-                      <td style={{ ...pnlCellR, color: "#e8d5a3" }}>
+                      <td style={{ ...pnlCellR, color: "#e8d5a3", fontSize: 15 }}>
                         {labCost > 0 ? formatCurrency(labCost) : "—"}
                         {sourceLabel && (
                           <div
@@ -781,7 +786,7 @@ function PnLBreakdown({
                                 o.mayo_cost_source === "invoice"
                                   ? "#8dc63f"
                                   : "#c4973a",
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: 500,
                               marginTop: 2,
                             }}
@@ -790,7 +795,7 @@ function PnLBreakdown({
                           </div>
                         )}
                       </td>
-                      <td style={{ ...pnlCellR, color: "#e8d5a3" }}>
+                      <td style={{ ...pnlCellR, color: "#e8d5a3", fontSize: 15 }}>
                         {flo > 0 ? formatCurrency(flo) : "—"}
                       </td>
                       <td
@@ -798,13 +803,14 @@ function PnLBreakdown({
                           ...pnlCellR,
                           color: orderGross >= 0 ? "#8dc63f" : "#e88b8b",
                           fontWeight: 600,
+                          fontSize: 15,
                         }}
                       >
                         {formatCurrency(orderGross)}
                         <div
                           style={{
                             color: "#8dc63f",
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: 500,
                             opacity: 0.75,
                             marginTop: 2,
@@ -830,18 +836,19 @@ function PnLBreakdown({
                     paddingLeft: 38,
                     color: "#8dc63f",
                     fontWeight: 700,
+                    fontSize: 15,
                   }}
                   colSpan={2}
                 >
                   Subtotal · {orders.length} order{orders.length === 1 ? "" : "s"}
                 </td>
-                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700 }}>
+                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700, fontSize: 15 }}>
                   {formatCurrency(revenue)}
                 </td>
-                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700 }}>
+                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700, fontSize: 15 }}>
                   {formatCurrency(perOrderLabTotal)}
                 </td>
-                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700 }}>
+                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700, fontSize: 15 }}>
                   {formatCurrency(perOrderFloLabs)}
                 </td>
                 <td
@@ -852,6 +859,7 @@ function PnLBreakdown({
                         ? "#8dc63f"
                         : "#e88b8b",
                     fontWeight: 700,
+                    fontSize: 15,
                   }}
                 >
                   {formatCurrency(
