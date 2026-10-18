@@ -6,6 +6,12 @@ export const dynamic = "force-dynamic";
 
 export type ShippedOrder = {
   id: string;
+  /** Order status — drives the display badge AND the recognized-vs-
+   *  projected split on the P&L. Only shipped/resulted/complete count
+   *  toward Net Profit; confirmed/scheduled/collected show in the
+   *  Revenue drill as "upcoming" projections so Mike can see what's
+   *  on the books but not yet recognized. */
+  status: string;
   /** Canonical revenue-recognition date: appointment_at →
    *  appointment_date → shipping_date → shipped_at → created_at,
    *  whichever is set first. Every completed order has at least
@@ -14,6 +20,10 @@ export type ShippedOrder = {
   total_cad: number;
   test_cost_cad: number;
   test_count: number;
+  /** Ordered SKUs for the test lines on this order — rendered as
+   *  monospace chips in the Revenue drill, truncated with an expander
+   *  when the list is long. */
+  test_skus: string[];
   manifest_id: string | null;
   /** Stripe processing fee (CAD) for this order, from Stripe's
    *  balance_transaction. Null when not yet backfilled. Counted as
@@ -64,25 +74,37 @@ export default async function AdminFinancialsPage() {
     Date.now() - 15 * 30 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
+  // Widen to include booked-but-not-yet-delivered statuses so the
+  // Revenue drill can show them as "upcoming" rows (Oct 2026 — Mike).
+  // Period math still only counts shipped/resulted/complete as
+  // recognized revenue; the extra statuses render as projections.
   const { data: ordersRaw } = await service
     .from("orders")
     .select(
       `
-      id, appointment_at, appointment_date, shipping_date, shipped_at, created_at,
+      id, status, appointment_at, appointment_date, shipping_date, shipped_at, created_at,
       total_cad, tax_cad, stripe_fee_cad, home_visit_fee_cad, manifest_id,
       account:accounts ( email, waiver_signed_name ),
       order_lines (
         quantity, line_type, unit_price_cad, custom_description,
-        test:tests ( cost_cad, lab:labs ( name ) ),
+        test:tests ( sku, cost_cad, lab:labs ( name ) ),
         profile:patient_profiles ( first_name, last_name, is_primary )
       )
     `,
     )
-    .in("status", ["shipped", "resulted", "complete"])
+    .in("status", [
+      "confirmed",
+      "scheduled",
+      "collected",
+      "shipped",
+      "resulted",
+      "complete",
+    ])
     .gte("created_at", cutoffIso);
 
   type RawOrder = {
     id: string;
+    status: string;
     appointment_at: string | null;
     appointment_date: string | null;
     shipping_date: string | null;
@@ -100,6 +122,7 @@ export default async function AdminFinancialsPage() {
       unit_price_cad: number | null;
       custom_description: string | null;
       test: {
+        sku: string | null;
         cost_cad: number | null;
         lab: { name: string | null } | null;
       } | null;
@@ -172,6 +195,7 @@ export default async function AdminFinancialsPage() {
       let testCount = 0;
       let nonMayoLabCost = 0;
       let mayoCatalogCost = 0;
+      const testSkus: string[] = [];
       for (const line of o.order_lines ?? []) {
         const qty = line.quantity ?? 1;
         // Real test line — cost from the tests catalogue.
@@ -179,6 +203,10 @@ export default async function AdminFinancialsPage() {
           const cost = line.test?.cost_cad ?? 0;
           testCost += cost * qty;
           testCount += qty;
+          const sku = line.test?.sku;
+          if (sku) {
+            for (let i = 0; i < qty; i++) testSkus.push(sku);
+          }
           const labName = line.test?.lab?.name ?? "";
           if (labName && /mayo/i.test(labName)) {
             mayoCatalogCost += cost * qty;
@@ -268,10 +296,12 @@ export default async function AdminFinancialsPage() {
 
       return {
         id: o.id,
+        status: o.status,
         revenue_date,
         total_cad: pretax,
         test_cost_cad: testCost,
         test_count: testCount,
+        test_skus: testSkus,
         manifest_id: o.manifest_id,
         stripe_fee_cad: o.stripe_fee_cad,
         client_label,

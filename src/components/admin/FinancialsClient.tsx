@@ -200,11 +200,24 @@ function OverviewTab({
     [orders, start, end],
   );
 
-  const revenue = periodOrders.reduce((s, o) => s + o.total_cad, 0);
-  // Stripe processing fees for orders whose revenue_date falls in this
-  // period. Treated as OpEx (payment processing expense), not netted
-  // against revenue — standard accrual accounting practice.
-  const stripeFees = periodOrders.reduce(
+  // Only recognized revenue (shipped/resulted/complete) feeds the
+  // overview stat tiles. confirmed/scheduled/collected orders show
+  // in the P&L drill as upcoming projections but don't move the
+  // Net Profit number here. Mike's rule: don't book revenue until
+  // the service is delivered.
+  const RECOGNIZED_STATUSES_OV = new Set([
+    "shipped",
+    "resulted",
+    "complete",
+  ]);
+  const recognizedPeriodOrders = periodOrders.filter((o) =>
+    RECOGNIZED_STATUSES_OV.has(o.status),
+  );
+  const revenue = recognizedPeriodOrders.reduce(
+    (s, o) => s + o.total_cad,
+    0,
+  );
+  const stripeFees = recognizedPeriodOrders.reduce(
     (s, o) => s + (o.stripe_fee_cad ?? 0),
     0,
   );
@@ -217,7 +230,7 @@ function OverviewTab({
   // P&L drill-down). Add them back into the aggregate COGS here so the
   // header-level Gross Profit / Net Profit tiles still show real
   // numbers.
-  const perOrderCogs = periodOrders.reduce(
+  const perOrderCogs = recognizedPeriodOrders.reduce(
     (s, o) =>
       s +
       (o.mayo_cost_cad ?? 0) +
@@ -276,7 +289,11 @@ function OverviewTab({
       : buckets;
 
     return usable.map((b) => {
+      // Chart only counts recognized revenue — upcoming confirmed
+      // orders shouldn't move the net-profit bar until they're
+      // actually shipped.
       const inBucket = orders.filter((o) => {
+        if (!RECOGNIZED_STATUSES_OV.has(o.status)) return false;
         const t = new Date(o.revenue_date);
         return t >= b.start && t < b.end;
       });
@@ -514,9 +531,15 @@ function PnLBreakdown({
   const startISO = isoDate(start);
   const endISO = isoDate(end);
 
-  // Revenue side (already filtered to period)
-  const revenue = orders.reduce((s, o) => s + o.total_cad, 0);
-  const stripeFees = orders.reduce(
+  // Revenue side — only recognized statuses count toward period totals.
+  // Projected orders (confirmed/scheduled/collected) show in the drill
+  // table but don't move Net Profit until they ship.
+  const PNL_RECOGNIZED = new Set(["shipped", "resulted", "complete"]);
+  const periodRecognized = orders.filter((o) =>
+    PNL_RECOGNIZED.has(o.status),
+  );
+  const revenue = periodRecognized.reduce((s, o) => s + o.total_cad, 0);
+  const stripeFees = periodRecognized.reduce(
     (s, o) => s + (o.stripe_fee_cad ?? 0),
     0,
   );
@@ -561,21 +584,46 @@ function PnLBreakdown({
     }))
     .sort((a, b) => b.amount - a.amount);
 
+  // periodRecognized / PNL_RECOGNIZED are declared above. Projected =
+  // the rest (confirmed / scheduled / collected).
+  const projectedOrders = orders.filter(
+    (o) => !PNL_RECOGNIZED.has(o.status),
+  );
+  const recognizedOrders = periodRecognized;
+
   // Per-order aggregated costs (Oct 2026 restructure) — Mayo + non-Mayo
   // lab cost + FloLabs home visit fee are summed from the per-order
   // fields rather than appearing as separate COGS category rows. The
   // Revenue drill-down shows them inline per order; the subtotals here
-  // feed Gross Profit so the math still reconciles.
-  const perOrderMayo = orders.reduce((s, o) => s + (o.mayo_cost_cad ?? 0), 0);
-  const perOrderNonMayo = orders.reduce(
+  // feed Gross Profit so the math still reconciles. Only recognized
+  // orders feed these.
+  const perOrderMayo = recognizedOrders.reduce(
+    (s, o) => s + (o.mayo_cost_cad ?? 0),
+    0,
+  );
+  const perOrderNonMayo = recognizedOrders.reduce(
     (s, o) => s + (o.non_mayo_cost_cad ?? 0),
     0,
   );
-  const perOrderFloLabs = orders.reduce(
+  const perOrderFloLabs = recognizedOrders.reduce(
     (s, o) => s + (o.flolabs_fee_cad ?? 0),
     0,
   );
   const perOrderLabTotal = perOrderMayo + perOrderNonMayo;
+
+  // Projected subtotals for the "upcoming" strip in the Revenue drill.
+  const projectedRevenue = projectedOrders.reduce(
+    (s, o) => s + o.total_cad,
+    0,
+  );
+  const projectedLabTotal = projectedOrders.reduce(
+    (s, o) => s + (o.mayo_cost_cad ?? 0) + (o.non_mayo_cost_cad ?? 0),
+    0,
+  );
+  const projectedFloLabs = projectedOrders.reduce(
+    (s, o) => s + (o.flolabs_fee_cad ?? 0),
+    0,
+  );
 
   const cogsTotal = cogsRows.reduce((s, r) => s + r.amount, 0);
   const opexTotal = opexRows.reduce((s, r) => s + r.amount, 0) + stripeFees;
@@ -661,214 +709,61 @@ function PnLBreakdown({
           />
           {expanded.has("revenue") && (
             <>
-              {/* Column header row — only visible when expanded. */}
-              <tr style={{ borderBottom: "1px solid #2d6b35" }}>
-                <td
-                  style={{
-                    ...pnlCell,
-                    paddingLeft: 38,
-                    color: "#8dc63f",
-                    fontSize: 10,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    fontWeight: 700,
-                  }}
-                >
-                  Order · Client
-                </td>
-                <td
-                  style={{
-                    ...pnlCellR,
-                    color: "#8dc63f",
-                    fontSize: 10,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    fontWeight: 700,
-                  }}
-                >
-                  Date
-                </td>
-                <td
-                  style={{
-                    ...pnlCellR,
-                    color: "#8dc63f",
-                    fontSize: 10,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    fontWeight: 700,
-                  }}
-                >
-                  Revenue
-                </td>
-                <td
-                  style={{
-                    ...pnlCellR,
-                    color: "#8dc63f",
-                    fontSize: 10,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    fontWeight: 700,
-                  }}
-                >
-                  Lab Cost
-                </td>
-                <td
-                  style={{
-                    ...pnlCellR,
-                    color: "#8dc63f",
-                    fontSize: 10,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    fontWeight: 700,
-                  }}
-                >
-                  FloLabs
-                </td>
-                <td
-                  style={{
-                    ...pnlCellR,
-                    color: "#8dc63f",
-                    fontSize: 10,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    fontWeight: 700,
-                  }}
-                >
-                  Gross Profit
-                </td>
-              </tr>
-              {[...orders]
+              <RevenueDrillHeader />
+              {/* RECOGNIZED (shipped / resulted / complete) — feeds P&L */}
+              {[...recognizedOrders]
                 .sort((a, b) =>
                   a.revenue_date.localeCompare(b.revenue_date),
                 )
-                .map((o) => {
-                  const labCost =
-                    (o.mayo_cost_cad ?? 0) + (o.non_mayo_cost_cad ?? 0);
-                  const flo = o.flolabs_fee_cad ?? 0;
-                  const orderGross = o.total_cad - labCost - flo;
-                  const margin =
-                    o.total_cad > 0 ? (orderGross / o.total_cad) * 100 : 0;
-                  const sourceLabel =
-                    o.mayo_cost_cad > 0 && o.mayo_cost_source === "invoice"
-                      ? "actual invoiced"
-                      : o.mayo_cost_cad > 0
-                        ? "catalog est"
-                        : null;
-                  // Per-order rows get bumped font-size for easier
-                  // scanning (Mike, Oct 2026) — numbers at 15px, name
-                  // cell at 16px. Lower sections (Other Costs / OpEx /
-                  // etc.) keep the default 12-13px so they stay
-                  // compact.
-                  return (
-                    <tr key={`revenue:${o.id}`}>
-                      <td style={{ ...pnlCell, paddingLeft: 38, fontSize: 16 }}>
-                        <span style={{ color: "#c4973a" }}>
-                          #{o.id.slice(0, 8).toUpperCase()}
-                        </span>
-                        <span style={{ marginLeft: 10, color: "#ffffff" }}>
-                          {o.client_label}
-                        </span>
-                      </td>
-                      <td style={{ ...pnlCellR, color: "#8dc63f", fontSize: 15 }}>
-                        {new Date(o.revenue_date).toLocaleDateString("en-CA", {
-                          timeZone: "America/Edmonton",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </td>
-                      <td style={{ ...pnlCellR, color: "#e8d5a3", fontSize: 15 }}>
-                        {formatCurrency(o.total_cad)}
-                      </td>
-                      <td style={{ ...pnlCellR, color: "#e8d5a3", fontSize: 15 }}>
-                        {labCost > 0 ? formatCurrency(labCost) : "—"}
-                        {sourceLabel && (
-                          <div
-                            style={{
-                              color:
-                                o.mayo_cost_source === "invoice"
-                                  ? "#8dc63f"
-                                  : "#c4973a",
-                              fontSize: 11,
-                              fontWeight: 500,
-                              marginTop: 2,
-                            }}
-                          >
-                            {sourceLabel}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ ...pnlCellR, color: "#e8d5a3", fontSize: 15 }}>
-                        {flo > 0 ? formatCurrency(flo) : "—"}
-                      </td>
-                      <td
-                        style={{
-                          ...pnlCellR,
-                          color: orderGross >= 0 ? "#8dc63f" : "#e88b8b",
-                          fontWeight: 600,
-                          fontSize: 15,
-                        }}
-                      >
-                        {formatCurrency(orderGross)}
-                        <div
-                          style={{
-                            color: "#8dc63f",
-                            fontSize: 11,
-                            fontWeight: 500,
-                            opacity: 0.75,
-                            marginTop: 2,
-                          }}
-                        >
-                          {margin.toFixed(0)}%
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              {/* Subtotal strip under the per-order rows so column
-                  sums are visible at a glance. */}
-              <tr
-                style={{
-                  borderTop: "1px solid #2d6b35",
-                  backgroundColor: "rgba(255,255,255,0.02)",
-                }}
-              >
-                <td
-                  style={{
-                    ...pnlCell,
-                    paddingLeft: 38,
-                    color: "#8dc63f",
-                    fontWeight: 700,
-                    fontSize: 15,
-                  }}
-                  colSpan={2}
-                >
-                  Subtotal · {orders.length} order{orders.length === 1 ? "" : "s"}
-                </td>
-                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700, fontSize: 15 }}>
-                  {formatCurrency(revenue)}
-                </td>
-                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700, fontSize: 15 }}>
-                  {formatCurrency(perOrderLabTotal)}
-                </td>
-                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700, fontSize: 15 }}>
-                  {formatCurrency(perOrderFloLabs)}
-                </td>
-                <td
-                  style={{
-                    ...pnlCellR,
-                    color:
-                      revenue - perOrderLabTotal - perOrderFloLabs >= 0
-                        ? "#8dc63f"
-                        : "#e88b8b",
-                    fontWeight: 700,
-                    fontSize: 15,
-                  }}
-                >
-                  {formatCurrency(
-                    revenue - perOrderLabTotal - perOrderFloLabs,
-                  )}
-                </td>
-              </tr>
+                .map((o) => (
+                  <RevenueOrderRow key={`rev:${o.id}`} order={o} />
+                ))}
+              <RevenueSubtotalRow
+                label={`Recognized subtotal · ${recognizedOrders.length} order${recognizedOrders.length === 1 ? "" : "s"}`}
+                revenue={revenue}
+                labCost={perOrderLabTotal}
+                flolabs={perOrderFloLabs}
+              />
+              {/* PROJECTED (confirmed / scheduled / collected) — not in P&L */}
+              {projectedOrders.length > 0 && (
+                <>
+                  <tr>
+                    <td
+                      colSpan={8}
+                      style={{
+                        ...pnlCell,
+                        paddingLeft: 38,
+                        color: "#C6A04B",
+                        fontSize: 11,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        fontWeight: 700,
+                        paddingTop: 16,
+                      }}
+                    >
+                      Upcoming (not yet shipped — won&apos;t count toward P&amp;L until collection completes)
+                    </td>
+                  </tr>
+                  {[...projectedOrders]
+                    .sort((a, b) =>
+                      a.revenue_date.localeCompare(b.revenue_date),
+                    )
+                    .map((o) => (
+                      <RevenueOrderRow
+                        key={`rev:${o.id}`}
+                        order={o}
+                        projected
+                      />
+                    ))}
+                  <RevenueSubtotalRow
+                    label={`Projected subtotal · ${projectedOrders.length} order${projectedOrders.length === 1 ? "" : "s"}`}
+                    revenue={projectedRevenue}
+                    labCost={projectedLabTotal}
+                    flolabs={projectedFloLabs}
+                    projected
+                  />
+                </>
+              )}
             </>
           )}
 
@@ -917,7 +812,7 @@ function PnLBreakdown({
           ))}
           {stripeFees > 0 && (
             <tr>
-              <td style={pnlCell}>Payment processing (Stripe)</td>
+              <td colSpan={6} style={pnlCell}>Payment processing (Stripe)</td>
               <td style={pnlCellR}>{orders.filter((o) => o.stripe_fee_cad).length} orders</td>
               <td style={{ ...pnlCellR, color: "#e8d5a3" }}>
                 {formatCurrency(stripeFees)}
@@ -958,7 +853,7 @@ const pnlCellR: React.CSSProperties = {
 function PnLBreak() {
   return (
     <tr>
-      <td colSpan={3} style={{ height: 6, backgroundColor: "#0a1a0d" }} />
+      <td colSpan={8} style={{ height: 6, backgroundColor: "#0a1a0d" }} />
     </tr>
   );
 }
@@ -966,7 +861,7 @@ function PnLEmpty({ label }: { label: string }) {
   return (
     <tr>
       <td
-        colSpan={3}
+        colSpan={8}
         style={{ ...pnlCell, color: "#6ab04c", fontStyle: "italic" }}
       >
         {label}
@@ -978,6 +873,7 @@ function PnLHeader({ label, total }: { label: string; total: number }) {
   return (
     <tr style={{ backgroundColor: "#1a3d22" }}>
       <td
+        colSpan={7}
         style={{
           ...pnlCell,
           color: "#c4973a",
@@ -989,7 +885,6 @@ function PnLHeader({ label, total }: { label: string; total: number }) {
       >
         {label}
       </td>
-      <td style={pnlCell}></td>
       <td
         style={{
           ...pnlCellR,
@@ -1028,6 +923,7 @@ function PnLSectionRow({
       onClick={expandable ? onToggle : undefined}
     >
       <td
+        colSpan={6}
         style={{
           ...pnlCell,
           color: "#ffffff",
@@ -1075,7 +971,7 @@ function PnLCategoryRow({
         onClick={onToggle}
         style={{ cursor: "pointer" }}
       >
-        <td style={pnlCell}>
+        <td colSpan={6} style={pnlCell}>
           <span style={{ color: "#c4973a", marginRight: 6 }}>
             {expanded ? "▾" : "▸"}
           </span>
@@ -1095,6 +991,7 @@ function PnLCategoryRow({
           .map((t, i) => (
             <tr key={i} style={{ backgroundColor: "#0a1a0d" }}>
               <td
+                colSpan={6}
                 style={{
                   ...pnlCell,
                   paddingLeft: 42,
@@ -1137,6 +1034,260 @@ function PnLCategoryRow({
     </>
   );
 }
+// ─── Revenue drill helpers ───────────────────────────────────────────
+
+function RevenueDrillHeader() {
+  const h: React.CSSProperties = {
+    color: "#8dc63f",
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    fontWeight: 700,
+  };
+  return (
+    <tr style={{ borderBottom: "1px solid #2d6b35" }}>
+      <td style={{ ...pnlCell, paddingLeft: 38, ...h }}>Order · Client</td>
+      <td style={{ ...pnlCellR, ...h }}>Status</td>
+      <td style={{ ...pnlCellR, ...h }}>Tests</td>
+      <td style={{ ...pnlCellR, ...h }}>Date</td>
+      <td style={{ ...pnlCellR, ...h }}>Revenue</td>
+      <td style={{ ...pnlCellR, ...h }}>Lab Cost</td>
+      <td style={{ ...pnlCellR, ...h }}>FloLabs</td>
+      <td style={{ ...pnlCellR, ...h }}>Gross Profit</td>
+    </tr>
+  );
+}
+
+function statusChip(s: string): { label: string; color: string; bg: string } {
+  switch (s) {
+    case "confirmed":
+    case "scheduled":
+      return { label: "Booked", color: "#93c5fd", bg: "rgba(59,130,246,0.15)" };
+    case "collected":
+      return { label: "Collection Complete", color: "#88D45D", bg: "rgba(141,198,63,0.15)" };
+    case "shipped":
+      return { label: "Shipped", color: "#C6A04B", bg: "rgba(198,160,75,0.15)" };
+    case "resulted":
+    case "complete":
+      return { label: "Final Resulted", color: "#88D45D", bg: "rgba(45,107,53,0.25)" };
+    default:
+      return { label: s, color: "#8dc63f", bg: "rgba(141,198,63,0.1)" };
+  }
+}
+
+const SKU_INLINE_LIMIT = 4;
+
+function RevenueOrderRow({
+  order: o,
+  projected,
+}: {
+  order: ShippedOrder;
+  projected?: boolean;
+}) {
+  const [skusExpanded, setSkusExpanded] = useState(false);
+  const labCost = (o.mayo_cost_cad ?? 0) + (o.non_mayo_cost_cad ?? 0);
+  const flo = o.flolabs_fee_cad ?? 0;
+  const orderGross = o.total_cad - labCost - flo;
+  const margin =
+    o.total_cad > 0 ? (orderGross / o.total_cad) * 100 : 0;
+  const sourceLabel =
+    o.mayo_cost_cad > 0 && o.mayo_cost_source === "invoice"
+      ? "actual invoiced"
+      : o.mayo_cost_cad > 0
+        ? "catalog est"
+        : null;
+  const chip = statusChip(o.status);
+  const skus = o.test_skus ?? [];
+  const visibleSkus = skusExpanded ? skus : skus.slice(0, SKU_INLINE_LIMIT);
+  const overflow = skus.length - SKU_INLINE_LIMIT;
+  // Projected rows render dimmer so they visually recede vs recognized
+  const rowOpacity = projected ? 0.7 : 1;
+  return (
+    <tr style={{ opacity: rowOpacity }}>
+      <td style={{ ...pnlCell, paddingLeft: 38, fontSize: 16 }}>
+        <span style={{ color: "#c4973a" }}>
+          #{o.id.slice(0, 8).toUpperCase()}
+        </span>
+        <span style={{ marginLeft: 10, color: "#ffffff" }}>
+          {o.client_label}
+        </span>
+      </td>
+      <td style={{ ...pnlCellR, fontSize: 11, verticalAlign: "middle" }}>
+        <span
+          style={{
+            display: "inline-block",
+            padding: "2px 8px",
+            borderRadius: 999,
+            backgroundColor: chip.bg,
+            color: chip.color,
+            border: `1px solid ${chip.color}`,
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {chip.label}
+        </span>
+      </td>
+      <td
+        style={{
+          ...pnlCell,
+          fontSize: 11,
+          fontFamily:
+            "ui-monospace, SFMono-Regular, Menlo, monospace",
+          color: "#e8d5a3",
+          textAlign: "left",
+          maxWidth: 280,
+        }}
+      >
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+          {visibleSkus.map((sku, i) => (
+            <span
+              key={i}
+              style={{
+                display: "inline-block",
+                padding: "1px 5px",
+                borderRadius: 3,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                color: "#e8d5a3",
+                fontSize: 10,
+              }}
+            >
+              {sku}
+            </span>
+          ))}
+          {overflow > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSkusExpanded((v) => !v);
+              }}
+              style={{
+                border: "none",
+                background: "transparent",
+                color: "#C6A04B",
+                fontSize: 10,
+                cursor: "pointer",
+                padding: "1px 3px",
+              }}
+            >
+              {skusExpanded ? "▴ less" : `+${overflow} more ▾`}
+            </button>
+          )}
+          {skus.length === 0 && <span style={{ opacity: 0.5 }}>—</span>}
+        </div>
+      </td>
+      <td style={{ ...pnlCellR, color: "#8dc63f", fontSize: 15 }}>
+        {new Date(o.revenue_date).toLocaleDateString("en-CA", {
+          timeZone: "America/Edmonton",
+          month: "short",
+          day: "numeric",
+        })}
+      </td>
+      <td style={{ ...pnlCellR, color: "#e8d5a3", fontSize: 15 }}>
+        {formatCurrency(o.total_cad)}
+      </td>
+      <td style={{ ...pnlCellR, color: "#e8d5a3", fontSize: 15 }}>
+        {labCost > 0 ? formatCurrency(labCost) : "—"}
+        {sourceLabel && (
+          <div
+            style={{
+              color:
+                o.mayo_cost_source === "invoice" ? "#8dc63f" : "#c4973a",
+              fontSize: 11,
+              fontWeight: 500,
+              marginTop: 2,
+            }}
+          >
+            {sourceLabel}
+          </div>
+        )}
+      </td>
+      <td style={{ ...pnlCellR, color: "#e8d5a3", fontSize: 15 }}>
+        {flo > 0 ? formatCurrency(flo) : "—"}
+      </td>
+      <td
+        style={{
+          ...pnlCellR,
+          color: orderGross >= 0 ? "#8dc63f" : "#e88b8b",
+          fontWeight: 600,
+          fontSize: 15,
+        }}
+      >
+        {formatCurrency(orderGross)}
+        <div
+          style={{
+            color: "#8dc63f",
+            fontSize: 11,
+            fontWeight: 500,
+            opacity: 0.75,
+            marginTop: 2,
+          }}
+        >
+          {margin.toFixed(0)}%
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function RevenueSubtotalRow({
+  label,
+  revenue,
+  labCost,
+  flolabs,
+  projected,
+}: {
+  label: string;
+  revenue: number;
+  labCost: number;
+  flolabs: number;
+  projected?: boolean;
+}) {
+  const profit = revenue - labCost - flolabs;
+  return (
+    <tr
+      style={{
+        borderTop: "1px solid #2d6b35",
+        backgroundColor: "rgba(255,255,255,0.02)",
+        opacity: projected ? 0.75 : 1,
+      }}
+    >
+      <td
+        colSpan={4}
+        style={{
+          ...pnlCell,
+          paddingLeft: 38,
+          color: projected ? "#C6A04B" : "#8dc63f",
+          fontWeight: 700,
+          fontSize: 15,
+        }}
+      >
+        {label}
+      </td>
+      <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700, fontSize: 15 }}>
+        {formatCurrency(revenue)}
+      </td>
+      <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700, fontSize: 15 }}>
+        {formatCurrency(labCost)}
+      </td>
+      <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700, fontSize: 15 }}>
+        {formatCurrency(flolabs)}
+      </td>
+      <td
+        style={{
+          ...pnlCellR,
+          color: profit >= 0 ? "#8dc63f" : "#e88b8b",
+          fontWeight: 700,
+          fontSize: 15,
+        }}
+      >
+        {formatCurrency(profit)}
+      </td>
+    </tr>
+  );
+}
+
 function formatCategoryLabel(cat: string): string {
   const map: Record<string, string> = {
     cogs_lab: "Lab — outside processors (Mayo, Armin, etc.)",
