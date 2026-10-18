@@ -23,6 +23,18 @@ export type ShippedOrder = {
    *  when we have it, waiver signature name second, account email
    *  last-resort. Never null so the drill-down row always renders. */
   client_label: string;
+  /** Per-order Mayo cost (CAD). Preferred source: sum of matched
+   *  mayo_invoice_lines charges × fx_rate ("invoice"). Fallback:
+   *  catalog cost_cad × quantity ("catalog"). Flag tells the UI
+   *  which to badge next to the number. */
+  mayo_cost_cad: number;
+  mayo_cost_source: "invoice" | "catalog";
+  /** Per-order non-Mayo lab cost (CAD) — Armin, EpiSeek, ReligenDx,
+   *  LabCorp, Dynacare. Catalog-only; no per-order invoice table. */
+  non_mayo_cost_cad: number;
+  /** FloLabs home-visit pass-through (CAD) — orders.home_visit_fee_cad
+   *  per order. Zero for out-of-town drop-in collections. */
+  flolabs_fee_cad: number;
 };
 
 /**
@@ -107,6 +119,35 @@ export default async function AdminFinancialsPage() {
   const isPassthroughResource = (desc: string | null | undefined) =>
     typeof desc === "string" &&
     /\b(collect|flolab|shipping\s+fee|delivery\s+fee)\b/i.test(desc);
+
+  // Per-order Mayo INVOICED actuals — pulled from mayo_invoice_lines
+  // where a line was matched to an order via the invoice-matcher
+  // workflow. Each matched line carries charge_usd and belongs to an
+  // invoice with its own fx_rate (so CAD = charge_usd × fx_rate).
+  // When an order has at least one matched line, we use the invoice
+  // sum as its Mayo cost ("actual invoiced"); otherwise we fall back
+  // to the catalog estimate ("estimate from catalogue").
+  const { data: invoiceLinesRaw } = await service
+    .from("mayo_invoice_lines")
+    .select(
+      "order_id, charge_usd, invoice:mayo_invoices!inner ( fx_rate )",
+    )
+    .not("order_id", "is", null);
+  const mayoInvoicedByOrder = new Map<string, number>();
+  for (const row of (invoiceLinesRaw ?? []) as Array<{
+    order_id: string | null;
+    charge_usd: number;
+    invoice: { fx_rate: number } | { fx_rate: number }[] | null;
+  }>) {
+    if (!row.order_id) continue;
+    const inv = Array.isArray(row.invoice) ? row.invoice[0] : row.invoice;
+    const fx = Number(inv?.fx_rate ?? 1.43);
+    const cad = Number(row.charge_usd) * fx;
+    mayoInvoicedByOrder.set(
+      row.order_id,
+      (mayoInvoicedByOrder.get(row.order_id) ?? 0) + cad,
+    );
+  }
 
   // Per-order test cost tally broken out by lab so we can bucket
   // non-Mayo lab COGS (Armin, EpiSeek, ReligenDX, LabCorp, ...) into
@@ -216,6 +257,15 @@ export default async function AdminFinancialsPage() {
         (o.account?.email ?? "").trim() ||
         "(unknown client)";
 
+      // Per-order Mayo cost — prefer invoice actuals when any matched
+      // lines exist, else fall back to catalog estimate. The source
+      // flag drives the badge on the per-order table row ("actual
+      // invoiced" vs "estimate from catalogue").
+      const invoicedMayo = mayoInvoicedByOrder.get(o.id) ?? 0;
+      const mayoCost = invoicedMayo > 0 ? invoicedMayo : mayoCatalogCost;
+      const mayoSource: "invoice" | "catalog" =
+        invoicedMayo > 0 ? "invoice" : "catalog";
+
       return {
         id: o.id,
         revenue_date,
@@ -225,6 +275,10 @@ export default async function AdminFinancialsPage() {
         manifest_id: o.manifest_id,
         stripe_fee_cad: o.stripe_fee_cad,
         client_label,
+        mayo_cost_cad: mayoCost,
+        mayo_cost_source: mayoSource,
+        non_mayo_cost_cad: nonMayoLabCost,
+        flolabs_fee_cad: visitFee,
       };
     },
   );
@@ -412,24 +466,18 @@ export default async function AdminFinancialsPage() {
       bucket.invoiceNumbers.add(l.invoice.invoice_number);
       perDay.set(dateKey, bucket);
     }
+    // Oct 2026 (Mike): per-order revenue table shows Mayo cost inline
+    // for each order (invoice actuals when matched, catalog estimate
+    // otherwise). The aggregated Mayo-invoice-fold COGS row would
+    // double-count what's now shown inline, so we don't push rows
+    // into qboTxns anymore — we just maintain mayoActualCostByMonth
+    // for the accrual-gap diagnostic below.
     for (const [dateKey, bucket] of perDay.entries()) {
-      const invoiceList = [...bucket.invoiceNumbers].sort().join(", ");
-      qboTxns.push({
-        txn_date: dateKey,
-        amount_cad: Number(bucket.cad.toFixed(2)),
-        direction: "expense",
-        category: MAYO_SYNTHETIC_CATEGORY,
-        supplier_name: `Mayo collections ${dateKey} · invoice${bucket.invoiceNumbers.size === 1 ? "" : "s"} ${invoiceList}`,
-      });
-      // Track per-month total for the accrual-gap calc below.
       const monthKey = dateKey.slice(0, 7);
       mayoActualCostByMonth.set(
         monthKey,
         (mayoActualCostByMonth.get(monthKey) ?? 0) + bucket.cad,
       );
-    }
-    if (perDay.size > 0 && !cogsCategories.includes(MAYO_SYNTHETIC_CATEGORY)) {
-      cogsCategories.push(MAYO_SYNTHETIC_CATEGORY);
     }
   } catch (err) {
     // Log so a silent schema/RLS drop is visible in Vercel logs
@@ -446,71 +494,19 @@ export default async function AdminFinancialsPage() {
   //     automatically. Prevents the "0 COGS, 97% margin" illusion for
   //     the current month while keeping invoiced months on the
   //     actual.
-  const MAYO_ACCRUAL_CATEGORY = "mayo_catalog_accrual";
-  let anyAccrual = false;
-  for (const [anchor, catalogCost] of mayoCatalogCostByMonth.entries()) {
-    const monthKey = anchor.slice(0, 7);
-    const actual = mayoActualCostByMonth.get(monthKey) ?? 0;
-    const gap = catalogCost - actual;
-    if (gap <= 0.01) continue; // fully (or over-) invoiced for this month
-    qboTxns.push({
-      txn_date: anchor,
-      amount_cad: Number(gap.toFixed(2)),
-      direction: "expense",
-      category: MAYO_ACCRUAL_CATEGORY,
-      supplier_name: `Mayo catalog estimate gap (${monthKey}) — awaiting invoice`,
-    });
-    anyAccrual = true;
-  }
-  if (anyAccrual && !cogsCategories.includes(MAYO_ACCRUAL_CATEGORY)) {
-    cogsCategories.push(MAYO_ACCRUAL_CATEGORY);
-  }
-
-  // 3b.ii. FloLabs home-visit pass-through — synthesize a monthly
-  //     COGS bucket from orders.home_visit_fee_cad bucketed by the
-  //     order's revenue_date. This replaces the payment-date QBO
-  //     contractor rows for FloLabs (which were suppressed above)
-  //     with service-date accruals. The visit fee column is the exact
-  //     amount we pay FloLabs (we charge the client the same, so it's
-  //     a zero-margin pass-through).
-  const FLOLABS_CATEGORY = "flolabs_visits";
-  if (floLabsFeeByMonth.size > 0) {
-    for (const [anchor, fee] of floLabsFeeByMonth.entries()) {
-      qboTxns.push({
-        txn_date: anchor,
-        amount_cad: Number(fee.toFixed(2)),
-        direction: "expense",
-        category: FLOLABS_CATEGORY,
-        supplier_name: `FloLabs home visits (${anchor.slice(0, 7)})`,
-      });
-    }
-    if (!cogsCategories.includes(FLOLABS_CATEGORY)) {
-      cogsCategories.push(FLOLABS_CATEGORY);
-    }
-  }
-
-  // 3c. Non-Mayo lab COGS — synthesize a monthly bucket from the
-  //     per-order test_cost_cad for every test line where the lab is
-  //     NOT Mayo (Armin Labs, EpiSeek/Precision Epigenomics, ReligenDx,
-  //     LabCorp, ...). These labs don't send us a consolidated monthly
-  //     invoice like Mayo does, so we use the catalog cost per test as
-  //     an accrual estimate. Bucketed by the order's revenue_date
-  //     month so cost lines up with the revenue.
-  const NON_MAYO_LAB_CATEGORY = "non_mayo_lab_costs";
-  if (nonMayoLabCostByMonth.size > 0) {
-    for (const [anchor, cost] of nonMayoLabCostByMonth.entries()) {
-      qboTxns.push({
-        txn_date: anchor,
-        amount_cad: Number(cost.toFixed(2)),
-        direction: "expense",
-        category: NON_MAYO_LAB_CATEGORY,
-        supplier_name: `Non-Mayo labs (${anchor.slice(0, 7)})`,
-      });
-    }
-    if (!cogsCategories.includes(NON_MAYO_LAB_CATEGORY)) {
-      cogsCategories.push(NON_MAYO_LAB_CATEGORY);
-    }
-  }
+  // Mayo accrual-gap, FloLabs, and non-Mayo-lab COGS rows no longer
+  // pushed to qboTxns — they're all inlined per-order in the Revenue
+  // drill-down table now (Oct 2026). The per-order view surfaces
+  // actual vs. estimated at the row level with a badge, so this
+  // aggregated-row display would double-count. Compute logic preserved
+  // above (mayoActualCostByMonth, mayoCatalogCostByMonth,
+  // nonMayoLabCostByMonth, floLabsFeeByMonth) in case we need these
+  // for the P&L chart's accrual diagnostics; just not surfaced as
+  // separate COGS rows.
+  void nonMayoLabCostByMonth;
+  void floLabsFeeByMonth;
+  void mayoActualCostByMonth;
+  void mayoCatalogCostByMonth;
 
   // 4. QBO integration status
   let qboConnected = false;

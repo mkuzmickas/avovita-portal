@@ -212,7 +212,20 @@ function OverviewTab({
     () => sumTxnsInPeriod(qboTxns, start, end, cogsSet),
     [qboTxns, start, end, cogsSet],
   );
-  const cogs = totals.cogs;
+  // Per-order Mayo + non-Mayo lab + FloLabs costs are no longer in
+  // qboTxns (Oct 2026 restructure — they're inlined per order in the
+  // P&L drill-down). Add them back into the aggregate COGS here so the
+  // header-level Gross Profit / Net Profit tiles still show real
+  // numbers.
+  const perOrderCogs = periodOrders.reduce(
+    (s, o) =>
+      s +
+      (o.mayo_cost_cad ?? 0) +
+      (o.non_mayo_cost_cad ?? 0) +
+      (o.flolabs_fee_cad ?? 0),
+    0,
+  );
+  const cogs = totals.cogs + perOrderCogs;
   const opex = totals.opex + stripeFees;
   const grossProfit = revenue - cogs;
   const netProfit = grossProfit - opex;
@@ -278,9 +291,19 @@ function OverviewTab({
         b.end,
         cogsSet,
       );
+      // Per-order Mayo + non-Mayo + FloLabs cost (not in qboTxns
+      // anymore — inlined per order on the P&L drilldown).
+      const bPerOrderCogs = inBucket.reduce(
+        (s, o) =>
+          s +
+          (o.mayo_cost_cad ?? 0) +
+          (o.non_mayo_cost_cad ?? 0) +
+          (o.flolabs_fee_cad ?? 0),
+        0,
+      );
       return {
         label: b.label,
-        net: Math.round(rev - bCogs - bOpex - bStripe),
+        net: Math.round(rev - bCogs - bPerOrderCogs - bOpex - bStripe),
         // Bucket bounds for click-to-drilldown — Recharts passes the
         // data object to onClick handlers as payload.
         _startISO: isoDate(b.start),
@@ -538,9 +561,26 @@ function PnLBreakdown({
     }))
     .sort((a, b) => b.amount - a.amount);
 
+  // Per-order aggregated costs (Oct 2026 restructure) — Mayo + non-Mayo
+  // lab cost + FloLabs home visit fee are summed from the per-order
+  // fields rather than appearing as separate COGS category rows. The
+  // Revenue drill-down shows them inline per order; the subtotals here
+  // feed Gross Profit so the math still reconciles.
+  const perOrderMayo = orders.reduce((s, o) => s + (o.mayo_cost_cad ?? 0), 0);
+  const perOrderNonMayo = orders.reduce(
+    (s, o) => s + (o.non_mayo_cost_cad ?? 0),
+    0,
+  );
+  const perOrderFloLabs = orders.reduce(
+    (s, o) => s + (o.flolabs_fee_cad ?? 0),
+    0,
+  );
+  const perOrderLabTotal = perOrderMayo + perOrderNonMayo;
+
   const cogsTotal = cogsRows.reduce((s, r) => s + r.amount, 0);
   const opexTotal = opexRows.reduce((s, r) => s + r.amount, 0) + stripeFees;
-  const grossProfit = revenue - cogsTotal;
+  const grossProfit =
+    revenue - cogsTotal - perOrderLabTotal - perOrderFloLabs;
   const netProfit = grossProfit - opexTotal;
 
   const toggle = (key: string) => {
@@ -619,33 +659,214 @@ function PnLBreakdown({
             onToggle={() => toggle("revenue")}
             secondary={`${orders.length} order${orders.length === 1 ? "" : "s"}`}
           />
-          {expanded.has("revenue") &&
-            [...orders]
-              .sort((a, b) => b.total_cad - a.total_cad)
-              .map((o) => (
-                <tr key={`revenue:${o.id}`}>
-                  <td style={{ ...pnlCell, paddingLeft: 38 }}>
-                    <span style={{ color: "#c4973a" }}>#{o.id.slice(0, 8).toUpperCase()}</span>
-                    <span style={{ marginLeft: 10, color: "#ffffff" }}>{o.client_label}</span>
-                  </td>
-                  <td style={{ ...pnlCellR, color: "#8dc63f" }}>
-                    {new Date(o.revenue_date).toLocaleDateString("en-CA", {
-                      timeZone: "America/Edmonton",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                    {" · "}
-                    {o.test_count} {o.test_count === 1 ? "test" : "tests"}
-                  </td>
-                  <td style={{ ...pnlCellR, color: "#e8d5a3" }}>
-                    {formatCurrency(o.total_cad)}
-                  </td>
-                </tr>
-              ))}
+          {expanded.has("revenue") && (
+            <>
+              {/* Column header row — only visible when expanded. */}
+              <tr style={{ borderBottom: "1px solid #2d6b35" }}>
+                <td
+                  style={{
+                    ...pnlCell,
+                    paddingLeft: 38,
+                    color: "#8dc63f",
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    fontWeight: 700,
+                  }}
+                >
+                  Order · Client
+                </td>
+                <td
+                  style={{
+                    ...pnlCellR,
+                    color: "#8dc63f",
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    fontWeight: 700,
+                  }}
+                >
+                  Date
+                </td>
+                <td
+                  style={{
+                    ...pnlCellR,
+                    color: "#8dc63f",
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    fontWeight: 700,
+                  }}
+                >
+                  Revenue
+                </td>
+                <td
+                  style={{
+                    ...pnlCellR,
+                    color: "#8dc63f",
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    fontWeight: 700,
+                  }}
+                >
+                  Lab Cost
+                </td>
+                <td
+                  style={{
+                    ...pnlCellR,
+                    color: "#8dc63f",
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    fontWeight: 700,
+                  }}
+                >
+                  FloLabs
+                </td>
+                <td
+                  style={{
+                    ...pnlCellR,
+                    color: "#8dc63f",
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    fontWeight: 700,
+                  }}
+                >
+                  Gross Profit
+                </td>
+              </tr>
+              {[...orders]
+                .sort((a, b) => b.total_cad - a.total_cad)
+                .map((o) => {
+                  const labCost =
+                    (o.mayo_cost_cad ?? 0) + (o.non_mayo_cost_cad ?? 0);
+                  const flo = o.flolabs_fee_cad ?? 0;
+                  const orderGross = o.total_cad - labCost - flo;
+                  const margin =
+                    o.total_cad > 0 ? (orderGross / o.total_cad) * 100 : 0;
+                  const sourceLabel =
+                    o.mayo_cost_cad > 0 && o.mayo_cost_source === "invoice"
+                      ? "actual invoiced"
+                      : o.mayo_cost_cad > 0
+                        ? "catalog est"
+                        : null;
+                  return (
+                    <tr key={`revenue:${o.id}`}>
+                      <td style={{ ...pnlCell, paddingLeft: 38 }}>
+                        <span style={{ color: "#c4973a" }}>
+                          #{o.id.slice(0, 8).toUpperCase()}
+                        </span>
+                        <span style={{ marginLeft: 10, color: "#ffffff" }}>
+                          {o.client_label}
+                        </span>
+                      </td>
+                      <td style={{ ...pnlCellR, color: "#8dc63f" }}>
+                        {new Date(o.revenue_date).toLocaleDateString("en-CA", {
+                          timeZone: "America/Edmonton",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </td>
+                      <td style={{ ...pnlCellR, color: "#e8d5a3" }}>
+                        {formatCurrency(o.total_cad)}
+                      </td>
+                      <td style={{ ...pnlCellR, color: "#e8d5a3" }}>
+                        {labCost > 0 ? formatCurrency(labCost) : "—"}
+                        {sourceLabel && (
+                          <div
+                            style={{
+                              color:
+                                o.mayo_cost_source === "invoice"
+                                  ? "#8dc63f"
+                                  : "#c4973a",
+                              fontSize: 10,
+                              fontWeight: 500,
+                              marginTop: 2,
+                            }}
+                          >
+                            {sourceLabel}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ ...pnlCellR, color: "#e8d5a3" }}>
+                        {flo > 0 ? formatCurrency(flo) : "—"}
+                      </td>
+                      <td
+                        style={{
+                          ...pnlCellR,
+                          color: orderGross >= 0 ? "#8dc63f" : "#e88b8b",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {formatCurrency(orderGross)}
+                        <div
+                          style={{
+                            color: "#8dc63f",
+                            fontSize: 10,
+                            fontWeight: 500,
+                            opacity: 0.75,
+                            marginTop: 2,
+                          }}
+                        >
+                          {margin.toFixed(0)}%
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              {/* Subtotal strip under the per-order rows so column
+                  sums are visible at a glance. */}
+              <tr
+                style={{
+                  borderTop: "1px solid #2d6b35",
+                  backgroundColor: "rgba(255,255,255,0.02)",
+                }}
+              >
+                <td
+                  style={{
+                    ...pnlCell,
+                    paddingLeft: 38,
+                    color: "#8dc63f",
+                    fontWeight: 700,
+                  }}
+                  colSpan={2}
+                >
+                  Subtotal · {orders.length} order{orders.length === 1 ? "" : "s"}
+                </td>
+                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700 }}>
+                  {formatCurrency(revenue)}
+                </td>
+                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700 }}>
+                  {formatCurrency(perOrderLabTotal)}
+                </td>
+                <td style={{ ...pnlCellR, color: "#e8d5a3", fontWeight: 700 }}>
+                  {formatCurrency(perOrderFloLabs)}
+                </td>
+                <td
+                  style={{
+                    ...pnlCellR,
+                    color:
+                      revenue - perOrderLabTotal - perOrderFloLabs >= 0
+                        ? "#8dc63f"
+                        : "#e88b8b",
+                    fontWeight: 700,
+                  }}
+                >
+                  {formatCurrency(
+                    revenue - perOrderLabTotal - perOrderFloLabs,
+                  )}
+                </td>
+              </tr>
+            </>
+          )}
 
-          {/* COGS */}
+          {/* COGS — now just the "below the line" overhead:
+              shipping, supplies, misc QBO lab categories. Per-order
+              Mayo + non-Mayo + FloLabs are shown inline above. */}
           <PnLBreak />
-          <PnLHeader label="COGS" total={cogsTotal} />
+          <PnLHeader label="Other Costs (overhead)" total={cogsTotal} />
           {cogsRows.length === 0 && (
             <PnLEmpty label="No COGS transactions in this period." />
           )}
