@@ -631,6 +631,17 @@ function PnLBreakdown({
     revenue - cogsTotal - perOrderLabTotal - perOrderFloLabs;
   const netProfit = grossProfit - opexTotal;
 
+  // "If all projected orders ship as booked" view — adds the gross from
+  // upcoming orders on top of recognized net profit. OpEx is already
+  // accounted for in netProfit; projected orders only carry per-order
+  // lab + FloLabs costs (no additional OpEx per order), so this is a
+  // simple additive projection. Service-date revenue model means both
+  // the revenue AND the Mayo cost land in the appointment month, so
+  // projected rows for a Nov 5 appointment show up on November's P&L.
+  const projectedGross =
+    projectedRevenue - projectedLabTotal - projectedFloLabs;
+  const projectedNetProfit = netProfit + projectedGross;
+
   const toggle = (key: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -729,7 +740,7 @@ function PnLBreakdown({
                 <>
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       style={{
                         ...pnlCell,
                         paddingLeft: 38,
@@ -832,6 +843,20 @@ function PnLBreakdown({
                 : undefined
             }
           />
+          {projectedOrders.length > 0 && (
+            <PnLSectionRow
+              label={`Projected Net Profit · if all ${projectedOrders.length} upcoming ship as booked`}
+              amount={projectedNetProfit}
+              secondary={
+                revenue + projectedRevenue > 0
+                  ? `${(
+                      (projectedNetProfit / (revenue + projectedRevenue)) *
+                      100
+                    ).toFixed(1)}% blended margin`
+                  : undefined
+              }
+            />
+          )}
         </tbody>
       </table>
     </div>
@@ -853,7 +878,7 @@ const pnlCellR: React.CSSProperties = {
 function PnLBreak() {
   return (
     <tr>
-      <td colSpan={8} style={{ height: 6, backgroundColor: "#0a1a0d" }} />
+      <td colSpan={9} style={{ height: 6, backgroundColor: "#0a1a0d" }} />
     </tr>
   );
 }
@@ -861,7 +886,7 @@ function PnLEmpty({ label }: { label: string }) {
   return (
     <tr>
       <td
-        colSpan={8}
+        colSpan={9}
         style={{ ...pnlCell, color: "#6ab04c", fontStyle: "italic" }}
       >
         {label}
@@ -873,7 +898,7 @@ function PnLHeader({ label, total }: { label: string; total: number }) {
   return (
     <tr style={{ backgroundColor: "#1a3d22" }}>
       <td
-        colSpan={7}
+        colSpan={8}
         style={{
           ...pnlCell,
           color: "#c4973a",
@@ -923,7 +948,7 @@ function PnLSectionRow({
       onClick={expandable ? onToggle : undefined}
     >
       <td
-        colSpan={6}
+        colSpan={7}
         style={{
           ...pnlCell,
           color: "#ffffff",
@@ -971,7 +996,7 @@ function PnLCategoryRow({
         onClick={onToggle}
         style={{ cursor: "pointer" }}
       >
-        <td colSpan={6} style={pnlCell}>
+        <td colSpan={7} style={pnlCell}>
           <span style={{ color: "#c4973a", marginRight: 6 }}>
             {expanded ? "▾" : "▸"}
           </span>
@@ -991,7 +1016,7 @@ function PnLCategoryRow({
           .map((t, i) => (
             <tr key={i} style={{ backgroundColor: "#0a1a0d" }}>
               <td
-                colSpan={6}
+                colSpan={7}
                 style={{
                   ...pnlCell,
                   paddingLeft: 42,
@@ -1039,17 +1064,22 @@ function PnLCategoryRow({
 function RevenueDrillHeader() {
   const h: React.CSSProperties = {
     color: "#8dc63f",
-    fontSize: 10,
+    fontSize: 13,
     textTransform: "uppercase",
     letterSpacing: "0.08em",
     fontWeight: 700,
   };
+  // Tests header is left-aligned so it sits over the SKU chips (which
+  // are themselves left-aligned inside their cell). Using pnlCellR
+  // right-aligned the label away from its chips — visually off.
+  const hL: React.CSSProperties = { ...pnlCell, ...h };
   return (
     <tr style={{ borderBottom: "1px solid #2d6b35" }}>
       <td style={{ ...pnlCell, paddingLeft: 38, ...h }}>Order · Client</td>
       <td style={{ ...pnlCellR, ...h }}>Status</td>
-      <td style={{ ...pnlCellR, ...h }}>Tests</td>
-      <td style={{ ...pnlCellR, ...h }}>Date</td>
+      <td style={hL}>Tests</td>
+      <td style={{ ...pnlCellR, ...h }}>Ordered</td>
+      <td style={{ ...pnlCellR, ...h }}>Appointment</td>
       <td style={{ ...pnlCellR, ...h }}>Revenue</td>
       <td style={{ ...pnlCellR, ...h }}>Lab Cost</td>
       <td style={{ ...pnlCellR, ...h }}>FloLabs</td>
@@ -1139,17 +1169,19 @@ function RevenueOrderRow({
           maxWidth: 280,
         }}
       >
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
           {visibleSkus.map((sku, i) => (
             <span
               key={i}
               style={{
                 display: "inline-block",
-                padding: "1px 5px",
-                borderRadius: 3,
+                padding: "2px 7px",
+                borderRadius: 4,
                 backgroundColor: "rgba(255,255,255,0.06)",
                 color: "#e8d5a3",
-                fontSize: 10,
+                fontSize: 12,
+                fontFamily:
+                  "ui-monospace, SFMono-Regular, Menlo, monospace",
               }}
             >
               {sku}
@@ -1166,9 +1198,9 @@ function RevenueOrderRow({
                 border: "none",
                 background: "transparent",
                 color: "#C6A04B",
-                fontSize: 10,
+                fontSize: 12,
                 cursor: "pointer",
-                padding: "1px 3px",
+                padding: "2px 4px",
               }}
             >
               {skusExpanded ? "▴ less" : `+${overflow} more ▾`}
@@ -1176,6 +1208,13 @@ function RevenueOrderRow({
           )}
           {skus.length === 0 && <span style={{ opacity: 0.5 }}>—</span>}
         </div>
+      </td>
+      <td style={{ ...pnlCellR, color: "#c4973a", fontSize: 15 }}>
+        {new Date(o.order_date).toLocaleDateString("en-CA", {
+          timeZone: "America/Edmonton",
+          month: "short",
+          day: "numeric",
+        })}
       </td>
       <td style={{ ...pnlCellR, color: "#8dc63f", fontSize: 15 }}>
         {new Date(o.revenue_date).toLocaleDateString("en-CA", {
@@ -1254,7 +1293,7 @@ function RevenueSubtotalRow({
       }}
     >
       <td
-        colSpan={4}
+        colSpan={5}
         style={{
           ...pnlCell,
           paddingLeft: 38,

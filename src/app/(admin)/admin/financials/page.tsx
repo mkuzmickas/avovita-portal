@@ -12,11 +12,19 @@ export type ShippedOrder = {
    *  Revenue drill as "upcoming" projections so Mike can see what's
    *  on the books but not yet recognized. */
   status: string;
-  /** Canonical revenue-recognition date: appointment_at →
-   *  appointment_date → shipping_date → shipped_at → created_at,
-   *  whichever is set first. Every completed order has at least
-   *  created_at, so no revenue silently drops out anymore. */
+  /** Canonical revenue-recognition date — the APPOINTMENT date, not
+   *  the order placement date. Chain: appointment_at → appointment_date
+   *  → shipping_date → shipped_at → created_at. The service-date model
+   *  (Mike, Oct 2026) lands revenue in the month the appointment
+   *  happens, so a Nov 5 appointment booked on Oct 29 counts in
+   *  November's P&L — matching where the Mayo cost will land. The
+   *  non-appointment fallbacks exist only for legacy imports and
+   *  edge-case orders without appointment data. */
   revenue_date: string;
+  /** When the order was placed (orders.created_at, ISO). Shown
+   *  alongside revenue_date so Mike can see the gap between booking
+   *  and the appointment / collection date. */
+  order_date: string;
   total_cad: number;
   test_cost_cad: number;
   test_count: number;
@@ -298,6 +306,7 @@ export default async function AdminFinancialsPage() {
         id: o.id,
         status: o.status,
         revenue_date,
+        order_date: o.created_at,
         total_cad: pretax,
         test_cost_cad: testCost,
         test_count: testCount,
