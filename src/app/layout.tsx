@@ -45,6 +45,15 @@ export const metadata: Metadata = {
       follow: true,
     },
   },
+  // Explicit icon URL with a version query bypasses browser favicon
+  // cache after the Oct 2026 rebrand (icon.png lives in src/app/ via
+  // Next's convention but browsers hold onto the previous leaf.svg
+  // aggressively). Bump ?v= whenever the icon file changes.
+  icons: {
+    icon: [{ url: "/favicon.png?v=2", type: "image/png" }],
+    shortcut: [{ url: "/favicon.png?v=2" }],
+    apple: [{ url: "/favicon.png?v=2" }],
+  },
   openGraph: {
     type: "website",
     locale: "en_CA",

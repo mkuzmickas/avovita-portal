@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Leaf, FlaskConical, Shield, Clock, ArrowRight } from "lucide-react";
+import { FlaskConical, Shield, Clock, ArrowRight } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -10,19 +10,12 @@ export default function HomePage() {
         style={{ backgroundColor: "transparent" }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center border"
-              style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
-            >
-              <Leaf className="w-5 h-5" style={{ color: "#88D45D" }} />
-            </div>
-            <span
-              className="font-heading text-xl font-semibold"
-              style={{ color: "#092819", fontFamily: '"Cormorant Garamond", Georgia, serif' }}
-            >
-              AvoVita
-            </span>
+          <Link href="/" className="flex items-center">
+            <img
+              src="/logo-dark.png"
+              alt="AvoVita — Private Blood Testing"
+              style={{ height: 40, width: "auto", display: "block" }}
+            />
           </Link>
 
           {/* Understated Existing Client Login — only login entry on homepage */}
