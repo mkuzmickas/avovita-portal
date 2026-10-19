@@ -828,9 +828,11 @@ function PnLBreakdown({
           ))}
           {stripeFees > 0 && (
             <tr>
-              <td colSpan={6} style={pnlCell}>Payment processing (Stripe)</td>
-              <td style={pnlCellR}>{orders.filter((o) => o.stripe_fee_cad).length} orders</td>
-              <td style={{ ...pnlCellR, color: "#e8d5a3" }}>
+              <td colSpan={7} style={pnlCell}>Payment processing (Stripe)</td>
+              <td style={{ ...pnlCellR, color: "#8dc63f" }}>
+                {orders.filter((o) => o.stripe_fee_cad).length} orders
+              </td>
+              <td style={{ ...pnlCellR, color: "#ffffff" }}>
                 {formatCurrency(stripeFees)}
               </td>
             </tr>
