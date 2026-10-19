@@ -706,7 +706,12 @@ function PnLBreakdown({
           {formatCurrency(netProfit)}
         </div>
       </div>
-      <table style={{ width: "100%", fontSize: 13 }}>
+      {/* Horizontal scroll shell — with 9 columns and the upsized fonts
+          Mike asked for, the table overflows laptop viewports. The outer
+          card still clips cleanly (overflow: hidden up top keeps the
+          12px border-radius), so this inner wrapper handles the pan. */}
+      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+      <table style={{ width: "100%", minWidth: 1200, fontSize: 13 }}>
         <tbody>
           {/* REVENUE — click to expand into a per-order list */}
           <PnLSectionRow
@@ -859,12 +864,13 @@ function PnLBreakdown({
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
 
 const pnlCell: React.CSSProperties = {
-  padding: "8px 18px",
+  padding: "8px 12px",
   color: "#e8d5a3",
   borderTop: "1px solid #1a3d22",
 };
