@@ -145,7 +145,7 @@ export async function pollFloLabsInbox(
 async function processOneMessage(
   supabase: SupabaseClient,
   msg: GraphMessage,
-): Promise<"auto_assigned" | "needs_review" | "no_match"> {
+): Promise<"auto_assigned" | "needs_review" | "no_match" | "superseded"> {
   const bodyContent = msg.body?.content ?? msg.bodyPreview ?? "";
   const fromAddress = msg.from?.emailAddress?.address ?? "";
   const subject = msg.subject ?? "";
@@ -278,25 +278,68 @@ async function processOneMessage(
     candidate_snapshot: candidates.slice(0, 5),
   });
 
-  if (resolution !== "auto_assigned") {
-    // Best-effort admin notification; swallow email errors so poll
-    // continues processing subsequent messages.
+  // Email Mike + Jenna on EVERY booking that lands via the inbox
+  // poller — including the happy auto-match. Previously only
+  // needs_review / no_match pinged, so successful bookings went
+  // silent. 'superseded' rows don't re-notify (duplicate suppression).
+  if (resolution !== "superseded") {
+    const url = process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
+    const name = parsed.clientName ?? "Unknown";
+    const whenShort = formatShort(parsed.appointmentAtISO);
+
+    let subject: string;
+    let headline: string;
+    let actionLink: string;
+    if (resolution === "auto_assigned" && matchedOrderId) {
+      subject = `[Booking confirmed] ${name} — ${whenShort}`;
+      headline = "A FloLabs booking confirmation came in and was auto-matched.";
+      actionLink = `<a href="${url}/admin/orders/${matchedOrderId}">Open order</a>`;
+    } else if (resolution === "needs_review") {
+      subject = `[Booking needs review] ${name} — ${whenShort}`;
+      headline =
+        "A FloLabs confirmation arrived with more than one plausible order — pick which one in the queue.";
+      actionLink = `<a href="${url}/admin/bookings/queue">Open review queue</a>`;
+    } else {
+      subject = `[Booking no match] ${name} — ${whenShort}`;
+      headline =
+        "A FloLabs confirmation arrived with no matching portal order — this may be a kit-only client, a quote-based order not yet in the portal, or a parsing miss.";
+      actionLink = `<a href="${url}/admin/bookings/queue">Open review queue</a>`;
+    }
+
     try {
-      const url = process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
       await resend.emails.send({
         from: "AvoVita Bookings <noreply@notify.avovita.ca>",
-        to: "mike@avovita.ca",
-        subject: `[Booking needs review] ${parsed.clientName ?? "Unknown"} — ${formatShort(parsed.appointmentAtISO)}`,
-        html: `<p>A FloLabs confirmation couldn't auto-match.</p>
-               <p><strong>${escapeHtml(parsed.clientName ?? "?")}</strong> · ${escapeHtml(parsed.clientEmail ?? "?")} · ${escapeHtml(formatShort(parsed.appointmentAtISO))}</p>
-               <p><a href="${url}/admin/bookings/queue">Open review queue</a></p>`,
+        to: ["mike@avovita.ca", "jenna@avovita.ca"],
+        subject,
+        html: `
+          <p>${headline}</p>
+          <p>
+            <strong>Client:</strong> ${escapeHtml(name)}<br>
+            <strong>Email:</strong> ${escapeHtml(parsed.clientEmail ?? "?")}<br>
+            <strong>Phone:</strong> ${escapeHtml(parsed.clientPhone ?? "?")}<br>
+            <strong>When:</strong> ${escapeHtml(whenShort)}<br>
+            <strong>Address:</strong> ${escapeHtml(parsed.address ?? "?")}<br>
+            <strong>Resolution:</strong> ${escapeHtml(resolution)}<br>
+            <strong>Candidate count:</strong> ${candidates.length}
+            ${
+              matchScore != null
+                ? `<br><strong>Match score:</strong> ${matchScore} (${escapeHtml(matchedBy.join(", "))})`
+                : ""
+            }
+          </p>
+          <p>${actionLink}</p>
+        `,
       });
     } catch {
-      /* non-fatal */
+      /* non-fatal — poll continues processing subsequent messages */
     }
   }
 
-  return resolution as "auto_assigned" | "needs_review" | "no_match";
+  return resolution as
+    | "auto_assigned"
+    | "needs_review"
+    | "no_match"
+    | "superseded";
 }
 
 async function markAsRead(messageId: string): Promise<void> {

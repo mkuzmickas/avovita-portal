@@ -134,31 +134,20 @@ export async function POST(request: NextRequest) {
     .select("id")
     .single();
 
-  // If Jenna needs to review, ping Mike so it doesn't sit unnoticed.
-  if (resolution !== "auto_assigned") {
-    try {
-      const url = process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
-      await resend.emails.send({
-        from: "AvoVita Bookings <noreply@notify.avovita.ca>",
-        to: "mike@avovita.ca",
-        subject: `[Booking needs review] ${parsed.clientName ?? "Unknown"} — ${formatShort(parsed.appointmentAtISO)}`,
-        html: `
-          <p>A FloLabs confirmation arrived that couldn't be auto-matched.</p>
-          <p>
-            <strong>Client:</strong> ${escapeHtml(parsed.clientName ?? "?")}<br>
-            <strong>Email:</strong> ${escapeHtml(parsed.clientEmail ?? "?")}<br>
-            <strong>Phone:</strong> ${escapeHtml(parsed.clientPhone ?? "?")}<br>
-            <strong>When:</strong> ${escapeHtml(formatShort(parsed.appointmentAtISO))}<br>
-            <strong>Resolution:</strong> ${resolution}<br>
-            <strong>Candidate count:</strong> ${candidates.length}
-          </p>
-          <p><a href="${url}/admin/bookings/queue">Open review queue</a></p>
-        `,
-      });
-    } catch (err) {
-      console.warn("[flolabs-inbound] notification email failed:", err);
-    }
-  }
+  // Always notify both admins — Mike wants visibility on every FloLabs
+  // confirmation that lands, including the happy auto-match case
+  // (previously only needs_review / no_match pinged, so the vast
+  // majority of successful bookings went silent). Subject + body are
+  // tailored to the resolution so a glance at the inbox makes it
+  // obvious which bookings need attention.
+  await sendAdminBookingNotification({
+    resolution,
+    parsed,
+    candidates,
+    matchedOrderId,
+    matchScore,
+    matchedBy,
+  });
 
   return NextResponse.json({
     ok: true,
@@ -188,4 +177,76 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+type Candidate = Awaited<ReturnType<typeof findCandidateOrders>>[number];
+
+/**
+ * Email Mike + Jenna on EVERY inbound FloLabs confirmation. Subject +
+ * body are tailored to the resolution — auto_assigned is the happy
+ * path and should read as a quiet confirmation; needs_review and
+ * no_match flag that someone has to look at the queue.
+ */
+async function sendAdminBookingNotification(opts: {
+  resolution: string;
+  parsed: ReturnType<typeof parseFloLabsEmail>;
+  candidates: Candidate[];
+  matchedOrderId: string | null;
+  matchScore: number | null;
+  matchedBy: string[];
+}): Promise<void> {
+  const { resolution, parsed, candidates, matchedOrderId, matchScore, matchedBy } =
+    opts;
+  const url = process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
+  const name = parsed.clientName ?? "Unknown";
+  const whenShort = formatShort(parsed.appointmentAtISO);
+
+  let subject: string;
+  let headline: string;
+  let actionLink: string;
+  if (resolution === "auto_assigned" && matchedOrderId) {
+    subject = `[Booking confirmed] ${name} — ${whenShort}`;
+    headline = "A FloLabs booking confirmation came in and was auto-matched.";
+    actionLink = `<a href="${url}/admin/orders/${matchedOrderId}">Open order</a>`;
+  } else if (resolution === "needs_review") {
+    subject = `[Booking needs review] ${name} — ${whenShort}`;
+    headline =
+      "A FloLabs confirmation arrived with more than one plausible order — pick which one in the queue.";
+    actionLink = `<a href="${url}/admin/bookings/queue">Open review queue</a>`;
+  } else {
+    subject = `[Booking no match] ${name} — ${whenShort}`;
+    headline =
+      "A FloLabs confirmation arrived with no matching portal order — this may be a kit-only client, a quote-based order not yet in the portal, or a parsing miss.";
+    actionLink = `<a href="${url}/admin/bookings/queue">Open review queue</a>`;
+  }
+
+  const html = `
+    <p>${headline}</p>
+    <p>
+      <strong>Client:</strong> ${escapeHtml(name)}<br>
+      <strong>Email:</strong> ${escapeHtml(parsed.clientEmail ?? "?")}<br>
+      <strong>Phone:</strong> ${escapeHtml(parsed.clientPhone ?? "?")}<br>
+      <strong>When:</strong> ${escapeHtml(whenShort)}<br>
+      <strong>Address:</strong> ${escapeHtml(parsed.address ?? "?")}<br>
+      <strong>Resolution:</strong> ${escapeHtml(resolution)}<br>
+      <strong>Candidate count:</strong> ${candidates.length}
+      ${
+        matchScore != null
+          ? `<br><strong>Match score:</strong> ${matchScore} (${escapeHtml(matchedBy.join(", "))})`
+          : ""
+      }
+    </p>
+    <p>${actionLink}</p>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: "AvoVita Bookings <noreply@notify.avovita.ca>",
+      to: ["mike@avovita.ca", "jenna@avovita.ca"],
+      subject,
+      html,
+    });
+  } catch (err) {
+    console.warn("[flolabs-inbound] notification email failed:", err);
+  }
 }
