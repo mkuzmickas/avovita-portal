@@ -151,24 +151,22 @@ export default function LoginPage() {
       style={{ backgroundColor: "#FFFFFF" }}
     >
       <div className="w-full max-w-md">
-        {/* Logo */}
+        {/* Wordmark — dark-text version on the white auth card */}
         <div className="text-center mb-8">
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "#E5E2D4" }}
-          >
-            <Leaf className="w-7 h-7" style={{ color: "#88D45D" }} />
-          </div>
-          <h1
-            className="font-heading text-3xl font-semibold"
+          <img
+            src="/logo-dark.png"
+            alt="AvoVita — Private Blood Testing"
             style={{
-              color: "#092819",
-              fontFamily: '"Cormorant Garamond", Georgia, serif',
+              height: 56,
+              width: "auto",
+              display: "block",
+              margin: "0 auto 12px",
             }}
+          />
+          <p
+            className="mt-1 text-sm"
+            style={{ color: "#5A5A5A", letterSpacing: "0.02em" }}
           >
-            AvoVita Wellness
-          </h1>
-          <p className="mt-1 text-sm" style={{ color: "#154D31" }}>
             Sign in to your patient portal
           </p>
         </div>
@@ -191,7 +189,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: "#4a7a56" }}>
-          Protected by Alberta PIPA · AvoVita Wellness
+          Protected by Alberta PIPA · AvoVita
         </p>
       </div>
     </div>

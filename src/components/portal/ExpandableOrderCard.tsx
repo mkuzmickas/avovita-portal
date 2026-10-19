@@ -43,7 +43,7 @@ export type PortalOrder = {
   shipped_at: string | null;
   created_at: string;
   /** ISO of the FloLabs appointment on this order, if one has been
-   *  booked. When populated, the "Book FloLabs Appointment" CTA is
+   *  booked. When populated, the "Book Collection Appointment" CTA is
    *  hidden so the customer can't open the Acuity page a second time
    *  and inadvertently book an unpaid duplicate. */
   appointment_at: string | null;
@@ -237,9 +237,9 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                     className="text-xs mt-1"
                     style={{ color: "#154D31" }}
                   >
-                    A FloLabs phlebotomist will meet you at the address you
+                    A certified phlebotomist will meet you at the address you
                     gave Acuity. To reschedule, use the Change / Cancel
-                    Appointment link in your FloLabs confirmation email.
+                    Appointment link in your collection confirmation email.
                   </p>
                 </div>
               </div>
@@ -268,11 +268,11 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                       fontFamily: '"Cormorant Garamond", Georgia, serif',
                     }}
                   >
-                    Book your FloLabs home visit
+                    Book your home collection visit
                   </h4>
                   <p className="text-sm" style={{ color: "#154D31" }}>
                     Your home collection visit needs to be scheduled. Click
-                    below to book your FloLabs appointment.
+                    below to book your collection appointment.
                   </p>
                 </div>
               </div>
@@ -283,7 +283,7 @@ export function ExpandableOrderCard({ order }: ExpandableOrderCardProps) {
                 className="mf-btn-primary w-full sm:w-auto sm:inline-flex px-5 py-3"
               >
                 <Calendar className="w-4 h-4" />
-                Book FloLabs Appointment
+                Book Collection Appointment
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>

@@ -1,51 +1,102 @@
 @import "tailwindcss";
 
 /* =============================================================================
-   AvoVita Lighter Premium Healthcare Theme (Oct 2026 re-palette)
-   Ivory-dominant, forest + muted gold + avocado lime accents.
-   Prior "Midnight Forest" names kept so inline references continue to
-   resolve — only the hex values moved.
+   AvoVita Brand Alignment (Oct 2026)
+   Spec: docs/brand/portal-rebrand.md
+   Reference: avovita.ca (live in this branding since 19 Oct 2026)
+
+   New --av-* token set is the source of truth. Legacy aliases
+   (--bg-*, --text-*, --gold, --green-*) remain, repointed at the new
+   values so existing inline references keep rendering with the
+   refreshed palette while components are migrated piece by piece.
    ============================================================================= */
 
 :root {
-  /* Backgrounds */
-  --bg-primary: #f7f6f0;    /* warm ivory — page bg */
-  --bg-secondary: #f7f6f0;  /* ivory — inputs on white cards */
-  --bg-tertiary: #ffffff;   /* white — cards, test listings */
-  --bg-hover: #efece0;      /* warmer ivory — hover states */
-
-  /* Borders */
-  --border-default: #e5e2d4;
-  --border-subtle: #efece0;
-
-  /* Text */
-  --text-primary: #092819;   /* forest — primary text */
-  --text-secondary: #154d31; /* deep green — body text */
-  --text-muted: rgba(9, 40, 25, 0.55);
-
-  /* Gold (primary accent, no longer the primary CTA — muted) */
-  --gold: #c6a04b;
-  --gold-hover: #d6af5b;
+  /* ─── NEW: canonical --av-* brand tokens ──────────────────────── */
+  /* Surfaces */
+  --av-white:        #FFFFFF;
+  --av-cream:        #F7F5F0;   /* page alt bands, zebra striping */
+  --av-stone:        #EFEAE0;   /* cards, wells, inset panels */
 
   /* Greens */
-  --green-accent: #88d45d;   /* avocado lime — highlights, selected icons */
-  --green-dark: #154d31;     /* deep green — primary buttons */
+  --av-green:        #14301A;   /* PRIMARY. Headings, nav, primary buttons */
+  --av-green-mid:    #1B4D2E;   /* secondary dark bands, hover states */
+  --av-green-deep:   #0E2412;   /* deepest band, footer */
 
-  /* Dark forest for nav / footer / "premium brand" bands */
-  --forest-dark: #092819;
+  /* Text */
+  --av-ink:          #2C2C2C;   /* body copy */
+  --av-ink-muted:    #5A5A5A;   /* captions, metadata */
 
-  /* Status */
-  --status-success: #88d45d;
-  --status-danger: #e05252;
-  --status-warning: #c6a04b;
+  /* Gold — read spec §3 before using */
+  --av-gold:         #B27730;   /* rules and borders on light. NEVER as text. */
+  --av-gold-deep:    #8A5A17;   /* the ONLY gold allowed as text on light (AA on white) */
+  --av-gold-bright:  #E1A652;   /* gold on dark green ONLY (fails on white) */
+
+  /* Lines */
+  --av-line:         #E3DED4;
 
   /* Fonts */
-  --font-heading: "Cormorant Garamond", Georgia, serif;
-  --font-body: "DM Sans", system-ui, sans-serif;
+  --av-font-display: "Playfair Display", Georgia, serif;
+  --av-font-body:    "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+                     "Segoe UI", Roboto, sans-serif;
+
+  /* ─── LEGACY aliases (repointed, do not add new usages) ───────── */
+  /* Backgrounds */
+  --bg-primary:    var(--av-cream);
+  --bg-secondary:  var(--av-cream);
+  --bg-tertiary:   var(--av-white);
+  --bg-hover:      var(--av-stone);
+
+  /* Borders */
+  --border-default: var(--av-line);
+  --border-subtle:  var(--av-stone);
+
+  /* Text */
+  --text-primary:   var(--av-green);
+  --text-secondary: var(--av-green-mid);
+  --text-muted:     var(--av-ink-muted);
+
+  /* Gold alias — maps to --av-gold-deep so a legacy "color: var(--gold)"
+     usage on a light bg still passes AA. The non-text gold is --av-gold. */
+  --gold:       var(--av-gold-deep);
+  --gold-hover: var(--av-gold);
+
+  /* Greens */
+  --green-accent: var(--av-green-mid);
+  --green-dark:   var(--av-green);
+
+  /* Dark forest for nav / footer bands */
+  --forest-dark:  var(--av-green-deep);
+
+  /* Status */
+  --status-success: var(--av-green-mid);
+  --status-danger:  #e05252;
+  --status-warning: var(--av-gold-deep);
+
+  /* Font aliases */
+  --font-heading: var(--av-font-display);
+  --font-body:    var(--av-font-body);
 }
 
-/* Expose palette to Tailwind v4 utility classes: bg-bg-primary, text-gold, etc. */
+/* Expose palette to Tailwind v4 utility classes. */
 @theme inline {
+  /* Canonical --av-* tokens — new work should use these utilities
+     (bg-av-cream, text-av-ink, border-av-line, etc.). */
+  --color-av-white:        var(--av-white);
+  --color-av-cream:        var(--av-cream);
+  --color-av-stone:        var(--av-stone);
+  --color-av-green:        var(--av-green);
+  --color-av-green-mid:    var(--av-green-mid);
+  --color-av-green-deep:   var(--av-green-deep);
+  --color-av-ink:          var(--av-ink);
+  --color-av-ink-muted:    var(--av-ink-muted);
+  --color-av-gold:         var(--av-gold);
+  --color-av-gold-deep:    var(--av-gold-deep);
+  --color-av-gold-bright:  var(--av-gold-bright);
+  --color-av-line:         var(--av-line);
+
+  /* Legacy aliases (bg-bg-primary, text-gold, etc.) — keep resolving
+     for existing components. */
   --color-bg-primary: var(--bg-primary);
   --color-bg-secondary: var(--bg-secondary);
   --color-bg-tertiary: var(--bg-tertiary);
@@ -85,10 +136,13 @@ html {
 
 body {
   background-color: var(--bg-primary);
-  color: var(--text-primary);
+  color: var(--av-ink);
   font-family: var(--font-body);
-  font-size: 17px;
-  line-height: 1.65;
+  /* Spec §4: portal baseline is 16px / 1.6 — deliberately smaller
+     than the marketing site's 17.5 because the portal shows denser
+     data (450-row catalogue, cart, tables). */
+  font-size: 16px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -96,7 +150,45 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
-  color: var(--text-primary);
+  color: var(--av-green);
+}
+
+/* Spec §3 failure mode #2: reversed-out headings on dark bands must
+   override EVERY heading level, not just the one in use today, or
+   an h3-on-dark will inherit --av-green on green and vanish. Opt in
+   with className="on-dark" on the container. */
+.on-dark h1,
+.on-dark h2,
+.on-dark h3,
+.on-dark h4,
+.on-dark h5,
+.on-dark h6 { color: var(--av-white); }
+.on-dark { color: rgba(255, 255, 255, 0.92); }
+
+/* Section-heading hairline — spec §5 signature detail. Add
+   className="av-section-heading" to the heading element. */
+.av-section-heading {
+  position: relative;
+  padding-bottom: 0.75rem;
+}
+.av-section-heading::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 58px;
+  height: 1px;
+  background-color: var(--av-gold);
+}
+.on-dark .av-section-heading::after {
+  background-color: var(--av-gold-bright);
+}
+
+/* Prices and numeric columns — tabular numerals so they align in
+   tables and side-by-side totals. Opt in with className="av-nums". */
+.av-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 /* ─── Reusable component classes ─────────────────────────────────────────── */
@@ -132,16 +224,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .mf-btn-primary {
-  /* Primary CTA: deep green bg + white text under new palette. The
-     previous gold-on-dark pairing lost contrast once the page bg
-     flipped to ivory, so primary action moved to deep green. */
-  background-color: var(--green-dark);
-  color: #ffffff;
+  /* Spec §5: primary on light = --av-green bg + white text, square
+     corners, uppercase, letter-spaced. Gold buttons live ONLY on dark
+     bands (see .mf-btn-primary-on-dark). */
+  background-color: var(--av-green);
+  color: var(--av-white);
   border: none;
-  border-radius: 0.5rem;
-  padding: 0.625rem 1.25rem;
+  border-radius: 0;
+  padding: 14px 24px;
+  font-family: var(--av-font-body);
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
   cursor: pointer;
   transition: background-color 150ms;
   display: inline-flex;
@@ -150,7 +245,30 @@ h1, h2, h3, h4, h5, h6 {
   gap: 0.5rem;
 }
 .mf-btn-primary:hover:not(:disabled) {
-  background-color: var(--forest-dark);
+  background-color: var(--av-green-mid);
+}
+/* Primary button when sitting on a dark band — gold with green text.
+   Only this variant is allowed to be gold-filled. */
+.mf-btn-primary-on-dark {
+  background-color: var(--av-gold-bright);
+  color: var(--av-green);
+  border: none;
+  border-radius: 0;
+  padding: 14px 24px;
+  font-family: var(--av-font-body);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  cursor: pointer;
+  transition: filter 150ms;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.mf-btn-primary-on-dark:hover:not(:disabled) {
+  filter: brightness(1.05);
 }
 .mf-btn-primary:disabled {
   opacity: 0.6;

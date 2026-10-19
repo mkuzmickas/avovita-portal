@@ -126,7 +126,7 @@ export function PostPurchaseOnboarding({
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            AvoVita Wellness
+            AvoVita
           </span>
         </div>
 
@@ -226,7 +226,7 @@ export function PostPurchaseOnboarding({
           className="text-center text-xs mt-6"
           style={{ color: "#4a7a56" }}
         >
-          Protected by Alberta PIPA · AvoVita Wellness
+          Protected by Alberta PIPA · AvoVita
         </p>
       </div>
     </div>
@@ -845,7 +845,7 @@ function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            AvoVita Wellness
+            AvoVita
           </span>
         </div>
 

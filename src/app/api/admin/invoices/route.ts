@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
           avovita_invoice_id: invoiceRow.id,
           avovita_invoice_number: invoiceRow.invoice_number,
         },
-        footerText: `Invoice ${invoiceRow.invoice_number} · AvoVita Wellness`,
+        footerText: `Invoice ${invoiceRow.invoice_number} · AvoVita`,
       });
     } catch (err) {
       // Stripe failed. Leave the local row in 'draft' so an admin can

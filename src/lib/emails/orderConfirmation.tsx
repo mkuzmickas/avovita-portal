@@ -313,10 +313,10 @@ export function renderOrderConfirmationEmail(
                 Your home collection visit
               </h3>
               <p style="margin: 0 0 8px 0; font-size: 14px; color: #4b5563; line-height: 1.5;">
-                A FloLabs phlebotomist will visit your home to collect specimens. The draw typically takes 10–20 minutes.
+                A certified phlebotomist will visit your home to collect specimens. The draw typically takes 10–20 minutes.
               </p>
               <a href="${floLabsUrl}" target="_blank" style="display: inline-block; background: #c4973a; color: #0a1a0d; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 14px; margin: 8px 0 16px 0;">
-                Schedule Your FloLabs Appointment
+                Schedule Your Collection Appointment
               </a>
             </td>
           </tr>`
@@ -364,7 +364,7 @@ export function renderOrderConfirmationEmail(
           <tr>
             <td style="padding: 20px 32px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #6b7280;">
-                AvoVita Wellness Inc. · Calgary, AB, Canada
+                AvoVita Inc. · Calgary, AB, Canada
               </p>
               <p style="margin: 0 0 6px 0; font-size: 11px; color: #9ca3af;">
                 GST/HST #: 735160749RT0001

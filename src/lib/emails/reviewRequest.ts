@@ -29,7 +29,7 @@ export function reviewRequestSubject(): string {
 export function reviewRequestSmsBody(firstName: string): string {
   // Keeps the exact wording from the spec — link is preserved in
   // full so the SMS may run to two segments. Acceptable per spec.
-  return `Hi ${firstName}, thanks for choosing AvoVita Wellness! If you have a moment, we'd love your feedback on Google: ${REVIEW_URL} — The AvoVita Team`;
+  return `Hi ${firstName}, thanks for choosing AvoVita! If you have a moment, we'd love your feedback on Google: ${REVIEW_URL} — The AvoVita Team`;
 }
 
 export function renderReviewRequestEmail(
@@ -65,7 +65,7 @@ export function renderReviewRequestEmail(
                 Hi ${safeFirst},
               </h2>
               <p style="margin: 0 0 14px 0; font-size: 15px; color: #4b5563; line-height: 1.55;">
-                Thank you for choosing AvoVita Wellness for your recent lab
+                Thank you for choosing AvoVita for your recent lab
                 testing. We hope your experience was a positive one.
               </p>
               <p style="margin: 0 0 14px 0; font-size: 15px; color: #4b5563; line-height: 1.55;">
@@ -99,7 +99,7 @@ export function renderReviewRequestEmail(
           <tr>
             <td style="padding: 20px 32px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #6b7280;">
-                AvoVita Wellness · Calgary, AB, Canada
+                AvoVita · Calgary, AB, Canada
               </p>
               <p style="margin: 0; font-size: 11px; color: #9ca3af;">
                 Your health information is protected under Alberta PIPA.

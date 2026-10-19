@@ -500,7 +500,7 @@ export function Step4Review({
             {collectionAddress.postal_code}
           </p>
           <p className="text-xs mt-1" style={{ color: "#4a7a56" }}>
-            FloLabs will confirm the full street address when you book
+            Our collection team will confirm the full street address when you book
             your collection slot.
           </p>
         </div>

@@ -129,7 +129,7 @@ function TuesdayNotice() {
           Tuesday morning collection required.
         </strong>{" "}
         This panel contains Potassium, which must ship same-day to the
-        laboratory. Your FloLabs appointment must be booked on a Tuesday
+        laboratory. Your collection appointment must be booked on a Tuesday
         morning.
       </p>
     </div>

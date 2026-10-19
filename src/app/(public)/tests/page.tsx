@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description:
     "Browse private lab tests available for in-home collection in Calgary. Hormones, fertility, autoimmune, heart health, cancer screening, and more — delivered by Mayo Clinic Laboratories, Armin Labs, Dynacare, ReligenDx, and Precision Epigenomics.",
   openGraph: {
-    title: "Lab Test Catalogue — AvoVita Wellness",
+    title: "Lab Test Catalogue — AvoVita",
     description:
       "Browse private lab tests available for in-home collection in Calgary.",
     type: "website",

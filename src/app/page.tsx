@@ -21,7 +21,7 @@ export default function HomePage() {
               className="font-heading text-xl font-semibold"
               style={{ color: "#092819", fontFamily: '"Cormorant Garamond", Georgia, serif' }}
             >
-              AvoVita Wellness
+              AvoVita
             </span>
           </Link>
 
@@ -224,7 +224,7 @@ export default function HomePage() {
           color: "#4a7a56",
         }}
       >
-        <p>© {new Date().getFullYear()} AvoVita Wellness · Calgary, AB</p>
+        <p>© {new Date().getFullYear()} AvoVita · Calgary, AB</p>
         <p className="mt-2">
           All health information protected under Alberta PIPA.{" "}
           <Link

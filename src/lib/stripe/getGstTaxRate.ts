@@ -51,7 +51,7 @@ export async function getGstTaxRate(): Promise<string> {
   // None found — create one.
   const created = await stripe.taxRates.create({
     display_name: "GST",
-    description: "Canadian Goods and Services Tax — AvoVita Wellness",
+    description: "Canadian Goods and Services Tax — AvoVita",
     percentage: 5,
     inclusive: false,
     country: "CA",

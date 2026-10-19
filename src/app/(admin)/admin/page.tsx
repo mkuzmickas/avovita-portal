@@ -119,7 +119,7 @@ export default async function AdminDashboard() {
           Admin <span style={{ color: "#c4973a" }}>Dashboard</span>
         </h1>
         <p className="mt-1" style={{ color: "#e8d5a3" }}>
-          AvoVita Wellness operations overview
+          AvoVita operations overview
         </p>
       </div>
 

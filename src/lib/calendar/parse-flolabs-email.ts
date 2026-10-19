@@ -7,7 +7,7 @@
  * extracted either way.
  *
  * Format seen in the wild (Aug 2026 sample):
- *   Subject: Confirmation of Booking: AvoVita Wellness Mobile Lab
+ *   Subject: Confirmation of Booking: AvoVita Mobile Lab
  *            Collection (Coleen Allydice) on Thursday, August 20,
  *            2026 10:00am MDT
  *   Body has an admin-only section with:
@@ -50,9 +50,9 @@ export function parseFloLabsEmail(raw: string): ParsedFloLabsEmail {
   // Name capture — stop at newline OR a recognized Acuity section
   // keyword. The old pattern used `[A-Za-z' -]+` which includes space,
   // so when Outlook flattens the HTML table cells onto a single line
-  // ("for Jeff Saponja What AvoVita Wellness Mobile Lab Collection")
+  // ("for Jeff Saponja What AvoVita Mobile Lab Collection")
   // the regex greedily ate the whole line as the "name" and Jenna
-  // ended up with clients called "Jeff Saponja What AvoVita Wellness
+  // ended up with clients called "Jeff Saponja What AvoVita
   // Mobile Lab Collection". Non-greedy match + lookahead to the next
   // section keyword bounds it properly; supports multi-word last
   // names like "Paula da Silva".

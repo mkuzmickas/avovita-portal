@@ -112,7 +112,7 @@ export function renderPasswordResetEmail(
           <tr>
             <td style="padding: 20px 32px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #6b7280;">
-                AvoVita Wellness · Calgary, AB, Canada
+                AvoVita · Calgary, AB, Canada
               </p>
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #6b7280;">
                 Need help? Reach us at <a href="mailto:support@avovita.ca" style="color: #0f2614;">support@avovita.ca</a>

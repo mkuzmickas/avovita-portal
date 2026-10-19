@@ -88,7 +88,7 @@ export function PreviewAvailabilityFab() {
         const body = await res.json().catch(() => ({}));
         setError(
           body.error ??
-            "Availability preview is temporarily unavailable — you can still see full availability on the FloLabs page.",
+            "Availability preview is temporarily unavailable — you can still see full availability on the booking page.",
         );
         return;
       }
@@ -96,7 +96,7 @@ export function PreviewAvailabilityFab() {
       setData(json);
     } catch {
       setError(
-        "Couldn't reach availability preview. Try again in a moment or open the FloLabs page for the full calendar.",
+        "Couldn't reach availability preview. Try again in a moment or open the booking page for the full calendar.",
       );
     } finally {
       setLoading(false);
@@ -417,7 +417,7 @@ export function PreviewAvailabilityFab() {
                     style={{ borderColor: "#E5E2D4", color: "#4a7a56" }}
                   >
                     <span>
-                      Snapshot from FloLabs · updated{" "}
+                      Snapshot from our booking system · updated{" "}
                       {new Date(data.fetchedAt).toLocaleTimeString("en-CA", {
                         hour: "numeric",
                         minute: "2-digit",

@@ -79,7 +79,7 @@ export async function bookPickup(
     packageCount: params.packageCount,
     carrierCode: params.carrierCode,
     commodityDescription: params.commodityDescription,
-    remarks: "AvoVita Wellness scheduled pickup",
+    remarks: "AvoVita scheduled pickup",
     pickupNotificationDetail: {
       emailDetails: [
         {

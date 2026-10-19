@@ -60,7 +60,7 @@ export function PostPurchaseOnboarding({
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            AvoVita Wellness
+            AvoVita
           </span>
         </div>
 
@@ -150,7 +150,7 @@ export function PostPurchaseOnboarding({
                 className="text-sm max-w-md mx-auto mb-8 leading-relaxed"
                 style={{ color: "#154D31" }}
               >
-                Your profile and consent are on file. A FloLabs phlebotomist
+                Your profile and consent are on file. A certified phlebotomist
                 will contact you to schedule your home collection. Your
                 results will appear in your portal as soon as they&apos;re
                 ready.
@@ -172,7 +172,7 @@ export function PostPurchaseOnboarding({
           className="text-center text-xs mt-6"
           style={{ color: "#4a7a56" }}
         >
-          Protected by Alberta PIPA · AvoVita Wellness
+          Protected by Alberta PIPA · AvoVita
         </p>
       </div>
     </div>

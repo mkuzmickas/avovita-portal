@@ -52,8 +52,8 @@ export function invoiceNotificationSubject(
   invoiceType: InvoiceNotificationProps["invoiceType"],
 ): string {
   return invoiceType === "order_amendment"
-    ? `AvoVita Wellness — Additional tests added to your order (Invoice ${invoiceNumber})`
-    : `AvoVita Wellness — Invoice ${invoiceNumber}`;
+    ? `AvoVita — Additional tests added to your order (Invoice ${invoiceNumber})`
+    : `AvoVita — Invoice ${invoiceNumber}`;
 }
 
 function escapeHtml(s: string): string {
@@ -217,7 +217,7 @@ export function renderInvoiceNotificationEmail(
           <tr>
             <td style="padding: 20px 32px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #6b7280;">
-                AvoVita Wellness · 204 Cougartown Close SW, Calgary, AB T3H 0B2
+                AvoVita · 204 Cougartown Close SW, Calgary, AB T3H 0B2
               </p>
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #6b7280;">
                 GST 735160749RT0001 · results@avovita.ca · 1-855-286-8482
@@ -245,5 +245,5 @@ export function invoiceNotificationSmsBody(opts: {
   totalCad: number;
   hostedInvoiceUrl: string;
 }): string {
-  return `Hi ${opts.firstName}, AvoVita Wellness has sent you an invoice for ${fmtMoney(opts.totalCad)} (${opts.invoiceNumber}). Pay securely: ${opts.hostedInvoiceUrl} — Questions? Reply to this text.`;
+  return `Hi ${opts.firstName}, AvoVita has sent you an invoice for ${fmtMoney(opts.totalCad)} (${opts.invoiceNumber}). Pay securely: ${opts.hostedInvoiceUrl} — Questions? Reply to this text.`;
 }

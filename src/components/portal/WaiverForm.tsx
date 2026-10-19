@@ -42,11 +42,11 @@ This agreement must be completed by the individual purchasing testing services, 
 
 ROLE OF AVOVITA WELLNESS
 
-AvoVita Wellness acts solely as a facilitator connecting clients with independent third-party laboratory testing and specimen collection services. AvoVita Wellness does not perform laboratory testing, does not collect or handle biological specimens, does not employ phlebotomists or laboratory technicians, and does not provide medical advice, diagnosis, or treatment. All specimen collection is performed by independent contractors and all laboratory analysis is performed by independent licensed laboratories.
+AvoVita acts solely as a facilitator connecting clients with independent third-party laboratory testing and specimen collection services. AvoVita does not perform laboratory testing, does not collect or handle biological specimens, does not employ phlebotomists or laboratory technicians, and does not provide medical advice, diagnosis, or treatment. All specimen collection is performed by independent contractors and all laboratory analysis is performed by independent licensed laboratories.
 
 RELEASE OF LIABILITY AND INDEMNIFICATION
 
-To the fullest extent permitted by applicable law, I hereby release, waive, discharge, and covenant not to sue AvoVita Wellness, its owners, officers, employees, agents, and assigns (collectively "AvoVita") from any and all liability, claims, demands, actions, or causes of action whatsoever arising out of or related to any loss, damage, injury, or death that may be sustained by me or any person for whom I am ordering testing, including minors, arising out of or in connection with: (a) the in-home specimen collection visit, including but not limited to any adverse reaction to phlebotomy, needle injury, bruising, infection, or any other complication arising from specimen collection performed by the independent collection provider; (b) any act, omission, negligence, or conduct of the independent specimen collection provider or laboratory; (c) specimen handling, processing, shipping, or courier delays including FedEx or any other carrier; (d) laboratory testing inaccuracies, errors, or omissions; (e) any delay in or failure to deliver results.
+To the fullest extent permitted by applicable law, I hereby release, waive, discharge, and covenant not to sue AvoVita, its owners, officers, employees, agents, and assigns (collectively "AvoVita") from any and all liability, claims, demands, actions, or causes of action whatsoever arising out of or related to any loss, damage, injury, or death that may be sustained by me or any person for whom I am ordering testing, including minors, arising out of or in connection with: (a) the in-home specimen collection visit, including but not limited to any adverse reaction to phlebotomy, needle injury, bruising, infection, or any other complication arising from specimen collection performed by the independent collection provider; (b) any act, omission, negligence, or conduct of the independent specimen collection provider or laboratory; (c) specimen handling, processing, shipping, or courier delays including FedEx or any other carrier; (d) laboratory testing inaccuracies, errors, or omissions; (e) any delay in or failure to deliver results.
 
 WHERE I AM COMPLETING THIS AGREEMENT ON BEHALF OF A MINOR, I represent that I am the parent or legal guardian of the minor with full authority to execute this agreement. I agree to indemnify, defend, and hold harmless AvoVita from and against any and all claims, damages, losses, costs, and expenses (including legal fees) brought by or on behalf of the minor arising out of or related to the services facilitated by AvoVita, including any claim the minor may bring upon reaching the age of majority.
 
@@ -54,11 +54,11 @@ I acknowledge and agree that the home visit fee paid to AvoVita is compensation 
 
 MEDICAL DISCLAIMER
 
-AvoVita Wellness does not provide medical advice, diagnosis, or treatment. Laboratory results are for informational purposes only and should not be relied upon as a substitute for professional medical advice. I acknowledge that I have been advised to consult a qualified healthcare professional regarding the interpretation of any results.
+AvoVita does not provide medical advice, diagnosis, or treatment. Laboratory results are for informational purposes only and should not be relied upon as a substitute for professional medical advice. I acknowledge that I have been advised to consult a qualified healthcare professional regarding the interpretation of any results.
 
 DATA AND PRIVACY
 
-By proceeding I consent to my personal and health information being transmitted to third-party laboratories, which may be located in the United States or Germany, solely for the purpose of performing the requested testing. AvoVita Wellness does not maintain permanent medical records. Results may be temporarily stored solely for the purpose of delivery via the secure patient portal and will be handled in accordance with Alberta's Personal Information Protection Act (PIPA).
+By proceeding I consent to my personal and health information being transmitted to third-party laboratories, which may be located in the United States or Germany, solely for the purpose of performing the requested testing. AvoVita does not maintain permanent medical records. Results may be temporarily stored solely for the purpose of delivery via the secure patient portal and will be handled in accordance with Alberta's Personal Information Protection Act (PIPA).
 
 GOVERNING LAW
 
@@ -241,7 +241,7 @@ export function WaiverForm({
         <CheckboxRow
           checked={check2}
           onToggle={() => setCheck2((v) => !v)}
-          label="I confirm that I have read and understood the information above and acknowledge the role and limitations of AvoVita Wellness as a facilitator of private laboratory testing services. I agree to these terms and consent to proceed."
+          label="I confirm that I have read and understood the information above and acknowledge the role and limitations of AvoVita as a facilitator of private laboratory testing services. I agree to these terms and consent to proceed."
         />
         <CheckboxRow
           checked={check3}

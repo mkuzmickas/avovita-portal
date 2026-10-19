@@ -200,7 +200,7 @@ export async function generateInvoicePdf(
   let y = PAGE_H - MARGIN;
 
   // ── Header: business identity (left) + INVOICE label (right) ──
-  text("AvoVita Wellness", MARGIN, y, {
+  text("AvoVita", MARGIN, y, {
     size: 18,
     bold: true,
     color: COLOR_ACCENT,
@@ -434,7 +434,7 @@ export async function generateInvoicePdf(
   text(`Payment: ${invoice.paymentLabel}`, MARGIN, y, { size: SIZE_BODY });
   y -= 30;
   y = rule(y);
-  text("Thank you for choosing AvoVita Wellness.", MARGIN, y, {
+  text("Thank you for choosing AvoVita.", MARGIN, y, {
     size: SIZE_BODY,
     bold: true,
     color: COLOR_BRAND_GREEN,

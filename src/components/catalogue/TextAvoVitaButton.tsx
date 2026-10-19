@@ -124,7 +124,7 @@ export function TextAvoVitaButton() {
               }}
             >
               <p className="mb-3">
-                AvoVita Wellness would like your consent to send
+                AvoVita would like your consent to send
                 informational text message communications from{" "}
                 <strong>+{number}</strong> to your mobile number, in
                 response to your questions or to provide information

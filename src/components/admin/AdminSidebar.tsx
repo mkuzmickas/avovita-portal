@@ -123,26 +123,33 @@ export function AdminSidebar({ email, role, pendingResultsCount }: AdminSidebarP
           className="flex items-center gap-2.5 group flex-1 min-w-0"
           title={collapsed ? "AvoVita Admin" : undefined}
         >
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center border shrink-0"
-            style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
-          >
-            <Leaf className="w-4 h-4" style={{ color: "#c4973a" }} />
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p
-                className="font-heading font-semibold leading-tight truncate"
+          {collapsed ? (
+            // Collapsed rail — leaf icon stand-in; wordmark would be
+            // unreadable at this scale.
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center border shrink-0"
+              style={{ backgroundColor: "#1B4D2E", borderColor: "#E1A652" }}
+            >
+              <Leaf className="w-4 h-4" style={{ color: "#E1A652" }} />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 min-w-0">
+              <img
+                src="/logo-white.png?v=2"
+                alt="AvoVita"
+                style={{ height: 28, width: "auto", display: "block" }}
+              />
+              <span
+                className="text-xs shrink-0"
                 style={{
-                  color: "#ffffff",
-                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                  color: "#E1A652",
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  fontWeight: 600,
                 }}
               >
-                AvoVita
-              </p>
-              <p className="text-xs" style={{ color: "#c4973a" }}>
                 Admin
-              </p>
+              </span>
             </div>
           )}
         </Link>

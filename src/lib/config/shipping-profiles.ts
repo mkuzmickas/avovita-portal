@@ -21,7 +21,7 @@
 // ─── Shared sender info (AvoVita) ──────────────────────────────────
 export const SHIPPER = {
   contactName: "Mike Kuzmickas",
-  company: "AvoVita Wellness",
+  company: "AvoVita",
   phone: "4038633933",
   email: "mike@avovita.ca",
   address: {

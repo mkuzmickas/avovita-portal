@@ -228,7 +228,7 @@ export default function UpdatePasswordPage() {
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: "#4a7a56" }}>
-          Protected by Alberta PIPA · AvoVita Wellness
+          Protected by Alberta PIPA · AvoVita
         </p>
       </div>
     </div>

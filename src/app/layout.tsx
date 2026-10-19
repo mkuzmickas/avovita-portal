@@ -7,16 +7,16 @@ import { RepeatClientProvider } from "@/components/account/RepeatClientContext";
 
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.avovita.ca";
-const SITE_NAME = "AvoVita Wellness";
-const TITLE = "AvoVita Wellness — Private Lab Testing Calgary";
+const SITE_NAME = "AvoVita";
+const TITLE = "AvoVita — Private Lab Testing Calgary";
 const DESCRIPTION =
-  "Private blood testing in Calgary. In-home specimen collection by FloLabs. Results delivered securely online.";
+  "Private blood testing in Calgary. In-home specimen collection, results delivered securely online.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
     default: TITLE,
-    template: "%s | AvoVita Wellness",
+    template: "%s | AvoVita",
   },
   description: DESCRIPTION,
   applicationName: SITE_NAME,
@@ -24,15 +24,14 @@ export const metadata: Metadata = {
   keywords: [
     "private lab testing Calgary",
     "in-home blood testing",
-    "FloLabs phlebotomist",
     "private blood work Alberta",
     "Mayo Clinic Laboratories",
     "Armin Labs",
-    "AvoVita Wellness",
+    "AvoVita",
   ],
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
-  publisher: "AvoVita Wellness",
+  publisher: SITE_NAME,
   formatDetection: {
     email: false,
     address: false,
@@ -79,14 +78,14 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <meta name="theme-color" content="#F7F6F0" />
+        <meta name="theme-color" content="#F7F5F0" />
       </head>
       <body
         className="min-h-full flex flex-col antialiased"
-        style={{ backgroundColor: "#FFFFFF", color: "#154D31" }}
+        style={{ backgroundColor: "#F7F5F0", color: "#2C2C2C" }}
       >
         <RepeatClientProvider>
           {/* AnalyticsProvider outside CartProvider so CartContext

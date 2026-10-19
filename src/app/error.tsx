@@ -34,7 +34,7 @@ export default function GlobalError({ error, reset }: ErrorProps) {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            AvoVita Wellness
+            AvoVita
           </span>
         </div>
 

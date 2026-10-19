@@ -59,7 +59,7 @@ interface ScheduleAckEntry {
 const TUESDAY_MAYO_INTRO =
   "requires a Tuesday collection only. The specimen has a 48-hour stability window and must ship same-day to Mayo Clinic Laboratories to meet stability requirements.";
 const TUESDAY_MAYO_BULLETS = [
-  "Your FloLabs appointment must be booked on a Tuesday",
+  "Your collection appointment must be booked on a Tuesday",
   "FedEx shipping delays can cause the specimen to time out before reaching the lab — if this occurs, this test fee will be refunded but the home visit fee is non-refundable",
   "We strongly recommend ordering this test alongside others so your home visit fee is not wasted if the specimen is compromised in transit",
 ];

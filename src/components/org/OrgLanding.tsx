@@ -66,7 +66,7 @@ export function OrgLanding() {
             style={{ color: "#154D31" }}
           >
             Browse our full catalogue of private lab tests or speak with our
-            AI test advisor — all delivered to your door by AvoVita Wellness
+            AI test advisor — all delivered to your door by AvoVita
             in Calgary.
           </p>
 
@@ -109,7 +109,7 @@ export function OrgLanding() {
             className="text-sm uppercase tracking-wider font-semibold mb-2"
             style={{ color: LABEL_GREEN, letterSpacing: "0.18em" }}
           >
-            Powered by AvoVita Wellness
+            Powered by AvoVita
           </p>
           <h2
             className="font-heading text-2xl sm:text-3xl font-semibold mb-3"
@@ -121,7 +121,7 @@ export function OrgLanding() {
             Private, professional lab testing — at your home
           </h2>
           <p className="text-sm" style={{ color: "#154D31" }}>
-            FloLabs phlebotomists collect at your address, samples ship to
+            Phlebotomists collect at your address, samples ship to
             world-class labs, and results land securely in your private portal.
             Protected under Alberta PIPA.
           </p>
@@ -138,10 +138,10 @@ export function OrgLanding() {
         }}
       >
         <p>
-          © {new Date().getFullYear()} AvoVita Wellness · Calgary, AB
+          © {new Date().getFullYear()} AvoVita · Calgary, AB
         </p>
         <p className="mt-2">
-          Partnered with{" "}
+          In collaboration with{" "}
           <span style={{ color: "#154D31", fontWeight: 600 }}>
             {org?.name}
           </span>

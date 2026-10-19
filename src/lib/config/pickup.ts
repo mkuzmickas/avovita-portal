@@ -28,7 +28,7 @@ export const SAVED_PICKUP_ADDRESSES: SavedPickupAddress[] = [
     key: "shawfield",
     displayLabel: "Home — 137 Shawfield Bay SW, Calgary AB T2Y 2W4",
     contactName: "Mike Kuzmickas",
-    companyName: "AvoVita Wellness",
+    companyName: "AvoVita",
     phone: "4038633933",
     streetLines: ["137 Shawfield Bay SW"],
     city: "Calgary",

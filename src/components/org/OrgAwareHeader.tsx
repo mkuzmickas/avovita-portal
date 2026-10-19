@@ -9,7 +9,7 @@ import { AccountIndicator } from "@/components/auth/AccountIndicator";
 /**
  * Top header used by the homepage and the catalogue page. When an
  * OrgProvider is in scope it swaps to the partner's logo + a
- * "Powered by AvoVita Wellness" lockup. Outside an org route it
+ * "Powered by AvoVita" lockup. Outside an org route it
  * renders the standard AvoVita brand bar.
  */
 export function OrgAwareHeader({
@@ -79,24 +79,15 @@ export function OrgAwareHeader({
 }
 
 function DefaultBrandMark() {
+  // Dark-forest nav bar → use the reversed wordmark PNG so the gold +
+  // silver treatment reads properly against #14301A. 36px tall matches
+  // the spec's header mark size.
   return (
-    <>
-      <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center border shrink-0"
-        style={{ backgroundColor: "#154d31", borderColor: "#154d31" }}
-      >
-        <Leaf className="w-5 h-5" style={{ color: "#88d45d" }} />
-      </div>
-      <span
-        className="font-heading text-xl font-semibold truncate"
-        style={{
-          color: "#ffffff",
-          fontFamily: '"Cormorant Garamond", Georgia, serif',
-        }}
-      >
-        AvoVita Wellness
-      </span>
-    </>
+    <img
+      src="/logo-white.png?v=2"
+      alt="AvoVita — Private Blood Testing"
+      style={{ height: 36, width: "auto", display: "block" }}
+    />
   );
 }
 
@@ -254,8 +245,8 @@ function OrgBrandMark({
           }}
         >
           Powered by{" "}
-          <span style={{ color: "#C6A04B", fontWeight: 600 }}>
-            AvoVita Wellness
+          <span style={{ color: "#8A5A17", fontWeight: 600 }}>
+            AvoVita
           </span>
         </p>
       </div>

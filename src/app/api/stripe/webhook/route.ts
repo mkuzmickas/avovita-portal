@@ -1159,7 +1159,7 @@ async function handleCheckoutCompleteV2(
     ${p.supplement_fulfillment === "coordinated" ? '<p style="margin:16px 0 0;font-size:13px;color:#c4973a;">You selected coordinated delivery — we\'ll be in touch to arrange pickup or delivery.</p>' : ""}
   </td></tr>
   <tr><td style="padding:12px 32px;background:#0f2614;border-top:1px solid #1a3d22;text-align:center;">
-    <p style="margin:0;font-size:11px;color:#6ab04c;">AvoVita Wellness Inc. · GST/HST #: 735160749RT0001</p>
+    <p style="margin:0;font-size:11px;color:#6ab04c;">AvoVita Inc. · GST/HST #: 735160749RT0001</p>
   </td></tr>
 </table>
 </td></tr></table>

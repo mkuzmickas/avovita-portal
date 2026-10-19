@@ -145,7 +145,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
             >
               <Image
                 src="/logo-dark.png"
-                alt="AvoVita Wellness"
+                alt="AvoVita"
                 width={140}
                 height={32}
                 priority
@@ -556,7 +556,7 @@ function LoadingState() {
         >
           <Image
             src="/logo-dark.png"
-            alt="AvoVita Wellness"
+            alt="AvoVita"
             width={160}
             height={36}
             priority

@@ -60,7 +60,7 @@ export default async function CompleteWaiverPage() {
               fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            AvoVita Wellness
+            AvoVita
           </span>
         </div>
 
@@ -82,7 +82,7 @@ export default async function CompleteWaiverPage() {
           className="text-center text-xs mt-6"
           style={{ color: "#4a7a56" }}
         >
-          Protected by Alberta PIPA · AvoVita Wellness
+          Protected by Alberta PIPA · AvoVita
         </p>
       </div>
     </div>
