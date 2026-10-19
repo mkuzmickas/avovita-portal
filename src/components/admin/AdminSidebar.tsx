@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -21,6 +22,8 @@ import {
   Receipt,
   FileInput,
   Truck,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -55,9 +58,38 @@ const NAV_LINKS: NavLink[] = [
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3, key: "analytics" },
 ];
 
+const COLLAPSE_STORAGE_KEY = "avovita.admin.sidebarCollapsed";
+
 export function AdminSidebar({ email, role, pendingResultsCount }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+
+  // Collapsed state persists per-browser via localStorage so the choice
+  // survives page navigation and reloads. SSR renders expanded; the
+  // mount effect reads the stored value and flips if needed. The 1-tick
+  // flash from expanded → collapsed is cheap compared to hydration
+  // mismatches from reading storage on first render.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(COLLAPSE_STORAGE_KEY) === "1") {
+        setCollapsed(true);
+      }
+    } catch {
+      /* private mode / blocked storage — leave expanded */
+    }
+  }, []);
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(COLLAPSE_STORAGE_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
 
   // calendar_viewer sees only the Calendar link — scoped role for
   // FloLabs staff who need visibility into collection times but no
@@ -74,35 +106,60 @@ export function AdminSidebar({ email, role, pendingResultsCount }: AdminSidebarP
     router.refresh();
   };
 
+  const asideWidth = collapsed ? "w-16" : "w-64";
+
   return (
     <aside
-      className="w-64 shrink-0 flex flex-col min-h-screen sticky top-0 border-r"
+      className={`${asideWidth} shrink-0 flex flex-col min-h-screen sticky top-0 border-r transition-[width] duration-200`}
       style={{ backgroundColor: "#0f2614", borderColor: "#1a3d22" }}
     >
-      {/* Logo */}
-      <div className="px-6 py-5 border-b" style={{ borderColor: "#1a3d22" }}>
-        <Link href="/admin" className="flex items-center gap-2.5 group">
+      {/* Logo + collapse toggle */}
+      <div
+        className="px-3 py-5 border-b flex items-center gap-2"
+        style={{ borderColor: "#1a3d22" }}
+      >
+        <Link
+          href="/admin"
+          className="flex items-center gap-2.5 group flex-1 min-w-0"
+          title={collapsed ? "AvoVita Admin" : undefined}
+        >
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center border"
+            className="w-8 h-8 rounded-lg flex items-center justify-center border shrink-0"
             style={{ backgroundColor: "#1a3d22", borderColor: "#c4973a" }}
           >
             <Leaf className="w-4 h-4" style={{ color: "#c4973a" }} />
           </div>
-          <div>
-            <p
-              className="font-heading font-semibold leading-tight"
-              style={{
-                color: "#ffffff",
-                fontFamily: '"Cormorant Garamond", Georgia, serif',
-              }}
-            >
-              AvoVita
-            </p>
-            <p className="text-xs" style={{ color: "#c4973a" }}>
-              Admin
-            </p>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p
+                className="font-heading font-semibold leading-tight truncate"
+                style={{
+                  color: "#ffffff",
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                }}
+              >
+                AvoVita
+              </p>
+              <p className="text-xs" style={{ color: "#c4973a" }}>
+                Admin
+              </p>
+            </div>
+          )}
         </Link>
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          className="shrink-0 w-7 h-7 rounded-md flex items-center justify-center transition-colors"
+          style={{ color: "#c4973a", backgroundColor: "#1a3d22" }}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? (
+            <ChevronsRight className="w-4 h-4" />
+          ) : (
+            <ChevronsLeft className="w-4 h-4" />
+          )}
+        </button>
       </div>
 
       {/* Nav */}
@@ -118,14 +175,17 @@ export function AdminSidebar({ email, role, pendingResultsCount }: AdminSidebarP
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-colors"
+              title={collapsed ? label : undefined}
+              className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} px-3 py-2.5 rounded-r-lg text-sm font-medium transition-colors relative`}
               style={
                 active
                   ? {
                       color: "#c4973a",
                       backgroundColor: "#1f4a28",
                       borderLeft: "3px solid #c4973a",
-                      paddingLeft: "calc(0.75rem - 3px)",
+                      paddingLeft: collapsed
+                        ? "calc(0.75rem - 3px)"
+                        : "calc(0.75rem - 3px)",
                     }
                   : {
                       color: "#e8d5a3",
@@ -136,16 +196,23 @@ export function AdminSidebar({ email, role, pendingResultsCount }: AdminSidebarP
               }
             >
               <Icon className="w-4 h-4 shrink-0" />
-              <span className="flex-1">{label}</span>
-              {showPendingBadge && (
-                <span
-                  className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold shrink-0"
-                  style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
-                  title={`${pendingResultsCount} pending`}
-                >
-                  {pendingResultsCount}
-                </span>
-              )}
+              {!collapsed && <span className="flex-1">{label}</span>}
+              {showPendingBadge &&
+                (collapsed ? (
+                  <span
+                    className="absolute top-1 right-1 w-2 h-2 rounded-full"
+                    style={{ backgroundColor: "#c4973a" }}
+                    title={`${pendingResultsCount} pending`}
+                  />
+                ) : (
+                  <span
+                    className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold shrink-0"
+                    style={{ backgroundColor: "#c4973a", color: "#0a1a0d" }}
+                    title={`${pendingResultsCount} pending`}
+                  >
+                    {pendingResultsCount}
+                  </span>
+                ))}
             </Link>
           );
         })}
@@ -158,7 +225,8 @@ export function AdminSidebar({ email, role, pendingResultsCount }: AdminSidebarP
 
         <Link
           href="/portal"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-colors"
+          title={collapsed ? "Back to Portal" : undefined}
+          className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} px-3 py-2.5 rounded-r-lg text-sm font-medium transition-colors`}
           style={{
             color: "#e8d5a3",
             borderLeft: "3px solid transparent",
@@ -166,7 +234,7 @@ export function AdminSidebar({ email, role, pendingResultsCount }: AdminSidebarP
           }}
         >
           <ArrowLeft className="w-4 h-4 shrink-0" />
-          Back to Portal
+          {!collapsed && <span>Back to Portal</span>}
         </Link>
       </nav>
 
@@ -175,16 +243,19 @@ export function AdminSidebar({ email, role, pendingResultsCount }: AdminSidebarP
         className="px-3 py-4 border-t space-y-1"
         style={{ borderColor: "#1a3d22" }}
       >
-        <p className="px-3 text-xs truncate" style={{ color: "#6ab04c" }}>
-          {email}
-        </p>
+        {!collapsed && (
+          <p className="px-3 text-xs truncate" style={{ color: "#6ab04c" }}>
+            {email}
+          </p>
+        )}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-left transition-colors"
+          title={collapsed ? `Sign out — ${email}` : undefined}
+          className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} px-3 py-2.5 rounded-lg text-sm font-medium w-full text-left transition-colors`}
           style={{ color: "#e8d5a3" }}
         >
           <LogOut className="w-4 h-4 shrink-0" />
-          Sign Out
+          {!collapsed && <span>Sign Out</span>}
         </button>
       </div>
     </aside>
