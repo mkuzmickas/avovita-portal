@@ -1093,9 +1093,9 @@ function PnLCategoryRow({
                       letterSpacing: "0.05em",
                       fontWeight: 700,
                     }}
-                    title="Lumpy once-a-year professional fee — hits this month, not a run-rate cost"
+                    title="Annual professional fee amortised across 12 months — this row is 1/12 of the original invoice"
                   >
-                    annual
+                    1/12
                   </span>
                 )}
                 {(() => {

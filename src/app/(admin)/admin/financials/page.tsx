@@ -66,10 +66,13 @@ export type QboTxn = {
   direction: "expense" | "refund";
   category: string | null;
   supplier_name: string | null;
-  /** True for lumpy once-a-year costs (JMH accounting, Navacord
-   *  insurance) — the dollars count as normal, but the drill-down
-   *  tags the row with an "annual" badge so Mike reads the spike as
-   *  a periodic professional fee rather than a run-rate cost. */
+  /** True for monthly accrual slices of a lumpy annual professional
+   *  fee (JMH accounting, Navacord insurance). The original QBO row
+   *  gets expanded into 12 synthetic rows each at 1/12 the amount,
+   *  spread across the policy year starting from the invoice month,
+   *  so month-to-month run-rate shows a smooth ~$X/mo instead of a
+   *  single annual spike. The drill-down tags these rows with a
+   *  "1/12" badge so the amortisation is visible, not silent. */
   is_annual_specialty?: boolean;
 };
 
@@ -108,11 +111,13 @@ const BUSINESS_EXCLUDED_SUPPLIERS: RegExp[] = [
   /mothermind/i,
 ];
 
-// Vendors Mike wants kept in the P&L but flagged visually as lumpy
-// annual professional costs — accounting + insurance. The dollars land
-// in the month they're paid (no amortisation), but each row renders
-// with an "annual" badge in the OpEx drill so a monthly net-profit dip
-// in the invoice month reads correctly.
+// Vendors whose spend is amortised across 12 months instead of landing
+// as a single lump — annual professional fees (accounting, insurance).
+// Each QBO payment row gets expanded into 12 synthetic monthly slices
+// at 1/12 the amount, starting from the invoice month, so the OpEx
+// run-rate shows the real monthly cost of carrying the policy /
+// retainer instead of a single-month spike. Each slice is badged
+// "1/12" in the drill so the accrual is visible, not hidden.
 const ANNUAL_SPECIALTY_SUPPLIERS: RegExp[] = [
   /jmh\s+accounting/i,
   /navacord/i,
@@ -455,11 +460,33 @@ export default async function AdminFinancialsPage() {
         if (BUSINESS_EXCLUDED_SUPPLIERS.some((rx) => rx.test(sup))) return false;
         return true;
       })
-      .map((t) => {
+      .flatMap((t) => {
         const sup = t.supplier_name ?? "";
-        return ANNUAL_SPECIALTY_SUPPLIERS.some((rx) => rx.test(sup))
-          ? { ...t, is_annual_specialty: true }
-          : t;
+        if (!ANNUAL_SPECIALTY_SUPPLIERS.some((rx) => rx.test(sup))) {
+          return [t];
+        }
+        // Amortise this annual lump into 12 monthly 1/12 slices,
+        // anchored to the first of each month starting from the
+        // invoice month. Each slice carries is_annual_specialty so
+        // the OpEx drill can badge it "1/12". Slices that fall
+        // outside the 15-month display window will simply not appear
+        // in any period's drill — the slice loop still writes them,
+        // but downstream month filters drop out-of-range dates.
+        const slice = t.amount_cad / 12;
+        const invoiced = new Date(t.txn_date + "T00:00:00Z");
+        const anchorYear = invoiced.getUTCFullYear();
+        const anchorMonth = invoiced.getUTCMonth();
+        const slices: QboTxn[] = [];
+        for (let i = 0; i < 12; i++) {
+          const d = new Date(Date.UTC(anchorYear, anchorMonth + i, 1));
+          slices.push({
+            ...t,
+            txn_date: d.toISOString().slice(0, 10),
+            amount_cad: slice,
+            is_annual_specialty: true,
+          });
+        }
+        return slices;
       });
 
     const { data: catsRaw } = await service
@@ -671,9 +698,9 @@ export default async function AdminFinancialsPage() {
           Normalized view — supplement inventory, one-off equipment, personal,
           and sundry non-business QBO vendors are filtered out so the numbers
           reflect go-forward test operations. Annual professional fees (JMH
-          accounting, Navacord insurance) still land in the month they were
-          paid and are badged <span style={{ opacity: 0.9 }}>“annual”</span> in
-          the OpEx drill.
+          accounting, Navacord insurance) are amortised across 12 months
+          starting from the invoice month; each monthly slice is badged{" "}
+          <span style={{ opacity: 0.9 }}>“1/12”</span> in the OpEx drill.
         </p>
       </div>
 
