@@ -89,6 +89,7 @@ const BUSINESS_EXCLUDED_SUPPLIERS: RegExp[] = [
   /\bledger\b/i,
   /biobody/i,
   // One-off setup / furniture / personal / sundry
+  /1[\s-]?800\s*got\s*junk/i,
   /wayfair/i,
   /laptop\s*batteries/i,
   /macdonalds?/i,
