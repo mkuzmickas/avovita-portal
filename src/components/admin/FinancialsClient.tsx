@@ -706,11 +706,18 @@ function PnLBreakdown({
           {formatCurrency(netProfit)}
         </div>
       </div>
-      {/* Horizontal scroll shell — with 9 columns and the upsized fonts
-          Mike asked for, the table overflows laptop viewports. The outer
-          card still clips cleanly (overflow: hidden up top keeps the
-          12px border-radius), so this inner wrapper handles the pan. */}
-      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+      {/* Scroll shell — pans horizontally on narrow viewports AND caps
+          vertical height so the Revenue drill header can stick to the
+          top of this panel (Mike's ask: header floats while scrolling
+          through dozens of order rows). The outer card still clips to
+          its 12px radius via overflow:hidden up top. */}
+      <div
+        style={{
+          overflow: "auto",
+          WebkitOverflowScrolling: "touch",
+          maxHeight: "calc(100vh - 160px)",
+        }}
+      >
       <table style={{ width: "100%", minWidth: 1200, fontSize: 13 }}>
         <tbody>
           {/* REVENUE — click to expand into a per-order list */}
@@ -1128,19 +1135,31 @@ function PnLCategoryRow({
 // ─── Revenue drill helpers ───────────────────────────────────────────
 
 function RevenueDrillHeader() {
+  // Sticky header — pinned to the top of the P&L scroll shell so the
+  // column labels stay visible while Mike scrolls through dozens of
+  // order rows. position:sticky needs an opaque backgroundColor on
+  // each cell so rows scrolling underneath don't bleed through.
   const h: React.CSSProperties = {
     color: "#8dc63f",
     fontSize: 13,
     textTransform: "uppercase",
     letterSpacing: "0.08em",
     fontWeight: 700,
+    position: "sticky",
+    top: 0,
+    backgroundColor: "#0f2614",
+    zIndex: 2,
+    // Thin divider under the header so there's a visible seam when
+    // rows have scrolled behind it. borderBottom on the <tr> doesn't
+    // follow a sticky td, so apply here per cell.
+    boxShadow: "inset 0 -1px 0 #2d6b35",
   };
   // Tests header is left-aligned so it sits over the SKU chips (which
   // are themselves left-aligned inside their cell). Using pnlCellR
   // right-aligned the label away from its chips — visually off.
   const hL: React.CSSProperties = { ...pnlCell, ...h };
   return (
-    <tr style={{ borderBottom: "1px solid #2d6b35" }}>
+    <tr>
       <td style={{ ...pnlCell, paddingLeft: 38, ...h }}>Order · Client</td>
       <td style={{ ...pnlCellR, ...h }}>Status</td>
       <td style={hL}>Tests</td>
