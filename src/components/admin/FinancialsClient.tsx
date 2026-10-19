@@ -783,14 +783,53 @@ function PnLBreakdown({
             </>
           )}
 
-          {/* COGS — now just the "below the line" overhead:
-              shipping, supplies, misc QBO lab categories. Per-order
-              Mayo + non-Mayo + FloLabs are shown inline above. */}
+          {/* COGS — all three slices now visible so the GP math is
+              traceable from this section alone:
+                Revenue − (per-order Lab + per-order FloLabs + overhead) = GP
+              Per-order rows are summaries of what's inlined above in
+              the Revenue drill; overhead rows are the categorised QBO
+              shipping / supplies / misc lab categories expanded below. */}
           <PnLBreak />
-          <PnLHeader label="Other Costs (overhead)" total={cogsTotal} />
-          {cogsRows.length === 0 && (
-            <PnLEmpty label="No COGS transactions in this period." />
+          <PnLHeader
+            label="Cost of Goods Sold"
+            total={perOrderLabTotal + perOrderFloLabs + cogsTotal}
+          />
+          {perOrderLabTotal > 0 && (
+            <tr>
+              <td colSpan={7} style={pnlCell}>
+                Lab tests (Mayo, Armin, EpiSeek, LabCorp, Dynacare)
+              </td>
+              <td style={{ ...pnlCellR, color: "#8dc63f" }}>
+                {recognizedOrders.filter(
+                  (o) => (o.mayo_cost_cad ?? 0) + (o.non_mayo_cost_cad ?? 0) > 0,
+                ).length}{" "}
+                orders
+              </td>
+              <td style={{ ...pnlCellR, color: "#ffffff" }}>
+                {formatCurrency(perOrderLabTotal)}
+              </td>
+            </tr>
           )}
+          {perOrderFloLabs > 0 && (
+            <tr>
+              <td colSpan={7} style={pnlCell}>
+                FloLabs home visits (pass-through at cost)
+              </td>
+              <td style={{ ...pnlCellR, color: "#8dc63f" }}>
+                {recognizedOrders.filter((o) => (o.flolabs_fee_cad ?? 0) > 0)
+                  .length}{" "}
+                orders
+              </td>
+              <td style={{ ...pnlCellR, color: "#ffffff" }}>
+                {formatCurrency(perOrderFloLabs)}
+              </td>
+            </tr>
+          )}
+          {cogsRows.length === 0 &&
+            perOrderLabTotal === 0 &&
+            perOrderFloLabs === 0 && (
+              <PnLEmpty label="No COGS in this period." />
+            )}
           {cogsRows.map((r) => (
             <PnLCategoryRow
               key={r.category}
