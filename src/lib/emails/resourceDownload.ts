@@ -52,7 +52,7 @@ export function renderResourceDownloadEmail(
 
   <!-- Header -->
   <tr><td style="background:#0f2614;padding:28px 32px;text-align:center;border-bottom:3px solid #c4973a;">
-    <img src="https://portal.avovita.ca/logo-white.png" alt="AvoVita Wellness" width="160" style="display:inline-block;max-width:160px;height:auto;" />
+    <img src="https://portal.avovita.ca/logo-white.png?v=2" alt="AvoVita Wellness" width="160" style="display:inline-block;max-width:160px;height:auto;" />
     <p style="margin:8px 0 0;font-size:12px;color:#8dc63f;letter-spacing:0.1em;">YOUR RESOURCE IS READY</p>
   </td></tr>
 

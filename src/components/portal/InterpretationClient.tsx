@@ -144,7 +144,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
               style={{ backgroundColor: "#F7F6F0" }}
             >
               <Image
-                src="/logo-white.png"
+                src="/logo-dark.png"
                 alt="AvoVita Wellness"
                 width={140}
                 height={32}
@@ -555,7 +555,7 @@ function LoadingState() {
           style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E2D4" }}
         >
           <Image
-            src="/logo-white.png"
+            src="/logo-dark.png"
             alt="AvoVita Wellness"
             width={160}
             height={36}
