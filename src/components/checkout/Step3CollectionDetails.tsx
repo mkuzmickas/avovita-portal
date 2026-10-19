@@ -332,7 +332,7 @@ export function Step3CollectionDetails({
         </div>
       )}
 
-      {/* â”€â”€â”€ Collection mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── Collection mode ─────────────────────────────────────── */}
       <section className="mb-6">
         <h2
           className="font-heading text-xl font-semibold mb-1"
@@ -366,7 +366,7 @@ export function Step3CollectionDetails({
         </div>
       </section>
 
-      {/* â”€â”€â”€ Out-of-town informational panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── Out-of-town informational panel ─────────────────────── */}
       {isOutOfTown && (
         <section className="mb-8">
           <div
@@ -413,7 +413,7 @@ export function Step3CollectionDetails({
         </section>
       )}
 
-      {/* â”€â”€â”€ Collection Address (in-area only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── Collection Address (in-area only) ───────────────────── */}
       {!isOutOfTown && (
       <section className="mb-8">
         <h2
@@ -531,7 +531,7 @@ export function Step3CollectionDetails({
       </section>
       )}
 
-      {/* â”€â”€â”€ Patient details per person (required pre-payment) â”€â”€
+      {/* ─── Patient details per person (required pre-payment) ──
           Name / DOB / biological sex all live here so post-payment
           is just password + waiver + booking — no extra "profile
           completion" step that could hang. Phase 2 tried to move
@@ -700,7 +700,7 @@ export function Step3CollectionDetails({
         </div>
       </section>
 
-      {/* â”€â”€â”€ Visit fee preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── Visit fee preview ─────────────────────────────────── */}
       <section
         className="rounded-xl border p-5 mt-2"
         style={{
@@ -756,7 +756,7 @@ export function Step3CollectionDetails({
         </div>
       </section>
 
-      {/* â”€â”€â”€ Validation block + nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── Validation block + nav ────────────────────────────── */}
       <div
         className="mt-6 pt-5 border-t"
         style={{ borderColor: "#E5E2D4" }}
@@ -813,7 +813,7 @@ export function Step3CollectionDetails({
   );
 }
 
-// â”€â”€â”€ Collection-mode toggle button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Collection-mode toggle button ─────────────────────────────────────
 
 function CollectionModeButton({
   active,
@@ -856,7 +856,7 @@ function CollectionModeButton({
   );
 }
 
-// â”€â”€â”€ Person section subcomponent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Person section subcomponent ───────────────────────────────────────
 
 function PersonSection({
   title,
@@ -1179,7 +1179,7 @@ function PersonSection({
   );
 }
 
-// â”€â”€â”€ Date of birth dropdowns (Day / Month / Year) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Date of birth dropdowns (Day / Month / Year) ────────────────────────
 //
 // Replaces the native <input type="date"> with three dropdowns to keep the
 // UX consistent across browsers (mobile especially) and avoid the dd/mm
@@ -1315,7 +1315,7 @@ function DobDropdowns({
   );
 }
 
-// â”€â”€â”€ Representative (caregiver / POA) section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Representative (caregiver / POA) section ──────────────────────────
 
 function RepresentativeSection({
   rep,

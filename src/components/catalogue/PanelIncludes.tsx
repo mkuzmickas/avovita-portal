@@ -108,7 +108,7 @@ export function PanelIncludes({ panelTests, variant }: PanelIncludesProps) {
   );
 }
 
-// â”€â”€â”€ Tuesday collection notice â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Tuesday collection notice ──────────────────────────────────────
 
 function TuesdayNotice() {
   return (

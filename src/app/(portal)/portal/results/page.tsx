@@ -252,7 +252,7 @@ export default async function ResultsPage() {
   );
 }
 
-// â”€â”€â”€ Order-attached result group (one card per order, N PDFs inside) â”€â”€
+// ─── Order-attached result group (one card per order, N PDFs inside) ──
 
 function OrderResultCard({
   items,
@@ -261,7 +261,7 @@ function OrderResultCard({
   items: ResultRow[];
   tests: Array<{ name: string; lab: string }>;
 }) {
-  // Status precedence: any 'final' â†’ Final; otherwise â†’ Partial.
+  // Status precedence: any 'final' → Final; otherwise → Partial.
   // "New" if at least one PDF in the group hasn't been viewed yet.
   const isPartial = !items.some((r) => r.result_status === "final");
   const isNew = items.some((r) => !r.viewed_at);
@@ -383,7 +383,7 @@ function OrderResultCard({
   );
 }
 
-// â”€â”€â”€ Manual admin upload or patient self-upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Manual admin upload or patient self-upload ────────────────────────
 
 function UploadedResultCard({ result }: { result: ResultRow }) {
   const isPatientUpload = classifyResultRow(result) === "patient";
@@ -473,7 +473,7 @@ function UploadedResultCard({ result }: { result: ResultRow }) {
   );
 }
 
-// â”€â”€â”€ Small reusable badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Small reusable badge ──────────────────────────────────────────────
 
 function Badge({
   color,

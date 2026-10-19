@@ -4,7 +4,7 @@ import { FlaskConical, Shield, Clock, ArrowRight } from "lucide-react";
 export default function HomePage() {
   return (
     <div style={{ backgroundColor: "#FFFFFF", color: "#154D31" }}>
-      {/* â”€â”€â”€ Navbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── Navbar ─────────────────────────────────────────────────────── */}
       <header
         className="absolute top-0 left-0 right-0 z-20"
         style={{ backgroundColor: "transparent" }}
@@ -98,7 +98,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* â”€â”€â”€ How It Works â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── How It Works ───────────────────────────────────────────────── */}
       <section className="px-4 sm:px-6 pt-12 pb-24" style={{ backgroundColor: "#FFFFFF" }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
@@ -182,7 +182,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* â”€â”€â”€ CTA band â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── CTA band ──────────────────────────────────────────────────── */}
       <section className="px-4 sm:px-6 py-20" style={{ backgroundColor: "#F7F6F0" }}>
         <div className="max-w-3xl mx-auto text-center">
           <h2
@@ -208,7 +208,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* â”€â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── Footer ────────────────────────────────────────────────────── */}
       <footer
         className="px-4 sm:px-6 py-10 text-center text-xs border-t"
         style={{

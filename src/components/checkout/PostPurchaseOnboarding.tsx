@@ -233,7 +233,7 @@ export function PostPurchaseOnboarding({
   );
 }
 
-// â”€â”€â”€ Step 1: Create Account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Step 1: Create Account ─────────────────────────────────────────
 
 function Step1CreateAccount({
   sessionId,
@@ -391,7 +391,7 @@ function Step1CreateAccount({
   );
 }
 
-// â”€â”€â”€ Step 2: Complete Profile(s) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Step 2: Complete Profile(s) ────────────────────────────────────
 //
 // The webhook creates one patient_profiles row per person on the order
 // with NULL name/DOB/sex fields (migration 030). This step walks the
@@ -612,7 +612,7 @@ function Step2YourInfo({
   );
 }
 
-// â”€â”€â”€ Step 4: Book Collection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Step 4: Book Collection ────────────────────────────────────────
 
 function Step4BookCollection({
   summary,
@@ -816,13 +816,13 @@ function Step4BookCollection({
         className="w-full text-center text-sm font-medium py-2"
         style={{ color: "#C6A04B" }}
       >
-        Go to my portal â†’
+        Go to my portal →
       </button>
     </div>
   );
 }
 
-// â”€â”€â”€ Guest "check your email" success card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Guest "check your email" success card ──────────────────────────────
 
 function GuestCheckEmailCard({ summary }: { summary: OnboardingSummary }) {
   return (

@@ -11,10 +11,10 @@ import { useOrg } from "./OrgContext";
  * footer) but pulls colours and copy from the org via OrgContext.
  */
 // Palette rules for org landing on Midnight Forest:
-//   - Large text + headings â†’ AvoVita gold (#C6A04B). Org primary_color
+//   - Large text + headings → AvoVita gold (#C6A04B). Org primary_color
 //     is often a deep brand colour (navy, maroon) that washes out on
 //     #F7F6F0, so we don't use it for type.
-//   - Section labels â†’ AvoVita light green (#88D45D) for consistency.
+//   - Section labels → AvoVita light green (#88D45D) for consistency.
 //   - Org primary_color is reserved for small badges/avatars only
 //     (handled inside OrgAwareHeader).
 const HEADING_GOLD = "#C6A04B";

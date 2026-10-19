@@ -80,7 +80,7 @@ export interface CheckoutSuccessV2Props {
   /** Optional org-specific waiver addendum (shown below the standard waiver). */
   waiverAddendum?: string | null;
   waiverAddendumTitle?: string | null;
-  // â”€â”€ Composition flags (added in Phase 4) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Composition flags (added in Phase 4) ──────────────────────
   /** True if the order contained tests (defaults true for v1 compat). */
   hasTests?: boolean;
   /** True if the order contained supplements. */
@@ -333,7 +333,7 @@ export function CheckoutSuccessV2({
           </div>
         </div>
 
-        {/* â”€â”€ Mandatory password gate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        {/* ── Mandatory password gate ───────────────────────────────────
          *   The customer must set a password before they can reach the
          *   waiver or booking steps. We dropped the magic-link flow
          *   entirely so this is the only path to a working portal
@@ -362,7 +362,7 @@ export function CheckoutSuccessV2({
                 on Step 3 again. Post-payment is just password + waiver
                 + booking; nothing to fetch, nothing to hang on. */}
 
-            {/* â”€â”€ Waiver + booking/kit steps — waiver for ALL test orders â”€â”€ */}
+            {/* ── Waiver + booking/kit steps — waiver for ALL test orders ── */}
             {hasTests && (<>
             {/* Step 1 — Waiver */}
         <StepCard
@@ -389,7 +389,7 @@ export function CheckoutSuccessV2({
               className="mf-btn-primary px-5 py-2.5"
             >
               <FileText className="w-4 h-4" />
-              Complete Waiver â†’
+              Complete Waiver →
             </button>
           )}
         </StepCard>
@@ -602,7 +602,7 @@ export function CheckoutSuccessV2({
 
         </>)}
 
-        {/* â”€â”€ Supplement delivery section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Supplement delivery section ─────────────────────────── */}
         {hasSupplements && (
           <div
             className="rounded-2xl border overflow-hidden mt-6"
@@ -650,7 +650,7 @@ export function CheckoutSuccessV2({
           </div>
         )}
 
-        {/* â”€â”€ Resource download section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Resource download section ───────────────────────────── */}
         {hasResources && (
           <div
             className="rounded-2xl border overflow-hidden mt-6"
@@ -677,7 +677,7 @@ export function CheckoutSuccessV2({
           </div>
         )}
 
-        {/* â”€â”€ Resources-only: back to browse button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Resources-only: back to browse button ──────────────── */}
         {hasResources && !hasTests && !hasSupplements && (
           <div className="text-center mt-6">
             <a
@@ -788,7 +788,7 @@ function StepCard({
   );
 }
 
-// â”€â”€â”€ Waiver modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Waiver modal ────────────────────────────────────────────────────────
 
 function WaiverModal({
   sessionId,
@@ -1000,7 +1000,7 @@ function WaiverModal({
                 className="text-xs italic text-center"
                 style={{ color: "#C6A04B" }}
               >
-                â†“ Scroll down to read the full waiver before signing
+                ↑ Scroll down to read the full waiver before signing
               </p>
             )}
 
@@ -1152,7 +1152,7 @@ function CheckboxRow({
   );
 }
 
-// â”€â”€â”€ Set password card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Set password card ──────────────────────────────────────────────────
 
 function SetPasswordCard({
   email,

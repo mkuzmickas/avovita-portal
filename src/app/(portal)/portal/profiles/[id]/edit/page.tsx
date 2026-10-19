@@ -10,7 +10,7 @@ export default async function NewProfilePage() {
 
   if (!user) redirect("/login?returnUrl=/portal/profiles/new");
 
-  // Determine whether this will be the account's first profile (â†’ primary)
+  // Determine whether this will be the account's first profile (→ primary)
   const { count: profileCount } = await supabase
     .from("patient_profiles")
     .select("id", { count: "exact", head: true })

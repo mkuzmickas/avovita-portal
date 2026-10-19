@@ -227,7 +227,7 @@ export function WaiverForm({
           className="text-xs italic text-center"
           style={{ color: "#C6A04B" }}
         >
-          â†“ Scroll down to read the full waiver before signing
+          ↑ Scroll down to read the full waiver before signing
         </p>
       )}
 

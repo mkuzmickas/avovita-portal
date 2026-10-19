@@ -68,7 +68,7 @@ const RELATIONSHIP_LABEL: Record<string, string> = {
   other: "Other",
 };
 
-// â”€â”€â”€ Shipping risk test IDs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Shipping risk test IDs ─────────────────────────────────────────
 
 const SHIPPING_RISK_TEST_IDS = new Set([
   // Armin Labs
@@ -194,7 +194,7 @@ export function Step4Review({
     return m;
   }, [assignments, persons]);
 
-  // â”€â”€â”€ Shipping risk logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Shipping risk logic ──────────────────────────────────────────
   const showShippingRisk = useMemo(() => {
     const testIds = assignments.map((a) => a.test_id);
 
@@ -243,7 +243,7 @@ export function Step4Review({
 
     // Org affinity — set in localStorage by OrgProvider when the user
     // visited /org/[slug]/* or by CheckoutClient when the URL had
-    // ?org_slug=. Server resolves slug â†’ org_id and tags the order.
+    // ?org_slug=. Server resolves slug → org_id and tags the order.
     let orgSlug: string | null = null;
     try {
       orgSlug =
@@ -293,7 +293,7 @@ export function Step4Review({
 
     try {
       if (isMixedCart) {
-        // â”€â”€ Mixed cart path: pending_order â†’ checkout-unified â”€â”€â”€â”€
+        // ── Mixed cart path: pending_order → checkout-unified ────
         const suppShippingFee =
           suppFulfillment === "shipping" ? SUPPLEMENT_SHIPPING_FEE_CAD : 0;
         const subtotalSupplements = cart
@@ -340,7 +340,7 @@ export function Step4Review({
           // for new orders; webhook still handles populated reps for
           // any pre-migration sessions still in flight.
           representative: null,
-          org_id: orgSlug ?? null, // server resolves slug â†’ id
+          org_id: orgSlug ?? null, // server resolves slug → id
           src: orderSrc,
           supplement_fulfillment: hasSupplements
             ? suppFulfillment
@@ -400,7 +400,7 @@ export function Step4Review({
         }
         window.location.href = stripeData.url;
       } else {
-        // â”€â”€ Pure test cart path: existing route (unchanged) â”€â”€â”€â”€â”€â”€
+        // ── Pure test cart path: existing route (unchanged) ──────
         const payload: CheckoutPayload = {
           persons,
           collection_address: collectionAddress,
@@ -595,7 +595,7 @@ export function Step4Review({
                           className="flex items-center justify-end gap-3 text-[10px] font-medium"
                           style={{ color: "#88D45D" }}
                         >
-                          âˆ’{formatCurrency(discount.per_line)} multi-test
+                          −{formatCurrency(discount.per_line)} multi-test
                           discount
                         </div>
                       )}
@@ -628,7 +628,7 @@ export function Step4Review({
                 style={{ color: "#88D45D" }}
               >
                 <span>Repeat-client discount ($20 off per test)</span>
-                <span>âˆ’{formatCurrency(discount.total)}</span>
+                <span>−{formatCurrency(discount.total)}</span>
               </div>
               <div
                 className="flex justify-between"
@@ -674,7 +674,7 @@ export function Step4Review({
               <span>{c.description}</span>
               <span>
                 {c.price_cad < 0
-                  ? `âˆ’${formatCurrency(Math.abs(c.price_cad))}`
+                  ? `−${formatCurrency(Math.abs(c.price_cad))}`
                   : formatCurrency(c.price_cad)}
               </span>
             </div>
@@ -729,7 +729,7 @@ export function Step4Review({
                 Additional discount
                 {acceptedQuoteNumber ? ` (quote ${acceptedQuoteNumber})` : ""}
               </span>
-              <span>âˆ’{formatCurrency(totals.quoteDiscount)}</span>
+              <span>−{formatCurrency(totals.quoteDiscount)}</span>
             </div>
           )}
           {totals.estimatedGST > 0 && (
@@ -759,7 +759,7 @@ export function Step4Review({
         </div>
       </section>
 
-      {/* â”€â”€â”€ Shipping Risk Disclaimer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── Shipping Risk Disclaimer ──────────────────────────────── */}
       {showShippingRisk && (
         <section
           className="rounded-lg border p-5 mb-5"

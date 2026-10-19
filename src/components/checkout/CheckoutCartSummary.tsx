@@ -15,7 +15,7 @@ import { calculateTotals } from "@/lib/checkout/totals";
 
 interface CheckoutCartSummaryProps {
   cart: CartItem[];
-  /** Null on Step 1 (person count not chosen yet â†’ no visit fee shown). */
+  /** Null on Step 1 (person count not chosen yet → no visit fee shown). */
   visitFees: VisitFees | null;
   /**
    * Real order line count — `assignments.length` after Step 2, or a
@@ -39,7 +39,7 @@ interface CheckoutCartSummaryProps {
 /**
  * Sticky right-rail order summary. Shows each cart item with its full
  * price, a per-line discount annotation when the multi-test discount
- * applies, and a totals block with subtotal â†’ discount â†’ visit fee â†’
+ * applies, and a totals block with subtotal → discount → visit fee →
  * grand total.
  */
 export function CheckoutCartSummary({
@@ -377,10 +377,10 @@ export function CheckoutCartSummary({
                   style={{ color: "#88D45D" }}
                 >
                   <span>
-                    Repeat-client discount ({discount.line_count} Ã—{" "}
+                    Repeat-client discount ({discount.line_count} ×{" "}
                     {formatCurrency(discount.per_line)})
                   </span>
-                  <span>âˆ’{formatCurrency(discount.total)}</span>
+                  <span>−{formatCurrency(discount.total)}</span>
                 </div>
                 <div
                   className="flex justify-between text-sm"
@@ -489,7 +489,7 @@ export function CheckoutCartSummary({
                 <span className="truncate pr-2">{c.description}</span>
                 <span className="whitespace-nowrap">
                   {c.price_cad < 0
-                    ? `âˆ’${formatCurrency(Math.abs(c.price_cad))}`
+                    ? `−${formatCurrency(Math.abs(c.price_cad))}`
                     : formatCurrency(c.price_cad)}
                 </span>
               </div>
@@ -506,7 +506,7 @@ export function CheckoutCartSummary({
                     ? ` (quote ${acceptedQuoteNumber})`
                     : ""}
                 </span>
-                <span>âˆ’{formatCurrency(totals.quoteDiscount)}</span>
+                <span>−{formatCurrency(totals.quoteDiscount)}</span>
               </div>
             )}
 

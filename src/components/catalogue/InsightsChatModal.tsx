@@ -72,7 +72,7 @@ export function InsightsChatModal({
   const [error, setError] = useState<string | null>(null);
   const [testIndex, setTestIndex] = useState<Map<string, CatalogueLookupTest>>(new Map());
 
-  // Load test catalogue (sku â†’ test) once when modal opens.
+  // Load test catalogue (sku → test) once when modal opens.
   // Public read — no auth required (matches the catalogue page itself).
   useEffect(() => {
     if (!open || testIndex.size > 0) return;
@@ -390,10 +390,10 @@ export function InsightsChatModal({
   );
 }
 
-// â”€â”€â”€ User message bubble â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── User message bubble ──────────────────────────────────────────────
 
 function UserMessage({ content }: { content: string }) {
-  // Short single-line message â†’ pill; longer â†’ softly-rounded bubble
+  // Short single-line message → pill; longer → softly-rounded bubble
   const isShort = content.length < 40 && !content.includes("\n");
   return (
     <div className="flex justify-end">
@@ -413,7 +413,7 @@ function UserMessage({ content }: { content: string }) {
   );
 }
 
-// â”€â”€â”€ Assistant message: structured render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Assistant message: structured render ─────────────────────────────
 
 const TEST_CODE_REGEX = /Code:\s*([A-Za-z0-9_\-]+)/g;
 
@@ -619,7 +619,7 @@ const AssistantMessage = ({
   );
 };
 
-// â”€â”€â”€ Markdown subset renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Markdown subset renderer ─────────────────────────────────────────
 
 function RenderMarkdown({ content }: { content: string }) {
   const lines = content.split("\n");

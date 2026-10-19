@@ -118,7 +118,7 @@ function TrackingStatusChip({
             textDecoration: "underline",
           }}
         >
-          Track â†—
+          Track →
         </a>
         <button
           type="button"
@@ -155,7 +155,7 @@ function TrackingStatusChip({
 }
 
 /**
- * Admin-only âœ• Remove button on each row of Recent Shipments.
+ * Admin-only ✕ Remove button on each row of Recent Shipments.
  * Deletes the local manual_shipments row via DELETE
  * /api/shipping/manual-shipments/[id]. Does NOT void the label at
  * FedEx — if the label was never used FedEx charges nothing; if it
@@ -222,7 +222,7 @@ function RemoveShipmentButton({
           opacity: busy ? 0.6 : 1,
         }}
       >
-        {busy ? "Removing…" : "âœ• Remove"}
+        {busy ? "Removing…" : "✕ Remove"}
       </button>
       {error && (
         <span
@@ -329,7 +329,7 @@ export function ShippingPageClient({
   } | null>(null);
   const [shipments, setShipments] = useState(recentShipments);
 
-  // â”€â”€â”€ Pickup booking state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Pickup booking state ───────────────────────────────────
   const todayCalgaryISO = () => {
     // YYYY-MM-DD in Calgary local time, robust across DST.
     const parts = new Intl.DateTimeFormat("en-CA", {
@@ -529,7 +529,7 @@ export function ShippingPageClient({
                 fontFamily: "inherit",
               }}
             >
-              â† Back to Portal
+              ← Back to Portal
             </a>
           </div>
           <p style={{ color: "#4a7a56", fontSize: "14px", margin: 0 }}>
@@ -609,7 +609,7 @@ export function ShippingPageClient({
                   opacity: 0.7,
                 }}
               >
-                â†’ {profile.recipient.company} · {profile.package.weightLb} lb
+                → {profile.recipient.company} · {profile.package.weightLb} lb
                 {profile.package.dryIceWeightKg > 0
                   ? ` · ${profile.package.dryIceWeightKg} kg dry ice`
                   : ""}

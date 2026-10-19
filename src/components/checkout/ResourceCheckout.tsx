@@ -137,7 +137,7 @@ export function ResourceCheckout({
               backgroundColor: "transparent",
             }}
           >
-            â† Back to resources
+            ← Back to resources
           </Link>
         }
       />
@@ -359,7 +359,7 @@ export function ResourceCheckout({
                       backgroundColor: "transparent",
                     }}
                   >
-                    â† Back
+                    ← Back
                   </button>
                   <button
                     type="button"

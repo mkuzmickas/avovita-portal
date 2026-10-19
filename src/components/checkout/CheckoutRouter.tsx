@@ -16,11 +16,11 @@ interface CheckoutRouterProps {
  * Composition-aware checkout router. Reads cart composition once and
  * renders the appropriate checkout variant:
  *
- *   has_tests     â†’ TestCheckout (existing CheckoutClient) with
+ *   has_tests     → TestCheckout (existing CheckoutClient) with
  *                    conditional supplement/resource step injection
- *   supplements   â†’ SupplementCheckout (simplified flow)
- *   resources     â†’ ResourceCheckout (minimal flow — email only)
- *   empty cart    â†’ redirect to /tests (fail-safe)
+ *   supplements   → SupplementCheckout (simplified flow)
+ *   resources     → ResourceCheckout (minimal flow — email only)
+ *   empty cart    → redirect to /tests (fail-safe)
  *
  * Unknown line_types are ignored (fail closed to test-only behavior).
  */
@@ -76,7 +76,7 @@ export function CheckoutRouter({
     );
   }
 
-  // ?quote= deep-link â†’ always route to CheckoutClient so its effect
+  // ?quote= deep-link → always route to CheckoutClient so its effect
   // can resolve the quote and populate the cart.
   if (hasQuoteParam) {
     return (
@@ -91,7 +91,7 @@ export function CheckoutRouter({
 
   // Route by composition
   if (hasTests) {
-    // Tests present (with or without supplements/resources) â†’ full test flow
+    // Tests present (with or without supplements/resources) → full test flow
     return (
       <CheckoutClient
         accountUserId={accountUserId}
@@ -123,7 +123,7 @@ export function CheckoutRouter({
     );
   }
 
-  // Fallback: cart has items with unknown line_type â†’ treat as tests
+  // Fallback: cart has items with unknown line_type → treat as tests
   return (
     <CheckoutClient
       accountUserId={accountUserId}

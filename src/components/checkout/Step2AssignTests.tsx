@@ -215,7 +215,7 @@ export function Step2AssignTests({
     );
   };
 
-  // â”€â”€â”€ "Same tests as me" â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── "Same tests as me" ───────────────────────────────────────────
   // The dominant real pattern for a 2-person booking is a couple
   // ordering identical panels. Copying person 1's assignment set onto
   // person 2 in one click removes ~N checkbox clicks (N = number of
@@ -562,10 +562,10 @@ export function Step2AssignTests({
               style={{ color: "#88D45D" }}
             >
               <span>
-                Repeat-client discount ({discount.line_count} Ã— $
+                Repeat-client discount ({discount.line_count} × $
                 {discount.per_line.toFixed(2)})
               </span>
-              <span>âˆ’{formatCurrency(discount.total)}</span>
+              <span>−{formatCurrency(discount.total)}</span>
             </div>
             <div
               className="flex items-center justify-between pt-2 mt-1 border-t"

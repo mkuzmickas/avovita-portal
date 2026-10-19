@@ -218,7 +218,7 @@ export function CheckoutClient({
             quantity: 1,
           });
         }
-        // Quote custom lines â†’ cart custom items. Stable ids keyed on
+        // Quote custom lines → cart custom items. Stable ids keyed on
         // quote number + index so re-accepting the same quote doesn't
         // duplicate. Notes are NOT in the public /api/quotes/[number]
         // response (admin-only), so they don't appear here either —
@@ -281,7 +281,7 @@ export function CheckoutClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, searchParams]);
 
-  // â”€â”€â”€ Restore persisted state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Restore persisted state ──────────────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -370,7 +370,7 @@ export function CheckoutClient({
     setRestored(true);
   }, []);
 
-  // â”€â”€â”€ Reconcile assignments to cart + personCount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Reconcile assignments to cart + personCount ─────────────────────
   // Single authoritative sync: assignments is fully derived from cart,
   // personCount, and prior per-person split choices. Any path that
   // changes the cart (quote-accept deep-link, add from another tab,
@@ -396,7 +396,7 @@ export function CheckoutClient({
     });
   }, [restored, hydrated, cart, personCount]);
 
-  // â”€â”€â”€ Persist on every change â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Persist on every change ──────────────────────────────────────────
   useEffect(() => {
     if (!restored || typeof window === "undefined") return;
     try {
@@ -426,12 +426,12 @@ export function CheckoutClient({
     restored,
   ]);
 
-  // â”€â”€â”€ Cart composition for fee gating â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Cart composition for fee gating ──────────────────────────────────
   const kitFeeInfo = computeKitServiceFee(cart);
   // Kit-only orders have no phlebotomist visit — skip people step + visit fee
   const isKitOnly = kitFeeInfo.hasKitTests && !kitFeeInfo.hasPhlebotomistTests;
 
-  // â”€â”€â”€ Analytics: checkout started â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Analytics: checkout started ─────────────────────────────────────
   const trackedStartRef = useRef(false);
   useEffect(() => {
     if (hydrated && restored && cart.length > 0 && !trackedStartRef.current) {
@@ -440,7 +440,7 @@ export function CheckoutClient({
     }
   }, [hydrated, restored, cart.length, trackEvent]);
 
-  // â”€â”€â”€ Kit-only auto-advance: skip Step 1 (people count) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Kit-only auto-advance: skip Step 1 (people count) ────────────
   // For kit-only orders there's no phlebotomist visit, so person count
   // is always 1. The reconcile effect above populates assignments
   // from the cart whenever personCount changes, so we only need to
@@ -451,7 +451,7 @@ export function CheckoutClient({
     setStep(3);
   }, [hydrated, restored, isKitOnly, step, cart]);
 
-  // â”€â”€â”€ Analytics: checkout abandoned (beforeunload) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Analytics: checkout abandoned (beforeunload) ──────────────────
   useEffect(() => {
     if (!hydrated || !restored || cart.length === 0) return;
     const handleUnload = () => {
@@ -461,7 +461,7 @@ export function CheckoutClient({
     return () => window.removeEventListener("beforeunload", handleUnload);
   }, [hydrated, restored, cart.length, step, trackEvent]);
 
-  // â”€â”€â”€ Cart redirect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Cart redirect ────────────────────────────────────────────────────
   // Don't bounce to /tests while a ?quote= deep-link is loading items or
   // while a quote error banner is being shown — the user should see the
   // message on /checkout, not get kicked back to the catalogue.
@@ -481,7 +481,7 @@ export function CheckoutClient({
     appliedQuoteNumber,
   ]);
 
-  // â”€â”€â”€ Adjust persons when count changes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Adjust persons when count changes ────────────────────────────────
   // `assignments` is handled by the reconcile effect above — no direct
   // filter/rebuild needed here. We just keep `persons` in step.
   const handlePersonCountChange = (count: number) => {
@@ -502,7 +502,7 @@ export function CheckoutClient({
     });
   };
 
-  // â”€â”€â”€ Step navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Step navigation ──────────────────────────────────────────────────
   const skipStep2 = personCount === 1;
 
   const handleStep1Continue = () => {
@@ -715,7 +715,7 @@ export function CheckoutClient({
             )}
             {/* Step 3.5 = supplement fulfillment, injected between address (3) and review (4)
                 when cart contains supplements. Non-integer step ID avoids renumbering the
-                existing test-flow step sequence (1â†’2â†’3â†’4), which would have rippled into
+                existing test-flow step sequence (1→2→3→4), which would have rippled into
                 step navigation, progress indicators, and analytics events. Only rendered
                 when showSupplementFulfillmentStep === true. */}
             {step === 35 && showSupplementFulfillmentStep && (

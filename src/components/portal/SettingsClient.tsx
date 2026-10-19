@@ -12,7 +12,7 @@ interface SettingsClientProps {
 
 /**
  * Client settings widget handling:
- *   - "Change password" â†’ Supabase password reset email to the current address
+ *   - "Change password" → Supabase password reset email to the current address
  *   - Communication preferences stored in Supabase Auth user_metadata
  *     (email_notifications + sms_notifications booleans). Stored on the
  *     auth user so no schema change is needed.

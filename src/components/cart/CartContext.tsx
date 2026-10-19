@@ -23,7 +23,7 @@ import { useAnalytics } from "@/lib/analytics/useAnalytics";
 
 const STORAGE_KEY = "avovita-cart-v1";
 
-// â”€â”€â”€ Schedule-restricted tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Schedule-restricted tests ───────────────────────────────────────
 // Tests whose operational constraint (specimen stability + shipping
 // window) requires booking on a specific day of the week. The cart
 // shows a single acknowledgement modal when ANY restricted test is
@@ -100,7 +100,7 @@ function hasScheduleAck(item: CartItem): item is CartItemTest {
   return item.line_type === "test" && scheduleAckEntryFor(item) !== null;
 }
 
-// â”€â”€â”€ Cart calculations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Cart calculations ─────────────────────────────────────────────────
 
 export interface CartTotals {
   testItems: CartItemTest[];
@@ -170,14 +170,14 @@ function computeCartTotals(
   };
 }
 
-// â”€â”€â”€ Legacy migration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Legacy migration ──────────────────────────────────────────────────
 // Old cart items have no line_type. Backfill to 'test' on hydration.
 
 function migrateCartItems(raw: unknown[]): CartItem[] {
   return raw.map((item) => {
     const obj = item as Record<string, unknown>;
     if (obj.line_type) return obj as unknown as CartItem;
-    // Legacy CatalogueCartItem â†’ CartItemTest
+    // Legacy CatalogueCartItem → CartItemTest
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console
       console.debug("[cart] Migrated legacy cart item to line_type: 'test'");
@@ -193,7 +193,7 @@ function migrateCartItems(raw: unknown[]): CartItem[] {
   });
 }
 
-// â”€â”€â”€ Context â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Context ───────────────────────────────────────────────────────────
 
 interface CartContextValue {
   cart: CartItem[];
@@ -499,7 +499,7 @@ export function useCart(): CartContextValue {
   return ctx;
 }
 
-// â”€â”€â”€ Schedule-restricted acknowledgement modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Schedule-restricted acknowledgement modal ──────────────────────
 //
 // One modal renders any of the tests in SCHEDULE_ACK_TESTS. Headline,
 // intro paragraph, and bullets all come from the matched entry so

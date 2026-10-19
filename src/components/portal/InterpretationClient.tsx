@@ -116,7 +116,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
             className="text-sm"
             style={{ color: "#154D31" }}
           >
-            â† Back to My Results
+            ← Back to My Results
           </Link>
           <button
             type="button"
@@ -453,7 +453,7 @@ export function InterpretationClient({ resultId, fileName, uploadedAt }: Props) 
   );
 }
 
-// â”€â”€â”€ Subcomponents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Subcomponents ────────────────────────────────────────────────────
 
 function Section({
   icon,

@@ -179,7 +179,7 @@ export function PostPurchaseOnboarding({
   );
 }
 
-// â”€â”€â”€ Progress indicator helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Progress indicator helpers ───────────────────────────────────────
 
 function StepPip({
   number,

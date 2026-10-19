@@ -167,7 +167,7 @@ export function SupplementCheckout({
               backgroundColor: "transparent",
             }}
           >
-            â† Back to supplements
+            ← Back to supplements
           </Link>
         }
       />
@@ -460,7 +460,7 @@ export function SupplementCheckout({
                       backgroundColor: "transparent",
                     }}
                   >
-                    â† Back
+                    ← Back
                   </button>
                   <button
                     type="button"

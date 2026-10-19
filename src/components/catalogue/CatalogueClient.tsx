@@ -258,7 +258,7 @@ export function CatalogueClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // â”€â”€â”€ Cart handoff from Ask AvoVita (and any other src) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Cart handoff from Ask AvoVita (and any other src) ────────────
   // Contract: /tests?add=SKU1,SKU2&src=ask
   //   - Match each SKU on tests.sku (case-insensitive, trimmed both
   //     sides — one legacy row has a trailing space in its SKU).
@@ -269,7 +269,7 @@ export function CatalogueClient({
   //   - Fallback for schedule-constrained tests: stay on /tests so
   //     the ack modal is visible in context. Otherwise redirect to
   //     /checkout so the customer lands ready to pay.
-  //   - Zero matches â†’ quiet "we couldn't find those tests" banner
+  //   - Zero matches → quiet "we couldn't find those tests" banner
   //     (an assistant that hallucinates a code should cost the
   //     customer nothing).
   //   - Strip the query params via router.replace so a refresh or a
@@ -379,7 +379,7 @@ export function CatalogueClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated]);
 
-  // â”€â”€â”€ Post-add Ask AvoVita nudge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Post-add Ask AvoVita nudge ──────────────────────────────────
   // Fires when the customer adds a test on /tests. The visit fee is
   // the most likely cause of the 81% checkout drop-off, and once one
   // test is in the cart it's a sunk cost — a second test on the same
@@ -390,7 +390,7 @@ export function CatalogueClient({
   //
   // Trigger rules (all must be true):
   //   - test count strictly increased
-  //   - test count BEFORE the add was < 2 (i.e. 0 â†’ 1 or 1 â†’ 2 —
+  //   - test count BEFORE the add was < 2 (i.e. 0 → 1 or 1 → 2 —
   //     someone already at 2+ tests has understood the model)
   //   - not a ?add= URL handoff (their intent was already formed
   //     elsewhere)
@@ -655,7 +655,7 @@ export function CatalogueClient({
           Specialized blood testing, delivered to your door in Calgary.
         </p>
 
-        {/* â”€â”€â”€ Clean hero card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        {/* ─── Clean hero card ────────────────────────────────────────
             Oct 2026 redesign (Mike, GPT mockup reference): minimal
             chrome, one obvious action. "What test are you looking
             for?" + search input that filters the catalogue table
@@ -755,7 +755,7 @@ export function CatalogueClient({
           <TextAvoVitaButton />
         </div>
 
-        {/* â”€â”€â”€ Popular tests grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        {/* ─── Popular tests grid ─────────────────────────────────────
             Four category shortcuts. Taps set the search query to the
             tile's label; the catalogue filters live and the page
             scrolls down to show results. Chosen for first-time
@@ -835,7 +835,7 @@ export function CatalogueClient({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-12 mt-10">
-        {/* â”€â”€â”€ Full catalogue â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ─── Full catalogue ───────────────────────────────────────── */}
         <section ref={catalogueRef} id="full-catalogue">
           <SectionHeading title="Full Test Catalogue" />
 

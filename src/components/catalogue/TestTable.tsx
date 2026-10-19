@@ -191,7 +191,7 @@ export function TestTable({
   );
 }
 
-// â”€â”€â”€ Single row + expanded panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Single row + expanded panel ──────────────────────────────────────────────
 
 interface TestTableRowProps {
   test: CatalogueTest;
@@ -524,7 +524,7 @@ function TestTableRow({
   );
 }
 
-// â”€â”€â”€ Mobile card layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Mobile card layout ───────────────────────────────────────────────────────
 //
 // Full-width card. Header row shows test name + SKU. Middle row shows
 // price on the left and Add-to-Cart on the right — both always visible
