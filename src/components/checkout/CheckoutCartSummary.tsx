@@ -1,6 +1,7 @@
 "use client";
 
-import { ShoppingBag, X } from "lucide-react";
+import Link from "next/link";
+import { ShoppingBag, X, Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
@@ -276,7 +277,7 @@ export function CheckoutCartSummary({
                   <p
                     className="text-xs italic mt-1 pt-1"
                     style={{
-                      color: "#88D45D",
+                      color: "#2C2C2C",
                       borderTop: "1px dashed #E5E2D4",
                     }}
                   >
@@ -377,10 +378,32 @@ export function CheckoutCartSummary({
             </div>
             <p
               className="text-[10px] text-right mt-1 italic"
-              style={{ color: "#4a7a56" }}
+              style={{ color: "#5A5A5A" }}
             >
               Tax estimated — final amount confirmed at checkout.
             </p>
+
+            {/* Back-to-catalogue CTA — surfaces the "add another test and
+                the collection fee is already covered" nudge above as an
+                actionable button. Shown whenever the sidebar has test
+                rows (not on kit-only carts, where there's no visit fee
+                reframe to lean on). */}
+            {testCount >= 1 && (
+              <Link
+                href="/tests"
+                className="flex items-center justify-center gap-2 w-full mt-3 py-2.5 text-xs font-semibold transition-colors"
+                style={{
+                  border: "1px solid #14301A",
+                  color: "#14301A",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.11em",
+                  backgroundColor: "transparent",
+                }}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add more tests
+              </Link>
+            )}
           </div>
         </>
       )}
