@@ -66,7 +66,56 @@ export type QboTxn = {
   direction: "expense" | "refund";
   category: string | null;
   supplier_name: string | null;
+  /** True for lumpy once-a-year costs (JMH accounting, Navacord
+   *  insurance) — the dollars count as normal, but the drill-down
+   *  tags the row with an "annual" badge so Mike reads the spike as
+   *  a periodic professional fee rather than a run-rate cost. */
+  is_annual_specialty?: boolean;
 };
+
+// Vendors whose spend is not part of go-forward business operations
+// (Mike, Oct 2026). Excluded entirely from the normalized financials
+// view — supplement inventory Jenna didn't resell, one-off equipment
+// / furniture / personal / setup purchases, and sundry one-offs that
+// don't recur. Keep this list tight; anything a reasonable future
+// quarter might incur stays IN.
+const BUSINESS_EXCLUDED_SUPPLIERS: RegExp[] = [
+  // Supplements inventory
+  /mitolife/i,
+  /vitalitybits/i,
+  /lifewave/i,
+  /nivara/i,
+  /\biherb\b/i,
+  /\bledger\b/i,
+  /biobody/i,
+  // One-off setup / furniture / personal / sundry
+  /wayfair/i,
+  /laptop\s*batteries/i,
+  /macdonalds?/i,
+  /mcdonalds?/i,
+  /indigo/i,
+  /mind\s*valley/i,
+  /expressvpn/i,
+  /abkb/i,
+  /government\s+of\s+alberta/i,
+  /sd\s*recon/i,
+  /hrd2kll/i,
+  /pdt\s+professional/i,
+  /timpro/i,
+  /form\s*dr/i,
+  /\bexpo\b/i,
+  /mothermind/i,
+];
+
+// Vendors Mike wants kept in the P&L but flagged visually as lumpy
+// annual professional costs — accounting + insurance. The dollars land
+// in the month they're paid (no amortisation), but each row renders
+// with an "annual" badge in the OpEx drill so a monthly net-profit dip
+// in the invoice month reads correctly.
+const ANNUAL_SPECIALTY_SUPPLIERS: RegExp[] = [
+  /jmh\s+accounting/i,
+  /navacord/i,
+];
 
 export default async function AdminFinancialsPage() {
   const service = createServiceRoleClient();
@@ -395,10 +444,22 @@ export default async function AdminFinancialsPage() {
       /labcorp/i,
       /dynacare/i,
     ];
-    qboTxns = ((txnsRaw ?? []) as unknown as QboTxn[]).filter((t) => {
-      const sup = t.supplier_name ?? "";
-      return !SERVICE_DATE_SUPPLIERS.some((rx) => rx.test(sup));
-    });
+    qboTxns = ((txnsRaw ?? []) as unknown as QboTxn[])
+      .filter((t) => {
+        const sup = t.supplier_name ?? "";
+        if (SERVICE_DATE_SUPPLIERS.some((rx) => rx.test(sup))) return false;
+        // Normalized-financials exclusions — supplements inventory,
+        // one-off setup, personal, etc. See BUSINESS_EXCLUDED_SUPPLIERS
+        // above for the full list and reasoning.
+        if (BUSINESS_EXCLUDED_SUPPLIERS.some((rx) => rx.test(sup))) return false;
+        return true;
+      })
+      .map((t) => {
+        const sup = t.supplier_name ?? "";
+        return ANNUAL_SPECIALTY_SUPPLIERS.some((rx) => rx.test(sup))
+          ? { ...t, is_annual_specialty: true }
+          : t;
+      });
 
     const { data: catsRaw } = await service
       .from("expense_categories")
@@ -604,6 +665,14 @@ export default async function AdminFinancialsPage() {
         <p className="mt-1" style={{ color: "#e8d5a3" }}>
           Real revenue, COGS, and operating expenses — expenses come straight
           from QuickBooks.
+        </p>
+        <p className="mt-1 text-xs" style={{ color: "#8dc63f" }}>
+          Normalized view — supplement inventory, one-off equipment, personal,
+          and sundry non-business QBO vendors are filtered out so the numbers
+          reflect go-forward test operations. Annual professional fees (JMH
+          accounting, Navacord insurance) still land in the month they were
+          paid and are badged <span style={{ opacity: 0.9 }}>“annual”</span> in
+          the OpEx drill.
         </p>
       </div>
 

@@ -1072,6 +1072,25 @@ function PnLCategoryRow({
                 }}
               >
                 {t.supplier_name ?? "(no supplier)"} · {t.txn_date}
+                {t.is_annual_specialty && (
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      padding: "1px 6px",
+                      borderRadius: 999,
+                      backgroundColor: "rgba(196,151,58,0.15)",
+                      color: "#c4973a",
+                      border: "1px solid #c4973a",
+                      fontSize: 10,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      fontWeight: 700,
+                    }}
+                    title="Lumpy once-a-year professional fee — hits this month, not a run-rate cost"
+                  >
+                    annual
+                  </span>
+                )}
                 {(() => {
                   const lag = (t as QboTxn & { applied_lag_days?: number })
                     .applied_lag_days ?? 0;
