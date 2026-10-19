@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, X, Plus } from "lucide-react";
+import { ShoppingBag, X, Plus, Minus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { computeDiscount } from "@/lib/checkout/discount";
 import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
@@ -50,7 +50,7 @@ export function CheckoutCartSummary({
   quoteDiscountCad = 0,
   acceptedQuoteNumber = null,
 }: CheckoutCartSummaryProps) {
-  const { removeItem } = useCart();
+  const { removeItem, incrementTest, decrementTest } = useCart();
   const repeatClient = useRepeatClient();
   const testCount = cart.filter((i) => i.line_type === "test").length;
   const effectiveLineCount = lineCount ?? testCount;
@@ -141,67 +141,220 @@ export function CheckoutCartSummary({
             </div>
           )}
 
-          {/* Line items with full price + per-line discount annotation */}
+          {/* Line items.
+              Tests are grouped by test_id so adding a second of the
+              same SKU shows as "× 2" instead of a duplicate row — the
+              underlying cart still carries one row per copy (each with
+              its own instance_id) because reconcileAssignments and
+              materialise both key off rows, not quantity. +/- buttons
+              drive incrementTest / decrementTest which add or drop a
+              row for that test_id.
+              Supplements, resources, and custom lines render one per
+              row with the X remove button they always had. */}
           <ul className="space-y-3 mb-4">
-            {cart.map((item) => {
-              const id = cartItemId(item);
-              const name = cartItemName(item);
-              const subtitle =
-                item.line_type === "test"
-                  ? item.lab_name
-                  : item.line_type === "supplement"
+            {(() => {
+              type Row =
+                | {
+                    kind: "test-group";
+                    testId: string;
+                    firstRow: CartItem & { line_type: "test" };
+                    count: number;
+                    ids: string[];
+                  }
+                | { kind: "single"; item: CartItem; id: string };
+              const rows: Row[] = [];
+              const groupIdx = new Map<string, number>();
+              for (const item of cart) {
+                if (item.line_type === "test") {
+                  const key = item.test_id;
+                  const existing = groupIdx.get(key);
+                  if (existing != null) {
+                    const g = rows[existing];
+                    if (g.kind === "test-group") {
+                      g.count += 1;
+                      g.ids.push(cartItemId(item));
+                    }
+                  } else {
+                    groupIdx.set(key, rows.length);
+                    rows.push({
+                      kind: "test-group",
+                      testId: item.test_id,
+                      firstRow: item,
+                      count: 1,
+                      ids: [cartItemId(item)],
+                    });
+                  }
+                } else {
+                  rows.push({ kind: "single", item, id: cartItemId(item) });
+                }
+              }
+
+              return rows.map((row) => {
+                if (row.kind === "test-group") {
+                  const item = row.firstRow;
+                  const name = cartItemName(item);
+                  const lineTotal = item.price_cad * row.count;
+                  return (
+                    <li key={`test:${row.testId}`} className="flex flex-col gap-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className="text-sm font-medium leading-snug"
+                            style={{ color: "#14301A" }}
+                          >
+                            {name}
+                          </p>
+                          <p
+                            className="text-xs mt-0.5"
+                            style={{ color: "#5A5A5A" }}
+                          >
+                            {item.lab_name}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <p
+                            className="text-sm font-semibold whitespace-nowrap av-nums"
+                            style={{ color: "#14301A" }}
+                          >
+                            {formatCurrency(lineTotal)}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Last copy -> remove the row entirely so
+                              // the group disappears instead of hanging
+                              // around at × 0.
+                              row.ids.forEach((id) => removeItem(id));
+                            }}
+                            className="p-0.5 rounded transition-colors"
+                            style={{ color: "#5A5A5A" }}
+                            aria-label={`Remove all ${name}`}
+                            title="Remove from cart"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      {/* Qty stepper — centred under the row so it
+                          reads as a secondary control, not a primary
+                          action. - decrements, badge shows count, +
+                          increments. */}
+                      <div
+                        className="flex items-center justify-between gap-2 mt-1"
+                        style={{
+                          borderTop: "1px dashed #E3DED4",
+                          paddingTop: 6,
+                        }}
+                      >
+                        <span className="text-[11px]" style={{ color: "#5A5A5A" }}>
+                          {formatCurrency(item.price_cad)} each
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => decrementTest(row.testId)}
+                            disabled={row.count <= 1}
+                            className="flex items-center justify-center w-6 h-6 rounded transition-colors"
+                            style={{
+                              border: "1px solid #14301A",
+                              color: "#14301A",
+                              backgroundColor: "transparent",
+                              opacity: row.count <= 1 ? 0.35 : 1,
+                              cursor: row.count <= 1 ? "not-allowed" : "pointer",
+                            }}
+                            aria-label={`Decrease ${name} quantity`}
+                            title={
+                              row.count <= 1
+                                ? "Use × to remove entirely"
+                                : "Decrease quantity"
+                            }
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span
+                            className="text-sm font-semibold av-nums"
+                            style={{ color: "#14301A", minWidth: 18, textAlign: "center" }}
+                          >
+                            × {row.count}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => incrementTest(row.testId)}
+                            className="flex items-center justify-center w-6 h-6 rounded transition-colors"
+                            style={{
+                              backgroundColor: "#14301A",
+                              color: "#FFFFFF",
+                              border: "1px solid #14301A",
+                            }}
+                            aria-label={`Increase ${name} quantity`}
+                            title="Add another"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                      {discount.applies && (
+                        <p
+                          className="text-[11px] font-medium text-right"
+                          style={{ color: "#5A5A5A" }}
+                        >
+                          −{formatCurrency(discount.per_line * row.count)}{" "}
+                          multi-test discount
+                        </p>
+                      )}
+                    </li>
+                  );
+                }
+                // Non-test row — supplements, resources, custom lines.
+                const item = row.item;
+                const id = row.id;
+                const name = cartItemName(item);
+                const subtitle =
+                  item.line_type === "supplement"
                     ? "Supplement"
-                    : "Resource";
-              return (
-              <li
-                key={id}
-                className="flex flex-col gap-0.5"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="text-sm font-medium leading-snug"
-                      style={{ color: "#092819" }}
-                    >
-                      {name}
-                    </p>
-                    <p
-                      className="text-xs mt-0.5"
-                      style={{ color: "#4a7a56" }}
-                    >
-                      {subtitle}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <p
-                      className="text-sm font-semibold whitespace-nowrap"
-                      style={{ color: "#C6A04B" }}
-                    >
-                      {formatCurrency(item.price_cad)}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => removeItem(id)}
-                      className="p-0.5 rounded transition-colors"
-                      style={{ color: "#C6A04B" }}
-                      aria-label={`Remove ${name}`}
-                      title="Remove from cart"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-                {discount.applies && item.line_type === "test" && (
-                  <p
-                    className="text-[11px] font-medium ml-0 sm:ml-0 text-right"
-                    style={{ color: "#88D45D" }}
-                  >
-                    âˆ’{formatCurrency(discount.per_line)} multi-test discount
-                  </p>
-                )}
-              </li>
-              );
-            })}
+                    : item.line_type === "resource"
+                      ? "Resource"
+                      : "Custom charge";
+                return (
+                  <li key={id} className="flex flex-col gap-0.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="text-sm font-medium leading-snug"
+                          style={{ color: "#14301A" }}
+                        >
+                          {name}
+                        </p>
+                        <p
+                          className="text-xs mt-0.5"
+                          style={{ color: "#5A5A5A" }}
+                        >
+                          {subtitle}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <p
+                          className="text-sm font-semibold whitespace-nowrap av-nums"
+                          style={{ color: "#14301A" }}
+                        >
+                          {formatCurrency(item.price_cad)}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(id)}
+                          className="p-0.5 rounded transition-colors"
+                          style={{ color: "#5A5A5A" }}
+                          aria-label={`Remove ${name}`}
+                          title="Remove from cart"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                );
+              });
+            })()}
           </ul>
 
           {/* Totals block */}

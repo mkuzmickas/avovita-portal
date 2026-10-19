@@ -202,6 +202,19 @@ interface CartContextValue {
   /** @deprecated Use addItem with a full CartItem instead. */
   addTestItem: (item: CatalogueCartItem) => void;
   removeItem: (id: string) => void;
+  /**
+   * Test-only. Adds a SECOND cart row for the same test_id with a
+   * fresh instance_id so Step 2 can split them across people and
+   * materialise creates one order_line per copy. The commitAdd dedupe
+   * key is instance_id, so collisions are impossible.
+   */
+  incrementTest: (testId: string) => void;
+  /**
+   * Test-only. Removes ONE cart row with the given test_id (the last
+   * one, so decrement/decrement/decrement empties the group). Mirrors
+   * incrementTest's "one row per copy" model.
+   */
+  decrementTest: (testId: string) => void;
   clearCart: () => void;
   hydrated: boolean;
 }
@@ -374,6 +387,44 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart((prev) => prev.filter((c) => cartItemId(c) !== id));
   }, []);
 
+  const incrementTest = useCallback((testId: string) => {
+    setCart((prev) => {
+      // Clone the first existing test row for this test_id and give
+      // it a fresh instance_id so it coexists as a separate cart
+      // entry. commitAdd's dedupe key is instance_id, so this never
+      // collides with the original row.
+      const existing = prev.find(
+        (c): c is CartItem & { line_type: "test" } =>
+          c.line_type === "test" && c.test_id === testId,
+      );
+      if (!existing) return prev;
+      const fresh: CartItem = {
+        ...existing,
+        instance_id: `qty-${testId}-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 7)}`,
+        quantity: 1,
+      };
+      return [...prev, fresh];
+    });
+  }, []);
+
+  const decrementTest = useCallback((testId: string) => {
+    setCart((prev) => {
+      // Find the LAST matching row and drop it. Walking from the end
+      // means increments made in a given session are the first to come
+      // off, which matches a user clicking "+" then "-" and expecting
+      // their last action to undo.
+      for (let i = prev.length - 1; i >= 0; i--) {
+        const c = prev[i];
+        if (c.line_type === "test" && c.test_id === testId) {
+          return prev.slice(0, i).concat(prev.slice(i + 1));
+        }
+      }
+      return prev;
+    });
+  }, []);
+
   const clearCart = useCallback(() => {
     setCart([]);
     if (typeof window !== "undefined") {
@@ -399,10 +450,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       addItem,
       addTestItem,
       removeItem,
+      incrementTest,
+      decrementTest,
       clearCart,
       hydrated,
     }),
-    [cart, totals, addItem, addTestItem, removeItem, clearCart, hydrated],
+    [
+      cart,
+      totals,
+      addItem,
+      addTestItem,
+      removeItem,
+      incrementTest,
+      decrementTest,
+      clearCart,
+      hydrated,
+    ],
   );
 
   return (
