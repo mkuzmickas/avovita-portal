@@ -165,14 +165,32 @@ function normalizePhone(raw: string): string {
  * Parses Acuity's date-time format:
  *   "Thursday, August 20, 2026 10:00am"
  *   "August 20, 2026 10:00am MDT"
- * Returns a Calgary-local ISO 8601 timestamp.
+ *   "Monday, November 16, 2026 9:00am CST"   ← sender's calendar in
+ *                                              Chicago TZ, appt still
+ *                                              Calgary-local
+ * Returns a Calgary-local ISO 8601 timestamp. Any trailing 3-letter
+ * TZ abbreviation is stripped — MDT/MST silently (expected Calgary),
+ * anything else with a warning so Jenna can sanity-check that the
+ * sender's calendar wasn't actually meant to represent a different
+ * zone (AvoVita only operates in Calgary, so a non-M*T label usually
+ * means a misconfigured sender calendar, not a different appointment
+ * time).
  */
 function parseAcuityDatetime(
   input: string,
   warnings: string[],
 ): string | null {
+  // Strip the trailing TZ abbrev regardless of letter — handles
+  // MDT/MST/CST/EST/PST/CDT/PDT/EDT and any similar variant Acuity
+  // might surface. Capture it so we can warn when it isn't Mountain.
+  const tzMatch = input.match(/\s([A-Z]{2,4})\s*$/);
+  if (tzMatch && !/^M[SD]T$/i.test(tzMatch[1])) {
+    warnings.push(
+      `Appointment time labelled "${tzMatch[1]}" instead of MDT/MST — interpreting the clock time as Calgary-local. Double-check this one.`,
+    );
+  }
   const cleaned = input
-    .replace(/M[SD]T\s*$/i, "")
+    .replace(/\s[A-Z]{2,4}\s*$/, "")
     .replace(/^[A-Za-z]+,\s*/, "")
     .trim();
   // "August 20, 2026 10:00am" or "August 20, 2026 at 10:00am"

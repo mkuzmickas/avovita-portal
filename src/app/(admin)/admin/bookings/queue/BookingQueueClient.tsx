@@ -268,6 +268,18 @@ function QueueRow({
               ⚠ {event.parse_warnings.join(" ")}
             </div>
           )}
+          <a
+            href={`/admin/bookings/raw/${event.id}`}
+            style={{
+              display: "inline-block",
+              marginTop: "10px",
+              fontSize: "12px",
+              color: "#8dc63f",
+              textDecoration: "none",
+            }}
+          >
+            View raw email →
+          </a>
         </div>
 
         {/* RIGHT: candidate picker */}
