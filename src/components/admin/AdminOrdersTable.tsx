@@ -17,6 +17,7 @@ import {
   Download,
 } from "lucide-react";
 import { OrderExpandedPanel } from "./OrderExpandedPanel";
+import { ClientNameLink } from "./ClientNameLink";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { AdminOrderStatusUpdater } from "@/components/AdminOrderStatusUpdater";
 import type { OrderStatus } from "@/types/database";
@@ -497,7 +498,11 @@ export function AdminOrdersTable({
                         />
                       </td>
                       <td className="px-4 py-4" style={{ color: "#ffffff" }}>
-                        <div>{patientName}</div>
+                        <div>
+                          <ClientNameLink accountId={order.account?.id}>
+                            {patientName}
+                          </ClientNameLink>
+                        </div>
                         {order.account?.is_representative && (
                           <span
                             className="inline-flex items-center mt-1 mr-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"

@@ -31,6 +31,11 @@ export type AdminPatientRow = {
   waiver_completed_at: string | null;
   profiles: AdminPatientProfile[];
   ordersCount: number;
+  /** 8-char uppercase short order IDs for every order on this account.
+   *  Fed into the client-side search so Mike can locate a client by
+   *  typing #ABCD1234 or just ABCD1234 — matches the format shown
+   *  elsewhere in the admin UI. */
+  orderShortIds: string[];
   primaryName: string;
   /** First name of the primary profile — used as personalisation when
    *  sending the Google review request from this page. */
@@ -85,19 +90,24 @@ export default async function AdminPatientsPage() {
   const accountIds = accounts.map((a) => a.id);
 
   const orderCountMap = new Map<string, number>();
+  const orderShortIdsMap = new Map<string, string[]>();
   if (accountIds.length > 0) {
     const { data: ordersForCount } = await service
       .from("orders")
-      .select("account_id")
+      .select("id, account_id")
       .in("account_id", accountIds);
 
     for (const row of (ordersForCount ?? []) as Array<{
+      id: string;
       account_id: string;
     }>) {
       orderCountMap.set(
         row.account_id,
-        (orderCountMap.get(row.account_id) ?? 0) + 1
+        (orderCountMap.get(row.account_id) ?? 0) + 1,
       );
+      const shortIds = orderShortIdsMap.get(row.account_id) ?? [];
+      shortIds.push(row.id.slice(0, 8).toUpperCase());
+      orderShortIdsMap.set(row.account_id, shortIds);
     }
   }
 
@@ -142,6 +152,7 @@ export default async function AdminPatientsPage() {
       waiver_completed_at: account.waiver_completed_at,
       profiles: account.profiles,
       ordersCount: orderCountMap.get(account.id) ?? 0,
+      orderShortIds: orderShortIdsMap.get(account.id) ?? [],
       primaryName,
       primaryFirstName: primary?.first_name ?? null,
       primaryPhone: primary?.phone ?? account.phone ?? null,

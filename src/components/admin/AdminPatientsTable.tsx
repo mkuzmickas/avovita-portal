@@ -15,6 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { ClientNameLink } from "./ClientNameLink";
 import type {
   AdminPatientRow,
   AdminPatientProfile,
@@ -73,6 +74,11 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
 
   const filtered = useMemo(() => {
     const q = debouncedSearch.toLowerCase();
+    // Order-ID branch — strip a leading # and match the uppercase
+    // 8-char prefix form shown everywhere else in admin. Any partial
+    // substring (3+ chars) hits so "C673" catches "C67320C4" too.
+    const qOrderId = debouncedSearch.replace(/^#/, "").toUpperCase().trim();
+    const looksLikeOrderId = /^[A-F0-9]{3,}$/i.test(qOrderId);
     return patients.filter((p) => {
       // Waiver filter
       if (waiverFilter === "complete" && !p.waiver_completed) return false;
@@ -92,6 +98,14 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
             .trim()
             .toLowerCase();
         if (full && full.includes(q)) return true;
+      }
+      // Order-ID match — guarded by the hex-string shape so a short
+      // query like "ab" doesn't light up every account with 3+ orders
+      // containing 'ab' somewhere in a UUID prefix.
+      if (looksLikeOrderId) {
+        for (const sid of p.orderShortIds) {
+          if (sid.includes(qOrderId)) return true;
+        }
       }
       return false;
     });
@@ -120,7 +134,7 @@ export function AdminPatientsTable({ patients }: AdminPatientsTableProps) {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by name or email..."
+            placeholder="Search by name, email, or order #..."
             className="mf-input pl-10 pr-9"
           />
           {searchInput && (
@@ -368,7 +382,11 @@ function PatientRow({
         style={{ backgroundColor: rowBg, borderTop: "1px solid #1a3d22" }}
       >
         <td className="px-5 py-4 font-medium" style={{ color: "#ffffff" }}>
-          <div>{patient.primaryName}</div>
+          <div>
+            <ClientNameLink accountId={patient.id}>
+              {patient.primaryName}
+            </ClientNameLink>
+          </div>
           {patient.is_representative && (
             <span
               className="inline-flex items-center mt-1 mr-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
