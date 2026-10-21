@@ -150,10 +150,18 @@ export interface ShippingProfile {
   commodity: CustomsCommodity;
   shipmentPurpose: "SOLD" | "GIFT" | "SAMPLE" | "REPAIR_AND_RETURN" | "PERSONAL_EFFECTS" | "NOT_SOLD";
   incoterm: "DDP" | "DAP" | "EXW" | "FOB" | "CIP" | "CFR" | "CIF" | "CPT" | "DDU" | "FCA" | "FAS";
-  /** Who pays customs duties + taxes at destination. Mayo has this
-   *  as RECIPIENT (per the invoice text "Recipient will pay all
-   *  duties and taxes") despite the DDP incoterm. Armin has this
-   *  as SENDER. Transport is always SENDER. */
+  /** Who pays customs duties + taxes at destination. AvoVita covers
+   *  everything for Mayo (SENDER + DDP incoterm — consistent with
+   *  what FedEx actually bills). Armin and EpiSeek also SENDER.
+   *  Transport is always SENDER.
+   *
+   *  History: Mayo profiles were briefly set to RECIPIENT in 2026
+   *  because the paper Commercial Invoice template Mike was given
+   *  carried the line "Recipient will pay all duties and taxes".
+   *  That text referenced an older billing arrangement — FedEx was
+   *  honouring the explicit paymentType over the DDP incoterm and
+   *  billing Mayo ~$27 per shipment, which Mayo flagged Oct 2026.
+   *  Flipped back to SENDER to match the DDP incoterm. */
   dutiesPaidBy: "SENDER" | "RECIPIENT";
   /** Consignee shown on the customs commercial invoice — often
    *  different from the FedEx Deliver-To (which points at the
@@ -231,7 +239,9 @@ export const MAYO_FROZEN: ShippingProfile = {
   },
   shipmentPurpose: "NOT_SOLD",
   incoterm: "DDP",
-  dutiesPaidBy: "RECIPIENT",
+  // AvoVita pays all duties — Mayo flagged being billed ~$27 USD per
+  // shipment Oct 2026. See dutiesPaidBy field doc for history.
+  dutiesPaidBy: "SENDER",
   consigneeForInvoice: {
     name: "Dr. William G. Morice II",
     company: "Mayo Clinic Laboratories",
@@ -504,9 +514,9 @@ export const MAYO_AMBIENT: ShippingProfile = {
   },
   shipmentPurpose: "NOT_SOLD",
   incoterm: "DDP",
-  // Mirrors Mayo Frozen: recipient pays per the invoice text, despite
-  // DDP on the FedEx waybill.
-  dutiesPaidBy: "RECIPIENT",
+  // AvoVita pays all duties — matches Mayo Frozen since both land at
+  // the same consignee. See MAYO_FROZEN for the Oct 2026 history.
+  dutiesPaidBy: "SENDER",
   consigneeForInvoice: {
     name: "Dr. William G. Morice II",
     company: "Mayo Clinic Laboratories",
