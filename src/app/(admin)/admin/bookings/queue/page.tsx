@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { BookingQueueClient } from "./BookingQueueClient";
+import { RematchAllButton } from "@/components/admin/RematchAllButton";
 
 export const dynamic = "force-dynamic";
 
@@ -63,20 +64,23 @@ export default async function BookingsQueuePage() {
             confirm which order they belong to.
           </p>
         </div>
-        <Link
-          href="/admin/calendar"
-          style={{
-            padding: "8px 14px",
-            border: "1px solid #2d6b35",
-            borderRadius: "8px",
-            backgroundColor: "transparent",
-            color: "#e8d5a3",
-            fontSize: "13px",
-            textDecoration: "none",
-          }}
-        >
-          ← Back to Calendar
-        </Link>
+        <div className="flex items-center gap-3 flex-wrap">
+          <RematchAllButton />
+          <Link
+            href="/admin/calendar"
+            style={{
+              padding: "8px 14px",
+              border: "1px solid #2d6b35",
+              borderRadius: "8px",
+              backgroundColor: "transparent",
+              color: "#e8d5a3",
+              fontSize: "13px",
+              textDecoration: "none",
+            }}
+          >
+            ← Back to Calendar
+          </Link>
+        </div>
       </div>
 
       {/* Inbox-poller health strip — tells Mike whether emails are
