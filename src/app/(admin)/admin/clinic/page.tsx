@@ -16,6 +16,10 @@ export type ClinicAppointment = {
     email: string | null;
   } | null;
   client_label: string;
+  /** DOB of the primary patient profile tied to this order (ISO date,
+   *  no time). Mike generates Mayo labels from the clinic page and
+   *  Mayo requires DOB per patient, so this is first-class. */
+  client_dob: string | null;
   test_summaries: string[];
 };
 
@@ -64,7 +68,7 @@ export default async function ClinicDayPage({
       account:accounts ( id, email ),
       order_lines (
         test:tests ( name, sku ),
-        profile:patient_profiles ( first_name, last_name, is_primary )
+        profile:patient_profiles ( first_name, last_name, date_of_birth, is_primary )
       )
     `,
     )
@@ -86,6 +90,7 @@ export default async function ClinicDayPage({
       profile: {
         first_name: string | null;
         last_name: string | null;
+        date_of_birth: string | null;
         is_primary: boolean | null;
       } | null;
     }>;
@@ -102,6 +107,13 @@ export default async function ClinicDayPage({
       primary && (primary.first_name || primary.last_name)
         ? `${primary.first_name ?? ""} ${primary.last_name ?? ""}`.trim()
         : (o.account?.email ?? "(unknown client)");
+    // DOB preference: the primary profile's DOB. Fall back to any
+    // joined profile's DOB — invoice-mirrored orders don't always
+    // have a primary flag set but still carry a dob somewhere.
+    const dob =
+      primary?.date_of_birth ??
+      profiles.find((p) => p.date_of_birth)?.date_of_birth ??
+      null;
 
     const testSummaries = Array.from(
       new Set(
@@ -121,6 +133,7 @@ export default async function ClinicDayPage({
       collection_mode: (o.collection_mode as ClinicAppointment["collection_mode"]) ?? null,
       account: o.account,
       client_label: name,
+      client_dob: dob,
       test_summaries: testSummaries,
     };
   });

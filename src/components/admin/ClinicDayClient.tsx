@@ -14,7 +14,7 @@ import {
   FlaskConical,
 } from "lucide-react";
 import Link from "next/link";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { ClientNameLink } from "./ClientNameLink";
 import type { ClinicAppointment } from "@/app/(admin)/admin/clinic/page";
 
@@ -538,6 +538,23 @@ function AppointmentPanel({
           {appt.account?.email && (
             <div className="text-xs" style={{ color: "#8dc63f" }}>
               {appt.account.email}
+            </div>
+          )}
+          {appt.client_dob && (
+            <div
+              className="text-xs mt-1 flex items-center gap-2 font-mono select-all"
+              style={{ color: "#c4973a" }}
+              title="Copy DOB for Mayo label"
+            >
+              <span
+                className="text-[10px] uppercase tracking-wider font-sans"
+                style={{ color: "#6ab04c", letterSpacing: "0.08em" }}
+              >
+                DOB
+              </span>
+              <span style={{ color: "#ffffff" }}>
+                {formatDate(appt.client_dob)}
+              </span>
             </div>
           )}
         </div>
