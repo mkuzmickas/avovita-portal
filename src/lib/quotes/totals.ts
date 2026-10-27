@@ -69,16 +69,22 @@ export function computeQuoteTotals(
   lines: QuoteLineForTotals[],
   personCount: number,
   manualDiscount: ManualDiscount | null = null,
-  customLines: CustomLineForTotals[] = []
+  customLines: CustomLineForTotals[] = [],
+  /**
+   * Set true ONLY when the recipient is a confirmed repeat client. The
+   * server-side Stripe checkout path hard-gates the multi-test
+   * discount on `isRepeatClient(account_id)` — a new client accepting
+   * a quote will get charged the undiscounted amount regardless of
+   * what the quote preview claimed. Defaulting this to false here
+   * keeps the admin preview honest: the quoted total matches the
+   * amount Stripe will actually bill. QuoteBuilder exposes an opt-in
+   * toggle Mike flips on when he knows the recipient has prior
+   * paid orders.
+   */
+  isRepeatClient: boolean = false
 ): QuoteTotals {
   const subtotal = lines.reduce((s, l) => s + (l.unit_price_cad ?? 0), 0);
-  // Quote flow: admin generates quotes with full context about the
-  // customer, so the repeat-client eligibility gate that the direct
-  // checkout flow uses does NOT apply here. Multi-test discount is
-  // applied automatically on 2+ lines regardless of prior-order
-  // history. Admin can zero it via the manual discount lever if the
-  // pricing doesn't work for a given quote.
-  const discount = computeDiscount(lines.length, true).total;
+  const discount = computeDiscount(lines.length, isRepeatClient).total;
   const visitFee = computeVisitFees(Math.max(1, personCount)).total;
   const customLinesTotal = customLines.reduce(
     (s, c) => s + (Number.isFinite(c.amount_cad) ? c.amount_cad : 0),

@@ -89,6 +89,18 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
     "amount" | "percent"
   >(quote.manual_discount_type ?? "amount");
 
+  // Repeat-client preview toggle. The server-side Stripe checkout
+  // path is authoritative — it runs isRepeatClient(account_id) when
+  // the client accepts the quote and strips the multi-test discount
+  // for anyone with zero prior paid orders. Prior to this flag,
+  // the admin Live Quote Summary ALWAYS baked the discount in,
+  // which meant a quote emailed to a new client showed one total
+  // and Stripe billed a higher one. Default off so the preview
+  // matches what a new client will actually pay. Mike flips it on
+  // when he knows the recipient has prior orders; whether he does
+  // or not, the real charge is the server's call.
+  const [applyRepeatDiscount, setApplyRepeatDiscount] = useState(false);
+
   // Custom lines — admin-entered freeform charges/credits beyond the
   // standard test/fee lines. Each row is locally edited as strings so a
   // mid-typing "-" or "1." doesn't get coerced into 0; we coerce to
@@ -191,7 +203,8 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
         lines,
         personCount,
         { value: manualDiscountNum, type: manualDiscountType },
-        customLinesResolved
+        customLinesResolved,
+        applyRepeatDiscount
       ),
     [
       lines,
@@ -199,6 +212,7 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
       manualDiscountNum,
       manualDiscountType,
       customLinesResolved,
+      applyRepeatDiscount,
     ]
   );
   // Admin-only margin: total minus the sum of wholesale cost_cad for
@@ -842,6 +856,37 @@ export function QuoteBuilder({ initialQuote, initialLines, catalogue }: Props) {
             >
               Live Quote Summary
             </h2>
+
+            {/* Repeat-client toggle — the authoritative check runs
+                server-side when the client accepts the quote, so this
+                is purely a preview switch. Default off keeps the
+                preview total honest for new clients. */}
+            <label
+              className="flex items-start gap-2 text-xs cursor-pointer rounded-lg border px-3 py-2"
+              style={{
+                borderColor: applyRepeatDiscount ? "#c4973a" : "#2d6b35",
+                backgroundColor: applyRepeatDiscount
+                  ? "rgba(196,151,58,0.08)"
+                  : "transparent",
+                color: "#e8d5a3",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={applyRepeatDiscount}
+                onChange={(e) => setApplyRepeatDiscount(e.target.checked)}
+                className="mt-0.5"
+                style={{ accentColor: "#c4973a" }}
+              />
+              <span>
+                <strong style={{ color: "#c4973a" }}>Repeat client</strong>{" "}
+                — apply the $20/line multi-test discount in this
+                preview. Only flip this on if the recipient has at
+                least one prior paid order; a new client will be
+                charged the undiscounted total at Stripe either way.
+              </span>
+            </label>
+
             <table className="w-full text-sm">
               <tbody>
                 <SummaryRow
