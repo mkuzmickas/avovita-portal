@@ -20,6 +20,9 @@ export type ClinicAppointment = {
    *  no time). Mike generates Mayo labels from the clinic page and
    *  Mayo requires DOB per patient, so this is first-class. */
   client_dob: string | null;
+  /** Phone of the primary patient profile tied to this order — used
+   *  by Mike to text/call the client from the clinic page. */
+  client_phone: string | null;
   test_summaries: string[];
 };
 
@@ -68,7 +71,7 @@ export default async function ClinicDayPage({
       account:accounts ( id, email ),
       order_lines (
         test:tests ( name, sku ),
-        profile:patient_profiles ( first_name, last_name, date_of_birth, is_primary )
+        profile:patient_profiles ( first_name, last_name, date_of_birth, phone, is_primary )
       )
     `,
     )
@@ -91,6 +94,7 @@ export default async function ClinicDayPage({
         first_name: string | null;
         last_name: string | null;
         date_of_birth: string | null;
+        phone: string | null;
         is_primary: boolean | null;
       } | null;
     }>;
@@ -114,6 +118,10 @@ export default async function ClinicDayPage({
       primary?.date_of_birth ??
       profiles.find((p) => p.date_of_birth)?.date_of_birth ??
       null;
+    const phone =
+      primary?.phone ??
+      profiles.find((p) => p.phone)?.phone ??
+      null;
 
     const testSummaries = Array.from(
       new Set(
@@ -134,6 +142,7 @@ export default async function ClinicDayPage({
       account: o.account,
       client_label: name,
       client_dob: dob,
+      client_phone: phone,
       test_summaries: testSummaries,
     };
   });

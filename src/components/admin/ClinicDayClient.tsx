@@ -557,6 +557,27 @@ function AppointmentPanel({
               </span>
             </div>
           )}
+          {appt.client_phone && (
+            <div
+              className="text-xs mt-0.5 flex items-center gap-2 font-mono"
+              style={{ color: "#c4973a" }}
+            >
+              <span
+                className="text-[10px] uppercase tracking-wider font-sans"
+                style={{ color: "#6ab04c", letterSpacing: "0.08em" }}
+              >
+                Phone
+              </span>
+              <a
+                href={`tel:${appt.client_phone}`}
+                className="select-all"
+                style={{ color: "#ffffff", textDecoration: "none" }}
+                title="Tap to call · click-drag to copy"
+              >
+                {appt.client_phone}
+              </a>
+            </div>
+          )}
         </div>
         <div
           className="rounded-lg border p-3"
