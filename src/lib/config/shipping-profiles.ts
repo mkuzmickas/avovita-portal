@@ -470,9 +470,13 @@ export const EPISEEK: ShippingProfile = {
 // shipment's temperature regime.
 export const MAYO_AMBIENT: ShippingProfile = {
   kind: "mayo_ambient",
-  displayLabel: "Ship Mayo Ambient",
+  // Button covers both truly ambient (room-temp) and refrigerated
+  // (2-8 °C) Mayo specimens — both ride in the FedEx Pak with no dry
+  // ice declaration. Mike labels it with both terms so the shipping
+  // console reads naturally for either clinical case.
+  displayLabel: "Ship Mayo Ambient/Refrige",
   displaySubtitle:
-    "Ambient FedEx Pak to Mayo Clinic Laboratories · International Priority Express",
+    "Ambient or refrigerated FedEx Pak to Mayo Clinic Laboratories · International Priority Express",
   recipient: {
     contactName: "Global Logistics",
     company: "Mayo Clinic Laboratories",
