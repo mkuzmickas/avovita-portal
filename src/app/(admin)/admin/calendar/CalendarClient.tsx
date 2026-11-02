@@ -211,7 +211,7 @@ function WeekView({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `60px repeat(7, 1fr)`,
+          gridTemplateColumns: `60px repeat(7, minmax(0, 1fr))`,
           borderBottom: "1px solid #2d6b35",
           backgroundColor: "#1a3d22",
         }}
@@ -250,7 +250,7 @@ function WeekView({
             key={hour}
             style={{
               display: "grid",
-              gridTemplateColumns: `60px repeat(7, 1fr)`,
+              gridTemplateColumns: `60px repeat(7, minmax(0, 1fr))`,
               borderTop: "1px solid #1f4a28",
               minHeight: rowHasAny ? "88px" : "28px",
             }}
@@ -278,6 +278,12 @@ function WeekView({
                     display: "flex",
                     flexDirection: "column",
                     gap: "3px",
+                    // Belt-and-suspenders with grid minmax(0, 1fr):
+                    // a cell's intrinsic content width still tries to
+                    // bully the column open on some browsers unless we
+                    // explicitly clip it here.
+                    minWidth: 0,
+                    overflow: "hidden",
                   }}
                 >
                   {list.map((a) => (
@@ -452,7 +458,7 @@ function MonthView({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(7, 1fr)`,
+          gridTemplateColumns: `repeat(7, minmax(0, 1fr))`,
           borderBottom: "1px solid #2d6b35",
           backgroundColor: "#1a3d22",
         }}
@@ -476,7 +482,7 @@ function MonthView({
       </div>
 
       {/* Days grid */}
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(7, 1fr)` }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(7, minmax(0, 1fr))` }}>
         {days.map((d) => {
           const list = byDay.get(d.iso) ?? [];
           const revenue = list.reduce((s, a) => s + a.totalCad, 0);
