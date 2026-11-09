@@ -64,6 +64,18 @@ const TUESDAY_MAYO_BULLETS = [
   "We strongly recommend ordering this test alongside others so your home visit fee is not wasted if the specimen is compromised in transit",
 ];
 
+// JAK2B carries a 7-day stability window — long enough that a Monday OR
+// Tuesday collection still leaves time for FedEx to land before the
+// specimen times out. Same operational refund posture as the 48-hour
+// group above.
+const MON_TUE_MAYO_INTRO =
+  "requires a Monday or Tuesday collection only. The specimen has a 7-day stability window and must ship promptly to Mayo Clinic Laboratories to meet stability requirements.";
+const MON_TUE_MAYO_BULLETS = [
+  "Your collection appointment must be booked on a Monday or Tuesday",
+  "FedEx shipping delays can cause the specimen to time out before reaching the lab — if this occurs, this test fee will be refunded but the home visit fee is non-refundable",
+  "We strongly recommend ordering this test alongside others so your home visit fee is not wasted if the specimen is compromised in transit",
+];
+
 const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
   {
     test_id: CBC_TEST_ID,
@@ -85,6 +97,13 @@ const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
     headline: "Important — Tuesday-Only Collection Notice",
     intro: TUESDAY_MAYO_INTRO,
     bullets: TUESDAY_MAYO_BULLETS,
+  },
+  {
+    sku: "JAK2B",
+    display: "JAK2 V617F Mutation Detection (JAK2B)",
+    headline: "Important — Monday or Tuesday Collection Notice",
+    intro: MON_TUE_MAYO_INTRO,
+    bullets: MON_TUE_MAYO_BULLETS,
   },
 ];
 
