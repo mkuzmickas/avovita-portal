@@ -99,6 +99,13 @@ const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
     bullets: TUESDAY_MAYO_BULLETS,
   },
   {
+    sku: "HSTNI",
+    display: "Troponin I, High Sensitivity, Plasma (HSTNI)",
+    headline: "Important — Tuesday-Only Collection Notice",
+    intro: TUESDAY_MAYO_INTRO,
+    bullets: TUESDAY_MAYO_BULLETS,
+  },
+  {
     sku: "JAK2B",
     display: "JAK2 V617F Mutation Detection (JAK2B)",
     headline: "Important — Monday or Tuesday Collection Notice",
