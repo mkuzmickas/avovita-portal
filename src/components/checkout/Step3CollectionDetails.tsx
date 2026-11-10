@@ -283,8 +283,10 @@ export function Step3CollectionDetails({
       {/* Per-test scheduling acknowledgement — required before Continue
           when the cart has a test with a stability / lab-cutoff
           constraint. Data source: tests.booking_ack_text (migration
-          047), currently populated for FNIRM. Adding more constrained
-          tests is admin-editable, no code change needed. */}
+          047). Admin-editable per test. Previously populated for
+          FNIRM (cleared Nov 2026 after Mike confirmed the stability
+          window widened from 5 days to 14 days, so a Mon/Tue
+          restriction is no longer necessary). */}
       {needsAck && (
         <div
           className="mb-6 rounded-xl border p-4 sm:p-5"
