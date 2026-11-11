@@ -105,8 +105,16 @@ export async function sendFloLabsRequisition(
         const lab = Array.isArray(t?.lab) ? t?.lab[0] : t?.lab;
         const fasting = /fasting/i.test(t?.turnaround_display ?? "");
         const mayoLink = mayoCatalogLink(t?.mayo_test_id ?? null);
+        // Free Vitality Check promo — surface a distinct FREE badge in
+        // the FloLabs requisition so the phlebotomist sees the line
+        // but also knows AvoVita is absorbing the lab cost (so
+        // billing / handoff paperwork doesn't try to bill the client).
+        const promoBadge =
+          a.promo_vitality === true
+            ? ` <span style="display:inline-block;margin-left:4px;padding:1px 6px;background:#fbe7b5;color:#6b4a00;font-size:10px;font-weight:700;letter-spacing:0.05em;border-radius:3px;text-transform:uppercase;">FREE — Vitality Check</span>`
+            : "";
         return `<tr>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(t?.name ?? "Unknown")}${mayoLink ? `<div style="margin-top:3px;line-height:1;">${mayoLink}</div>` : ""}</td>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(t?.name ?? "Unknown")}${promoBadge}${mayoLink ? `<div style="margin-top:3px;line-height:1;">${mayoLink}</div>` : ""}</td>
           <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(lab?.name ?? "")}</td>
           <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(t?.specimen_type ?? "—")}</td>
           <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;">${esc(formatShipTempLong(t?.ship_temp ?? null))}</td>

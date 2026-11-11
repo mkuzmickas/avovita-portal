@@ -41,6 +41,16 @@ export interface OrderMetadataPayload {
     test_id: string;
     person_index: number;
     unit_price_cad: number;
+    /** True when this line is the free Vitality Check promo. Materialise
+     *  writes the order_line with unit_price_cad=0 and is_promo=true
+     *  so admin/financials/FloLabs can treat the line distinctly from
+     *  a regular $0 line. */
+    promo_vitality?: boolean;
+    /** Original retail price retained for strike-through display in
+     *  the receipt / admin UI. Not persisted on order_lines — just
+     *  carried via metadata for the webhook to feed into the
+     *  confirmation email + receipt. */
+    retail_price_cad?: number;
   }>;
   visit_fees: {
     base: number;
@@ -265,7 +275,11 @@ export async function materialiseOrder(
       test_id: a.test_id,
       profile_id: profileId,
       quantity: 1,
-      unit_price_cad: a.unit_price_cad,
+      // Promo line is written at $0 regardless of the test's catalogue
+      // price. Server-side validation already zeroed a.unit_price_cad
+      // when a.promo_vitality is true, but we belt-and-suspenders here.
+      unit_price_cad: a.promo_vitality === true ? 0 : a.unit_price_cad,
+      is_promo: a.promo_vitality === true,
     };
   });
 

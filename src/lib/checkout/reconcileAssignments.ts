@@ -59,6 +59,7 @@ export function reconcileAssignments(
       lab_name: t.lab_name,
       price_cad: t.price_cad,
       person_index: 0,
+      promo_vitality: t.promo_vitality === true ? true : undefined,
     }));
   }
 
@@ -83,6 +84,7 @@ export function reconcileAssignments(
       lab_name: t.lab_name,
       price_cad: t.price_cad,
       person_index: personIndex,
+      promo_vitality: t.promo_vitality === true ? true : undefined,
     };
   });
 }

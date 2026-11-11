@@ -165,6 +165,21 @@ export function CheckoutCartSummary({
               const rows: Row[] = [];
               const groupIdx = new Map<string, number>();
               for (const item of cart) {
+                // Free Vitality Check promo line gets its own row — it
+                // never merges with a paid same-test group so the UI
+                // can render the strike-through / FREE treatment
+                // distinctly.
+                if (
+                  item.line_type === "test" &&
+                  item.promo_vitality === true
+                ) {
+                  rows.push({
+                    kind: "single",
+                    item,
+                    id: cartItemId(item),
+                  });
+                  continue;
+                }
                 if (item.line_type === "test") {
                   const key = item.test_id;
                   const existing = groupIdx.get(key);
@@ -305,16 +320,27 @@ export function CheckoutCartSummary({
                     </li>
                   );
                 }
-                // Non-test row — supplements, resources, custom lines.
+                // Non-test row — supplements, resources, custom lines
+                // AND the Vitality Check promo test (which is routed
+                // here via its own kind:"single" push above so it
+                // doesn't merge with a paid same-test group).
                 const item = row.item;
                 const id = row.id;
                 const name = cartItemName(item);
-                const subtitle =
-                  item.line_type === "supplement"
+                const isPromoTest =
+                  item.line_type === "test" &&
+                  item.promo_vitality === true;
+                const subtitle = isPromoTest
+                  ? "FREE Vitality Check"
+                  : item.line_type === "supplement"
                     ? "Supplement"
                     : item.line_type === "resource"
                       ? "Resource"
-                      : "Custom charge";
+                      : item.line_type === "test"
+                        ? "lab_name" in item
+                          ? item.lab_name
+                          : "Test"
+                        : "Custom charge";
                 return (
                   <li key={id} className="flex flex-col gap-0.5">
                     <div className="flex items-start justify-between gap-3">
@@ -327,25 +353,50 @@ export function CheckoutCartSummary({
                         </p>
                         <p
                           className="text-xs mt-0.5"
-                          style={{ color: "#5A5A5A" }}
+                          style={{
+                            color: isPromoTest ? "#8A5A17" : "#5A5A5A",
+                            fontWeight: isPromoTest ? 700 : undefined,
+                            letterSpacing: isPromoTest ? "0.05em" : undefined,
+                          }}
                         >
                           {subtitle}
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <p
-                          className="text-sm font-semibold whitespace-nowrap av-nums"
-                          style={{ color: "#14301A" }}
-                        >
-                          {formatCurrency(item.price_cad)}
-                        </p>
+                        {isPromoTest ? (
+                          <div className="flex flex-col items-end">
+                            <span
+                              className="text-xs line-through av-nums"
+                              style={{ color: "#8dc63f" }}
+                            >
+                              {formatCurrency(item.price_cad)}
+                            </span>
+                            <span
+                              className="text-sm font-semibold av-nums"
+                              style={{ color: "#8A5A17" }}
+                            >
+                              FREE
+                            </span>
+                          </div>
+                        ) : (
+                          <p
+                            className="text-sm font-semibold whitespace-nowrap av-nums"
+                            style={{ color: "#14301A" }}
+                          >
+                            {formatCurrency(item.price_cad)}
+                          </p>
+                        )}
                         <button
                           type="button"
                           onClick={() => removeItem(id)}
                           className="p-0.5 rounded transition-colors"
                           style={{ color: "#5A5A5A" }}
                           aria-label={`Remove ${name}`}
-                          title="Remove from cart"
+                          title={
+                            isPromoTest
+                              ? "Give up the free Vitality Check"
+                              : "Remove from cart"
+                          }
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>

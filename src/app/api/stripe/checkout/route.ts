@@ -5,6 +5,11 @@ import { computeDiscount } from "@/lib/checkout/discount";
 import { isRepeatClient } from "@/lib/checkout/repeatClientEligibility";
 import { resolveManualDiscount } from "@/lib/quotes/totals";
 import { getGstTaxRate } from "@/lib/stripe/getGstTaxRate";
+import {
+  VITALITY_CHECK_ENABLED,
+  VITALITY_CHECK_MIN_PAID_TESTS,
+  VITALITY_CHECK_SKUS,
+} from "@/lib/promo/vitalityCheck";
 import type { CheckoutPayload } from "@/lib/checkout/types";
 
 /**
@@ -96,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     const { data: testsRaw, error: testsErr } = await supabase
       .from("tests")
-      .select("id, name, price_cad, lab:labs(name)")
+      .select("id, name, sku, price_cad, lab:labs(name)")
       .in("id", testIds)
       .eq("active", true);
 
@@ -110,19 +115,27 @@ export async function POST(request: NextRequest) {
     type TestRow = {
       id: string;
       name: string;
+      sku: string | null;
       price_cad: number;
       lab: { name: string } | { name: string }[] | null;
     };
     const tests = testsRaw as unknown as TestRow[];
     const testMap = new Map<
       string,
-      { id: string; name: string; price_cad: number; lab_name: string }
+      {
+        id: string;
+        name: string;
+        sku: string | null;
+        price_cad: number;
+        lab_name: string;
+      }
     >();
     for (const t of tests) {
       const lab = Array.isArray(t.lab) ? t.lab[0] : t.lab;
       testMap.set(t.id, {
         id: t.id,
         name: t.name,
+        sku: t.sku,
         price_cad: Number(t.price_cad),
         lab_name: lab?.name ?? "",
       });
@@ -136,6 +149,54 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    // ─── Vitality Check promo validation (server authoritative) ────
+    // The client flags a free-promo assignment with promo_vitality=true.
+    // Server strips the flag unless ALL of these hold:
+    //   • Promo is enabled globally (env gate).
+    //   • SKU is one of the configured giveaway options.
+    //   • Cart has VITALITY_CHECK_MIN_PAID_TESTS paid test lines (the
+    //     promo line itself doesn't count).
+    //   • All paid tests + the promo line target the same
+    //     assigned_to_person (single-person rule).
+    // A failure strips the flag so Stripe charges full price — never
+    // 400, so a spoofed flag can't nuke the whole checkout.
+    const promoAssignments = body.assignments.filter(
+      (a) => a.promo_vitality === true,
+    );
+    const paidAssignments = body.assignments.filter(
+      (a) => a.promo_vitality !== true,
+    );
+    const validPromoAssignmentIds = new Set<string>();
+    if (VITALITY_CHECK_ENABLED && promoAssignments.length > 0) {
+      const paidPersons = new Set(
+        paidAssignments.map((a) => a.assigned_to_person),
+      );
+      const samePerson = paidPersons.size <= 1;
+      const hasMinPaid = paidAssignments.length >= VITALITY_CHECK_MIN_PAID_TESTS;
+      for (const pa of promoAssignments) {
+        const test = testMap.get(pa.test_id);
+        if (!test || !test.sku || !VITALITY_CHECK_SKUS.has(test.sku)) continue;
+        if (!hasMinPaid) continue;
+        if (!samePerson) continue;
+        // Only the FIRST qualifying promo assignment is honoured — one
+        // free Vitality Check per order regardless of what the client
+        // sent.
+        if (validPromoAssignmentIds.size === 0) {
+          validPromoAssignmentIds.add(pa.test_id + ":" + pa.assigned_to_person);
+        }
+      }
+    }
+    // Flip any disallowed promo assignments back to normal paid lines
+    // (server-authoritative: we never silently drop them, we just bill
+    // them at sticker price). This way the UI couldn't game a free
+    // extra test by setting promo_vitality=true on something not on
+    // the whitelist.
+    for (const a of body.assignments) {
+      if (a.promo_vitality !== true) continue;
+      const key = a.test_id + ":" + a.assigned_to_person;
+      if (!validPromoAssignmentIds.has(key)) a.promo_vitality = false;
     }
 
     // ─── Compute discount (recomputed server-side — never trust client) ──
@@ -170,8 +231,11 @@ export async function POST(request: NextRequest) {
         createServiceRoleClient(),
         body.account_user_id,
       ));
+    // Multi-test discount gate uses PAID lines only — the free Vitality
+    // Check promo never counts (it's priced at $0 and shouldn't push a
+    // 2-paid-test cart into a 3-line discount bracket).
     const discount = computeDiscount(
-      body.assignments.length,
+      paidAssignments.length,
       eligibleForMultiTest,
     );
 
@@ -196,6 +260,29 @@ export async function POST(request: NextRequest) {
         ? `${person.first_name} ${person.last_name}`.trim() ||
           `Person ${assignment.assigned_to_person + 1}`
         : "Patient";
+
+      // Free Vitality Check promo line: Stripe still receives the
+      // product (so receipt + metadata show the test name), but
+      // unit_amount is 0 and the description explicitly calls it out
+      // as the freebie. Promo line is excluded from both the subtotal
+      // AND the multi-test discount calculation above.
+      if (assignment.promo_vitality === true) {
+        lineItems.push({
+          price_data: {
+            currency: "cad",
+            product_data: {
+              name: `${test.name} — Free Vitality Check`,
+              description: `For: ${personName} · normally ${new Intl.NumberFormat(
+                "en-CA",
+                { style: "currency", currency: "CAD" },
+              ).format(test.price_cad)}, included with your order`,
+            },
+            unit_amount: 0,
+          },
+          quantity: 1,
+        });
+        continue;
+      }
 
       // Line items keep their sticker unit price so the Stripe checkout
       // page matches the AvoVita review page line-for-line. The multi-
@@ -447,7 +534,16 @@ export async function POST(request: NextRequest) {
       assignments: body.assignments.map((a) => ({
         test_id: a.test_id,
         person_index: a.assigned_to_person,
-        unit_price_cad: testMap.get(a.test_id)!.price_cad,
+        // Promo line: materialised at $0 unit_price, but keep the
+        // retail price here in `retail_price_cad` so the receipt and
+        // admin UIs can render the strike-through. Everything else
+        // stays at sticker.
+        unit_price_cad:
+          a.promo_vitality === true
+            ? 0
+            : testMap.get(a.test_id)!.price_cad,
+        promo_vitality: a.promo_vitality === true,
+        retail_price_cad: testMap.get(a.test_id)!.price_cad,
       })),
       visit_fees: {
         base: visitFeeBase,

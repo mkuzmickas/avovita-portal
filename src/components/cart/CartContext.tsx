@@ -147,7 +147,13 @@ function computeCartTotals(
   const supplementItems = cart.filter((i) => i.line_type === "supplement");
   const resourceItems = cart.filter((i) => i.line_type === "resource");
 
-  const subtotal_tests = testItems.reduce(
+  // Free Vitality Check promo test line — carried in the cart with its
+  // retail price_cad for display (strike-through in UI) but excluded
+  // from subtotal_tests, cart_total, and the multi-test discount
+  // qualification. Server re-validates eligibility at Stripe create.
+  const paidTestItems = testItems.filter((i) => i.promo_vitality !== true);
+
+  const subtotal_tests = paidTestItems.reduce(
     (s, i) => s + i.price_cad * i.quantity,
     0,
   );
@@ -160,7 +166,11 @@ function computeCartTotals(
     0,
   );
 
-  const test_count = testItems.length;
+  // test_count feeds both the multi-test discount gate AND the public
+  // "n tests in cart" indicator. We keep it at paid-only so adding the
+  // free Vitality Check doesn't push a 2-test cart into a 3-test
+  // repeat-client discount tier.
+  const test_count = paidTestItems.length;
   const discount = computeDiscount(test_count, isRepeatClient);
   const test_discount = discount.total;
   const kitFee = computeKitServiceFee(cart);
@@ -234,6 +244,18 @@ interface CartContextValue {
    * incrementTest's "one row per copy" model.
    */
   decrementTest: (testId: string) => void;
+  /**
+   * Vitality Check promo — add a free test line to the cart. Pass the
+   * catalogue CartItem shape (price_cad = the test's retail price);
+   * context stamps `promo_vitality: true` and a stable instance_id so
+   * materialise + Stripe recognise it as the free slot. Any previously
+   * added promo line is replaced (only one free Vitality Check per
+   * cart). Server-side validation re-checks eligibility at Stripe
+   * session create.
+   */
+  setVitalityCheck: (item: CartItemTest) => void;
+  /** Remove the current free Vitality Check line (if any). */
+  clearVitalityCheck: () => void;
   clearCart: () => void;
   hydrated: boolean;
 }
@@ -456,6 +478,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const setVitalityCheck = useCallback(
+    (item: CartItemTest) => {
+      setCart((prev) => {
+        // Strip any existing promo line then add the new one with a
+        // stable instance_id that can't collide with a regular add.
+        const withoutPromo = prev.filter(
+          (c) => !(c.line_type === "test" && c.promo_vitality === true),
+        );
+        const promoLine: CartItemTest = {
+          ...item,
+          line_type: "test" as const,
+          quantity: 1,
+          instance_id: `vitality-${item.test_id}`,
+          promo_vitality: true,
+        };
+        return [...withoutPromo, promoLine];
+      });
+    },
+    [],
+  );
+
+  const clearVitalityCheck = useCallback(() => {
+    setCart((prev) =>
+      prev.filter(
+        (c) => !(c.line_type === "test" && c.promo_vitality === true),
+      ),
+    );
+  }, []);
+
   const repeatClient = useRepeatClient();
   const totals = useMemo(
     () => computeCartTotals(cart, repeatClient.eligible),
@@ -471,6 +522,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeItem,
       incrementTest,
       decrementTest,
+      setVitalityCheck,
+      clearVitalityCheck,
       clearCart,
       hydrated,
     }),
@@ -482,6 +535,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeItem,
       incrementTest,
       decrementTest,
+      setVitalityCheck,
+      clearVitalityCheck,
       clearCart,
       hydrated,
     ],

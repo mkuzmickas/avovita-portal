@@ -410,6 +410,7 @@ export function Step4Review({
             lab_name: a.lab_name,
             price_cad: a.price_cad,
             assigned_to_person: a.person_index,
+            promo_vitality: a.promo_vitality === true ? true : undefined,
           })),
           visit_fees: visitFees,
           subtotal,

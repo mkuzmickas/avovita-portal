@@ -71,6 +71,13 @@ export type CartItemTest = {
    *  one-click-adds-one-line behaviour. Set explicitly by the quote-
    *  accept loader in CheckoutClient. */
   instance_id?: string;
+  /** True when this test line is the free Vitality Check promo added
+   *  in the checkout popup. `price_cad` still holds the test's full
+   *  retail price for display (strike-through); Stripe + materialise
+   *  recognise the flag and charge/write 0. Server re-validates
+   *  eligibility (2+ paid test lines, same person) at checkout-create
+   *  time — a spoofed flag cannot unlock a freebie. */
+  promo_vitality?: boolean;
 };
 
 export type CartItemSupplement = {

@@ -77,6 +77,14 @@ export interface TestAssignment {
   price_cad: number;
   /** 0-based index into the persons array. */
   assigned_to_person: number;
+  /**
+   * True when this assignment is the free Vitality Check promo line.
+   * Server-side Stripe + materialise both treat the line as billed at
+   * $0 and strike through the retail price for display; server also
+   * re-validates eligibility (2+ paid tests, same person, allowed SKU)
+   * before honouring it.
+   */
+  promo_vitality?: boolean;
 }
 
 export interface VisitFees {

@@ -16,6 +16,16 @@ import {
 import { Step3CollectionDetails } from "./Step3CollectionDetails";
 import { Step4Review } from "./Step4Review";
 import { SupplementFulfillmentStep } from "./SupplementFulfillmentStep";
+import {
+  VitalityCheckModal,
+  type VitalityOptionHydrated,
+} from "./VitalityCheckModal";
+import {
+  VITALITY_CHECK_ENABLED,
+  cartHasVitalityCheck,
+  shouldNudgeForVitalityCheck,
+  shouldOfferVitalityCheck,
+} from "@/lib/promo/vitalityCheck";
 import { computeVisitFees } from "@/lib/checkout/visit-fees";
 import { computeKitServiceFee } from "@/lib/checkout/kit-service-fee";
 import { reconcileAssignments } from "@/lib/checkout/reconcileAssignments";
@@ -96,7 +106,14 @@ export function CheckoutClient({
   void _accountEmail;
   void _showResourceSuccessNotice;
   const router = useRouter();
-  const { cart, hydrated, addItem, removeItem, clearCart } = useCart();
+  const {
+    cart,
+    hydrated,
+    addItem,
+    removeItem,
+    clearCart,
+    setVitalityCheck,
+  } = useCart();
   const { trackEvent } = useAnalytics();
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -109,6 +126,50 @@ export function CheckoutClient({
   const [step, setStep] = useState(1);
   const [personCount, setPersonCount] = useState(1);
   const [persons, setPersons] = useState<CheckoutPerson[]>(defaultPersons(1));
+
+  // Vitality Check promo — hydrated options, modal state, "already
+  // dismissed this session" tracking so the popup fires at most once
+  // per step 1 entry. See src/lib/promo/vitalityCheck.ts for config.
+  const [vitalityOptions, setVitalityOptions] = useState<
+    VitalityOptionHydrated[] | null
+  >(null);
+  const [vitalityModal, setVitalityModal] = useState<
+    "nudge" | "picker" | null
+  >(null);
+  const vitalityDismissedRef = useRef(false);
+  useEffect(() => {
+    if (!VITALITY_CHECK_ENABLED) return;
+    if (vitalityOptions !== null) return;
+    fetch("/api/promo/vitality-check")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.enabled && Array.isArray(data.options)) {
+          setVitalityOptions(data.options as VitalityOptionHydrated[]);
+        } else {
+          setVitalityOptions([]);
+        }
+      })
+      .catch(() => setVitalityOptions([]));
+  }, [vitalityOptions]);
+  useEffect(() => {
+    if (!VITALITY_CHECK_ENABLED) return;
+    if (!hydrated || vitalityOptions === null) return;
+    if (vitalityOptions.length === 0) return;
+    if (vitalityDismissedRef.current) return;
+    if (step !== 1) return;
+    if (cartHasVitalityCheck(cart)) return;
+    // Pilot scope: promo only on test-only carts. Mixed carts route
+    // through /api/stripe/checkout-unified which isn't wired for the
+    // zero-price promo line yet — adding the modal there would silently
+    // bill the "free" test at full price.
+    const hasNonTest = cart.some((i) => i.line_type !== "test");
+    if (hasNonTest) return;
+    if (shouldOfferVitalityCheck(cart)) {
+      setVitalityModal("picker");
+    } else if (shouldNudgeForVitalityCheck(cart)) {
+      setVitalityModal("nudge");
+    }
+  }, [hydrated, vitalityOptions, step, cart]);
   const [assignments, setAssignments] = useState<PersonAssignmentEntry[]>([]);
   const [collectionAddress, setCollectionAddress] =
     useState<CollectionAddress>(defaultAddress);
@@ -637,6 +698,35 @@ export function CheckoutClient({
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#FFFFFF" }}>
+      {vitalityModal && vitalityOptions && vitalityOptions.length > 0 && (
+        <VitalityCheckModal
+          variant={vitalityModal}
+          options={vitalityOptions}
+          multiPersonConflict={
+            vitalityModal === "picker" &&
+            personCount > 1 &&
+            new Set(assignments.map((a) => a.person_index)).size > 1
+          }
+          onPick={(option) => {
+            setVitalityCheck({
+              line_type: "test",
+              test_id: option.test_id,
+              test_name: option.label,
+              sku: option.sku,
+              price_cad: option.price_cad,
+              lab_name: option.lab_name,
+              quantity: 1,
+              collection_method: "phlebotomist_draw",
+            });
+            setVitalityModal(null);
+            vitalityDismissedRef.current = true;
+          }}
+          onDismiss={() => {
+            setVitalityModal(null);
+            vitalityDismissedRef.current = true;
+          }}
+        />
+      )}
       <OrgAwareHeader
         rightSlot={
           <Link

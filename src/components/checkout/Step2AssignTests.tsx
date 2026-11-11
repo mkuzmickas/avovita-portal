@@ -23,6 +23,10 @@ export interface PersonAssignmentEntry {
   price_cad: number;
   /** 0-based person index */
   person_index: number;
+  /** Mirror of CartItemTest.promo_vitality — flows through from the
+   *  cart so Step 4 → Stripe payload can mark the free Vitality Check
+   *  line. Server re-validates eligibility and whitelist. */
+  promo_vitality?: boolean;
 }
 
 /** Stable cart id for a test row. Mirrors cartItemId() in
