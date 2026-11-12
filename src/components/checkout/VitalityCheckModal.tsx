@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X, Plus, Gift, Loader2, CheckCircle, Info } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -259,10 +259,6 @@ function NudgeBody({
   options: VitalityOptionHydrated[];
   onDismiss: () => void;
 }) {
-  const totalRetail = useMemo(
-    () => Math.min(...options.map((o) => o.price_cad)),
-    [options],
-  );
   return (
     <div>
       <p
@@ -270,9 +266,9 @@ function NudgeBody({
         style={{ color: "#e8d5a3" }}
       >
         Your cart has <strong style={{ color: "#ffffff" }}>one test</strong>.
-        Add any second paid test and your <strong>free Vitality Check</strong>{" "}
-        (worth up to {formatCurrency(Math.max(...options.map((o) => o.price_cad)))}, lowest{" "}
-        {formatCurrency(totalRetail)}) comes with the order — your pick of:
+        Add any second paid test and your{" "}
+        <strong>free Vitality Check</strong> comes with the order — your
+        pick of:
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
         {options.map((o) => (
