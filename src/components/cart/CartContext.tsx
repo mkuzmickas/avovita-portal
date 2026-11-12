@@ -55,25 +55,27 @@ interface ScheduleAckEntry {
 }
 
 // CBC + DCTR + KS ship same-day to Mayo on Tuesday or the specimen times out.
-// Shared copy because the operational risk is identical.
+// Shared copy because the operational risk is identical. Refund-penalty
+// language removed Nov 2026 — Mike always accommodates a re-draw when
+// a specimen times out in transit, so the pre-pay disclaimer was just
+// scaring customers.
 const TUESDAY_MAYO_INTRO =
   "requires a Tuesday collection only. The specimen has a 48-hour stability window and must ship same-day to Mayo Clinic Laboratories to meet stability requirements.";
 const TUESDAY_MAYO_BULLETS = [
   "Your collection appointment must be booked on a Tuesday",
-  "FedEx shipping delays can cause the specimen to time out before reaching the lab — if this occurs, this test fee will be refunded but the home visit fee is non-refundable",
-  "We strongly recommend ordering this test alongside others so your home visit fee is not wasted if the specimen is compromised in transit",
+  "If a FedEx delay causes the specimen to time out in transit, AvoVita will arrange a complimentary re-draw at no extra charge",
+  "Ordering alongside other tests on the same visit gets the most value from a single home collection",
 ];
 
 // JAK2B carries a 7-day stability window — long enough that a Monday OR
 // Tuesday collection still leaves time for FedEx to land before the
-// specimen times out. Same operational refund posture as the 48-hour
-// group above.
+// specimen times out.
 const MON_TUE_MAYO_INTRO =
   "requires a Monday or Tuesday collection only. The specimen has a 7-day stability window and must ship promptly to Mayo Clinic Laboratories to meet stability requirements.";
 const MON_TUE_MAYO_BULLETS = [
   "Your collection appointment must be booked on a Monday or Tuesday",
-  "FedEx shipping delays can cause the specimen to time out before reaching the lab — if this occurs, this test fee will be refunded but the home visit fee is non-refundable",
-  "We strongly recommend ordering this test alongside others so your home visit fee is not wasted if the specimen is compromised in transit",
+  "If a FedEx delay causes the specimen to time out in transit, AvoVita will arrange a complimentary re-draw at no extra charge",
+  "Ordering alongside other tests on the same visit gets the most value from a single home collection",
 ];
 
 const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
