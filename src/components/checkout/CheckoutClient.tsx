@@ -617,7 +617,13 @@ export function CheckoutClient({
   // of truth for line count, subtotal, and discount preview on every
   // checkout step. The Step 2 step body uses the same numbers, so the
   // sidebar and step body always agree.
-  const testCartItems = cart.filter((c) => c.line_type === "test");
+  // Paid test lines only — free Vitality Check promo line contributes
+  // $0 to the subtotal and doesn't count toward the multi-test discount
+  // gate. Promo line still renders in the sidebar body via its own
+  // branch (strike-through retail + FREE label).
+  const testCartItems = cart.filter(
+    (c) => c.line_type === "test" && c.promo_vitality !== true,
+  );
   const sidebarLineCount = testCartItems.length;
   const sidebarSubtotal = testCartItems.reduce(
     (s, c) => s + c.price_cad * c.quantity,

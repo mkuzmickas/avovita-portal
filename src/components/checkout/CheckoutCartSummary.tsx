@@ -52,7 +52,11 @@ export function CheckoutCartSummary({
 }: CheckoutCartSummaryProps) {
   const { removeItem, incrementTest, decrementTest } = useCart();
   const repeatClient = useRepeatClient();
-  const testCount = cart.filter((i) => i.line_type === "test").length;
+  // Paid test lines only — free Vitality Check promo doesn't count
+  // toward the discount gate or the "1 test in cart" nudge copy.
+  const testCount = cart.filter(
+    (i) => i.line_type === "test" && i.promo_vitality !== true,
+  ).length;
   const effectiveLineCount = lineCount ?? testCount;
   // Discount eligibility here mirrors the server: repeat client OR
   // customer accepting an admin-generated quote (quotes always price
@@ -67,10 +71,14 @@ export function CheckoutCartSummary({
   // Build a synthetic test-line price array so calculateTotals receives
   // the same shape regardless of caller. On Step 1 (before the user
   // picks a person count) we fall back to the cart, with one entry per
-  // unique cart item (the multi-test discount uses .length).
-  const cartLinePrices = cart.flatMap((item) =>
-    Array.from({ length: item.quantity }, () => item.price_cad)
-  );
+  // unique cart item (the multi-test discount uses .length). Free
+  // Vitality Check promo lines are EXCLUDED — they're displayed with
+  // a strike-through retail price but contribute $0 to the subtotal
+  // and don't count toward the multi-test discount gate.
+  const cartLinePrices = cart.flatMap((item) => {
+    if (item.line_type === "test" && item.promo_vitality === true) return [];
+    return Array.from({ length: item.quantity }, () => item.price_cad);
+  });
   const testLinePrices =
     typeof subtotalOverride === "number" && lineCount
       ? Array.from({ length: lineCount }, (_, i) =>

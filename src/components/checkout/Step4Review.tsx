@@ -164,10 +164,19 @@ export function Step4Review({
     [customCartItems]
   );
 
+  // Paid assignments only — the free Vitality Check promo line
+  // contributes $0 to subtotal/total and doesn't count toward the
+  // multi-test discount gate (the promo must have 2+ paid tests to
+  // qualify in the first place, so counting it would let a single
+  // paid test + the free line slip into the discount bracket).
+  const paidAssignments = useMemo(
+    () => assignments.filter((a) => a.promo_vitality !== true),
+    [assignments],
+  );
   const totals = useMemo(
     () =>
       calculateTotals({
-        testLinePrices: assignments.map((a) => a.price_cad),
+        testLinePrices: paidAssignments.map((a) => a.price_cad),
         visitFee: visitFees.total,
         supplementSubtotal,
         resourceSubtotal,
@@ -177,12 +186,12 @@ export function Step4Review({
         customLineAmounts,
         isRepeatClient: discountEligible,
       }),
-    [assignments, visitFees.total, supplementSubtotal, resourceSubtotal, suppShippingFee, kitFee.amount, quoteDiscountCad, customLineAmounts, discountEligible]
+    [paidAssignments, visitFees.total, supplementSubtotal, resourceSubtotal, suppShippingFee, kitFee.amount, quoteDiscountCad, customLineAmounts, discountEligible]
   );
   const subtotal = totals.testsSubtotal;
   const discount = useMemo(
-    () => computeDiscount(assignments.length, discountEligible),
-    [assignments.length, discountEligible]
+    () => computeDiscount(paidAssignments.length, discountEligible),
+    [paidAssignments.length, discountEligible]
   );
   const subtotalAfterDiscount = totals.subtotalAfterDiscount;
   const total = totals.grandTotal;
@@ -521,8 +530,11 @@ export function Step4Review({
         <div className="space-y-3">
           {persons.map((person) => {
             const personItems = assignmentsByPerson.get(person.index) ?? [];
+            // Promo lines are shown with strike-through retail + FREE
+            // so they shouldn't count toward the per-person subtotal
+            // chip at the top-right of the card.
             const personSubtotal = personItems.reduce(
-              (s, a) => s + a.price_cad,
+              (s, a) => s + (a.promo_vitality === true ? 0 : a.price_cad),
               0
             );
             return (
@@ -575,33 +587,61 @@ export function Step4Review({
                   className="space-y-1.5 pl-3 border-l-2"
                   style={{ borderColor: "#E5E2D4" }}
                 >
-                  {personItems.map((a) => (
-                    <li
-                      key={a.instance_id}
-                      className="flex flex-col gap-0.5"
-                    >
-                      <div className="flex items-center justify-between gap-3 text-xs">
-                        <span style={{ color: "#154D31" }}>
-                          {a.test_name}{" "}
-                          <span style={{ color: "#4a7a56" }}>
-                            · {a.lab_name}
+                  {personItems.map((a) => {
+                    const isPromo = a.promo_vitality === true;
+                    return (
+                      <li
+                        key={a.instance_id}
+                        className="flex flex-col gap-0.5"
+                      >
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <span style={{ color: "#154D31" }}>
+                            {a.test_name}{" "}
+                            <span style={{ color: "#4a7a56" }}>
+                              · {a.lab_name}
+                            </span>
+                            {isPromo && (
+                              <span
+                                className="ml-1 font-semibold"
+                                style={{ color: "#8A5A17" }}
+                              >
+                                · FREE Vitality Check
+                              </span>
+                            )}
                           </span>
-                        </span>
-                        <span style={{ color: "#C6A04B" }}>
-                          {formatCurrency(a.price_cad)}
-                        </span>
-                      </div>
-                      {discount.applies && (
-                        <div
-                          className="flex items-center justify-end gap-3 text-[10px] font-medium"
-                          style={{ color: "#88D45D" }}
-                        >
-                          −{formatCurrency(discount.per_line)} multi-test
-                          discount
+                          {isPromo ? (
+                            <span className="flex items-center gap-1.5">
+                              <span
+                                className="line-through"
+                                style={{ color: "#4a7a56" }}
+                              >
+                                {formatCurrency(a.price_cad)}
+                              </span>
+                              <span
+                                className="font-semibold"
+                                style={{ color: "#8A5A17" }}
+                              >
+                                FREE
+                              </span>
+                            </span>
+                          ) : (
+                            <span style={{ color: "#C6A04B" }}>
+                              {formatCurrency(a.price_cad)}
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </li>
-                  ))}
+                        {!isPromo && discount.applies && (
+                          <div
+                            className="flex items-center justify-end gap-3 text-[10px] font-medium"
+                            style={{ color: "#88D45D" }}
+                          >
+                            −{formatCurrency(discount.per_line)} multi-test
+                            discount
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             );

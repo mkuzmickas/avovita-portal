@@ -40,8 +40,9 @@ export const VITALITY_CHECK_OPTIONS = [
   {
     sku: "TTST",
     label: "Testosterone, Total",
-    tagline: "Men's vitality baseline",
-    audience: "Common for men tracking mood, strength, libido, or TRT prep.",
+    tagline: "Vitality, mood & energy baseline",
+    audience:
+      "Matters for everyone — common for anyone tracking mood, strength, libido, energy, bone health, or hormone balance.",
   },
   {
     sku: "STSH",
