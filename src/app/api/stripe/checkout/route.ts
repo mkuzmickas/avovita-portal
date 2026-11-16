@@ -574,6 +574,19 @@ export async function POST(request: NextRequest) {
             poa_confirmed: !!body.representative.poa_confirmed,
           }
         : null,
+      // Vitality Check outcome passed through to materialise so
+      // orders.vitality_check_outcome records whether the picker fired
+      // + what the customer did. Server defaults to 'not_offered' if
+      // the client didn't send it (quote-accept redirects, old session
+      // state, mixed cart path, etc.). Any client-supplied value
+      // outside the whitelist is coerced to 'not_offered' — spoofing
+      // 'claimed' here can't unlock a freebie because the real promo
+      // line validation already ran against the paid-cart gate.
+      vitality_check_outcome:
+        body.vitality_check_outcome === "claimed" ||
+        body.vitality_check_outcome === "dismissed"
+          ? body.vitality_check_outcome
+          : "not_offered",
     };
 
     const fullJson = JSON.stringify(orderPayload);

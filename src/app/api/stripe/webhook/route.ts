@@ -568,6 +568,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     notes: null,
     org_id: payload.org_id ?? null,
     src: payload.src ?? null,
+    vitality_check_outcome: payload.vitality_check_outcome ?? "not_offered",
   };
 
   const { data: orderRaw, error: orderErr } = await supabase
@@ -897,6 +898,11 @@ async function handleCheckoutCompleteV2(
     supplement_shipping_fee_cad: p.supplement_shipping_fee_cad ?? 0,
     supplement_shipping_address: p.supplement_shipping_address ?? null,
     is_out_of_town: p.is_out_of_town ?? false,
+    // Unified / mixed-cart path doesn't currently trigger the Vitality
+    // Check modal (promo gated to test-only carts in the trigger
+    // effect), but stamp the column anyway so admin queries treat the
+    // field as never-null.
+    vitality_check_outcome: "not_offered" as const,
   };
 
   const { data: orderRaw, error: orderErr } = await supabase

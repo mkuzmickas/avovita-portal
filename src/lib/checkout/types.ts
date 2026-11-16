@@ -125,6 +125,15 @@ export interface CheckoutPayload {
    * is the account holder as before. Backwards compatible.
    */
   representative?: RepresentativeBlock | null;
+  /**
+   * Vitality Check promo outcome, reported from the client wizard so
+   * materialise can stamp it on orders.vitality_check_outcome:
+   *   not_offered — modal never fired (cart didn't qualify / promo off)
+   *   dismissed   — modal fired, customer closed it without picking
+   *   claimed     — modal fired, customer picked a free test
+   * Server defaults to 'not_offered' when the field is missing.
+   */
+  vitality_check_outcome?: "not_offered" | "dismissed" | "claimed" | null;
 }
 
 export interface RepresentativeBlock {

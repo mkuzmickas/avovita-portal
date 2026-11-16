@@ -53,6 +53,10 @@ interface Step4Props {
    *  Persisted on the order so the success page renders the dedicated
    *  out-of-town Acuity calendar + drop-in address banner. */
   isOutOfTown?: boolean;
+  /** Vitality Check promo outcome from the modal state (CheckoutClient
+   *  owns it). Passed into the Stripe payload so materialise can stamp
+   *  orders.vitality_check_outcome. */
+  vitalityCheckOutcome?: "not_offered" | "dismissed" | "claimed";
 }
 
 const RELATIONSHIP_LABEL: Record<string, string> = {
@@ -78,6 +82,7 @@ export function Step4Review({
   acceptedQuoteNumber = null,
   quoteDiscountCad = 0,
   isOutOfTown = false,
+  vitalityCheckOutcome = "not_offered",
 }: Step4Props) {
   const { cart } = useCart();
   const repeatClient = useRepeatClient();
@@ -384,6 +389,7 @@ export function Step4Review({
           // for new orders; webhook still handles populated reps for
           // any pre-migration sessions still in flight.
           representative: null,
+          vitality_check_outcome: vitalityCheckOutcome,
         };
 
         const res = await fetch("/api/stripe/checkout", {

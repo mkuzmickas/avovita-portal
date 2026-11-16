@@ -137,6 +137,14 @@ export function CheckoutClient({
     "nudge" | "picker" | null
   >(null);
   const vitalityDismissedRef = useRef(false);
+  // Outcome persisted on orders.vitality_check_outcome. Starts
+  // "not_offered"; flips to "dismissed" when the picker is closed
+  // without a pick, "claimed" the moment the client picks an option.
+  // Nudge dismissal still records as "not_offered" since the nudge
+  // isn't the actual offer (just an invitation to qualify first).
+  const [vitalityOutcome, setVitalityOutcome] = useState<
+    "not_offered" | "dismissed" | "claimed"
+  >("not_offered");
   useEffect(() => {
     if (!VITALITY_CHECK_ENABLED) return;
     if (vitalityOptions !== null) return;
@@ -724,10 +732,18 @@ export function CheckoutClient({
               quantity: 1,
               collection_method: "phlebotomist_draw",
             });
+            setVitalityOutcome("claimed");
             setVitalityModal(null);
             vitalityDismissedRef.current = true;
           }}
           onDismiss={() => {
+            // Picker dismissal = explicit decline. Nudge dismissal
+            // doesn't flip outcome because the nudge isn't the offer
+            // itself — the client would see the real picker if they
+            // added the 2nd test.
+            if (vitalityModal === "picker") {
+              setVitalityOutcome("dismissed");
+            }
             setVitalityModal(null);
             vitalityDismissedRef.current = true;
           }}
@@ -839,6 +855,7 @@ export function CheckoutClient({
                 acceptedQuoteNumber={appliedQuoteNumber}
                 quoteDiscountCad={quoteDiscountCad}
                 isOutOfTown={isOutOfTown}
+                vitalityCheckOutcome={vitalityOutcome}
               />
             )}
           </div>

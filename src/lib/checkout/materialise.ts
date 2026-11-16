@@ -95,6 +95,10 @@ export interface OrderMetadataPayload {
       | "other";
     poa_confirmed: boolean;
   } | null;
+  /** Vitality Check promo outcome, written to orders.vitality_check_outcome
+   *  so the admin UI can answer "did the customer actually decline
+   *  the freebie or did the modal never fire?" per order. */
+  vitality_check_outcome?: "not_offered" | "dismissed" | "claimed";
   /** Custom lines from an accepted quote. Customer surfaces (Stripe
    *  product names, confirmation email) render only `description` +
    *  `amount_cad`. `notes` are admin-only. */

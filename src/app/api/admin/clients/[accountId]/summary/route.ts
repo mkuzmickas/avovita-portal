@@ -46,6 +46,12 @@ export interface ClientSummaryResponse {
     appointment_date: string | null;
     status: string;
     total_cad: number;
+    /** Vitality Check promo outcome. NULL = pre-feature order. */
+    vitality_check_outcome:
+      | "not_offered"
+      | "dismissed"
+      | "claimed"
+      | null;
     lines: Array<{
       sku: string | null;
       test_name: string | null;
@@ -106,7 +112,7 @@ export async function GET(
     .from("orders")
     .select(
       `
-      id, created_at, appointment_date, status, total_cad,
+      id, created_at, appointment_date, status, total_cad, vitality_check_outcome,
       order_lines (
         quantity, unit_price_cad,
         test:tests ( sku, name )
@@ -122,6 +128,11 @@ export async function GET(
     appointment_date: string | null;
     status: string;
     total_cad: number | null;
+    vitality_check_outcome:
+      | "not_offered"
+      | "dismissed"
+      | "claimed"
+      | null;
     order_lines: Array<{
       quantity: number | null;
       unit_price_cad: number | null;
@@ -136,6 +147,7 @@ export async function GET(
     appointment_date: o.appointment_date,
     status: o.status,
     total_cad: Number(o.total_cad ?? 0),
+    vitality_check_outcome: o.vitality_check_outcome ?? null,
     lines: (o.order_lines ?? []).map((l) => ({
       sku: l.test?.sku ?? null,
       test_name: l.test?.name ?? null,

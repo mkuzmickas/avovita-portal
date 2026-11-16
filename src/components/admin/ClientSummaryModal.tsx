@@ -306,6 +306,9 @@ function OrderCard({
               : ""}
             {" · "}
             <span style={{ color: "#e8d5a3" }}>{order.status}</span>
+            {order.vitality_check_outcome && (
+              <VitalityBadge outcome={order.vitality_check_outcome} />
+            )}
           </div>
         </div>
         <div
@@ -339,4 +342,42 @@ function OrderCard({
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function VitalityBadge({
+  outcome,
+}: {
+  outcome: "not_offered" | "dismissed" | "claimed";
+}) {
+  const style =
+    outcome === "claimed"
+      ? { label: "Vitality: claimed", bg: "rgba(141,198,63,0.15)", color: "#8dc63f", border: "#8dc63f" }
+      : outcome === "dismissed"
+        ? { label: "Vitality: declined", bg: "rgba(224,82,82,0.1)", color: "#e88b8b", border: "#e88b8b" }
+        : {
+            label: "Vitality: not offered",
+            bg: "rgba(141,198,63,0.05)",
+            color: "#6ab04c",
+            border: "#2d6b35",
+          };
+  return (
+    <span
+      className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+      style={{
+        backgroundColor: style.bg,
+        color: style.color,
+        borderColor: style.border,
+        verticalAlign: "middle",
+      }}
+      title={
+        outcome === "claimed"
+          ? "Customer picked a free Vitality Check on this order"
+          : outcome === "dismissed"
+            ? "Customer saw the picker and declined the free Vitality Check"
+            : "Promo modal never fired for this order (cart didn't qualify, promo was off, or non-test cart path)"
+      }
+    >
+      {style.label}
+    </span>
+  );
 }
