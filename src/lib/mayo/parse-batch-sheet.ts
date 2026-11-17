@@ -49,9 +49,15 @@ export interface ParsedBatchSheet {
 
 const ML_RE = /^ML\d{7,}[A-Z]?$/;
 const BATCH_HEADER_RE = /^Batch\s+(\d{6,})$/i;
-// Combined-row: WEB + "Last, First" + MRN + "DD Mmm YYYY HH:MM"
+// Combined-row: WEB + "Last, First" + MRN + "DD Mmm YYYY HH:MM".
+// \s* (not \s+) before the MRN: hyphenated first names like
+// "Carrie-anne" wrap in Mayo's PDF, and the text extractor can
+// collapse the wrap WITHOUT reinserting a space, leaving e.g.
+// "Wuersch, Carrieanne1CJ53J8MF 17 Nov 2026 07:00" on one line.
+// The MRN prefix (1CJ / 47R) is distinctive enough to serve as the
+// boundary on its own, so zero required space is still safe here.
 const ROW_RE = new RegExp(
-  "^(WEB[A-Z0-9]{6,})\\s+(.+?)\\s+((?:1CJ|47R)[A-Z0-9]{5,})\\s+(\\d{1,2}\\s+[A-Z][a-z]{2}\\s+\\d{4}\\s+\\d{2}:\\d{2})$",
+  "^(WEB[A-Z0-9]{6,})\\s+(.+?)\\s*((?:1CJ|47R)[A-Z0-9]{5,})\\s+(\\d{1,2}\\s+[A-Z][a-z]{2}\\s+\\d{4}\\s+\\d{2}:\\d{2})$",
 );
 // Wrap-case start: `WEB LastPart1 LastPart2, FirstStart,` (name broke
 // at the comma with no MRN on this line yet).
