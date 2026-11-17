@@ -204,6 +204,7 @@ function RemoveShipmentButton({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <CancelLabelButton shipment={shipment} onCancelled={onRemoved} />
       <button
         type="button"
         onClick={handleRemove}
@@ -237,6 +238,103 @@ function RemoveShipmentButton({
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * Cancels the FedEx label itself (POSTs to /api/shipping/cancel-label/[id])
+ * so the label is voided at FedEx — no billing on it if it was never
+ * scanned. Different from RemoveShipmentButton, which only drops the
+ * local audit row.
+ *
+ * If FedEx refuses (package already picked up / delivered), the UI
+ * surfaces FedEx's message and the local row stays put so Mike can
+ * still see the live shipment.
+ */
+function CancelLabelButton({
+  shipment,
+  onCancelled,
+}: {
+  shipment: Shipment;
+  onCancelled: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleCancel = async () => {
+    if (busy) return;
+    const ok = window.confirm(
+      `Cancel FedEx label ${shipment.tracking_number}?\n\n` +
+        "This voids the label at FedEx — if the package has not been scanned yet, " +
+        "no charge. If FedEx has already picked it up, they will refuse the cancel " +
+        "and the label stays live (you'd have to call FedEx billing to stop it).\n\n" +
+        "FloLabs/clients may have already received the shipment confirmation email — " +
+        "you'll want to email them separately with the new tracking number if you " +
+        "generate a replacement.",
+    );
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/shipping/cancel-label/${shipment.id}`,
+        { method: "POST" },
+      );
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        suggestion?: string;
+        cancelled?: boolean;
+      };
+      if (!res.ok || body.cancelled === false) {
+        const msg = body.error ?? `Cancel failed (HTTP ${res.status})`;
+        setError(
+          body.suggestion ? `${msg} — ${body.suggestion}` : msg,
+        );
+        setBusy(false);
+        return;
+      }
+      onCancelled();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cancel failed.");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleCancel}
+        disabled={busy}
+        title={`Void FedEx label ${shipment.tracking_number} at FedEx`}
+        style={{
+          backgroundColor: busy ? "transparent" : "#C6A04B",
+          color: busy ? "#C6A04B" : "#0a1a0d",
+          border: "1px solid #C6A04B",
+          padding: "4px 10px",
+          borderRadius: "6px",
+          fontSize: "11px",
+          fontWeight: 700,
+          cursor: busy ? "not-allowed" : "pointer",
+          fontFamily: "inherit",
+          opacity: busy ? 0.75 : 1,
+        }}
+      >
+        {busy ? "Cancelling…" : "Cancel label"}
+      </button>
+      {error && (
+        <span
+          style={{
+            color: "#e05252",
+            fontSize: "10px",
+            lineHeight: 1.3,
+            maxWidth: "240px",
+          }}
+        >
+          {error}
+        </span>
+      )}
+    </>
   );
 }
 
