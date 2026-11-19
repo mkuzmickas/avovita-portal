@@ -119,6 +119,14 @@ const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
     bullets: MON_TUE_4D_MAYO_BULLETS,
   },
   {
+    sku: "LRCCZ",
+    display:
+      "Hereditary Leiomyomatosis and Renal Cell Cancer Syndrome, FH, Full Gene Analysis (LRCCZ)",
+    headline: "Important — Monday or Tuesday Collection Notice",
+    intro: MON_TUE_4D_MAYO_INTRO,
+    bullets: MON_TUE_4D_MAYO_BULLETS,
+  },
+  {
     sku: "JAK2B",
     display: "JAK2 V617F Mutation Detection (JAK2B)",
     headline: "Important — Monday or Tuesday Collection Notice",
