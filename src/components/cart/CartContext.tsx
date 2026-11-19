@@ -78,6 +78,17 @@ const MON_TUE_MAYO_BULLETS = [
   "Ordering alongside other tests on the same visit gets the most value from a single home collection",
 ];
 
+// HL58R carries a 4-day stability window — tight enough that we hold
+// the Mon/Tue rule but surface the shorter window in the copy so the
+// client understands the urgency vs JAK2B's 7-day version.
+const MON_TUE_4D_MAYO_INTRO =
+  "requires a Monday or Tuesday collection only. The specimen has a 4-day stability window and must ship promptly to Mayo Clinic Laboratories to meet stability requirements.";
+const MON_TUE_4D_MAYO_BULLETS = [
+  "Your collection appointment must be booked on a Monday or Tuesday",
+  "If a FedEx delay causes the specimen to time out in transit, AvoVita will arrange a complimentary re-draw at no extra charge",
+  "Ordering alongside other tests on the same visit gets the most value from a single home collection",
+];
+
 const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
   {
     test_id: CBC_TEST_ID,
@@ -99,6 +110,13 @@ const SCHEDULE_ACK_TESTS: ScheduleAckEntry[] = [
     headline: "Important — Tuesday-Only Collection Notice",
     intro: TUESDAY_MAYO_INTRO,
     bullets: TUESDAY_MAYO_BULLETS,
+  },
+  {
+    sku: "HL58R",
+    display: "HLA-B*5801 Genotype, Allopurinol Hypersensitivity (HL58R)",
+    headline: "Important — Monday or Tuesday Collection Notice",
+    intro: MON_TUE_4D_MAYO_INTRO,
+    bullets: MON_TUE_4D_MAYO_BULLETS,
   },
   {
     sku: "JAK2B",
