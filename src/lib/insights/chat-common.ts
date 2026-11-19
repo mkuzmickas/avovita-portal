@@ -126,7 +126,7 @@ export async function buildTestCatalog(): Promise<string> {
     const { data, error } = await supabase
       .from("tests")
       .select(
-        "name, sku, price_cad, turnaround_display, collection_method, lab:labs(name)",
+        "name, sku, category, description, price_cad, turnaround_display, collection_method, lab:labs(name)",
       )
       .eq("active", true)
       .order("name", { ascending: true });
@@ -139,12 +139,27 @@ export async function buildTestCatalog(): Promise<string> {
     type Row = {
       name: string;
       sku: string | null;
+      category: string | null;
+      description: string | null;
       price_cad: number | null;
       turnaround_display: string | null;
       collection_method: string | null;
       lab: { name: string } | { name: string }[] | null;
     };
     const rows = (data ?? []) as unknown as Row[];
+
+    // Descriptions are admin-editable prose; for panels they include
+    // the component tests the client asks about ("what's in the
+    // thyroid panel?"). Collapse whitespace and cap length so a stray
+    // 3-paragraph marketing blurb can't blow the prompt budget, but
+    // leave enough room (600 chars) for a full component list.
+    const normaliseDescription = (raw: string | null): string => {
+      if (!raw) return "";
+      const trimmed = raw.replace(/\s+/g, " ").trim();
+      if (trimmed.length === 0) return "";
+      if (trimmed.length <= 600) return trimmed;
+      return trimmed.slice(0, 597).trimEnd() + "...";
+    };
 
     const lines = rows.map((t) => {
       const lab = Array.isArray(t.lab) ? t.lab[0] : t.lab;
@@ -156,11 +171,15 @@ export async function buildTestCatalog(): Promise<string> {
       const turnaroundBit = turnaround ? ` | Turnaround: ${turnaround}` : "";
       const kitBit =
         t.collection_method === "self_collected_kit" ? " | KIT" : "";
-      return `- ${t.name} | Code: ${code} | ${price} | Lab: ${labName}${turnaroundBit}${kitBit}`;
+      const category = (t.category ?? "").trim();
+      const categoryBit = category ? ` | Category: ${category}` : "";
+      const description = normaliseDescription(t.description);
+      const descriptionLine = description ? `\n  Details: ${description}` : "";
+      return `- ${t.name} | Code: ${code} | ${price} | Lab: ${labName}${categoryBit}${turnaroundBit}${kitBit}${descriptionLine}`;
     });
 
     const value =
-      "\n\n## AvoVita Test Directory\n\nThe following tests are available through AvoVita. You MUST only recommend tests from this list — never recommend a test that does not appear here.\n\n" +
+      "\n\n## AvoVita Test Directory\n\nThe following tests are available through AvoVita. You MUST only recommend tests from this list — never recommend a test that does not appear here. Each entry's `Details:` line is the admin-maintained description for that test — use it to answer questions about what a panel contains, what a single-marker test measures, how it is run, and any specimen or preparation caveats. If the Details line does not cover what the client asked and you cannot answer from the rest of this prompt, say that and offer the contact form rather than inventing specifics.\n\n" +
       lines.join("\n");
 
     cachedCatalog = { value, expiresAt: now + CATALOG_TTL_MS };
