@@ -32,6 +32,7 @@ interface OrderLine {
     name: string;
     sku: string | null;
     collection_method: "phlebotomist_draw" | "self_collected_kit" | null;
+    mayo_test_ids: string[] | null;
   } | null;
   supplement: { name: string; sku: string | null } | null;
   resource: { title: string } | null;
@@ -330,6 +331,17 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
                   : line.line_type === "supplement"
                     ? line.supplement?.sku
                     : null;
+              // Panel SKUs (FATIGUE, MENS_HORMONE_PANEL, THYROID_FUNCTION_PANEL,
+              // etc.) are AvoVita bundle codes, not real Mayo SKUs. The Mayo
+              // components they decompose into live in tests.mayo_test_ids.
+              // Show them under the row so phlebotomists + reviewers can see
+              // what Mayo will actually bill against.
+              const panelComponents =
+                line.line_type === "test" &&
+                Array.isArray(line.test?.mayo_test_ids) &&
+                line.test!.mayo_test_ids.length > 1
+                  ? line.test!.mayo_test_ids
+                  : null;
               const lineTotal = line.unit_price_cad * line.quantity;
               const isCredit =
                 line.line_type === "custom" && line.unit_price_cad < 0;
@@ -366,6 +378,26 @@ export function OrderExpandedPanel({ orderId }: { orderId: string }) {
                         title="Internal note (admin only)"
                       >
                         🔒 {line.custom_notes}
+                      </div>
+                    )}
+                    {panelComponents && (
+                      <div
+                        className="text-[11px] mt-0.5 pl-2 flex flex-wrap gap-1"
+                        title="Mayo test codes billed under this panel"
+                      >
+                        <span style={{ color: "#c4973a" }}>Includes:</span>
+                        {panelComponents.map((code) => (
+                          <span
+                            key={code}
+                            className="font-mono px-1 rounded"
+                            style={{
+                              color: "#8dc63f",
+                              backgroundColor: "#1a3d22",
+                            }}
+                          >
+                            {code}
+                          </span>
+                        ))}
                       </div>
                     )}
                     {line.profile && (

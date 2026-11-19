@@ -67,7 +67,7 @@ export async function GET(
       id, line_type, test_id, supplement_id, resource_id,
       profile_id, quantity, unit_price_cad,
       custom_description, custom_notes,
-      test:tests(name, sku, collection_method),
+      test:tests(name, sku, collection_method, mayo_test_ids),
       supplement:supplements(name, sku),
       resource:resources(title),
       profile:patient_profiles(first_name, last_name)
@@ -101,6 +101,7 @@ export async function GET(
       name: string;
       sku: string | null;
       collection_method: "phlebotomist_draw" | "self_collected_kit" | null;
+      mayo_test_ids: string[] | null;
     } | null;
     supplement: { name: string; sku: string | null } | null;
     resource: { title: string } | null;
@@ -161,7 +162,7 @@ export async function GET(
         .select(
           `line_type, test_id, supplement_id, description,
            quantity, unit_price_cad, line_total_cad, sort_order,
-           test:tests(name, sku, collection_method),
+           test:tests(name, sku, collection_method, mayo_test_ids),
            supplement:supplements(name, sku)`,
         )
         .eq("invoice_id", invoice.id)
